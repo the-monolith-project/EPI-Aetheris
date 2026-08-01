@@ -30,3 +30,7 @@ pgdata/
 Thumbs.db
 .vscode/
 .idea/
+
+# --help personal
+ayuda.md 
+DOCKER.md
