@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:15-alpine
-    container_name: aethery_db
+    container_name: aetheris_db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?Definí POSTGRES_USER en tu archivo .env (ver .env.example)}
@@ -18,13 +18,13 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - aethery_network
+      - aetheris_network
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: aethery_backend
+    container_name: aetheris_backend
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -40,13 +40,13 @@ services:
       db:
         condition: service_healthy
     networks:
-      - aethery_network
+      - aetheris_network
 
   web:
     build:
       context: ./web
       dockerfile: Dockerfile
-    container_name: aethery_web
+    container_name: aetheris_web
     restart: unless-stopped
     ports:
       - "4321:4321"
@@ -56,11 +56,11 @@ services:
     depends_on:
       - backend
     networks:
-      - aethery_network
+      - aetheris_network
 
 volumes:
   pgdata:
 
 networks:
-  aethery_network:
+  aetheris_network:
     driver: bridge

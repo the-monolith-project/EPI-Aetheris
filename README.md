@@ -1,4 +1,4 @@
-# EPI Aethery
+# EPI-Aetheris
 
 Sistema de predicción epidemiológica para El Salvador. Piloto inicial con
 dengue; arquitectura agnóstica al tipo de evento y región.
@@ -37,9 +37,9 @@ docker compose up -d
 
 | Variable | Descripción | Default |
 |---|---|---|
-| `POSTGRES_USER` | Usuario de BD | `aethery_user` |
-| `POSTGRES_PASSWORD` | Contraseña de BD | `aethery_secure_password` |
-| `POSTGRES_DB` | Nombre de la BD | `epi_aethery` |
+| `POSTGRES_USER` | Usuario de BD | `aetheris_user` |
+| `POSTGRES_PASSWORD` | Contraseña de BD | `aetheris_secure_password` |
+| `POSTGRES_DB` | Nombre de la BD | `epi_aetheris` |
 | `POSTGRES_HOST` | Host de la BD | `db` |
 | `POSTGRES_PORT` | Puerto de la BD | `5432` |
 
