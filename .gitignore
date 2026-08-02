@@ -1,0 +1,36 @@
+# Variables de entorno y datos sensibles
+.env
+.env.*
+!.env.example
+
+# Python y Backend
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+*.sqlite3
+
+# Node.js, Frontend y PNPM
+node_modules/
+.pnpm-store/
+pnpm-debug.log*
+
+# Astro y construcciones
+.astro/
+dist/
+
+# Logs y base de datos local
+*.log
+pgdata/
+
+# Archivos del sistema operativo y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --help personal
+ayuda.md 
+DOCKER.md
