@@ -18,8 +18,8 @@ dengue; arquitectura agnóstica al tipo de evento y región.
 ## Clonar
 
 ```bash
-git clone git@github.com:genmath26-bit/PropuestaEstructuraMonolithProject.git
-cd EPI_Aethery
+git clone git@github.com:the-monolith-project/EPI-Aetheris.git
+cd EPI-Aetheris
 ```
 
 ## Inicio rápido
