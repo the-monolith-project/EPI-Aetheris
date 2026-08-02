@@ -1,0 +1,66 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: aethery_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Definí POSTGRES_USER en tu archivo .env (ver .env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en tu archivo .env (ver .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:?Definí POSTGRES_DB en tu archivo .env (ver .env.example)}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aethery_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aethery_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER:?Definí POSTGRES_USER en tu archivo .env (ver .env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en tu archivo .env (ver .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:?Definí POSTGRES_DB en tu archivo .env (ver .env.example)}
+      POSTGRES_PORT: 5432
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - aethery_network
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: aethery_web
+    restart: unless-stopped
+    ports:
+      - "4321:4321"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - aethery_network
+
+volumes:
+  pgdata:
+
+networks:
+  aethery_network:
+    driver: bridge
