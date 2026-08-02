@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 import psycopg2
 
 app = FastAPI(
-    title="EPI Aethery API",
+    title="EPI-Aetheris API",
     description="API para ingesta, predicción y consulta de datos epidemiológicos",
     version="0.1.0"
 )
@@ -14,9 +14,9 @@ def health_check():
     try:
         conn = psycopg2.connect(
             host=os.getenv("POSTGRES_HOST", "db"),
-            database=os.getenv("POSTGRES_DB", "epi_aethery"),
-            user=os.getenv("POSTGRES_USER", "aethery_user"),
-            password=os.getenv("POSTGRES_PASSWORD", "aethery_secure_password"),
+            database=os.getenv("POSTGRES_DB", "epi_aetheris"),
+            user=os.getenv("POSTGRES_USER", "aetheris_user"),
+            password=os.getenv("POSTGRES_PASSWORD", "aetheris_secure_password"),
             port=os.getenv("POSTGRES_PORT", "5432")
         )
         with conn.cursor() as cursor:

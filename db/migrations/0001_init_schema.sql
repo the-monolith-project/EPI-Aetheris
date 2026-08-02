@@ -1,5 +1,5 @@
 -- ============================================================================
--- EPI Aethery — Esquema de base de datos (PostgreSQL)
+-- EPI-Aetheris — Esquema de base de datos (PostgreSQL)
 -- Capa de ingesta: variable objetivo + predictores ambientales
 -- Diseño agnóstico al tipo de evento epidemiológico y a la región/país
 -- ============================================================================
