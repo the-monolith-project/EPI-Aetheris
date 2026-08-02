@@ -15,6 +15,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar el código del backend
 COPY . .
 
+# Correr como usuario sin privilegios, no como root
+RUN useradd --create-home --shell /bin/bash appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8000
 
 # Iniciar servidor con recarga automática en desarrollo

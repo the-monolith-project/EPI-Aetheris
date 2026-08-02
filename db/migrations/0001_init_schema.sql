@@ -130,22 +130,26 @@ CREATE INDEX idx_ambientales_variable ON variables_ambientales (variable);
 -- 5. DATOS SEMILLA (catálogos estáticos)
 -- ============================================================================
 
+-- El registro nacional se inserta primero y por separado: los departamentos
+-- necesitan su id para completar la jerarquía país -> departamento (region_padre_id).
 INSERT INTO regiones (codigo, nombre, nivel_admin, pais) VALUES
-    ('SV',    'El Salvador',   0, 'SV'),
-    ('SV-AH', 'Ahuachapán',    1, 'SV'),
-    ('SV-CA', 'Cabañas',       1, 'SV'),
-    ('SV-CH', 'Chalatenango',  1, 'SV'),
-    ('SV-CU', 'Cuscatlán',     1, 'SV'),
-    ('SV-LI', 'La Libertad',   1, 'SV'),
-    ('SV-PA', 'La Paz',        1, 'SV'),
-    ('SV-SA', 'Santa Ana',     1, 'SV'),
-    ('SV-SM', 'San Miguel',    1, 'SV'),
-    ('SV-SO', 'Sonsonate',     1, 'SV'),
-    ('SV-SS', 'San Salvador',  1, 'SV'),
-    ('SV-SV', 'San Vicente',   1, 'SV'),
-    ('SV-UN', 'La Unión',      1, 'SV'),
-    ('SV-US', 'Usulután',      1, 'SV'),
-    ('SV-MO', 'Morazán',       1, 'SV');
+    ('SV', 'El Salvador', 0, 'SV');
+
+INSERT INTO regiones (codigo, nombre, nivel_admin, pais, region_padre_id) VALUES
+    ('SV-AH', 'Ahuachapán',    1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-CA', 'Cabañas',       1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-CH', 'Chalatenango',  1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-CU', 'Cuscatlán',     1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-LI', 'La Libertad',   1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-PA', 'La Paz',        1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-SA', 'Santa Ana',     1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-SM', 'San Miguel',    1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-SO', 'Sonsonate',     1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-SS', 'San Salvador',  1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-SV', 'San Vicente',   1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-UN', 'La Unión',      1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-US', 'Usulután',      1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV')),
+    ('SV-MO', 'Morazán',       1, 'SV', (SELECT id FROM regiones WHERE codigo = 'SV'));
 
 INSERT INTO tipos_evento (codigo, nombre, descripcion) VALUES
     ('dengue', 'Dengue', 'Caso piloto del proyecto. La tabla existe como catálogo para permitir agregar otras enfermedades sin cambios de esquema.');
