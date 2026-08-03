@@ -1,8 +1,8 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
-# Activar Corepack fijando pnpm v9 (compatible con Node 20)
+# Activar Corepack fijando pnpm v9 (compatible con Node 22, requerido por Astro 6+)
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
 # Copiar manifiesto de dependencias
