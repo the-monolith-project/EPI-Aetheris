@@ -25,11 +25,9 @@ dist/
 *.log
 pgdata/
 
-# Boletines MINSAL: scripts de descarga y PDFs traídos localmente para
-# preparar la ingesta. Aún no se han integrado/revisado formalmente al
-# pipeline del repo — no trackear hasta que estén listos para commitear.
-backend/ingestion/*
-!backend/ingestion/.gitkeep
+# Boletines MINSAL: PDFs crudos descargados localmente para preparar la
+# ingesta. El dato crudo no se trackea; el código de descarga/parsing sí.
+backend/ingestion/data/raw/
 
 # Archivos del sistema operativo y editores
 .DS_Store
