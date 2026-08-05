@@ -3,3 +3,5 @@ uvicorn==0.30.1
 psycopg2-binary==2.9.9
 pydantic==2.7.4
 python-dotenv==1.2.2
+pdfplumber==0.11.10
+epiweeks==2.4.0
