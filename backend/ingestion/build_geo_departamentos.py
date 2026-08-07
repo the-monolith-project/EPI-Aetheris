@@ -43,6 +43,16 @@ OUTPUT_PATH = (
     Path(__file__).parent.parent.parent / "web" / "public" / "geo" / "slv-adm1.geojson"
 )
 
+# El pin de version que fija docs/adr/0002-join-mapa-geojson-por-nombre.md no es
+# solo un comentario: se verifica contra el contenido real de SOURCE_PATH antes
+# de unir. shapeID trae el numero de boundaryID como prefijo (confirmado en las
+# 14 features del archivo commiteado), asi que si alguien reemplaza SOURCE_PATH
+# por un boundary distinto (otro pais, otro nivel admin, u otra version cuyo
+# shapeID cambie de esquema), la verificacion falla en vez de unir con datos que
+# ya no son los que este ADR dice haber verificado.
+BOUNDARY_ID = "SLV-ADM1-98794003"
+_BOUNDARY_GROUP, _BOUNDARY_TYPE, _BOUNDARY_NUM = BOUNDARY_ID.split("-")
+
 # Fuente de verdad: db/migrations/0001_init_schema.sql (seccion 5, INSERT INTO
 # regiones). Si esa migracion cambia nombres o codigos, actualizar aqui tambien.
 DEPARTAMENTOS = {
@@ -75,10 +85,33 @@ def normalizar(nombre: str) -> str:
     return re.sub(r"\s+", " ", sin_diacriticos.lower().strip())
 
 
+def _verificar_boundary_pineado(geojson: dict) -> None:
+    desajustados = [
+        f["properties"].get("shapeID")
+        for f in geojson["features"]
+        if f["properties"].get("shapeGroup") != _BOUNDARY_GROUP
+        or f["properties"].get("shapeType") != _BOUNDARY_TYPE
+        or not str(f["properties"].get("shapeID", "")).startswith(_BOUNDARY_NUM)
+    ]
+    if desajustados:
+        print(
+            f"ERROR: {SOURCE_PATH} no corresponde al boundary pineado {BOUNDARY_ID}.",
+            file=sys.stderr,
+        )
+        print(f"  shapeID que no coinciden: {desajustados}", file=sys.stderr)
+        print(
+            "  Si se reemplazo SOURCE_PATH a proposito (version nueva de "
+            "geoBoundaries), actualizar BOUNDARY_ID aqui y el pin en el ADR.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 def main() -> None:
     por_nombre_normalizado = {normalizar(nombre): codigo for nombre, codigo in DEPARTAMENTOS.items()}
 
     geojson = json.loads(SOURCE_PATH.read_text(encoding="utf-8"))
+    _verificar_boundary_pineado(geojson)
 
     sin_match = []
     for feature in geojson["features"]:

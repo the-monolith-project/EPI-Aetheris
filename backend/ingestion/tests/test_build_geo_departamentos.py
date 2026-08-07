@@ -37,9 +37,12 @@ def _departamentos_sembrados_en_migracion() -> dict[str, str]:
 
 def test_departamentos_coincide_con_migracion():
     sembrados = _departamentos_sembrados_en_migracion()
-    assert sembrados, (
-        f"no se extrajo ninguna fila de {MIGRACION_PATH} — revisar si el "
-        "regex FILA_DEPARTAMENTO_RE sigue coincidiendo con el formato del INSERT"
+    assert len(sembrados) == 14, (
+        f"extraje {len(sembrados)} filas de {MIGRACION_PATH} (esperaba 14) — "
+        "el regex FILA_DEPARTAMENTO_RE dejo de coincidir con el formato del "
+        "INSERT, o la migracion ahora siembra algo mas que los 14 departamentos "
+        "(ej. municipios con nivel_admin = 2). No es una diferencia de "
+        "conjuntos contra DEPARTAMENTOS — el problema esta en la extraccion misma."
     )
     assert DEPARTAMENTOS == sembrados, (
         "DEPARTAMENTOS en build_geo_departamentos.py quedo desactualizado "
