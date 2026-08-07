@@ -1,0 +1,4 @@
+## 2025-02-14 - Hardcoded Secrets in Default Fallbacks and Information Disclosure
+**Vulnerability:** Hardcoded database credentials (username and password) were found in the `os.getenv` fallbacks within the health check endpoint in `backend/api/main.py`. Additionally, the `HTTPException` detail was leaking internal database connection error specifics.
+**Learning:** Hardcoded credentials should never be present in the source code, not even as default fallback values, as they can be easily exposed if the codebase is shared or compromised. Error messages should be sanitized to avoid leaking sensitive internal details like database connection strings or stack traces.
+**Prevention:** Rely entirely on environment variables for sensitive configuration without providing sensitive defaults in code. Standardize error handling to provide generic error messages to the client while logging the detailed exception internally for debugging purposes.
