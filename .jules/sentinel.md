@@ -1,0 +1,4 @@
+## 2024-08-07 - Hardcoded database secrets in API health check
+**Vulnerability:** The API health check endpoint in `backend/api/main.py` contains hardcoded database credentials (password, user, db name) as fallback values if environment variables are not set. Moreover, the error message on failure exposes detailed exception information (including potentially the database connection string or credentials).
+**Learning:** Hardcoded credentials should never be committed, and error messages should not leak stack traces or internal configuration details. The default values for `os.getenv` should not include real secrets.
+**Prevention:** Avoid providing real secrets as defaults in `os.getenv` for sensitive configurations, and ensure exception handling returns generic error messages to the client.
