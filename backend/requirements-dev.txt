@@ -1,0 +1,7 @@
+# Dependencias de desarrollo, no entran a la imagen de producción (el
+# Dockerfile del backend solo instala requirements.txt). Instalar con:
+#   pip install -r requirements.txt -r requirements-dev.txt
+-r requirements.txt
+
+pytest==8.2.2
+shapely==2.0.4
