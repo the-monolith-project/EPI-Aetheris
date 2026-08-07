@@ -27,6 +27,8 @@ Esto responde directamente la objeción de "mezclar identidad con detalle de fue
 
 La tabla separada (opción B) sigue siendo la opción correcta el día que el proyecto tenga más de una fuente ambiental activa a la vez, o necesite guardar históricamente qué celda sirvió cada observación — ninguna de las dos cosas es cierta hoy (fuente climática única, cerrada; ver decisiones cerradas del proyecto). No se construye esa tabla por adelantado.
 
+**Precisión sobre `elevacion_m` (no cambia la decisión de arriba):** más arriba se describe la elevación como "propiedad física del lugar, no del modelo", en contraste con el centro de celda (ítem 3), que sí se excluye por depender de fuente y modelo. Esa frase es cierta solo en el sentido estrecho de que no depende de qué variable o modelo climático se pida (confirmado empíricamente: `era5_land` y `best_match` devolvieron los mismos 530 m para el mismo punto). No es cierta en un sentido más amplio: `elevacion_m` es la altura que el DEM interno de Open-Meteo le asigna al punto representativo consultado, no una medición topográfica del departamento. Un departamento con relieve variado no tiene una sola altura real; tiene una sola altura *según el DEM de Open-Meteo, en ese punto*. A diferencia de `centroide_lat`/`centroide_lon` — geometría pura, calculada del GeoJSON, sin dependencia de ningún proveedor — `elevacion_m` sí depende de la fuente (qué DEM usa Open-Meteo, a qué resolución) aunque no dependa del modelo climático pedido. Cambiar de proveedor climático en el futuro podría cambiar este valor sin que cambie nada del departamento. Se deja igual en `regiones` (no amerita tabla aparte por esto solo), pero debe quedar documentado para que nadie lo lea como topografía real.
+
 ## Consecuencias
 
 * Positivo: la migración es chica (3 columnas `NUMERIC` nullable en `regiones`) y no exige tocar el resto del esquema.
@@ -38,3 +40,10 @@ La tabla separada (opción B) sigue siendo la opción correcta el día que el pr
 ## Migración
 
 No incluida en este ADR — según el proceso del proyecto, el ADR se escribe y acepta antes de escribir la migración, no junto con ella.
+
+Cuando se escriba, la columna `elevacion_m` debe llevar un `COMMENT ON COLUMN` que traslade la precisión de la sección anterior — no basta con el nombre de columna para que quede claro:
+
+```sql
+COMMENT ON COLUMN regiones.elevacion_m IS
+  'Elevación del punto representativo del departamento según el DEM interno de Open-Meteo (no varía con el modelo climático pedido, pero sí depende de esa fuente). No es una medición topográfica del departamento.';
+```
