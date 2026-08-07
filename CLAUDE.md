@@ -52,6 +52,13 @@ pip install -r requirements.txt
 uvicorn api.main:app --reload
 ```
 
+For scripts under `backend/ingestion/` that aren't part of the runtime API (geo/coordinate build steps, tests), install dev dependencies too — these are deliberately kept out of `requirements.txt` so the production image doesn't carry test/geometry tooling it never needs:
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+pytest backend/ingestion/tests/
+```
+
 ### Web (Astro) — outside Docker
 
 The Dockerfile uses `pnpm` (via Corepack, pinned to v9), so prefer `pnpm` over `npm` for consistency with the container even though no lockfile is committed yet.
@@ -64,7 +71,7 @@ pnpm build     # astro build
 pnpm preview   # astro preview
 ```
 
-There is currently no test suite, linter, or CI configuration in this repo.
+There is no linter or CI configuration in this repo yet. A narrow pytest suite exists at `backend/ingestion/tests/` (currently: the departamentos catalog vs. migration consistency check) — not the full ingestion pipeline, which still has no coverage.
 
 ## Working conventions
 
