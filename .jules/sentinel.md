@@ -1,0 +1,4 @@
+## 2024-08-06 - Hardcoded Credentials and Exception Leakage
+**Vulnerability:** A hardcoded default password was present in `backend/api/main.py` (`aetheris_secure_password`). Additionally, database connection error details (including possible credentials or connection strings) were leaked via exception string (`str(e)`) in HTTP 500 error responses.
+**Learning:** Hardcoded fallbacks undermine environment-based configuration and pose serious risks if codebase access is compromised. Unhandled exception serialization to users often inadvertently leaks infrastructure layout and credentials.
+**Prevention:** Avoid fallback values for secrets; instead, enforce fail-fast behavior if environment variables are not provided. Always use a generic message in the HTTP response for internal server errors while maintaining detail in internal server logs.
