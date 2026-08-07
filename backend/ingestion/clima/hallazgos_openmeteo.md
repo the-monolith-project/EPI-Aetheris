@@ -1,5 +1,10 @@
 # Hallazgos — llamada de prueba a Open-Meteo (tarjeta 20)
 
+**La decisión de qué modelo sirve `precipitation_sum` se investigó a
+fondo y se documentó en `hallazgos_precipitacion_modelo.md`** — este
+archivo se deja tal cual quedó (histórico de cómo se descubrió el
+problema), no se reescribe.
+
 Evidencia cruda en este mismo directorio. Coordenadas pedidas desde
 `backend/ingestion/geo/centroides_departamentos.csv` (punto representativo
 por departamento, no centroide aritmético — ver `compute_centroides.py`).
