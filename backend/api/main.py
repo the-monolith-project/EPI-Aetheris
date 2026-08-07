@@ -12,11 +12,12 @@ app = FastAPI(
 def health_check():
     """Endpoint de comprobación de salud que valida la conexión directa a PostgreSQL."""
     try:
+        # 🛡️ Sentinel: Prevented credential leakage by removing hardcoded fallback password
         conn = psycopg2.connect(
             host=os.getenv("POSTGRES_HOST", "db"),
             database=os.getenv("POSTGRES_DB", "epi_aetheris"),
             user=os.getenv("POSTGRES_USER", "aetheris_user"),
-            password=os.getenv("POSTGRES_PASSWORD", "aetheris_secure_password"),
+            password=os.getenv("POSTGRES_PASSWORD"),
             port=os.getenv("POSTGRES_PORT", "5432")
         )
         with conn.cursor() as cursor:
@@ -28,7 +29,8 @@ def health_check():
             "database": "connected"
         }
     except Exception as e:
+        # 🛡️ Sentinel: Sanitized error response to prevent leaking stack traces and DB internal details
         raise HTTPException(
             status_code=500, 
-            detail=f"Error de conexión a la base de datos: {str(e)}"
+            detail="Error interno de conexión a la base de datos."
         )
