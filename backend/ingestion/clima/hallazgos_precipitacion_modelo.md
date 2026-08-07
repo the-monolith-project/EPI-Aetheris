@@ -6,6 +6,49 @@ alcance por decisión ya tomada — no se prueba ni se reporta aquí.
 Evidencia cruda: `prueba1_ecmwf_ifs/`, `prueba2_14deptos_*.json`,
 `prueba3_*.json`, `prueba4_era5_land_5variables.json`.
 
+## Decisión del coordinador (2026-08-07)
+
+**IFS queda descartado para el MVP.** El hallazgo no anticipado (más abajo)
+es el que decide, no las pruebas 1–4 por sí solas: la heterogeneidad
+temporal entre versiones del modelo es un error peor que el colapso
+espacial de `era5`, porque contamina la comparación *entre años*, que es
+justo el eje sobre el que el modelo se entrena y se evalúa. Un efecto de
+año que no es meteorológico (sino un cambio de versión operativa de IFS)
+haría que la validación retrospectiva por año retenido terminara midiendo
+un artefacto del dataset, no capacidad predictiva real. Detenerse a
+reportar esto en vez de concluir "IFS resuelve todo" fue la actuación
+correcta.
+
+**Configuración cerrada, modelos siempre explícitos — nunca `best_match`
+ni `era5_seamless`** (ambos entregan lo mismo que las llamadas de abajo,
+pero sin poder nombrar qué grilla produjo cada variable, y el informe
+necesita poder decirlo):
+
+- `era5_land` → `temperature_2m_max`, `temperature_2m_min`,
+  `temperature_2m_mean`, `relative_humidity_2m_mean`, `dew_point_2m_mean`.
+  Resolución 0,1°.
+- `era5` → `precipitation_sum`, `precipitation_hours`. Resolución 0,25°.
+- ET₀ fuera de alcance — ya confirmado, no se reabre.
+
+**Se acepta el colapso de celda entre La Libertad y San Salvador** (Prueba
+2): ambos departamentos siguen siendo distinguibles por las otras cinco
+variables (0,1°, 14 celdas distintas) y por la elevación. Lo que se pierde
+es distinguirlos por lluvia, no distinguirlos en general.
+
+**La regla de guarda de la Prueba 3 se mantiene**, aunque con esta
+configuración `precipitation_sum` ya se le pide siempre al modelo que sí
+la sirve (`era5`), no a `era5_land`. Protege contra un cambio futuro de
+configuración — es exactamente el momento en que ese cero falso
+reaparecería sin que nadie lo esté buscando.
+
+**Pendiente, fuera de este documento:** con dos modelos en juego, el
+catálogo `fuentes_datos` va a terminar atribuyendo filas de precipitación
+a un modelo que no las produjo (ahora mismo solo contempla
+`open_meteo_era5_land`). Es cambio de esquema y necesita su propio ADR
+antes de cualquier migración — no se escribe aquí ni ahora.
+
+---
+
 ## Prueba 1 — ¿IFS cubre toda la ventana 2018–2023?
 
 Una coordenada (La Libertad, 13.744564/-89.361267), 6 fechas de temporada
@@ -131,16 +174,14 @@ solo que apareció un nivel más abajo de lo previsto.
   `prueba2_14deptos_*.json`, `prueba3_*.json`, `prueba4_era5_land_5variables.json`).
 - Tabla comparativa de resolución por modelo: Prueba 2, arriba.
 - Regla de guarda: escrita arriba, en Prueba 3.
-- Recomendación de qué modelo sirve qué variable, a qué resolución:
+- Recomendación de qué modelo sirve qué variable, a qué resolución —
+  **cerrada por el coordinador, ver "Decisión del coordinador" arriba:**
   - `temperature_2m_max/min/mean`, `relative_humidity_2m_mean`,
-    `dew_point_2m_mean` → **`era5_land`**, grilla fina de 0,1°
-    (~9–11 km), reanálisis estático, homogéneo en toda la ventana.
-    Sin objeciones nuevas.
-  - `precipitation_sum`/`precipitation_hours` → **sin recomendación
-    cerrada.** `era5` da grilla homogénea en el tiempo pero colapsa
-    departamentos (13 de 14 celdas, La Libertad = San Salvador).
-    `ecmwf_ifs` da 14 celdas distintas y cubre toda la ventana con datos
-    reales, pero es un archivo de pronóstico operativo, no un reanálisis,
-    con el riesgo de heterogeneidad entre años que se describe arriba. La
-    tarjeta pidió no usar `best_match` ni decidir por mi cuenta — ambas
-    instrucciones se respetaron.
+    `dew_point_2m_mean` → `era5_land`, 0,1° (~9–11 km).
+  - `precipitation_sum`/`precipitation_hours` → `era5`, 0,25°. `ecmwf_ifs`
+    quedó descartado por heterogeneidad temporal entre versiones del
+    modelo, un riesgo más grave que el colapso de celda de `era5` porque
+    contamina la comparación entre años.
+  - ET₀ fuera de alcance, no vuelve a evaluarse.
+  - Nunca `best_match` ni `era5_seamless` — el informe necesita poder
+    nombrar qué grilla produjo cada variable.
