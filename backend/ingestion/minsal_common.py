@@ -86,6 +86,8 @@ class YearSummary:
 def _clean_filename(name: str) -> str:
     name = urllib.parse.unquote(name)
     name = unicodedata.normalize("NFC", name)
+    # Get just the base filename, preventing directory traversal
+    name = Path(name).name
     return name.strip()
 
 
