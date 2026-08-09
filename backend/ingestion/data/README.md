@@ -24,7 +24,7 @@ constancia de dónde salió cada dato reunido en la Fase 0 de ingesta.
 - **Fuente:** boletines epidemiológicos en PDF de `salud.gob.sv`
   (`www.salud.gob.sv/boletines-epidemiologicos-{año}/`), fuente interna
   citada "VIGEPES".
-- **Obtenidos con:** `descargar_minsal_{año}.py` / `minsal_common.py` (ver
+- **Obtenidos con:** `minsal/descargar_{año}.py` / `minsal/common.py` (ver
   esos scripts para el mecanismo de descarga: ruta directa vs. ruta de
   respaldo, validación por firma de bytes `%PDF`).
 - **Años reunidos:** 2018, 2019, 2021, 2022, 2023 (2020 queda fuera de la
