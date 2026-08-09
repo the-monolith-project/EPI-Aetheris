@@ -1,5 +1,5 @@
 """
-Utilidades compartidas para los scripts descargar_minsal_{anio}.py.
+Utilidades compartidas para los scripts descargar_{anio}.py de este paquete.
 
 Descarga boletines epidemiologicos del MINSAL (salud.gob.sv) en PDF.
 Ver Instrucciones_Claude_Code_Descarga_MINSAL.md para el detalle del
@@ -38,7 +38,7 @@ DIRECT_PDF_RE = re.compile(
 # que resuelven al PDF real via redirect al seguir la URL con wpdmdl=.
 BACKUP_LINK_RE = re.compile(r'data-downloadurl="([^"]*wpdmdl=\d+[^"]*)"')
 
-DATA_ROOT = Path(__file__).parent / "data" / "raw" / "minsal"
+DATA_ROOT = Path(__file__).parent.parent / "data" / "raw" / "minsal"
 
 REQUEST_PAUSE_SECONDS = 1.5
 PDF_SIGNATURE = b"%PDF"

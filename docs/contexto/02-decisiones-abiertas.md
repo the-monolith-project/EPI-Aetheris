@@ -37,7 +37,7 @@ Computado on-demand vs. persistido en una tabla — el esquema hoy no tiene tabl
 
 ## Pendientes operativos conocidos (no son decisiones, pero sin avance registrado)
 
-- Parser de boletines MINSAL: no existe todavía, solo el código de descarga (`backend/ingestion/minsal_common.py` + scripts por año).
+- Parser de boletines MINSAL: no existe todavía, solo el código de descarga (`backend/ingestion/minsal/common.py` + scripts por año).
 - CI y *pre-commit*: mapeados, no implementados.
 - `web/src/styles/tokens.css` y su configuración de Tailwind: convención acordada, no versionada.
 - Para el estado real de qué archivos existen en el repo en un momento dado, verificar directamente (`git ls-files`, explorar `backend/`, `docs/adr/`, `db/migrations/`) en vez de confiar en una lista aquí — ese inventario se desactualiza de inmediato (ver el historial en `CHANGELOG.md`: la migración `0002` estuvo documentada como "no existe todavía" en el mismo commit que la creó).

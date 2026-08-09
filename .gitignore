@@ -32,6 +32,10 @@ pgdata/
 # el build del mapa no dependa de red — ver CLAUDE.md y docs/adr/0002-*.md).
 backend/ingestion/data/raw/
 
+# Salida intermedia del parser MINSAL (tabla cruda por boletín, previa a
+# normalizar) — derivada del dato crudo, misma regla de exclusión.
+backend/ingestion/data/interim/
+
 # graphify: índice de grafo de código, regenerable localmente, no se trackea
 graphify-out/
 
