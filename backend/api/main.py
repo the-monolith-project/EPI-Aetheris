@@ -14,9 +14,9 @@ def health_check():
     try:
         conn = psycopg2.connect(
             host=os.getenv("POSTGRES_HOST", "db"),
-            database=os.getenv("POSTGRES_DB", "epi_aetheris"),
-            user=os.getenv("POSTGRES_USER", "aetheris_user"),
-            password=os.getenv("POSTGRES_PASSWORD", "aetheris_secure_password"),
+            database=os.getenv("POSTGRES_DB"),
+            user=os.getenv("POSTGRES_USER"),
+            password=os.getenv("POSTGRES_PASSWORD"),
             port=os.getenv("POSTGRES_PORT", "5432")
         )
         with conn.cursor() as cursor:
@@ -28,7 +28,9 @@ def health_check():
             "database": "connected"
         }
     except Exception as e:
+        # Security: Do not log or leak the original connection error string to clients.
+        # Original error can contain credentials if improperly handled by the driver.
         raise HTTPException(
             status_code=500, 
-            detail=f"Error de conexión a la base de datos: {str(e)}"
+            detail="Error de conexión a la base de datos"
         )
