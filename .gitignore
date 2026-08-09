@@ -32,6 +32,9 @@ pgdata/
 # el build del mapa no dependa de red — ver CLAUDE.md y docs/adr/0002-*.md).
 backend/ingestion/data/raw/
 
+# graphify: índice de grafo de código, regenerable localmente, no se trackea
+graphify-out/
+
 # Archivos del sistema operativo y editores
 .DS_Store
 Thumbs.db
