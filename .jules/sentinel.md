@@ -1,0 +1,4 @@
+## 2026-08-08 - Fix hardcoded credentials and exception information leakage
+**Vulnerability:** The database health check endpoint in `backend/api/main.py` had default fallback credentials (`aetheris_user`, `aetheris_secure_password`) hardcoded directly in the source code. Furthermore, a failure to connect returned the internal exception message (`str(e)`) to the client.
+**Learning:** Default fallbacks for environment variables that store credentials create a risk of accidental inclusion in public repositories or deployment of systems with easily guessable default credentials. Unhandled exception exposure in an API leaks backend state and technology stacks.
+**Prevention:** Always require sensitive environment variables to be set externally (or let connection libraries handle their absence naturally by failing). Return generic error messages on HTTP 500 status codes instead of the raw trace or exception string.
