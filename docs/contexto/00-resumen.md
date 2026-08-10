@@ -4,7 +4,7 @@
 
 ## Qué es
 
-EPI-Aetheris es un sistema **open-source, contenedorizado y desplegable a costo cero** que cruza datos públicos históricos de casos de dengue con variables climáticas para estimar el **nivel de riesgo de brote (alto/medio/bajo) por región y semana epidemiológica**, piloteado en El Salvador. La arquitectura es agnóstica al tipo de evento y a la región — dengue/El Salvador es el caso piloto, no el límite.
+EPI-Aetheris es un sistema **open-source, contenedorizado y desplegable a costo cero** que cruza datos públicos históricos de casos de dengue con variables climáticas para estimar el **nivel de riesgo de brote (alto/medio/bajo) por semana epidemiológica**, piloteado en El Salvador. La primera entrega clasifica a **nivel nacional** (decisión de pivote "Opción C", 2026-08-09 — ver `01-decisiones-cerradas.md`); un segundo clasificador **departamental** se agrega después, condicionado a que la señal de casos de MINSAL sobreviva un reconteo pendiente (ver `02-decisiones-abiertas.md`, punto H). El mapa sí pinta datos departamentales desde el primer hito, pero como capa descriptiva, no como salida del clasificador. La arquitectura es agnóstica al tipo de evento y a la región — dengue/El Salvador es el caso piloto, no el límite.
 
 **Lo que NO es:** ni un descubrimiento científico ni "predecir dengue con IA" (eso ya existe en la literatura). El aporte es de **ingeniería de software**: entregar como sistema reproducible y gratuito lo que la academia solo publica como papers. Ver `01-decisiones-cerradas.md` para el posicionamiento frente al estado del arte.
 
