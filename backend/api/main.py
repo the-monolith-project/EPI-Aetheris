@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI, HTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 import psycopg2
 
 app = FastAPI(
@@ -7,6 +8,19 @@ app = FastAPI(
     description="API para ingesta, predicción y consulta de datos epidemiológicos",
     version="0.1.0"
 )
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        # Allow inline styles/scripts and jsdelivr to ensure FastAPI Swagger UI works.
+        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 @app.get("/health")
 def health_check():
