@@ -12,9 +12,7 @@ El método ya está cerrado (canal endémico por percentil — ver `01-decisione
 - Techo de columnas del conjunto de features.
 - **Insumo ya disponible, ahora también a nivel nacional (2026-08-10):** corrida de distribución de clases sobre la serie departamental (`data/interim/corrida_distribucion/`, no versionada) — ver punto H para el veredicto y sus límites. La misma corrida sobre la serie **nacional** de OpenDengue (`backend/ingestion/corrida_canal_endemico_nacional.py`, resumen en `docs/corrida-canal-endemico-nacional.md`) ya corrió: 96,2 % de celdas cumplen el piso de suficiencia con ventana ±1 (muy por encima del 87,9–92,8 % departamental), y ambos esquemas candidatos (P75/P90, P50/P75) separan 2019/2022 del resto sin clases vacías — pero **no deciden el corte por sí solos**: P50/P75 marca "alto" hasta una semana de 2021 (año bajo), señal de sobre-etiquetado a vigilar. Sigue siendo decisión del coordinador.
 
-## B. Atribución de fuente climática en el catálogo
-
-`fuentes_datos` solo tiene `open_meteo_era5_land`. Con dos modelos en juego (`era5_land` para temp/humedad/rocío, `era5` para precipitación), las filas de precipitación quedarían atribuidas a un modelo que no las produjo — rompe la trazabilidad. Dos salidas: segunda entrada de catálogo por modelo, o registrar el modelo por fila en `variables_ambientales` (más flexible, más caro). Es cambio de esquema: exige ADR antes de la migración. **Confirmado que la migración `0002` (ADR 0003 + ADR 0004) no lo incluyó** — no asumir que quedó resuelto de rebote.
+*(Punto B — atribución de fuente climática — cerrado 2026-08-10, ADR 0006. Movido a `01-decisiones-cerradas.md`; la numeración salta de A a C a propósito, no reordenada.)*
 
 ## C. Mecanismo de migraciones
 
