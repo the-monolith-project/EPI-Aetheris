@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Descarga los boletines epidemiologicos del MINSAL correspondientes a 2019."""
+"""Descarga los boletines epidemiologicos del MINSAL correspondientes a 2021."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from minsal_common import descargar_boletines_del_anio
+from common import descargar_boletines_del_anio
 
-ANIO = 2019
+ANIO = 2021
 
 
 def main() -> None:
