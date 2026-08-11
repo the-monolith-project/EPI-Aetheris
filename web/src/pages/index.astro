@@ -1,0 +1,25 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CurvaEpidemicaNacional from '../components/CurvaEpidemicaNacional.astro';
+import MapaDepartamentos from '../components/MapaDepartamentos.astro';
+import MetricasModelo from '../components/MetricasModelo.astro';
+---
+
+<Layout title="EPI-Aetheris">
+  <main class="mx-auto max-w-5xl px-4 py-8">
+    <header class="mb-6">
+      <h1 class="font-sans text-2xl font-semibold text-ink">EPI-Aetheris</h1>
+      <p class="mt-1 font-sans text-sm text-ink-muted">
+        Vigilancia epidemiológica de dengue en El Salvador -- ayuda de priorización, no
+        diagnóstico. Clasificador piloto a nivel nacional; el mapa muestra una capa
+        descriptiva, sin datos departamentales todavía.
+      </p>
+    </header>
+
+    <div class="grid grid-cols-1 gap-4">
+      <CurvaEpidemicaNacional />
+      <MapaDepartamentos />
+      <MetricasModelo />
+    </div>
+  </main>
+</Layout>

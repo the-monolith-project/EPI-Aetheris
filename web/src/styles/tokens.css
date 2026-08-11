@@ -1,0 +1,20 @@
+/*
+ * Tokens de diseño. Valores placeholder neutros -- el coordinador va a pasar
+ * una paleta preliminar (referencias_no_trakear/) en un mensaje aparte.
+ * Cuando llegue: reemplazar los valores de abajo, no reestructurar el
+ * archivo ni renombrar las variables (global.css y los componentes ya
+ * dependen de estos nombres).
+ */
+
+:root {
+  --color-bg: #f4f4f5;
+  --color-surface: #ffffff;
+  --color-ink: #1c1c1e;
+  --color-ink-muted: #6b7280;
+  --color-border: #d4d4d8;
+  --color-accent: #52525b;
+  --color-accent-ink: #ffffff;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+}

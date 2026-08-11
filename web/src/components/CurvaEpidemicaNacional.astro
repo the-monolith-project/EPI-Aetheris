@@ -1,0 +1,99 @@
+---
+// Curva epidémica nacional. Fetch del lado del cliente (el navegador siempre
+// resuelve la API en localhost:8000, tanto corriendo con docker-compose como
+// con `pnpm dev` local -- evita depender de resolución de hostname interna
+// de la red de Docker) contra GET /api/casos-nacional: serie de OpenDengue,
+// clasificacion='total', nivel nacional. No es clasificación de riesgo: el
+// corte de percentil sigue abierto (docs/contexto/02-decisiones-abiertas.md,
+// punto A).
+---
+
+<section class="rounded-lg border border-border bg-surface p-4">
+  <h2 class="font-sans text-base font-semibold text-ink">Curva epidémica nacional</h2>
+  <p class="mt-1 font-sans text-sm text-ink-muted">
+    Serie semanal de casos de dengue, OpenDengue (nivel nacional, 2018-2024). No representa una
+    clasificación de riesgo -- eso todavía no está definido.
+  </p>
+  <div id="curva-epidemica" class="mt-3">
+    <p class="font-sans text-sm text-ink-muted" data-estado>Cargando...</p>
+  </div>
+</section>
+
+<script>
+  interface CasoSemanal {
+    semana_inicio: string;
+    anio: number;
+    conteo: number;
+  }
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const ANCHO = 720;
+  const ALTO = 220;
+  const MARGEN = { arriba: 16, abajo: 24, izquierda: 8, derecha: 8 };
+
+  function dibujar(contenedor: HTMLElement, datos: CasoSemanal[]) {
+    const estado = contenedor.querySelector('[data-estado]');
+    estado?.remove();
+
+    if (datos.length === 0) {
+      contenedor.innerHTML =
+        '<p class="font-sans text-sm text-ink-muted">Sin datos cargados todavía.</p>';
+      return;
+    }
+
+    const maxConteo = Math.max(...datos.map((d) => d.conteo));
+    const escalaY = (valor: number) =>
+      ALTO - MARGEN.abajo - (valor / (maxConteo || 1)) * (ALTO - MARGEN.arriba - MARGEN.abajo);
+    const escalaX = (indice: number) =>
+      MARGEN.izquierda +
+      (indice / Math.max(datos.length - 1, 1)) * (ANCHO - MARGEN.izquierda - MARGEN.derecha);
+
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
+    svg.setAttribute('class', 'w-full');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Curva epidémica nacional de dengue por semana, 2018-2024');
+
+    const polilinea = document.createElementNS(SVG_NS, 'polyline');
+    const puntos = datos.map((d, i) => `${escalaX(i)},${escalaY(d.conteo)}`).join(' ');
+    polilinea.setAttribute('points', puntos);
+    polilinea.setAttribute('fill', 'none');
+    polilinea.setAttribute('stroke', 'var(--color-accent)');
+    polilinea.setAttribute('stroke-width', '1.5');
+    svg.appendChild(polilinea);
+
+    const aniosVistos = new Set<number>();
+    datos.forEach((d, i) => {
+      if (aniosVistos.has(d.anio)) return;
+      aniosVistos.add(d.anio);
+      const etiqueta = document.createElementNS(SVG_NS, 'text');
+      etiqueta.setAttribute('x', String(escalaX(i)));
+      etiqueta.setAttribute('y', String(ALTO - 6));
+      etiqueta.setAttribute('font-family', 'var(--font-mono)');
+      etiqueta.setAttribute('font-size', '10');
+      etiqueta.setAttribute('fill', 'var(--color-ink-muted)');
+      etiqueta.textContent = String(d.anio);
+      svg.appendChild(etiqueta);
+    });
+
+    contenedor.appendChild(svg);
+  }
+
+  async function iniciar() {
+    const contenedor = document.getElementById('curva-epidemica');
+    if (!contenedor) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/casos-nacional`);
+      if (!resp.ok) throw new Error('respuesta no OK');
+      const datos: CasoSemanal[] = await resp.json();
+      dibujar(contenedor, datos);
+    } catch {
+      contenedor.innerHTML =
+        '<p class="font-sans text-sm text-ink-muted">No se pudo cargar la serie en este momento.</p>';
+    }
+  }
+
+  iniciar();
+</script>

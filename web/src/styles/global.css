@@ -1,0 +1,23 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Expone los tokens de ./tokens.css como utilidades de Tailwind (bg-bg,
+   text-ink, font-mono, etc.) sin duplicar valores -- cuando tokens.css
+   cambie de valores, las utilidades cambian solas. */
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-border: var(--color-border);
+  --color-accent: var(--color-accent);
+  --color-accent-ink: var(--color-accent-ink);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
