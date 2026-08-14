@@ -11,7 +11,7 @@ El frontend usa Astro, TypeScript, Tailwind CSS v4 y Leaflet, sin React ni Vue. 
 | Iconografía | `astro-icon` + Iconify | Aprobada | Cuando se necesiten iconos reutilizables |
 | Tipografías | `@fontsource/inter`, `@fontsource/ibm-plex-mono` | Aprobadas | Próxima mejora de UI |
 | Métricas | Observable Plot | Aprobada | Al implementar `MetricasModelo.astro` |
-| Color | ColorBrewer + `chroma.js` | Aprobados | Al definir la política visual del mapa/gráficas |
+| Color | ColorBrewer + Chroma.js (`chroma-js`) | Aprobados | Al definir la política visual del mapa/gráficas |
 | Clasificación cartográfica | `simple-statistics` | Aprobada condicionalmente | Tras cumplir la condición departamental/MINSAL |
 | Calidad | `@astrojs/check`, ESLint, Prettier | Aprobados | Próxima fase de tooling/CI |
 | E2E y accesibilidad | Playwright + `@axe-core/playwright` | Aprobados | Adopción progresiva al estabilizar el dashboard |
@@ -33,9 +33,9 @@ Se aprueba Observable Plot para gráficas estadísticas de la salida del modelo:
 
 La primera implementación debe ser estática o tener un selector simple por año. Antes de integrarla debe existir un contrato de datos: endpoint de API, artefacto generado por entrenamiento o fixture verificable.
 
-### Color: ColorBrewer + `chroma.js`
+### Color: ColorBrewer + Chroma.js (`chroma-js`)
 
-Se aprueban ColorBrewer como base de paletas cartográficas y `chroma.js` para escalas, interpolación, clases y valores sin dato. La política visual debe separar la clasificación de valores de la asignación de colores, mantener una leyenda equivalente y evaluar contraste/percepción de color. No se deben dispersar colores hardcodeados ni usar una semántica verde/amarillo/rojo sin validación de accesibilidad.
+Se aprueban ColorBrewer como base de paletas cartográficas y Chroma.js (`chroma-js`) para escalas, interpolación, clases y valores sin dato. La política visual debe separar la clasificación de valores de la asignación de colores, mantener una leyenda equivalente y evaluar contraste/percepción de color. No se deben dispersar colores hardcodeados ni usar una semántica verde/amarillo/rojo sin validación de accesibilidad.
 
 ## Coroplético descriptivo
 
@@ -49,7 +49,7 @@ El mapa del MVP sigue siendo una capa departamental descriptiva basada en casos 
 
 ### Type-check, linting y formato
 
-Se aprueban `@astrojs/check`, ESLint con `eslint-plugin-astro`, y Prettier con `prettier-plugin-astro`. Sus responsabilidades no se solapan:
+Se aprueban `@astrojs/check`, ESLint con `eslint-plugin-astro`, y Prettier con `prettier-plugin-astro`. Para esta adopción, ESLint debe instalarse como `eslint@^9`, no como `eslint@latest`: la combinación de `eslint-plugin-astro` y `eslint-plugin-jsx-a11y@>=6.10.2` requiere ESLint 9 y rompe la resolución de *peers* con ESLint 10. Sus responsabilidades no se solapan:
 
 ```text
 Prettier       → formato consistente
@@ -71,9 +71,9 @@ Se aprueba técnicamente i18n nativo de Astro dentro del stack vigente, pero se 
 
 ## Orden de adopción
 
-1. `@astrojs/check`, ESLint y Prettier.
+1. `@astrojs/check`, ESLint 9, `eslint-plugin-astro` y Prettier.
 2. Fontsource y `astro-icon`.
-3. Observable Plot al implementar las métricas; ColorBrewer/`chroma.js` al cerrar política visual.
+3. Observable Plot al implementar las métricas; ColorBrewer/Chroma.js (`chroma-js`) al cerrar política visual.
 4. `simple-statistics` al definir indicador, datos y naturaleza de los cortes del coroplético.
 5. Playwright y `@axe-core/playwright`, comenzando con smoke tests.
 6. i18n de Astro cuando exista un requisito de producto para otro idioma.

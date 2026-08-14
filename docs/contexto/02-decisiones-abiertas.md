@@ -51,6 +51,7 @@ El levantamiento de `web/` aprobó técnicamente las herramientas listadas en `0
 
 - **`simple-statistics`:** falta verificar el cumplimiento de su condición departamental/MINSAL: indicador descriptivo definido y contrato de datos disponible. Cuantiles/`ckmeans` no son umbrales epidemiológicos; si existen umbrales MINSAL/OPS, prevalecen. El coroplético no puede comunicar riesgo departamental mientras el modelo sea nacional.
 - **Playwright + `@axe-core/playwright`:** falta decidir configuración, scripts, integración CI y el conjunto inicial de smoke tests. Deben usar fixtures o interceptación de API cuando corresponda; los escaneos automáticos no sustituyen las revisiones manuales de accesibilidad.
+- **i18n nativo de Astro:** no se activa hasta que exista un requisito de producto para otro idioma. Cuando ocurra, faltará definir rutas, locales, traducciones y calendario de adopción; mientras tanto, evitar dispersar textos nuevos innecesariamente.
 
 Ver alcance, criterios y orden de adopción en `docs/levantamiento-gaps-stack-web.md`.
 
