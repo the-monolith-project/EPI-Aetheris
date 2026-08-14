@@ -45,13 +45,12 @@ Computado on-demand vs. persistido en una tabla — el esquema hoy no tiene tabl
 
 **Fuera de este punto, ya no es una pregunta abierta:** la cifra departamental de dengue seguirá siendo delgada frente a la carga real (los sospechosos nunca se desagregan por departamento en estos boletines) — eso ya no bloquea nada porque la variable objetivo de la primera entrega no depende de ella.
 
-## I. Condiciones de adopción para clasificación, pruebas e i18n del frontend
+## I. Estrategia de implementación de herramientas aprobadas del frontend
 
-El levantamiento de `web/` aprobó la compatibilidad de varias herramientas, pero los siguientes puntos no se convierten en implementación automática:
+El levantamiento de `web/` aprobó técnicamente las herramientas listadas en `01-decisiones-cerradas.md`; quedan abiertos solo los detalles de su implementación:
 
-- **`simple-statistics`:** solo se adopta cuando se cierre el indicador descriptivo MINSAL, su contrato de datos y si los cortes serán oficiales o relativos. Cuantiles/`ckmeans` no son umbrales epidemiológicos; si existen umbrales MINSAL/OPS, prevalecen. El coroplético no puede comunicar riesgo departamental mientras el modelo sea nacional.
-- **Playwright + `@axe-core/playwright`:** se adopta progresivamente cuando el dashboard tenga un flujo estable. Falta decidir configuración, scripts, integración CI y el conjunto inicial de smoke tests. Deben usar fixtures o interceptación de API cuando corresponda; los escaneos automáticos no sustituyen las revisiones manuales de accesibilidad.
-- **i18n nativo de Astro:** diferido hasta que exista requisito de un idioma adicional. No definir aún locales, estrategia de rutas ni gestión de traducciones; evitar dispersar innecesariamente textos nuevos para no bloquear una transición futura.
+- **`simple-statistics`:** falta verificar el cumplimiento de su condición departamental/MINSAL: indicador descriptivo definido y contrato de datos disponible. Cuantiles/`ckmeans` no son umbrales epidemiológicos; si existen umbrales MINSAL/OPS, prevalecen. El coroplético no puede comunicar riesgo departamental mientras el modelo sea nacional.
+- **Playwright + `@axe-core/playwright`:** falta decidir configuración, scripts, integración CI y el conjunto inicial de smoke tests. Deben usar fixtures o interceptación de API cuando corresponda; los escaneos automáticos no sustituyen las revisiones manuales de accesibilidad.
 
 Ver alcance, criterios y orden de adopción en `docs/levantamiento-gaps-stack-web.md`.
 

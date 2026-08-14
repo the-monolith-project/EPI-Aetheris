@@ -1,10 +1,10 @@
 # Levantamiento de gaps del stack `web/`
 
-**Estado:** decisiones documentadas para adopción futura; este documento no autoriza instalar dependencias ni modifica el runtime actual.
+**Estado:** aprobaciones técnicas dentro del stack vigente para adopción futura; este documento no autoriza instalar dependencias ni modifica el runtime actual.
 
 ## Alcance y estado actual
 
-El frontend usa Astro, TypeScript, Tailwind CSS v4 y Leaflet, sin React ni Vue. La revisión evalúa herramientas complementarias antes de incorporarlas; una aprobación significa compatibilidad y aceptación arquitectónica, no instalación inmediata.
+El frontend usa Astro, TypeScript, Tailwind CSS v4 y Leaflet, sin React ni Vue. La revisión evalúa herramientas complementarias antes de incorporarlas; una aprobación significa compatibilidad y aprobación técnica dentro del stack vigente, no instalación inmediata.
 
 | Área | Herramienta | Decisión | Momento de adopción |
 |---|---|---|---|
@@ -12,10 +12,10 @@ El frontend usa Astro, TypeScript, Tailwind CSS v4 y Leaflet, sin React ni Vue. 
 | Tipografías | `@fontsource/inter`, `@fontsource/ibm-plex-mono` | Aprobadas | Próxima mejora de UI |
 | Métricas | Observable Plot | Aprobada | Al implementar `MetricasModelo.astro` |
 | Color | ColorBrewer + `chroma.js` | Aprobados | Al definir la política visual del mapa/gráficas |
-| Clasificación cartográfica | `simple-statistics` | Aprobada con condiciones | Tras cerrar indicador y contrato MINSAL |
+| Clasificación cartográfica | `simple-statistics` | Aprobada condicionalmente | Tras cumplir la condición departamental/MINSAL |
 | Calidad | `@astrojs/check`, ESLint, Prettier | Aprobados | Próxima fase de tooling/CI |
-| E2E y accesibilidad | Playwright + `@axe-core/playwright` | Aprobados progresivamente | Cuando el dashboard estabilice su flujo principal |
-| Internacionalización | i18n nativo de Astro | Diferida | Ante un requisito real de segundo idioma |
+| E2E y accesibilidad | Playwright + `@axe-core/playwright` | Aprobados | Adopción progresiva al estabilizar el dashboard |
+| Internacionalización | i18n nativo de Astro | Aprobada | Implementación diferida hasta requerimiento real |
 
 ## Decisiones de UI
 
@@ -39,7 +39,7 @@ Se aprueban ColorBrewer como base de paletas cartográficas y `chroma.js` para e
 
 ## Coroplético descriptivo
 
-Leaflet renderiza la geometría, pero no define los cortes de clase. `simple-statistics` queda aprobado con condiciones para cuantiles, intervalos o `ckmeans` cuando se haya definido el indicador descriptivo de MINSAL y su contrato de datos.
+Leaflet renderiza la geometría, pero no define los cortes de clase. `simple-statistics` queda aprobado condicionalmente para cuantiles, intervalos o `ckmeans`; no se instala hasta que se cumpla la condición departamental/MINSAL: indicador descriptivo definido y contrato de datos verificado.
 
 Un corte estadístico expresa magnitud relativa dentro del conjunto analizado; no equivale a un umbral epidemiológico ni a riesgo crítico. Si MINSAL u OPS aportan umbrales oficiales, prevalecen. Si no existen, cualquier clasificación relativa debe declararse explícitamente como tal.
 
@@ -61,13 +61,13 @@ Su adopción no afecta el bundle de producción. La política de CI puede endure
 
 ### Playwright y accesibilidad
 
-Se aprueba Playwright con adopción progresiva, junto con `@axe-core/playwright`; no se creará una infraestructura de accesibilidad separada. La suite inicial será Chromium y pocos smoke tests: carga del dashboard, inicialización de Leaflet, presencia de GeoJSON/datos, interacción departamental, filtros críticos y renderizado del gráfico principal.
+Se aprueban Playwright y `@axe-core/playwright`, con adopción progresiva; no se creará una infraestructura de accesibilidad separada. La estrategia de implementación sigue pendiente: configuración, scripts, integración CI y conjunto inicial de smoke tests. La primera suite será Chromium y pocos smoke tests: carga del dashboard, inicialización de Leaflet, presencia de GeoJSON/datos, interacción departamental, filtros críticos y renderizado del gráfico principal.
 
 Los tests deben poder interceptar la API y usar fixtures para validar el frontend sin exigir FastAPI, PostgreSQL ni fuentes externas en CI. Axe ayuda a detectar problemas automatizables, pero no reemplaza revisión manual de teclado, foco, significado sin depender del color y lector de pantalla cuando corresponda.
 
 ## Internacionalización
 
-Se difiere la configuración i18n de Astro: el piloto no tiene un requisito actual de más de un idioma y rutas/locales/traducciones añadirían mantenimiento prematuro. No se descarta la arquitectura; al añadir textos nuevos, se evitará dispersarlos innecesariamente para facilitar una transición futura.
+Se aprueba técnicamente i18n nativo de Astro dentro del stack vigente, pero se difiere su implementación: el piloto no tiene un requisito actual de más de un idioma y rutas/locales/traducciones añadirían mantenimiento prematuro. Al añadir textos nuevos, se evitará dispersarlos innecesariamente para facilitar una transición futura.
 
 ## Orden de adopción
 
@@ -76,7 +76,7 @@ Se difiere la configuración i18n de Astro: el piloto no tiene un requisito actu
 3. Observable Plot al implementar las métricas; ColorBrewer/`chroma.js` al cerrar política visual.
 4. `simple-statistics` al definir indicador, datos y naturaleza de los cortes del coroplético.
 5. Playwright y `@axe-core/playwright`, comenzando con smoke tests.
-6. i18n de Astro solo ante un requisito de producto.
+6. i18n de Astro cuando exista un requisito de producto para otro idioma.
 
 ## Fuentes primarias
 
