@@ -45,6 +45,16 @@ Computado on-demand vs. persistido en una tabla — el esquema hoy no tiene tabl
 
 **Fuera de este punto, ya no es una pregunta abierta:** la cifra departamental de dengue seguirá siendo delgada frente a la carga real (los sospechosos nunca se desagregan por departamento en estos boletines) — eso ya no bloquea nada porque la variable objetivo de la primera entrega no depende de ella.
 
+## I. Condiciones de adopción para clasificación, pruebas e i18n del frontend
+
+El levantamiento de `web/` aprobó la compatibilidad de varias herramientas, pero los siguientes puntos no se convierten en implementación automática:
+
+- **`simple-statistics`:** solo se adopta cuando se cierre el indicador descriptivo MINSAL, su contrato de datos y si los cortes serán oficiales o relativos. Cuantiles/`ckmeans` no son umbrales epidemiológicos; si existen umbrales MINSAL/OPS, prevalecen. El coroplético no puede comunicar riesgo departamental mientras el modelo sea nacional.
+- **Playwright + `@axe-core/playwright`:** se adopta progresivamente cuando el dashboard tenga un flujo estable. Falta decidir configuración, scripts, integración CI y el conjunto inicial de smoke tests. Deben usar fixtures o interceptación de API cuando corresponda; los escaneos automáticos no sustituyen las revisiones manuales de accesibilidad.
+- **i18n nativo de Astro:** diferido hasta que exista requisito de un idioma adicional. No definir aún locales, estrategia de rutas ni gestión de traducciones; evitar dispersar innecesariamente textos nuevos para no bloquear una transición futura.
+
+Ver alcance, criterios y orden de adopción en `docs/levantamiento-gaps-stack-web.md`.
+
 ## Pendientes operativos conocidos (no son decisiones, pero sin avance registrado)
 
 - ~~Carga de la serie nacional de OpenDengue a Postgres~~ — **hecho (2026-08-09, tarjeta 11).** `backend/ingestion/cargar_opendengue.py`, 365 filas 2018–2024, `clasificacion='total'` (ADR 0005, migración `0003`). Ver `01-decisiones-cerradas.md` para el detalle y la verificación contra cifras conocidas.
