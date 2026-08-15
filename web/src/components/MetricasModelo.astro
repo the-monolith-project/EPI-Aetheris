@@ -1,16 +1,149 @@
 ---
-// Espacio reservado para métricas del modelo y margen de error, que el
-// proyecto exige siempre visibles (CLAUDE.md, no negociables) en cuanto
-// exista un clasificador. Todavía no hay modelo entrenado ni corte de
-// percentil decidido (docs/contexto/02-decisiones-abiertas.md, punto A),
-// así que esto no muestra cifras -- ni de ejemplo, ni inventadas.
+// Riesgo nacional (semáforo) + métricas del modelo, siempre visibles
+// (CLAUDE.md, no negociable). Tarjeta 25 -- primera versión, semana fija,
+// colores planos; selector de semanas viene después. Fetch del lado del
+// cliente contra GET /api/riesgo-nacional, mismo patrón que
+// CurvaEpidemicaNacional.astro. La capa departamental descriptiva NO está
+// aquí todavía -- el parser de producción de MINSAL (tarjeta 22) no existe,
+// decisión explícita de no inventar esa capa para este hito (ver
+// docs/contexto/CHANGELOG.md, 2026-08-15).
 ---
 
 <section class="rounded-lg border border-border bg-surface p-4">
-  <h2 class="font-sans text-base font-semibold text-ink">Métricas del modelo</h2>
+  <h2 class="font-sans text-base font-semibold text-ink">Riesgo nacional y métricas del modelo</h2>
   <p class="mt-1 font-sans text-sm text-ink-muted">
-    Próximamente. Cuando exista un clasificador, esta sección muestra su métrica de desempeño,
-    matriz de confusión y margen de error por clase -- nunca oculto, y nunca presentado como
-    diagnóstico o certeza.
+    Herramienta de priorización, no diagnóstico. Clasificación a nivel nacional -- no representa
+    riesgo por departamento.
   </p>
+
+  <div id="riesgo-nacional" class="mt-3">
+    <p class="font-sans text-sm text-ink-muted" data-estado>Cargando...</p>
+  </div>
 </section>
+
+<script>
+  interface RiesgoNacional {
+    anio: number;
+    semana_epi: number;
+    etiqueta_predicha: string;
+    etiqueta_real: string;
+    probabilidades: Record<string, number>;
+    casos_observados: number;
+    metricas_modelo: {
+      anio_prueba: number;
+      anios_entrenamiento: number[];
+      corte_percentil: string;
+      f1_macro_modelo: number;
+      recall_alto_modelo: number | null;
+      n_alto_real_prueba: number;
+      f1_macro_baseline_climatologica: number;
+      recall_alto_baseline_climatologica: number | null;
+      supera_baseline_climatologica: boolean;
+      nota: string;
+    } | null;
+    aviso: string;
+  }
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+
+  const COLOR_CLASE: Record<string, string> = {
+    bajo: '#2e7d32',
+    medio: '#b8860b',
+    alto: '#c62828',
+  };
+
+  function badge(clase: string): string {
+    const color = COLOR_CLASE[clase] ?? 'var(--color-accent)';
+    return `<span style="background:${color}" class="inline-block rounded px-2 py-0.5 font-sans text-xs font-semibold uppercase text-white">${clase}</span>`;
+  }
+
+  function formatearRecall(valor: number | null, nAltoReal: number): string {
+    if (valor === null) {
+      return `N/D (0 semanas reales de "alto" en el año de prueba, ${nAltoReal} de soporte)`;
+    }
+    return valor.toFixed(3);
+  }
+
+  function render(contenedor: HTMLElement, datos: RiesgoNacional) {
+    const estado = contenedor.querySelector('[data-estado]');
+    estado?.remove();
+
+    const m = datos.metricas_modelo;
+    const probas = Object.entries(datos.probabilidades)
+      .map(([clase, p]) => `<li>${clase}: ${(p * 100).toFixed(1)}%</li>`)
+      .join('');
+
+    contenedor.innerHTML = `
+      <div class="rounded-md border border-border bg-bg p-3">
+        <p class="font-sans text-sm text-ink">
+          Semana ${datos.semana_epi} / ${datos.anio} -- predicción del modelo: ${badge(datos.etiqueta_predicha)}
+          &nbsp;·&nbsp; clase real observada (retrospectiva, no en vivo): ${badge(datos.etiqueta_real)}
+        </p>
+        <ul class="mt-2 font-mono text-xs text-ink-muted">${probas}</ul>
+        <p class="mt-2 font-sans text-xs text-ink-muted">
+          Casos observados esa semana (OpenDengue, clasificación='total'): ${datos.casos_observados}
+        </p>
+      </div>
+
+      <div class="mt-3 rounded-md border border-border bg-bg p-3">
+        <p class="font-sans text-xs font-semibold uppercase text-ink-muted">Aviso</p>
+        <p class="mt-1 font-sans text-sm text-ink">${datos.aviso}</p>
+      </div>
+
+      ${m ? `
+      <div class="mt-3 rounded-md border border-border bg-bg p-3">
+        <p class="font-sans text-xs font-semibold uppercase text-ink-muted">
+          Métricas del modelo (entrenado ${m.anios_entrenamiento.join(', ')} · probado ${m.anio_prueba} · corte ${m.corte_percentil})
+        </p>
+        <table class="mt-2 w-full font-mono text-xs text-ink">
+          <thead>
+            <tr class="text-left text-ink-muted">
+              <th class="pr-4">&nbsp;</th>
+              <th class="pr-4">F1 macro</th>
+              <th>Recall "alto"</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="pr-4">Modelo</td>
+              <td class="pr-4">${m.f1_macro_modelo.toFixed(3)}</td>
+              <td>${formatearRecall(m.recall_alto_modelo, m.n_alto_real_prueba)}</td>
+            </tr>
+            <tr>
+              <td class="pr-4">Línea base climatológica</td>
+              <td class="pr-4">${m.f1_macro_baseline_climatologica.toFixed(3)}</td>
+              <td>${formatearRecall(m.recall_alto_baseline_climatologica, m.n_alto_real_prueba)}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="mt-2 font-sans text-sm text-ink">
+          ¿Supera a la línea base climatológica (criterio decisivo)?
+          <strong>${m.supera_baseline_climatologica ? 'Sí' : 'No, esta pasada'}</strong>
+        </p>
+        <p class="mt-1 font-sans text-xs text-ink-muted">${m.nota}</p>
+      </div>
+      ` : `
+      <div class="mt-3 rounded-md border border-border bg-bg p-3">
+        <p class="font-sans text-sm text-ink-muted">Métricas del modelo no disponibles todavía.</p>
+      </div>
+      `}
+    `;
+  }
+
+  async function iniciar() {
+    const contenedor = document.getElementById('riesgo-nacional');
+    if (!contenedor) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/riesgo-nacional`);
+      if (!resp.ok) throw new Error('respuesta no OK');
+      const datos: RiesgoNacional = await resp.json();
+      render(contenedor, datos);
+    } catch {
+      contenedor.innerHTML =
+        '<p class="font-sans text-sm text-ink-muted">No se pudo cargar el riesgo nacional en este momento -- revisar que el modelo esté entrenado (tarjeta 24).</p>';
+    }
+  }
+
+  iniciar();
+</script>
