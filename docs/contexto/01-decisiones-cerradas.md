@@ -31,6 +31,14 @@ Python + FastAPI + scikit-learn (Random Forest / Gradient Boosting) para backend
 
 **Por qué:** el ecosistema de ML clásico favorece fuertemente a Python frente a JS/TS, con más documentación en español — relevante para el plazo y el nivel de bachillerato del equipo. Astro/TS/Leaflet se asigna porque ahí el equipo (0V3R) ya tiene fortaleza real (Node.js, Astro, TypeScript, Tailwind, Supabase), reduciendo curva de aprendizaje en la capa que el jurado evalúa primero. Todo-Python (Streamlit/Dash) y todo-TypeScript (ML en JS) fueron evaluados y descartados por menor pulido de UI y ecosistema inmaduro de árboles/boosting en JS, respectivamente.
 
+### Herramientas complementarias del frontend (cerrado 2026-08-13; adopción diferida)
+
+Se aprueba técnicamente, dentro de Astro sin React/Vue, la adopción futura de: `astro-icon` + Iconify para SVG reutilizable; `@fontsource/inter` y `@fontsource/ibm-plex-mono` para auto-hospedar las tipografías actuales; Observable Plot para las visualizaciones de métricas; ColorBrewer como base de paleta y Chroma.js (`chroma-js`) para escalas de color; `@astrojs/check`, ESLint + `eslint-plugin-astro` y Prettier + `prettier-plugin-astro` como tooling de calidad; Playwright + `@axe-core/playwright` para E2E y accesibilidad; e i18n nativo de Astro para internacionalización futura.
+
+`simple-statistics` queda **aprobada condicionalmente**. Las condiciones de su adopción, los pendientes de Playwright/axe y la activación de i18n se registran exclusivamente en el [punto I de `02-decisiones-abiertas.md`](02-decisiones-abiertas.md#i-estrategia-de-implementación-de-herramientas-aprobadas-del-frontend).
+
+**La aprobación técnica no equivale a instalación.** Ningún paquete se agrega a `web/package.json` hasta que la funcionalidad asociada lo necesite, se evalúen versión, licencia, tamaño y configuración, y se implemente en su propio cambio. Se mantienen Astro, TypeScript, Tailwind CSS v4 y Leaflet como stack vigente; no se introduce React ni Vue. Detalle y orden de adopción: `docs/levantamiento-gaps-stack-web.md`.
+
 ## Invariantes de infraestructura (no negociables)
 
 GNU/Linux, hardware modesto. Docker obligatorio, despliegue reproducible con un comando (`git clone` + `docker compose up`). Open-source y self-hosted: sin APIs de pago, sin límites freemium ocultos, sin suscripciones obligatorias en el core. Costo de replicación para un tercero → $0. Hardware mínimo estimado: 4 GB RAM, CPU doble núcleo x86-64, ~10 GB almacenamiento (series semanales, modelos de árboles ligeros).
