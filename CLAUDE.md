@@ -150,4 +150,8 @@ pnpm build
 pnpm preview
 ```
 
+### Multi-agent / multi-worktree note (Orca ADE)
+
+`docker-compose.yml` uses fixed `container_name` values and fixed host ports (5432/8000/4321), shared at the Docker daemon level — not per git worktree. If you're running multiple agents in parallel worktrees (e.g. via Orca), **only one worktree should run `docker-compose up` at a time.** Agents in other worktrees should work on code without starting the stack, or coordinate with whoever has it up. Do not "fix" this by editing `docker-compose.yml` to namespace ports/names per worktree without asking first — it's a deliberate simplicity trade-off for a single shared dev stack, not an oversight.
+
 There is currently **no test suite, linter, or CI configuration** in this repository. Adding pytest coverage for the ingestion pipeline is a known pending task, with three manually verified bulletins available as reference cases.
