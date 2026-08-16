@@ -1,10 +1,16 @@
 ---
-// Mapa departamental -- capa descriptiva, sin datos todavía. Leaflet necesita
-// el DOM del navegador (no hay forma de renderizarlo en el servidor), así
-// que todo el trabajo con L.* vive en el <script> de abajo, que Astro
-// procesa y ejecuta solo en el cliente. No se agregó React/Preact/etc. para
-// esto -- un componente .astro + <script> ya resuelve "solo en el
+// Mapa departamental -- capa DESCRIPTIVA (tarjeta 25), no de riesgo. Leaflet
+// necesita el DOM del navegador (no hay forma de renderizarlo en el
+// servidor), así que todo el trabajo con L.* vive en el <script> de abajo,
+// que Astro procesa y ejecuta solo en el cliente. No se agregó React/Preact
+// para esto -- un componente .astro + <script> ya resuelve "solo en el
 // navegador" sin sumar un framework de UI nuevo al proyecto.
+//
+// Colorea por volumen de casos "probable" (MINSAL, tarjeta 22), acumulado
+// en TODA la ventana cargada (2018-2023), no una sola semana -- con 87-93%
+// de celdas departamento-semana en cero (docs/contexto/03-fuentes-de-datos.md),
+// una sola semana sale casi vacía y no representa bien la distribución real.
+// Elección de presentación, no decisión de equipo cerrada.
 ---
 
 <section class="rounded-lg border border-border bg-surface p-4">
@@ -12,22 +18,80 @@
 
   <div class="mt-2 rounded-md border border-border bg-bg p-3">
     <p class="font-sans text-sm text-ink-muted">
-      <strong class="text-ink">Capa descriptiva, sin datos departamentales cargados todavía.</strong>
-      No representa una clasificación de riesgo por departamento bajo ninguna circunstancia --
-      el clasificador de esta primera entrega opera a nivel nacional, no departamental.
+      <strong class="text-ink">Capa descriptiva, no de riesgo.</strong>
+      El color representa volumen de casos "probable" reportado por MINSAL, acumulado 2018-2023
+      -- no una clasificación de riesgo por departamento. El clasificador de esta primera entrega
+      opera a nivel nacional (ver la sección de riesgo nacional); estos datos todavía no alimentan
+      ningún modelo.
     </p>
   </div>
 
   <div id="mapa-departamentos" class="mt-3 h-[360px] w-full rounded-md border border-border"></div>
+  <div id="mapa-leyenda" class="mt-2"></div>
 </section>
 
 <script>
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
 
+  interface DatoDepartamento {
+    nombre: string;
+    codigo: string;
+    probable_total: number;
+    confirmado_total: number;
+    semanas_con_dato_probable: number;
+    primer_anio: number | null;
+    ultimo_anio: number | null;
+  }
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+
+  // Rampa secuencial de un solo tono (azul, claro->oscuro) -- deliberadamente
+  // distinta de los colores del semáforo de riesgo nacional (verde/ámbar/rojo)
+  // para que nadie confunda "volumen de casos" con "nivel de riesgo".
+  const RAMPA = ['#cde2fb', '#9ec5f4', '#5598e7', '#256abf', '#0d366b'];
+  const SIN_DATO = '#e4e4e7';
+
+  function calcularCortes(valores: number[]): number[] {
+    const positivos = valores.filter((v) => v > 0).sort((a, b) => a - b);
+    if (positivos.length === 0) return [1, 2, 3, 4];
+    const corte = (p: number) => positivos[Math.min(positivos.length - 1, Math.floor(p * (positivos.length - 1)))];
+    return [corte(0.2), corte(0.4), corte(0.6), corte(0.8)];
+  }
+
+  function colorPara(valor: number, cortes: number[]): string {
+    if (valor <= 0) return SIN_DATO;
+    for (let i = 0; i < cortes.length; i++) {
+      if (valor <= cortes[i]) return RAMPA[i];
+    }
+    return RAMPA[RAMPA.length - 1];
+  }
+
+  function dibujarLeyenda(contenedor: HTMLElement, cortes: number[]) {
+    const rangos = [
+      `1–${cortes[0]}`,
+      `${cortes[0] + 1}–${cortes[1]}`,
+      `${cortes[1] + 1}–${cortes[2]}`,
+      `${cortes[2] + 1}–${cortes[3]}`,
+      `> ${cortes[3]}`,
+    ];
+    const items = RAMPA.map(
+      (color, i) =>
+        `<span class="inline-flex items-center gap-1 mr-3"><span style="background:${color}" class="inline-block h-3 w-3 rounded-sm"></span><span class="font-mono text-xs text-ink-muted">${rangos[i]}</span></span>`
+    ).join('');
+    contenedor.innerHTML = `
+      <div class="flex flex-wrap items-center font-sans text-xs text-ink-muted">
+        <span class="mr-2">Casos "probable" acumulados 2018-2023:</span>
+        ${items}
+        <span class="inline-flex items-center gap-1"><span style="background:${SIN_DATO}" class="inline-block h-3 w-3 rounded-sm"></span><span class="font-mono text-xs text-ink-muted">sin dato</span></span>
+      </div>
+    `;
+  }
+
   async function iniciar() {
     const contenedor = document.getElementById('mapa-departamentos');
-    if (!contenedor) return;
+    const leyenda = document.getElementById('mapa-leyenda');
+    if (!contenedor || !leyenda) return;
 
     const mapa = L.map(contenedor).setView([13.79, -88.9], 8);
 
@@ -36,22 +100,42 @@
       maxZoom: 12,
     }).addTo(mapa);
 
-    const resp = await fetch('/geo/slv-adm1.geojson');
-    const geojson = await resp.json();
+    const [respGeo, respCasos] = await Promise.all([
+      fetch('/geo/slv-adm1.geojson'),
+      fetch(`${API_BASE}/api/casos-departamentales`),
+    ]);
+    const geojson = await respGeo.json();
+    const casos: { departamentos: DatoDepartamento[] } = await respCasos.json();
 
-    // Relleno neutro uniforme para los 14 departamentos -- deliberadamente
-    // el mismo color para todos, para no sugerir ninguna escala de riesgo
-    // ni siquiera como placeholder visual.
+    const porCodigo = new Map(casos.departamentos.map((d) => [d.codigo, d]));
+    const cortes = calcularCortes(casos.departamentos.map((d) => d.probable_total));
+    dibujarLeyenda(leyenda, cortes);
+
     L.geoJSON(geojson, {
-      style: () => ({
-        color: '#8a8a90',
-        weight: 1,
-        fillColor: '#c7c7cc',
-        fillOpacity: 0.5,
-      }),
+      style: (feature) => {
+        const dato = porCodigo.get(feature?.properties?.codigo ?? '');
+        return {
+          color: '#8a8a90',
+          weight: 1,
+          fillColor: colorPara(dato?.probable_total ?? 0, cortes),
+          fillOpacity: 0.75,
+        };
+      },
       onEachFeature: (feature, layer) => {
+        const dato = porCodigo.get(feature.properties?.codigo ?? '');
         const nombre = feature.properties?.shapeName ?? feature.properties?.codigo ?? '';
-        layer.bindTooltip(nombre);
+        if (!dato) {
+          layer.bindTooltip(nombre);
+          return;
+        }
+        const ventana = dato.primer_anio && dato.ultimo_anio ? `${dato.primer_anio}-${dato.ultimo_anio}` : 'sin dato';
+        layer.bindTooltip(
+          `<strong>${nombre}</strong><br>` +
+            `Probable (acum.): ${dato.probable_total}<br>` +
+            `Confirmado (acum.): ${dato.confirmado_total}<br>` +
+            `Semanas con dato: ${dato.semanas_con_dato_probable}<br>` +
+            `Ventana: ${ventana}`
+        );
       },
     }).addTo(mapa);
   }
