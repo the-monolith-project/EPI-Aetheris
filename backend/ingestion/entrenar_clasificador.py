@@ -52,26 +52,41 @@ from sklearn.metrics import confusion_matrix, f1_score, precision_recall_fscore_
 from corrida_canal_endemico_nacional import ANIOS_BASE
 
 RAIZ = Path(__file__).parent
-DATASET_PATH = RAIZ / "data" / "interim" / "dataset_modelado" / "dataset_modelado.csv"
+DATASET_DIR = RAIZ / "data" / "interim" / "dataset_modelado"
 MODELO_DIR = RAIZ / "data" / "interim" / "modelo"
 DOCS_DIR = RAIZ.parent.parent / "docs"
 
 ANIO_PRUEBA_DEFAULT = max(ANIOS_BASE)  # 2023 -- "el mas reciente", validación temporal simple
+ANIO_MIN_DEFAULT = min(ANIOS_BASE)  # 2018 -- ventana de producción
+CORTE_PRODUCCION = "p75_p90"
 CLASES = ["bajo", "medio", "alto"]
 
 
-def cargar_dataset() -> list[dict]:
-    if not DATASET_PATH.exists():
+def sufijo_dataset(corte: str, anio_min: int) -> str:
+    """Mismo esquema de nombre que construir_dataset_modelado.py -- hay que
+    mantenerlos sincronizados a mano, no hay una fuente única compartida."""
+    partes = []
+    if corte != CORTE_PRODUCCION:
+        partes.append(corte)
+    if anio_min != ANIO_MIN_DEFAULT:
+        partes.append(f"desde{anio_min}")
+    return "" if not partes else "_" + "_".join(partes)
+
+
+def cargar_dataset(corte: str, anio_min: int) -> list[dict]:
+    dataset_path = DATASET_DIR / f"dataset_modelado{sufijo_dataset(corte, anio_min)}.csv"
+    if not dataset_path.exists():
         raise SystemExit(
-            f"No existe {DATASET_PATH}. Correr construir_dataset_modelado.py primero (tarjeta 23)."
+            f"No existe {dataset_path}. Correr construir_dataset_modelado.py --corte {corte} "
+            f"--anio-min {anio_min} primero."
         )
-    with open(DATASET_PATH, newline="", encoding="utf-8") as f:
+    with open(dataset_path, newline="", encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
 
 COLUMNAS_NO_FEATURE = {
     "anio", "semana_epi", "casos", "n_obs_base", "anios_presentes_base",
-    "cumple_piso_suficiencia", "p75_base", "p90_base", "etiqueta_riesgo",
+    "cumple_piso_suficiencia", "corte_inferior_base", "corte_superior_base", "etiqueta_riesgo",
 }
 
 
@@ -166,13 +181,41 @@ def main() -> None:
             "_prueba<año>, sin tocar los artefactos de producción."
         ),
     )
+    parser.add_argument(
+        "--corte", default=CORTE_PRODUCCION,
+        help=(
+            f"Corte de percentil cuyo dataset cargar (default: {CORTE_PRODUCCION}, producción). "
+            "Debe existir el dataset correspondiente, generado antes con "
+            "construir_dataset_modelado.py --corte <corte>. Cualquier valor distinto del de "
+            "producción es corrida exploratoria: no toca los artefactos de producción."
+        ),
+    )
+    parser.add_argument(
+        "--anio-min", type=int, default=ANIO_MIN_DEFAULT,
+        help=(
+            f"Primer año base del dataset a cargar (default: {ANIO_MIN_DEFAULT}, producción). "
+            "Debe existir el dataset correspondiente, generado antes con "
+            "construir_dataset_modelado.py --anio-min <año>. Cualquier valor distinto del de "
+            "producción es corrida exploratoria."
+        ),
+    )
     args = parser.parse_args()
-    es_produccion = args.anio_prueba is None
+    es_produccion = (
+        args.anio_prueba is None and args.corte == CORTE_PRODUCCION and args.anio_min == ANIO_MIN_DEFAULT
+    )
     global ANIO_PRUEBA
     ANIO_PRUEBA = args.anio_prueba if args.anio_prueba is not None else ANIO_PRUEBA_DEFAULT
-    sufijo = "" if es_produccion else f"_prueba{ANIO_PRUEBA}"
+    partes_sufijo = []
+    if args.corte != CORTE_PRODUCCION:
+        partes_sufijo.append(args.corte)
+    if args.anio_min != ANIO_MIN_DEFAULT:
+        partes_sufijo.append(f"desde{args.anio_min}")
+    if args.anio_prueba is not None:
+        partes_sufijo.append(f"prueba{args.anio_prueba}")
+    sufijo = "" if not partes_sufijo else "_" + "_".join(partes_sufijo)
+    corte_label = args.corte.replace("p", "P").replace("_", "/")
 
-    filas = cargar_dataset()
+    filas = cargar_dataset(args.corte, args.anio_min)
     cols = columnas_feature(filas[0])
 
     train = [f for f in filas if int(f["anio"]) != ANIO_PRUEBA]
@@ -222,7 +265,7 @@ def main() -> None:
     if es_produccion:
         joblib.dump({"modelo": modelo, "columnas_feature": cols, "clases": CLASES}, modelo_path)
     else:
-        print(f"Corrida exploratoria (año de prueba {ANIO_PRUEBA} != {ANIO_PRUEBA_DEFAULT}) -- "
+        print(f"Corrida exploratoria (corte={args.corte}, año de prueba={ANIO_PRUEBA}) -- "
               f"NO se sobrescribe el modelo de producción que usa /api/riesgo-nacional. "
               f"Modelo de esta corrida no se guarda (solo el informe y las métricas).")
 
@@ -232,7 +275,7 @@ def main() -> None:
             {
                 "anio_prueba": ANIO_PRUEBA,
                 "anios_entrenamiento": sorted(set(int(f["anio"]) for f in train)),
-                "corte_percentil": "P75/P90",
+                "corte_percentil": corte_label,
                 "f1_macro_modelo": met_modelo["f1_macro"],
                 "recall_alto_modelo": met_modelo["recall_alto"],
                 "n_alto_real_prueba": met_modelo["n_alto_real"],
@@ -288,14 +331,14 @@ def main() -> None:
     docs_path = DOCS_DIR / f"entrenamiento-clasificador-riesgo-nacional{sufijo}.md"
     escribir_documento(
         cols, train, test, met_modelo, met_clima, met_persist, n_excluidas_persist,
-        importancias, modelo_path, supera_clima, docs_path, es_produccion,
+        importancias, modelo_path, supera_clima, docs_path, es_produccion, corte_label,
     )
     print(f"\nInforme consultable -> {docs_path}")
 
 
 def escribir_documento(cols, train, test, met_modelo, met_clima, met_persist,
                         n_excluidas_persist, importancias, modelo_path, supera_clima,
-                        docs_path: Path, es_produccion: bool) -> None:
+                        docs_path: Path, es_produccion: bool, corte_label: str) -> None:
     dist_test = Counter(f["etiqueta_riesgo"] for f in test)
 
     def tabla_metricas(met: dict) -> str:
@@ -322,18 +365,17 @@ def escribir_documento(cols, train, test, met_modelo, met_clima, met_persist,
         )
     else:
         artefacto_md = (
-            "**Corrida exploratoria — el modelo de este entrenamiento NO se guardó.** Este año de "
-            "prueba es distinto al de producción, así que no se sobrescribió "
-            "`clasificador_riesgo_nacional_v1.joblib` (el que usa `/api/riesgo-nacional`). Este "
-            "informe es solo para evaluar la métrica decisiva con un año que sí tiene casos reales "
-            "de \"alto\"; si se necesita el modelo de esta corrida más adelante, correr de nuevo el "
-            "script con el mismo --anio-prueba."
+            "**Corrida exploratoria — el modelo de este entrenamiento NO se guardó.** El año de "
+            "prueba y/o el corte de percentil son distintos a los de producción, así que no se "
+            "sobrescribió `clasificador_riesgo_nacional_v1.joblib` (el que usa "
+            "`/api/riesgo-nacional`). Si se necesita el modelo de esta corrida más adelante, "
+            "correr de nuevo el script con los mismos `--anio-prueba`/`--corte`."
         )
 
     if met_modelo["n_alto_real"] == 0:
         hallazgo_md = (
             f"**Hallazgo a declarar sin maquillar:** el año de prueba {ANIO_PRUEBA} no tiene ninguna semana "
-            'etiquetada "alto" con el corte P75/P90 (todas las semanas cayeron en "bajo" o "medio" según la '
+            f'etiquetada "alto" con el corte {corte_label} (todas las semanas cayeron en "bajo" o "medio" según la '
             'línea base de entrenamiento). Eso hace que el recall de "alto" — la métrica decisiva del criterio '
             "de éxito — no sea calculable este año de prueba, no porque el modelo falle en detectarlo sino "
             "porque no hay ningún caso real que detectar. No se debe citar esta corrida como evidencia de que "
@@ -343,7 +385,7 @@ def escribir_documento(cols, train, test, met_modelo, met_clima, met_persist,
     else:
         hallazgo_md = (
             f"**Hallazgo a declarar sin maquillar:** el año de prueba {ANIO_PRUEBA} tiene "
-            f"{met_modelo['n_alto_real']} semanas reales etiquetadas \"alto\" con el corte P75/P90 -- "
+            f"{met_modelo['n_alto_real']} semanas reales etiquetadas \"alto\" con el corte {corte_label} -- "
             f"el recall de \"alto\" del modelo fue **{formatear_recall_alto(met_modelo['recall_alto'], met_modelo['n_alto_real'])}** "
             "(la línea base climatológica obtuvo el mismo resultado). "
             + (
@@ -391,7 +433,7 @@ def escribir_documento(cols, train, test, met_modelo, met_clima, met_persist,
 - **Entrenamiento:** {len(train)} filas, años {', '.join(str(a) for a in sorted(set(int(f['anio']) for f in train)))}.
 - **Prueba:** {len(test)} filas, año {ANIO_PRUEBA} (validación temporal simple, cerrada en `docs/contexto/01-decisiones-cerradas.md`).
 - **Predictores:** {len(cols)} variables de clima rezagado (rezago 1, rezago 2, media móvil 4 semanas — 7 variables climáticas). Ningún dato de casos entra como predictor (decisión cerrada 2026-08-09).
-- **Corte de etiqueta:** P75/P90 (cerrado 2026-08-15 — no es el que reproduce el canal endémico OPS/PAHO verificado, que da P50/P75; ver `docs/contexto/01-decisiones-cerradas.md`).
+- **Corte de etiqueta:** {corte_label}{" (cerrado 2026-08-15 — no es el que reproduce el canal endémico OPS/PAHO verificado, que da P50/P75; ver `docs/contexto/01-decisiones-cerradas.md`)" if corte_label == "P75/P90" else " (EXPLORATORIO -- no es el corte de producción; ver más abajo)"}.
 - **Modelo:** `RandomForestClassifier` (scikit-learn), 300 árboles, `class_weight="balanced"`, semilla fija 42.
 - **Distribución real del año de prueba ({ANIO_PRUEBA}):** {dict(dist_test)}.
 
