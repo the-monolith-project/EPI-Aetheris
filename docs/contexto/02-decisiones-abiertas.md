@@ -16,9 +16,7 @@ El método ya está cerrado (canal endémico por percentil — ver `01-decisione
 
 *(Punto B — atribución de fuente climática — cerrado 2026-08-10, ADR 0006. Movido a `01-decisiones-cerradas.md`; la numeración salta de A a C a propósito, no reordenada.)*
 
-## C. Mecanismo de migraciones
-
-`docker-entrypoint-initdb.d` corre todo `db/migrations/` una sola vez, sobre volumen vacío, en orden alfabético — no hay tracking de qué se aplicó ya sobre una base en ejecución. Numerar los archivos es una convención, no un sistema de migraciones. Dos salidas: documentar "volumen limpio + reingesta" como flujo de trabajo aceptado, o implementar un runner mínimo con tabla `schema_migrations`. Elegir antes de que existan datos costosos de reconstruir. ADR 0004 tocó el esquema y **no resolvió esto** — no asumir que un cambio de esquema arregla el mecanismo de migraciones de rebote.
+*(Punto C — mecanismo de migraciones — cerrado 2026-08-16, ADR 0009. Movido a `01-decisiones-cerradas.md`; la numeración salta de B a D a propósito, no reordenada.)*
 
 ## D. Estrategia de pruebas del pipeline de ingesta
 
