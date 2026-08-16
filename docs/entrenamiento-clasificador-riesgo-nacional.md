@@ -6,7 +6,7 @@
 
 ## Configuración
 
-- **Entrenamiento:** 197 filas, años 2018, 2019, 2021, 2022.
+- **Entrenamiento:** 200 filas, años 2018, 2019, 2021, 2022.
 - **Prueba:** 50 filas, año 2023 (validación temporal simple, cerrada en `docs/contexto/01-decisiones-cerradas.md`).
 - **Predictores:** 21 variables de clima rezagado (rezago 1, rezago 2, media móvil 4 semanas — 7 variables climáticas). Ningún dato de casos entra como predictor (decisión cerrada 2026-08-09).
 - **Corte de etiqueta:** P75/P90 (cerrado 2026-08-15 — no es el que reproduce el canal endémico OPS/PAHO verificado, que da P50/P75; ver `docs/contexto/01-decisiones-cerradas.md`).
@@ -29,17 +29,17 @@ F1 macro: **0.265** · Recall 'alto': **N/A -- 0 casos reales de 'alto' en el co
 
 | real \ predicho | bajo | medio | alto |
 |---|---|---|---|
-| **bajo** | 33 | 0 | 17 |
+| **bajo** | 33 | 1 | 16 |
 | **medio** | 0 | 0 | 0 |
 | **alto** | 0 | 0 | 0 |
 
 ## Línea base climatológica
 
-F1 macro: **0.323** · Recall 'alto': **N/A -- 0 casos reales de 'alto' en el conjunto evaluado (0 soporte)**
+F1 macro: **0.333** · Recall 'alto': **N/A -- 0 casos reales de 'alto' en el conjunto evaluado (0 soporte)**
 
 | Clase | Precisión | Recall | F1 | Soporte |
 |---|---|---|---|---|
-| bajo | 1.000 | 0.940 | 0.969 | 50 |
+| bajo | 1.000 | 1.000 | 1.000 | 50 |
 | medio | 0.000 | 0.000 | 0.000 | 0 |
 | alto | 0.000 | 0.000 | 0.000 | 0 |
 
@@ -67,16 +67,16 @@ climatológica en F1 macro **y** en recall de "alto", por año de prueba — con
 
 | Variable | Importancia |
 |---|---|
-| temp_min_media_movil4 | 0.0596 |
-| temp_max_media_movil4 | 0.0582 |
-| temp_max_lag2 | 0.0565 |
-| punto_rocio_media_movil4 | 0.0527 |
-| temp_media_media_movil4 | 0.0508 |
-| precipitation_sum_media_movil4 | 0.0506 |
-| punto_rocio_lag1 | 0.0505 |
-| temp_max_lag1 | 0.0505 |
-| temp_min_lag2 | 0.0502 |
-| humedad_relativa_media_lag1 | 0.0493 |
+| temp_max_media_movil4 | 0.0611 |
+| temp_min_media_movil4 | 0.0566 |
+| temp_max_lag2 | 0.0537 |
+| punto_rocio_media_movil4 | 0.0535 |
+| humedad_relativa_media_lag2 | 0.0524 |
+| temp_media_lag1 | 0.0517 |
+| humedad_relativa_media_lag1 | 0.0513 |
+| temp_media_media_movil4 | 0.0506 |
+| precipitation_sum_media_movil4 | 0.0491 |
+| punto_rocio_lag1 | 0.0490 |
 
 ## Artefacto del modelo
 

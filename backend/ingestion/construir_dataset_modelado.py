@@ -31,13 +31,15 @@ Uso:
 
 from __future__ import annotations
 
+import argparse
 import csv
 from collections import defaultdict
 from dataclasses import dataclass, fields
 from pathlib import Path
 
+import corrida_canal_endemico_nacional as canal_endemico
 from corrida_canal_endemico_nacional import (
-    ANIOS_BASE,
+    ANIOS_BASE as ANIOS_BASE_PRODUCCION,
     PISO_ANIOS_MIN,
     PISO_OBSERVACIONES,
     VENTANA,
@@ -67,6 +69,15 @@ LAGS = (1, 2)
 # reabrir esto sin una senal distinta de que el problema es de ventana.
 VENTANAS_MEDIA_MOVIL = (4,)  # semanas anteriores, sin incluir la semana actual
 ANIO_2020_EXCLUIDO = 2020  # recorte de entrenamiento, no de ingesta -- ver punto E
+
+# Cortes de percentil candidatos. p75_p90 es el de produccion (cerrado
+# 2026-08-15). p50_p75 es el que SI reproduce el canal endemico OPS/PAHO de
+# 4 zonas ya verificado -- exploratorio, para probar si "alto" siendo el
+# 25% superior (en vez del 10%) le da al modelo mas ejemplos positivos de
+# los que aprender. Ver docs/contexto/01-decisiones-cerradas.md para el
+# motivo por el que se eligio p75_p90 en produccion pese a esto.
+CORTES = {"p75_p90": (0.75, 0.90), "p50_p75": (0.50, 0.75)}
+CORTE_PRODUCCION = "p75_p90"
 
 
 def leer_clima_departamental_por_semana() -> tuple[dict[tuple[int, int], dict[str, float]], dict[tuple[int, int, str], int]]:
@@ -158,8 +169,8 @@ def construir_rezagos(
     return features
 
 
-def clasificar_p75_p90(valor: float, p75: float, p90: float) -> str:
-    return "alto" if valor > p90 else ("medio" if valor > p75 else "bajo")
+def clasificar(valor: float, corte_inferior: float, corte_superior: float) -> str:
+    return "alto" if valor > corte_superior else ("medio" if valor > corte_inferior else "bajo")
 
 
 @dataclass
@@ -170,13 +181,20 @@ class FilaDataset:
     n_obs_base: int
     anios_presentes_base: int
     cumple_piso_suficiencia: bool
-    p75_base: float | None
-    p90_base: float | None
+    corte_inferior_base: float | None
+    corte_superior_base: float | None
     etiqueta_riesgo: str | None
     features: dict[str, float | None]
 
 
-def construir_dataset() -> tuple[list[FilaDataset], dict[str, int]]:
+def construir_dataset(corte: str, anios_base: list[int]) -> tuple[list[FilaDataset], dict[str, int]]:
+    p_inferior, p_superior = CORTES[corte]
+    # leer_serie_nacional() y construir_pool() (importadas de
+    # corrida_canal_endemico_nacional) leen su propio ANIOS_BASE del
+    # namespace del modulo en tiempo de llamada -- sobreescribirlo aqui es
+    # la forma de extender la ventana de anios base sin reimplementar esa
+    # logica ya validada (ver docstring del modulo).
+    canal_endemico.ANIOS_BASE = anios_base
     serie_casos = leer_serie_nacional()
     clima_nacional, cobertura = leer_clima_departamental_por_semana()
     secuencia = leer_secuencia_semanas()
@@ -199,7 +217,7 @@ def construir_dataset() -> tuple[list[FilaDataset], dict[str, int]]:
     }
 
     filas: list[FilaDataset] = []
-    for anio_objetivo in ANIOS_BASE:
+    for anio_objetivo in anios_base:
         for semana, valor_casos in sorted(serie_casos.get(anio_objetivo, {}).items()):
             contadores["total_candidatas"] += 1
 
@@ -217,9 +235,9 @@ def construir_dataset() -> tuple[list[FilaDataset], dict[str, int]]:
                 contadores["descartadas_sin_suficiencia_etiqueta"] += 1
                 continue
 
-            p75 = percentil(pool, 0.75)
-            p90 = percentil(pool, 0.90)
-            etiqueta = clasificar_p75_p90(valor_casos, p75, p90)
+            corte_inf = percentil(pool, p_inferior)
+            corte_sup = percentil(pool, p_superior)
+            etiqueta = clasificar(valor_casos, corte_inf, corte_sup)
 
             feats = rezagos.get((anio_objetivo, semana), {})
             if any(v is None for v in feats.values()) or not feats:
@@ -234,8 +252,8 @@ def construir_dataset() -> tuple[list[FilaDataset], dict[str, int]]:
                     n_obs_base=n_obs,
                     anios_presentes_base=anios_presentes,
                     cumple_piso_suficiencia=suficiente,
-                    p75_base=p75,
-                    p90_base=p90,
+                    corte_inferior_base=corte_inf,
+                    corte_superior_base=corte_sup,
                     etiqueta_riesgo=etiqueta,
                     features=feats,
                 )
@@ -245,9 +263,9 @@ def construir_dataset() -> tuple[list[FilaDataset], dict[str, int]]:
     return filas, contadores
 
 
-def volcar_dataset(filas: list[FilaDataset]) -> Path:
+def volcar_dataset(filas: list[FilaDataset], sufijo: str) -> Path:
     INTERIM_ROOT.mkdir(parents=True, exist_ok=True)
-    path = INTERIM_ROOT / "dataset_modelado.csv"
+    path = INTERIM_ROOT / f"dataset_modelado{sufijo}.csv"
 
     columnas_feature = []
     for variable in VARIABLES_CLIMA:
@@ -268,8 +286,8 @@ def volcar_dataset(filas: list[FilaDataset]) -> Path:
     return path
 
 
-def volcar_distribucion(filas: list[FilaDataset]) -> Path:
-    path = INTERIM_ROOT / "distribucion_clases.csv"
+def volcar_distribucion(filas: list[FilaDataset], sufijo: str, anios_base: list[int]) -> Path:
+    path = INTERIM_ROOT / f"distribucion_clases{sufijo}.csv"
     conteo: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for fila in filas:
         conteo[fila.anio][fila.etiqueta_riesgo] += 1
@@ -277,7 +295,7 @@ def volcar_distribucion(filas: list[FilaDataset]) -> Path:
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["anio", "bajo", "medio", "alto", "total"])
-        for anio in ANIOS_BASE:
+        for anio in anios_base:
             c = conteo[anio]
             total = c["bajo"] + c["medio"] + c["alto"]
             w.writerow([anio, c["bajo"], c["medio"], c["alto"], total])
@@ -285,11 +303,42 @@ def volcar_distribucion(filas: list[FilaDataset]) -> Path:
 
 
 def main() -> None:
-    filas, contadores = construir_dataset()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--corte", choices=sorted(CORTES), default=CORTE_PRODUCCION,
+        help=(
+            f"Corte de percentil para la etiqueta (default: {CORTE_PRODUCCION}, producción -- "
+            "sobrescribe dataset_modelado.csv, el que usa /api/riesgo-nacional a través de "
+            "entrenar_clasificador.py). Con cualquier otro valor, corrida exploratoria: escribe "
+            "a archivos con sufijo _<corte>, sin tocar los artefactos de producción."
+        ),
+    )
+    parser.add_argument(
+        "--anio-min", type=int, default=min(ANIOS_BASE_PRODUCCION),
+        help=(
+            f"Primer año base a incluir (default: {min(ANIOS_BASE_PRODUCCION)}, producción). "
+            "Un valor menor amplía la ventana de entrenamiento hacia atrás (ej. 2014, con datos "
+            "de OpenDengue/Open-Meteo ya cargados) -- 2020 siempre queda excluido. Cualquier valor "
+            "distinto del de producción es corrida exploratoria: no toca los artefactos de "
+            "producción."
+        ),
+    )
+    args = parser.parse_args()
+    anios_base = [a for a in range(args.anio_min, max(ANIOS_BASE_PRODUCCION) + 1) if a != ANIO_2020_EXCLUIDO]
+    es_produccion = args.corte == CORTE_PRODUCCION and args.anio_min == min(ANIOS_BASE_PRODUCCION)
+    partes_sufijo = []
+    if args.corte != CORTE_PRODUCCION:
+        partes_sufijo.append(args.corte)
+    if args.anio_min != min(ANIOS_BASE_PRODUCCION):
+        partes_sufijo.append(f"desde{args.anio_min}")
+    sufijo = "" if not partes_sufijo else "_" + "_".join(partes_sufijo)
 
-    print(f"Corte de percentil: P75/P90 (cerrado 2026-08-15, no es el fiel a OPS/PAHO -- ver docs/contexto).")
+    filas, contadores = construir_dataset(args.corte, anios_base)
+
+    p_inferior, p_superior = CORTES[args.corte]
+    print(f"Corte de percentil: {args.corte} (P{int(p_inferior*100)}/P{int(p_superior*100)}).")
     print(f"Agregación climática nacional: promedio simple de 14 departamentos (cerrado 2026-08-15).")
-    print(f"Años objetivo: {', '.join(str(a) for a in ANIOS_BASE)} (ventana ±{VENTANA}, "
+    print(f"Años objetivo: {', '.join(str(a) for a in anios_base)} (ventana ±{VENTANA}, "
           f"piso {PISO_OBSERVACIONES} obs / {PISO_ANIOS_MIN} años).")
     print()
     print(f"Semanas candidatas evaluadas: {contadores['total_candidatas']}")
@@ -303,12 +352,12 @@ def main() -> None:
         print("\nNo se generó ninguna fila -- revisar que clima y casos estén cargados antes de reintentar.")
         return
 
-    dataset_path = volcar_dataset(filas)
+    dataset_path = volcar_dataset(filas, sufijo)
     print(f"\nDataset -> {dataset_path}")
-    dist_path = volcar_distribucion(filas)
+    dist_path = volcar_distribucion(filas, sufijo, anios_base)
     print(f"Distribución de clases -> {dist_path}")
 
-    print("\nDistribución por año (esquema P75/P90):")
+    print(f"\nDistribución por año (esquema {args.corte}):")
     with open(dist_path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             print(f"  {row['anio']}: bajo={row['bajo']} medio={row['medio']} alto={row['alto']} "
