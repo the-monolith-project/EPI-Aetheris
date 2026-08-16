@@ -62,7 +62,7 @@ CORTE_PRODUCCION = "p75_p90"
 CLASES = ["bajo", "medio", "alto"]
 
 
-def sufijo_dataset(corte: str, anio_min: int) -> str:
+def sufijo_dataset(corte: str, anio_min: int, incluir_oni: bool) -> str:
     """Mismo esquema de nombre que construir_dataset_modelado.py -- hay que
     mantenerlos sincronizados a mano, no hay una fuente única compartida."""
     partes = []
@@ -70,15 +70,17 @@ def sufijo_dataset(corte: str, anio_min: int) -> str:
         partes.append(corte)
     if anio_min != ANIO_MIN_DEFAULT:
         partes.append(f"desde{anio_min}")
+    if incluir_oni:
+        partes.append("oni")
     return "" if not partes else "_" + "_".join(partes)
 
 
-def cargar_dataset(corte: str, anio_min: int) -> list[dict]:
-    dataset_path = DATASET_DIR / f"dataset_modelado{sufijo_dataset(corte, anio_min)}.csv"
+def cargar_dataset(corte: str, anio_min: int, incluir_oni: bool) -> list[dict]:
+    dataset_path = DATASET_DIR / f"dataset_modelado{sufijo_dataset(corte, anio_min, incluir_oni)}.csv"
     if not dataset_path.exists():
         raise SystemExit(
             f"No existe {dataset_path}. Correr construir_dataset_modelado.py --corte {corte} "
-            f"--anio-min {anio_min} primero."
+            f"--anio-min {anio_min}{' --incluir-oni' if incluir_oni else ''} primero."
         )
     with open(dataset_path, newline="", encoding="utf-8") as f:
         return list(csv.DictReader(f))
@@ -199,9 +201,17 @@ def main() -> None:
             "producción es corrida exploratoria."
         ),
     )
+    parser.add_argument(
+        "--incluir-oni", action="store_true",
+        help=(
+            "Carga el dataset generado con --incluir-oni (ADR 0008) -- experimental, no en "
+            "producción. Requiere construir_dataset_modelado.py --incluir-oni corrido antes."
+        ),
+    )
     args = parser.parse_args()
     es_produccion = (
         args.anio_prueba is None and args.corte == CORTE_PRODUCCION and args.anio_min == ANIO_MIN_DEFAULT
+        and not args.incluir_oni
     )
     global ANIO_PRUEBA
     ANIO_PRUEBA = args.anio_prueba if args.anio_prueba is not None else ANIO_PRUEBA_DEFAULT
@@ -210,12 +220,14 @@ def main() -> None:
         partes_sufijo.append(args.corte)
     if args.anio_min != ANIO_MIN_DEFAULT:
         partes_sufijo.append(f"desde{args.anio_min}")
+    if args.incluir_oni:
+        partes_sufijo.append("oni")
     if args.anio_prueba is not None:
         partes_sufijo.append(f"prueba{args.anio_prueba}")
     sufijo = "" if not partes_sufijo else "_" + "_".join(partes_sufijo)
     corte_label = args.corte.replace("p", "P").replace("_", "/")
 
-    filas = cargar_dataset(args.corte, args.anio_min)
+    filas = cargar_dataset(args.corte, args.anio_min, args.incluir_oni)
     cols = columnas_feature(filas[0])
 
     train = [f for f in filas if int(f["anio"]) != ANIO_PRUEBA]
