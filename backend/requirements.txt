@@ -6,3 +6,5 @@ python-dotenv==1.2.2
 pdfplumber==0.11.10
 epiweeks==2.4.0
 requests==2.33.0
+scikit-learn==1.5.1
+joblib==1.4.2
