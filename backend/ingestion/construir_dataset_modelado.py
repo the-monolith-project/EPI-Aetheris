@@ -82,11 +82,16 @@ CORTE_PRODUCCION = "p75_p90"
 
 def leer_clima_departamental_por_semana() -> tuple[dict[tuple[int, int], dict[str, float]], dict[tuple[int, int, str], int]]:
     """Agrega variables_ambientales de 14 departamentos a 1 serie nacional
-    por promedio simple (cerrado 2026-08-15), igual para las 7 variables.
+    por promedio simple (cerrado 2026-08-15), igual para las 7 variables
+    climaticas de superficie. Variables que YA son nacionales (nivel_admin=0,
+    ej. oni_anom -- ADR 0008) se fusionan tal cual, sin promediar, si estan
+    en VARIABLES_CLIMA -- ese toggle es lo que activa/desactiva el
+    experimento sin tocar esta funcion.
 
     Devuelve (clima_nacional, cobertura) donde cobertura cuenta cuantos
     departamentos aportaron cada (anio, semana, variable) -- para detectar
-    huecos silenciosos en vez de asumir que siempre son 14/14.
+    huecos silenciosos en vez de asumir que siempre son 14/14. Las variables
+    ya-nacionales no tienen "cobertura departamental" -- no se registran ahi.
     """
     conn = get_connection()
     try:
@@ -101,14 +106,43 @@ def leer_clima_departamental_por_semana() -> tuple[dict[tuple[int, int], dict[st
                 """
             )
             filas = cur.fetchall()
+
+            clima: dict[tuple[int, int], dict[str, float]] = defaultdict(dict)
+            cobertura: dict[tuple[int, int, str], int] = {}
+            for anio, semana, variable, promedio, n_deptos in filas:
+                clima[(anio, semana)][variable] = float(promedio)
+                cobertura[(anio, semana, variable)] = n_deptos
+
+            # La lista de variables ya-nacionales no se puede inferir de
+            # `cobertura` (esta vacia para ellas por definicion). Se resuelve
+            # consultando directamente cuales de VARIABLES_CLIMA existen bajo
+            # nivel_admin=0 en vez de mantener una lista hardcodeada aparte.
+            cur.execute(
+                """
+                SELECT DISTINCT v.variable
+                FROM variables_ambientales v
+                JOIN regiones r ON r.id = v.region_id
+                WHERE r.nivel_admin = 0 AND v.variable = ANY(%s)
+                """,
+                (VARIABLES_CLIMA,),
+            )
+            variables_nacionales = [row[0] for row in cur.fetchall()]
+
+            if variables_nacionales:
+                cur.execute(
+                    """
+                    SELECT v.anio, v.semana_epi, v.variable, v.valor
+                    FROM variables_ambientales v
+                    JOIN regiones r ON r.id = v.region_id
+                    WHERE r.nivel_admin = 0 AND v.variable = ANY(%s)
+                    """,
+                    (variables_nacionales,),
+                )
+                for anio, semana, variable, valor in cur.fetchall():
+                    clima[(anio, semana)][variable] = float(valor)
     finally:
         conn.close()
 
-    clima: dict[tuple[int, int], dict[str, float]] = defaultdict(dict)
-    cobertura: dict[tuple[int, int, str], int] = {}
-    for anio, semana, variable, promedio, n_deptos in filas:
-        clima[(anio, semana)][variable] = float(promedio)
-        cobertura[(anio, semana, variable)] = n_deptos
     return clima, cobertura
 
 
@@ -323,15 +357,31 @@ def main() -> None:
             "producción."
         ),
     )
+    parser.add_argument(
+        "--incluir-oni", action="store_true",
+        help=(
+            "Agrega oni_anom (NOAA ONI, ADR 0008) como predictor adicional -- "
+            "experimental, no en producción. Requiere haber corrido cargar_oni.py antes."
+        ),
+    )
     args = parser.parse_args()
     anios_base = [a for a in range(args.anio_min, max(ANIOS_BASE_PRODUCCION) + 1) if a != ANIO_2020_EXCLUIDO]
-    es_produccion = args.corte == CORTE_PRODUCCION and args.anio_min == min(ANIOS_BASE_PRODUCCION)
+    es_produccion = (
+        args.corte == CORTE_PRODUCCION and args.anio_min == min(ANIOS_BASE_PRODUCCION)
+        and not args.incluir_oni
+    )
     partes_sufijo = []
     if args.corte != CORTE_PRODUCCION:
         partes_sufijo.append(args.corte)
     if args.anio_min != min(ANIOS_BASE_PRODUCCION):
         partes_sufijo.append(f"desde{args.anio_min}")
+    if args.incluir_oni:
+        partes_sufijo.append("oni")
     sufijo = "" if not partes_sufijo else "_" + "_".join(partes_sufijo)
+
+    if args.incluir_oni:
+        global VARIABLES_CLIMA
+        VARIABLES_CLIMA = VARIABLES_CLIMA + ["oni_anom"]
 
     filas, contadores = construir_dataset(args.corte, anios_base)
 
