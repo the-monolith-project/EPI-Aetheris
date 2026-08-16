@@ -13,12 +13,7 @@
 - **Modelo:** `RandomForestClassifier` (scikit-learn), 300 árboles, `class_weight="balanced"`, semilla fija 42.
 - **Distribución real del año de prueba (2023):** {'bajo': 50}.
 
-**Hallazgo a declarar sin maquillar:** el año de prueba 2023 no tiene ninguna semana etiquetada
-"alto" con el corte P75/P90 (todas las semanas cayeron en "bajo" o "medio" según la línea base de
-entrenamiento). Eso hace que el recall de "alto" — la métrica decisiva del criterio de éxito — no sea
-calculable este año de prueba, no porque el modelo falle en detectarlo sino porque no hay ningún caso real
-que detectar. No se debe citar esta corrida como evidencia de que el modelo funciona o falla en la clase
-alta; hace falta un año de prueba con casos reales de "alto" para que esa parte del criterio sea evaluable.
+**Hallazgo a declarar sin maquillar:** el año de prueba 2023 no tiene ninguna semana etiquetada "alto" con el corte P75/P90 (todas las semanas cayeron en "bajo" o "medio" según la línea base de entrenamiento). Eso hace que el recall de "alto" — la métrica decisiva del criterio de éxito — no sea calculable este año de prueba, no porque el modelo falle en detectarlo sino porque no hay ningún caso real que detectar. No se debe citar esta corrida como evidencia de que el modelo funciona o falla en la clase alta; hace falta un año de prueba con casos reales de "alto" para que esa parte del criterio sea evaluable.
 
 ## Modelo — métricas por clase
 
@@ -65,11 +60,8 @@ F1 macro: 0.333 · Recall 'alto': N/A -- 0 casos reales de 'alto' en el conjunto
 
 ## ¿Supera el modelo a la línea base climatológica? (criterio decisivo, `01-decisiones-cerradas.md`)
 
-**No / no calculable este año de prueba.** El criterio exige superar la
-climatológica en F1 macro **y** en recall de "alto", por año de prueba — con 0
-semanas reales de "alto" en 2023, la mitad del criterio no es evaluable esta pasada (ver
-hallazgo arriba). Se necesita repetir esta evaluación cuando el conjunto de prueba incluya un año con
-semanas "alto" reales (ej. usando 2019 o 2022 como año de prueba en una pasada futura).
+**No.** El criterio exige superar la
+climatológica en F1 macro **y** en recall de "alto", por año de prueba — con 0 semanas reales de "alto" en 2023, la mitad del criterio no es evaluable esta pasada (ver hallazgo arriba). Se necesita repetir esta evaluación cuando el conjunto de prueba incluya un año con semanas "alto" reales (ej. usando 2019 o 2022 como año de prueba en una pasada futura).
 
 ## Importancia de variables (top 10, Random Forest)
 
@@ -88,7 +80,4 @@ semanas "alto" reales (ej. usando 2019 o 2022 como año de prueba en una pasada 
 
 ## Artefacto del modelo
 
-Guardado en `data/interim/modelo/clasificador_riesgo_nacional_v1.joblib` — **no versionado en
-git** (vive bajo `data/interim/`, ya excluido). Si el archivo debe versionarse o regenerarse en cada
-despliegue sigue siendo una decisión abierta del coordinador (tarjeta 24) — no se resolvió aquí, se
-tomó el default reversible que no bloquea el resto de la cadena.
+Guardado en `data/interim/modelo/clasificador_riesgo_nacional_v1.joblib` — **no versionado en git** (vive bajo `data/interim/`, ya excluido). Si el archivo debe versionarse o regenerarse en cada despliegue sigue siendo una decisión abierta del coordinador (tarjeta 24) — no se resolvió aquí, se tomó el default reversible que no bloquea el resto de la cadena.

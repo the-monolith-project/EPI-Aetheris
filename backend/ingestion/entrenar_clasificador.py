@@ -39,6 +39,7 @@ Uso:
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 from collections import Counter
@@ -53,9 +54,9 @@ from corrida_canal_endemico_nacional import ANIOS_BASE
 RAIZ = Path(__file__).parent
 DATASET_PATH = RAIZ / "data" / "interim" / "dataset_modelado" / "dataset_modelado.csv"
 MODELO_DIR = RAIZ / "data" / "interim" / "modelo"
-DOCS_PATH = RAIZ.parent.parent / "docs" / "entrenamiento-clasificador-riesgo-nacional.md"
+DOCS_DIR = RAIZ.parent.parent / "docs"
 
-ANIO_PRUEBA = max(ANIOS_BASE)  # 2023 -- "el mas reciente", validación temporal simple
+ANIO_PRUEBA_DEFAULT = max(ANIOS_BASE)  # 2023 -- "el mas reciente", validación temporal simple
 CLASES = ["bajo", "medio", "alto"]
 
 
@@ -146,6 +147,22 @@ def formatear_recall_alto(valor: float | None, n_alto_real: int) -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--anio-prueba", type=int, default=None,
+        help=(
+            f"Año de prueba a evaluar (default: {ANIO_PRUEBA_DEFAULT}, el más reciente -- "
+            "corrida de producción, sobrescribe los artefactos que usa /api/riesgo-nacional). "
+            "Con cualquier otro valor, corrida exploratoria: escribe a archivos con sufijo "
+            "_prueba<año>, sin tocar los artefactos de producción."
+        ),
+    )
+    args = parser.parse_args()
+    es_produccion = args.anio_prueba is None
+    global ANIO_PRUEBA
+    ANIO_PRUEBA = args.anio_prueba if args.anio_prueba is not None else ANIO_PRUEBA_DEFAULT
+    sufijo = "" if es_produccion else f"_prueba{ANIO_PRUEBA}"
+
     filas = cargar_dataset()
     cols = columnas_feature(filas[0])
 
@@ -192,10 +209,15 @@ def main() -> None:
     )
 
     MODELO_DIR.mkdir(parents=True, exist_ok=True)
-    modelo_path = MODELO_DIR / "clasificador_riesgo_nacional_v1.joblib"
-    joblib.dump({"modelo": modelo, "columnas_feature": cols, "clases": CLASES}, modelo_path)
+    modelo_path = MODELO_DIR / f"clasificador_riesgo_nacional_v1{sufijo}.joblib"
+    if es_produccion:
+        joblib.dump({"modelo": modelo, "columnas_feature": cols, "clases": CLASES}, modelo_path)
+    else:
+        print(f"Corrida exploratoria (año de prueba {ANIO_PRUEBA} != {ANIO_PRUEBA_DEFAULT}) -- "
+              f"NO se sobrescribe el modelo de producción que usa /api/riesgo-nacional. "
+              f"Modelo de esta corrida no se guarda (solo el informe y las métricas).")
 
-    metricas_path = MODELO_DIR / "metricas_modelo.json"
+    metricas_path = MODELO_DIR / f"metricas_modelo{sufijo}.json"
     metricas_path.write_text(
         json.dumps(
             {
@@ -209,9 +231,16 @@ def main() -> None:
                 "recall_alto_baseline_climatologica": met_clima["recall_alto"],
                 "supera_baseline_climatologica": supera_clima,
                 "nota": (
-                    "Recall de 'alto' no evaluable si n_alto_real_prueba es 0 -- el año de "
-                    "prueba no tuvo semanas reales 'alto' con este corte, no es un fallo del "
-                    "modelo. Ver docs/entrenamiento-clasificador-riesgo-nacional.md."
+                    (
+                        "Recall de 'alto' no evaluable -- el año de prueba no tuvo semanas reales "
+                        "'alto' con este corte, no es un fallo del modelo. "
+                        f"Ver docs/entrenamiento-clasificador-riesgo-nacional{sufijo}.md."
+                    ) if met_modelo["n_alto_real"] == 0 else (
+                        f"Recall de 'alto' SI evaluable ({met_modelo['n_alto_real']} semanas reales "
+                        f"en el año de prueba): {met_modelo['recall_alto']:.3f} para el modelo, "
+                        f"{met_clima['recall_alto']:.3f} para la línea base climatológica. "
+                        f"Ver docs/entrenamiento-clasificador-riesgo-nacional{sufijo}.md."
+                    )
                 ),
             },
             indent=2,
@@ -240,21 +269,24 @@ def main() -> None:
           f"-- {ANIO_PRUEBA} tiene {met_modelo['n_alto_real']} semanas reales de 'alto', "
           f"así que el recall de 'alto' {'no es evaluable este año' if met_modelo['n_alto_real'] == 0 else 'sí es evaluable'}.")
 
-    print(f"\nModelo guardado -> {modelo_path} (NO versionado en git, ver docstring del script).")
+    if es_produccion:
+        print(f"\nModelo guardado -> {modelo_path} (NO versionado en git, ver docstring del script).")
 
     print("\nImportancia de variables (top 10):")
     for nombre, imp in importancias[:10]:
         print(f"  {nombre}: {imp:.4f}")
 
+    docs_path = DOCS_DIR / f"entrenamiento-clasificador-riesgo-nacional{sufijo}.md"
     escribir_documento(
         cols, train, test, met_modelo, met_clima, met_persist, n_excluidas_persist,
-        importancias, modelo_path, supera_clima,
+        importancias, modelo_path, supera_clima, docs_path, es_produccion,
     )
-    print(f"\nInforme consultable -> {DOCS_PATH}")
+    print(f"\nInforme consultable -> {docs_path}")
 
 
 def escribir_documento(cols, train, test, met_modelo, met_clima, met_persist,
-                        n_excluidas_persist, importancias, modelo_path, supera_clima) -> None:
+                        n_excluidas_persist, importancias, modelo_path, supera_clima,
+                        docs_path: Path, es_produccion: bool) -> None:
     dist_test = Counter(f["etiqueta_riesgo"] for f in test)
 
     def tabla_metricas(met: dict) -> str:
@@ -270,6 +302,65 @@ def escribir_documento(cols, train, test, met_modelo, met_clima, met_persist,
         for i, clase in enumerate(CLASES):
             filas.append(f"| **{clase}** | " + " | ".join(str(v) for v in cm[i]) + " |")
         return "\n".join(filas)
+
+    if es_produccion:
+        artefacto_md = (
+            f"Guardado en `{modelo_path.relative_to(modelo_path.parent.parent.parent.parent)}` — "
+            "**no versionado en git** (vive bajo `data/interim/`, ya excluido). Si el archivo debe "
+            "versionarse o regenerarse en cada despliegue sigue siendo una decisión abierta del "
+            "coordinador (tarjeta 24) — no se resolvió aquí, se tomó el default reversible que no "
+            "bloquea el resto de la cadena."
+        )
+    else:
+        artefacto_md = (
+            "**Corrida exploratoria — el modelo de este entrenamiento NO se guardó.** Este año de "
+            "prueba es distinto al de producción, así que no se sobrescribió "
+            "`clasificador_riesgo_nacional_v1.joblib` (el que usa `/api/riesgo-nacional`). Este "
+            "informe es solo para evaluar la métrica decisiva con un año que sí tiene casos reales "
+            "de \"alto\"; si se necesita el modelo de esta corrida más adelante, correr de nuevo el "
+            "script con el mismo --anio-prueba."
+        )
+
+    if met_modelo["n_alto_real"] == 0:
+        hallazgo_md = (
+            f"**Hallazgo a declarar sin maquillar:** el año de prueba {ANIO_PRUEBA} no tiene ninguna semana "
+            'etiquetada "alto" con el corte P75/P90 (todas las semanas cayeron en "bajo" o "medio" según la '
+            'línea base de entrenamiento). Eso hace que el recall de "alto" — la métrica decisiva del criterio '
+            "de éxito — no sea calculable este año de prueba, no porque el modelo falle en detectarlo sino "
+            "porque no hay ningún caso real que detectar. No se debe citar esta corrida como evidencia de que "
+            'el modelo funciona o falla en la clase alta; hace falta un año de prueba con casos reales de '
+            '"alto" para que esa parte del criterio sea evaluable.'
+        )
+    else:
+        hallazgo_md = (
+            f"**Hallazgo a declarar sin maquillar:** el año de prueba {ANIO_PRUEBA} tiene "
+            f"{met_modelo['n_alto_real']} semanas reales etiquetadas \"alto\" con el corte P75/P90 -- "
+            f"el recall de \"alto\" del modelo fue **{formatear_recall_alto(met_modelo['recall_alto'], met_modelo['n_alto_real'])}** "
+            "(la línea base climatológica obtuvo el mismo resultado). "
+            + (
+                "El modelo no acertó ni una sola de esas semanas reales de alto riesgo -- con los predictores "
+                "y el corte actuales, el clima rezagado solo no está capturando la señal de brote severo en "
+                "este año de prueba. No es un hallazgo menor: contradice directamente la promesa de "
+                "anticipación del proyecto y debe citarse así en el informe, no suavizarse."
+                if met_modelo["recall_alto"] == 0
+                else "Revisar la matriz de confusión de abajo para ver en qué se equivocó exactamente."
+            )
+        )
+
+    if met_modelo["n_alto_real"] == 0:
+        veredicto_md = (
+            f"con {met_modelo['n_alto_real']} semanas reales de \"alto\" en {ANIO_PRUEBA}, la mitad del "
+            "criterio no es evaluable esta pasada (ver hallazgo arriba). Se necesita repetir esta "
+            "evaluación cuando el conjunto de prueba incluya un año con semanas \"alto\" reales "
+            "(ej. usando 2019 o 2022 como año de prueba en una pasada futura)."
+        )
+    else:
+        veredicto_md = (
+            f"con {met_modelo['n_alto_real']} semanas reales de \"alto\" en {ANIO_PRUEBA}, el criterio "
+            f"sí es evaluable esta pasada: recall de \"alto\" del modelo = "
+            f"{formatear_recall_alto(met_modelo['recall_alto'], met_modelo['n_alto_real'])}, de la línea "
+            f"base climatológica = {formatear_recall_alto(met_clima['recall_alto'], met_clima['n_alto_real'])}."
+        )
 
     persist_md = "No evaluable (ninguna fila con semana anterior contigua en el año de prueba)."
     if met_persist:
@@ -295,12 +386,7 @@ def escribir_documento(cols, train, test, met_modelo, met_clima, met_persist,
 - **Modelo:** `RandomForestClassifier` (scikit-learn), 300 árboles, `class_weight="balanced"`, semilla fija 42.
 - **Distribución real del año de prueba ({ANIO_PRUEBA}):** {dict(dist_test)}.
 
-**Hallazgo a declarar sin maquillar:** el año de prueba {ANIO_PRUEBA} no tiene ninguna semana etiquetada
-"alto" con el corte P75/P90 (todas las semanas cayeron en "bajo" o "medio" según la línea base de
-entrenamiento). Eso hace que el recall de "alto" — la métrica decisiva del criterio de éxito — no sea
-calculable este año de prueba, no porque el modelo falle en detectarlo sino porque no hay ningún caso real
-que detectar. No se debe citar esta corrida como evidencia de que el modelo funciona o falla en la clase
-alta; hace falta un año de prueba con casos reales de "alto" para que esa parte del criterio sea evaluable.
+{hallazgo_md}
 
 ## Modelo — métricas por clase
 
@@ -329,11 +415,8 @@ entrenamiento, usa la clase más frecuente en todo el conjunto de entrenamiento.
 
 ## ¿Supera el modelo a la línea base climatológica? (criterio decisivo, `01-decisiones-cerradas.md`)
 
-**{'Sí' if supera_clima else 'No / no calculable este año de prueba'}.** El criterio exige superar la
-climatológica en F1 macro **y** en recall de "alto", por año de prueba — con {met_modelo['n_alto_real']}
-semanas reales de "alto" en {ANIO_PRUEBA}, la mitad del criterio no es evaluable esta pasada (ver
-hallazgo arriba). Se necesita repetir esta evaluación cuando el conjunto de prueba incluya un año con
-semanas "alto" reales (ej. usando 2019 o 2022 como año de prueba en una pasada futura).
+**{'Sí' if supera_clima else 'No'}.** El criterio exige superar la
+climatológica en F1 macro **y** en recall de "alto", por año de prueba — {veredicto_md}
 
 ## Importancia de variables (top 10, Random Forest)
 
@@ -343,12 +426,9 @@ semanas "alto" reales (ej. usando 2019 o 2022 como año de prueba en una pasada 
 
 ## Artefacto del modelo
 
-Guardado en `{modelo_path.relative_to(modelo_path.parent.parent.parent.parent)}` — **no versionado en
-git** (vive bajo `data/interim/`, ya excluido). Si el archivo debe versionarse o regenerarse en cada
-despliegue sigue siendo una decisión abierta del coordinador (tarjeta 24) — no se resolvió aquí, se
-tomó el default reversible que no bloquea el resto de la cadena.
+{artefacto_md}
 """
-    DOCS_PATH.write_text(contenido, encoding="utf-8")
+    docs_path.write_text(contenido, encoding="utf-8")
 
 
 if __name__ == "__main__":
