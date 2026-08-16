@@ -64,7 +64,94 @@ MAPA_ESTADO = {
     "sin_texto_extraible": "sin_texto_extraible",
     "sin_tabla_no_vacacional": "revision_manual",
     "error_extraccion": "error",
+    # Identidad: REVISIONES_MANUALES (abajo) escribe directamente un estado ya
+    # final de boletines_procesados sobre r.estado, no un estado crudo de
+    # paso1_extraer -- necesita mapear a si mismo aqui.
+    "ausencia_esperada": "ausencia_esperada",
 }
+
+# Overrides de revision manual real (tarjeta 26, 2026-08-16) sobre boletines
+# que la clasificacion automatica de corrida_distribucion.py no puede resolver
+# por si sola -- cada uno requirio evidencia externa (OCR exhaustivo pagina
+# por pagina, o comparar contra las tablas departamentales de OTRAS
+# enfermedades del mismo boletin) que el heuristico de paso1 no ejecuta.
+# No es una lista para silenciar advertencias: cada entrada documenta la
+# evidencia puntual que la respalda. Se aplica sobre el resultado de paso1,
+# antes de paso2_desacumular, para que "ok" (cuando corresponda) SI alimente
+# la desacumulacion.
+REVISIONES_MANUALES: dict[str, tuple[str, str]] = {
+    # OCR exhaustivo (todas las paginas, pdfplumber page.to_image + pytesseract
+    # lang='spa') confirma 0 ocurrencias de tabla departamental de dengue, ni en
+    # texto ni en imagen -- el boletin reporta dengue solo a nivel nacional y por
+    # grupo de edad esa semana, nunca publico desglose departamental. No es una
+    # tabla-imagen sin OCR (hipotesis original del ADR 0007): es ausencia real de
+    # contenido, igual de valida que cualquier otra semana sin tabla.
+    "Boletin_epidemiologico_SE232019.pdf": (
+        "ausencia_esperada",
+        "OCR exhaustivo (todas las paginas) confirma 0 tablas departamentales de "
+        "dengue en texto o imagen -- revision tarjeta 26 (2026-08-16)",
+    ),
+    "Boletin_epidemiologico_SE322019.pdf": (
+        "ausencia_esperada",
+        "OCR exhaustivo (todas las paginas) confirma 0 tablas departamentales de "
+        "dengue en texto o imagen -- revision tarjeta 26 (2026-08-16)",
+    ),
+    "Boletin_epidemiologico_SE352019_v2.pdf": (
+        "ausencia_esperada",
+        "OCR exhaustivo (todas las paginas) confirma 0 tablas departamentales de "
+        "dengue en texto o imagen -- revision tarjeta 26 (2026-08-16)",
+    ),
+    # Boletin abierto sin error; el documento SI trae tablas departamentales esa
+    # semana, solo que de otras enfermedades (parotiditis/fiebre tifoidea/
+    # chikungunya/zika/IRA/neumonias/EDAS segun el boletin) -- dengue
+    # especificamente no publico desglose departamental esa semana. Confirmado
+    # revisando cada tabla con nombres de departamento como ancla, no solo
+    # buscando "dengue".
+    "Boletin_epidemiologico_SE182023.pdf": (
+        "ausencia_esperada",
+        "el boletin SI tiene tablas departamentales esa semana (zika/chikungunya, "
+        "IRA, neumonias, EDAS) pero dengue no publico desglose departamental -- "
+        "revision tarjeta 26 (2026-08-16)",
+    ),
+    "Boletin_epidemiologico_SE282019_v2.pdf": (
+        "ausencia_esperada",
+        "el boletin SI tiene tablas departamentales esa semana (parotiditis, "
+        "fiebre tifoidea, chikungunya) pero dengue no publico desglose "
+        "departamental -- revision tarjeta 26 (2026-08-16)",
+    ),
+    "Boletin_epidemiologico_SE292019_v2.pdf": (
+        "ausencia_esperada",
+        "el boletin SI tiene tablas departamentales esa semana (parotiditis, "
+        "fiebre tifoidea, chikungunya) pero dengue no publico desglose "
+        "departamental -- revision tarjeta 26 (2026-08-16)",
+    ),
+    # Discrepancia real de MINSAL, no de extraccion: probable cuadra exacto
+    # (suma14+otros=386=impreso); confirmado difiere en exactamente 1 caso
+    # (suma14+otros=88, impreso=89). El desglose departamental esta completo
+    # (14/14) y es internamente consistente -- se acepta con
+    # validacion_cuadra=false documentado en notas, en vez de descartar 14 filas
+    # de dato real y verificado por 1 caso de diferencia en un total que ni
+    # siquiera es el dato que se ingesta (casos_epidemiologicos guarda el
+    # desglose por departamento, no el total nacional impreso).
+    "Boletin_epidemiologico_SE302019_v2.pdf": (
+        "ok",
+        "confirmado difiere en 1 caso del total impreso (suma14+otros=88, "
+        "impreso=89); probable cuadra exacto (386=386). Desglose departamental "
+        "completo y consistente, aceptado tras revision manual -- tarjeta 26 "
+        "(2026-08-16)",
+    ),
+}
+
+
+def aplicar_revisiones_manuales(resultados: list[ResultadoBoletin]) -> None:
+    """Aplica REVISIONES_MANUALES in-place, antes de paso2_desacumular."""
+    for r in resultados:
+        override = REVISIONES_MANUALES.get(r.archivo)
+        if override is None:
+            continue
+        nuevo_estado, nota = override
+        r.estado = nuevo_estado
+        r.nota = f"{r.nota} | {nota}" if r.nota else nota
 
 
 def _semana_archivo_db(semana_archivo: str | None) -> int | None:
@@ -234,6 +321,7 @@ def main() -> None:
     args = ap.parse_args()
 
     resultados = paso1_extraer(limite=args.limite)
+    aplicar_revisiones_manuales(resultados)
     desacumulado = paso2_desacumular(resultados)
 
     resumen_estados = Counter(r.estado for r in resultados)
