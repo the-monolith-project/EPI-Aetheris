@@ -69,8 +69,17 @@ def cargar_dataset() -> list[dict]:
         return list(csv.DictReader(f))
 
 
+COLUMNAS_NO_FEATURE = {
+    "anio", "semana_epi", "casos", "n_obs_base", "anios_presentes_base",
+    "cumple_piso_suficiencia", "p75_base", "p90_base", "etiqueta_riesgo",
+}
+
+
 def columnas_feature(fila: dict) -> list[str]:
-    return sorted(k for k in fila if k.endswith(("_lag1", "_lag2", "_media_movil4")))
+    """Cualquier columna del dataset que no sea metadata/etiqueta es un
+    predictor -- evita hardcodear sufijos de rezago/ventana, que cambian
+    (ver construir_dataset_modelado.py, VENTANAS_MEDIA_MOVIL)."""
+    return sorted(k for k in fila if k not in COLUMNAS_NO_FEATURE)
 
 
 def preparar_matrices(filas: list[dict], cols: list[str]) -> tuple[list[list[float]], list[str]]:
