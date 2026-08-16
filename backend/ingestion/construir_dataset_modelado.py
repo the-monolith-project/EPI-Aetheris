@@ -56,7 +56,16 @@ VARIABLES_CLIMA = [
     "precipitation_sum", "precipitation_hours",
 ]
 LAGS = (1, 2)
-VENTANA_MEDIA_MOVIL = 4  # semanas anteriores, sin incluir la semana actual
+# Media movil a 4 semanas. Se probo ampliar a (4, 8, 12) el 2026-08-16 para
+# ver si una ventana mas larga (el ciclo mosquito-transmision acumula
+# condiciones favorables durante 2-3 meses, no 1) le daba al modelo la senal
+# que le faltaba para detectar "alto" -- resultado NEGATIVO: recall de
+# "alto" siguio en 0.000 en los dos anios de prueba con casos reales (2019,
+# 2022), igual que con la ventana corta, y de paso empeoro el F1 macro del
+# modelo de produccion (2023). Revertido. Detalle completo del experimento
+# descartado en docs/experimento-ventana-climatica-ampliada.md -- no
+# reabrir esto sin una senal distinta de que el problema es de ventana.
+VENTANAS_MEDIA_MOVIL = (4,)  # semanas anteriores, sin incluir la semana actual
 ANIO_2020_EXCLUIDO = 2020  # recorte de entrenamiento, no de ingesta -- ver punto E
 
 
@@ -111,10 +120,10 @@ def construir_rezagos(
     clima: dict[tuple[int, int], dict[str, float]],
     secuencia: list[tuple[int, int]],
 ) -> dict[tuple[int, int], dict[str, float | None]]:
-    """Para cada semana de la secuencia, calcula rezago-1, rezago-2 y media
-    movil de las VENTANA_MEDIA_MOVIL semanas anteriores (excluyendo la
-    semana actual), por variable. None si falta cualquier semana requerida
-    -- no se interpola ni se rellena con la propia semana."""
+    """Para cada semana de la secuencia, calcula rezago-1, rezago-2 y medias
+    moviles de VENTANAS_MEDIA_MOVIL semanas anteriores (excluyendo la semana
+    actual), por variable. None si falta cualquier semana requerida -- no se
+    interpola ni se rellena con la propia semana."""
     features: dict[tuple[int, int], dict[str, float | None]] = {}
     for i, semana_actual in enumerate(secuencia):
         fila: dict[str, float | None] = {}
@@ -128,21 +137,23 @@ def construir_rezagos(
                 valores_prev = clima.get(secuencia[j], {})
                 fila[clave] = valores_prev.get(variable)
 
-            j0 = i - VENTANA_MEDIA_MOVIL
-            if j0 < 0:
-                fila[f"{variable}_media_movil{VENTANA_MEDIA_MOVIL}"] = None
-                continue
-            ventana_valores = []
-            for j in range(j0, i):
-                v = clima.get(secuencia[j], {}).get(variable)
-                if v is None:
-                    ventana_valores = None
-                    break
-                ventana_valores.append(v)
-            if ventana_valores is None or len(ventana_valores) < VENTANA_MEDIA_MOVIL:
-                fila[f"{variable}_media_movil{VENTANA_MEDIA_MOVIL}"] = None
-            else:
-                fila[f"{variable}_media_movil{VENTANA_MEDIA_MOVIL}"] = sum(ventana_valores) / len(ventana_valores)
+            for ventana in VENTANAS_MEDIA_MOVIL:
+                clave_ventana = f"{variable}_media_movil{ventana}"
+                j0 = i - ventana
+                if j0 < 0:
+                    fila[clave_ventana] = None
+                    continue
+                ventana_valores = []
+                for j in range(j0, i):
+                    v = clima.get(secuencia[j], {}).get(variable)
+                    if v is None:
+                        ventana_valores = None
+                        break
+                    ventana_valores.append(v)
+                if ventana_valores is None or len(ventana_valores) < ventana:
+                    fila[clave_ventana] = None
+                else:
+                    fila[clave_ventana] = sum(ventana_valores) / len(ventana_valores)
         features[semana_actual] = fila
     return features
 
@@ -242,7 +253,8 @@ def volcar_dataset(filas: list[FilaDataset]) -> Path:
     for variable in VARIABLES_CLIMA:
         for lag in LAGS:
             columnas_feature.append(f"{variable}_lag{lag}")
-        columnas_feature.append(f"{variable}_media_movil{VENTANA_MEDIA_MOVIL}")
+        for ventana in VENTANAS_MEDIA_MOVIL:
+            columnas_feature.append(f"{variable}_media_movil{ventana}")
 
     columnas_base = [f.name for f in fields(FilaDataset) if f.name != "features"]
 
