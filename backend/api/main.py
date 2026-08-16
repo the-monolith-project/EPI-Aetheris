@@ -24,8 +24,9 @@ AVISO_HONESTIDAD_RIESGO_NACIONAL = (
     "Esta clasificación es a nivel NACIONAL, entrenada sobre la serie agregada de "
     "El Salvador (pivote 'Opción C'). No representa riesgo por departamento -- el mapa "
     "no debe interpretarse como si cada departamento tuviera este nivel de riesgo "
-    "individualmente. La capa departamental descriptiva aún no está disponible "
-    "(el parser de producción de boletines MINSAL, tarjeta 22, sigue sin construirse)."
+    "individualmente. La coropleta departamental del mapa es una capa DESCRIPTIVA "
+    "aparte (volumen de casos MINSAL, no riesgo) -- estos datos todavía no alimentan "
+    "ningún clasificador."
 )
 
 app = FastAPI(
@@ -195,4 +196,70 @@ def riesgo_nacional(anio: int | None = None, semana: int | None = None):
         "casos_observados": float(fila["casos"]),
         "metricas_modelo": metricas_modelo,
         "aviso": AVISO_HONESTIDAD_RIESGO_NACIONAL,
+    }
+
+
+AVISO_HONESTIDAD_CASOS_DEPARTAMENTALES = (
+    "Capa DESCRIPTIVA -- casos probables/confirmados desacumulados de boletines MINSAL "
+    "(2018-2023, con huecos reales entre boletines). No es una clasificación de riesgo: "
+    "el color representa volumen de casos acumulado en la ventana cargada, no un nivel de "
+    "riesgo por departamento. El clasificador de esta primera entrega es nacional (ver "
+    "/api/riesgo-nacional) -- estos datos NO alimentan ningún modelo todavía."
+)
+
+
+@app.get("/api/casos-departamentales")
+def casos_departamentales():
+    """Capa descriptiva del mapa (tarjeta 25) -- casos MINSAL desacumulados
+    (tarjeta 22) sumados por departamento en toda la ventana cargada
+    (2018-2023, sin 2020 ni 2024+ porque no hay boletín automatizable desde
+    entonces). Se agrega el acumulado completo, no una sola semana: con
+    87-93% de celdas departamento-semana en cero (ver
+    docs/contexto/03-fuentes-de-datos.md), una sola semana suele salir casi
+    vacía y no representa bien la distribución real -- esto es una elección
+    de presentación, no una decisión de equipo cerrada."""
+    try:
+        conn = _conectar()
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    r.nombre,
+                    r.codigo,
+                    sum(c.conteo) FILTER (WHERE c.clasificacion = 'probable') AS probable_total,
+                    sum(c.conteo) FILTER (WHERE c.clasificacion = 'confirmado') AS confirmado_total,
+                    count(DISTINCT c.anio || '-' || c.semana_epi) FILTER (WHERE c.clasificacion = 'probable') AS semanas_con_dato_probable,
+                    min(c.anio) AS primer_anio,
+                    max(c.anio) AS ultimo_anio
+                FROM regiones r
+                LEFT JOIN casos_epidemiologicos c
+                    ON c.region_id = r.id
+                    AND c.fuente_id = (SELECT id FROM fuentes_datos WHERE codigo = 'minsal_pdf')
+                WHERE r.nivel_admin = 1
+                GROUP BY r.nombre, r.codigo
+                ORDER BY r.nombre
+                """
+            )
+            filas = cursor.fetchall()
+        conn.close()
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Error de conexión a la base de datos"
+        )
+
+    return {
+        "departamentos": [
+            {
+                "nombre": nombre,
+                "codigo": codigo,
+                "probable_total": int(probable_total) if probable_total is not None else 0,
+                "confirmado_total": int(confirmado_total) if confirmado_total is not None else 0,
+                "semanas_con_dato_probable": int(semanas_con_dato) if semanas_con_dato is not None else 0,
+                "primer_anio": primer_anio,
+                "ultimo_anio": ultimo_anio,
+            }
+            for nombre, codigo, probable_total, confirmado_total, semanas_con_dato, primer_anio, ultimo_anio in filas
+        ],
+        "aviso": AVISO_HONESTIDAD_CASOS_DEPARTAMENTALES,
     }
