@@ -83,7 +83,7 @@ Dos criterios de método fijados (no debatibles): el año etiquetado nunca puede
 
 **Corte de percentil — cerrado 2026-08-15 (coordinador): P75/P90.** Decisión explícita del coordinador, tomada con conocimiento de que **no** es el esquema que reproduce el canal endémico clásico OPS/PAHO de 4 zonas ya corrido y verificado sobre la serie nacional (`backend/ingestion/corrida_canal_endemico_4zonas.py`, ver más abajo) — ese, con cortes P25/P50/P75 colapsados a 3 clases, es matemáticamente idéntico a **P50/P75** (0 discrepancias en 250 celdas). P75/P90 es un esquema distinto y más conservador, elegido en vez del fiel a OPS/PAHO porque evita el sobre-etiquetado que P50/P75 mostraba en una semana de 2021 (año de baja transmisión). **No presentar este corte como "el método OPS/PAHO" en el informe** — es una elección propia del equipo, informada por ese estándar pero no idéntica a él; el corte que sí lo reproduce (P50/P75) queda documentado como alternativa descartada, no como el elegido.
 
-Parámetros que siguen abiertos (variable base, ventana de semanas vecinas, esquema de años base, piso de suficiencia, techo de columnas) — ver `02-decisiones-abiertas.md`, punto A.
+Parámetros que siguen abiertos como decisión formal de proyecto (variable base, ventana de semanas vecinas, esquema de años base, piso de suficiencia, techo de columnas) — ver `02-decisiones-abiertas.md`, punto A. La mayoría ya corre con un valor fijo en el pipeline nacional de producción (tarjetas 23-24); el punto A detalla cuáles y por qué eso no equivale a un cierre.
 
 ## Criterio de éxito, línea base y margen de error (cerrado 2026-08-09)
 
