@@ -33,6 +33,8 @@ docker compose up -d
 - Web: http://localhost:4321
 - DB: localhost:5432
 
+La base queda poblada con datos reales desde el primer arranque (volcado versionado de casos/clima/boletines, `db/seed/`, ~4,4 MB — ver `docs/adr/0010-versionar-volcado-de-datos-reales.md`), sin depender de red ni de re-parsear los boletines.
+
 ## Variables de entorno
 
 | Variable | Descripción | Default |
