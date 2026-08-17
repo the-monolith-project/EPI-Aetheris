@@ -215,12 +215,27 @@ def _extraer_filas(bloque: str) -> tuple[list[FilaCruda], list[float], re.Match 
             valores = [float(x.replace(",", ".")) for x in m.group(1).split()]
             filas.append(FilaCruda(nombre, valores))
 
-    # "Otros paises" nunca trae tasa (el denominador de tasa excluye extranjeros,
-    # ver trampa 6) -- son siempre exactamente 2 numeros (probable, confirmado) en
-    # todos los casos observados (Familia A y B). Se acota a exactamente 2 porque
-    # sin limite, la captura genérica se come tambien la fila de total impreso que
-    # viene inmediatamente despues, sin ningun token no-numerico de por medio.
-    regex_otros = re.compile(rf"{_PATRON_OTROS}\s+({_NUM}\s+{_NUM})")
+    # "Otros paises" trae 2 numeros (probable, confirmado) en la mayoria del
+    # corpus, pero NO siempre: SE102019_v3 y SE422019_v2 confirman que a veces
+    # MINSAL SI imprime una tercera columna de tasa para esta fila (ej. "Otros
+    # paises 0 0 0,0" / "Otros paises 2 2 1.16"), aunque el denominador de tasa
+    # excluya a los extranjeros (trampa 6) -- la tasa impresa en esos casos es
+    # simplemente 0 o casi 0, no una omision de columna. Si la captura se acota
+    # a 2 numeros siempre, ese tercer valor queda sin consumir justo delante de
+    # la ventana de _extraer_total_impreso y se cuela como si fuera el primer
+    # valor del total impreso, corrompiendolo (bug confirmado empiricamente en
+    # los dos boletines de arriba, tarjeta 26).
+    #
+    # El tercer numero se captura como opcional, pero SIN cruzar un salto de
+    # linea ([^\S\n] en vez de \s): la fila "Otros paises" y la fila de total
+    # impreso son lineas de texto distintas, y en boletines donde "Otros
+    # paises" SI trae solo 2 numeros (ej. SE302019_v2), el primer numero del
+    # total (en su propia linea) no debe poder confundirse con esa tercera
+    # columna opcional.
+    _esp = r"[^\S\n]+"
+    regex_otros = re.compile(
+        rf"{_PATRON_OTROS}{_esp}({_NUM}{_esp}{_NUM}(?:{_esp}{_NUM})?)"
+    )
     m_otros = regex_otros.search(bloque)
     otros = [float(x.replace(",", ".")) for x in m_otros.group(1).split()] if m_otros else []
     return filas, otros, m_otros
