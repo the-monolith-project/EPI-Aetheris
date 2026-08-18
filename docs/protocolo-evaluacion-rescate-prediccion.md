@@ -1,23 +1,26 @@
 # Protocolo de evaluación — Vía −1 del rescate de predicción
 
-**Estado:** Propuesto, no aprobado
+**Estado:** Aprobado documentalmente; puerta de ejecución pendiente
 
-**Versión:** 2, definición completa
+**Versión:** 2, definición completa con correcciones de aprobación
 
 **Fecha de revisión:** 2026-08-18
 
 **Bloquea:** Vías 0–3 de `tarea-rescate-prediccion.md`
 
-**Aprobación requerida:** Eduardo (0V3R)
+**Aprobado por:** Eduardo Rivas (0V3R), 2026-08-18 08:23 GMT-6
 
 Este documento define de forma completa la **Vía −1: congelar y verificar una validación limpia**.
 No cambia producción, no busca mejorar métricas y no autoriza por sí mismo ningún experimento. Su
 producto es un procedimiento reproducible que permite distinguir evidencia prospectiva de una
 comparación retrospectiva.
 
-La respuesta de Eduardo en `respuesta-protocolo-evaluacion.md` resolvió D1–D4 en principio, pero sigue
-pendiente de firma y fue redactada sin disponer de esta definición completa. La sección 15 identifica
-qué partes son compatibles y cuál debe corregirse antes de aprobar el protocolo.
+La respuesta de Eduardo en `respuesta-protocolo-via-menos-uno-v2.md` confirma la recepción de esta
+definición completa, firma D1–D4 y congela los estados de los folds. Las correcciones que asignó al
+autor del protocolo ya están incorporadas en esta versión.
+
+La aprobación documental no autoriza por sí sola una corrida: la puerta de la sección 16 permanece
+cerrada mientras existan requisitos sin cumplir.
 
 ## 1. Qué es y qué no es la Vía −1
 
@@ -110,13 +113,14 @@ Las siete variables climáticas vigentes son:
 - `precipitation_hours`.
 
 Cada variable se agrega a nivel nacional mediante el promedio simple de los 14 departamentos, según
-la decisión cerrada vigente. La cobertura climática de la foto actual es 2018–2024; no se asumirá que
-existe clima anterior porque sí existan casos anteriores.
+la decisión cerrada vigente. La fuente canónica contiene cobertura climática completa para las siete
+variables desde 2014 hasta 2024. No se asumirá cobertura anterior a 2014 sin verificar una fuente
+real.
 
 ### Calendario y faltantes
 
 El orden temporal se toma de `semanas_epidemiologicas.fecha_inicio`, no de ISO 8601 ni de ordenar
-ingenuamente `(año, semana)`. Se respetan años de 51, 52 o 53 semanas.
+ingenuamente `(año, semana)`. En el calendario CDC/MMWR se respetan años de 52 o 53 semanas.
 
 No se fabrican, interpolan ni convierten a cero observaciones ausentes. Una fila sin la historia
 necesaria para su etiqueta o sus predictores se excluye con un motivo contabilizado. No se elimina el
@@ -212,21 +216,21 @@ Para un fold externo `t`:
 6. el modelo se ajusta con la configuración ya congelada;
 7. `t` se evalúa una sola vez para esa configuración.
 
-Con la cobertura y exclusión de 2020 propuestas, la matriz de folds es:
+Con la exclusión de 2020 firmada, la matriz y los estados congelados antes de ejecutar son:
 
-| Año externo `t` | Años objetivo que pueden entrenar | Uso permitido |
-|---|---|---|
-| 2019 | 2018 | Desarrollo retrospectivamente observado |
-| 2021 | 2018, 2019 | Desarrollo retrospectivamente observado |
-| 2022 | 2018, 2019, 2021 | Desarrollo; resultados ya observados |
-| 2023 | 2018, 2019, 2021, 2022 | Desarrollo; resultado de producción ya observado |
-| 2024 | 2018, 2019, 2021, 2022, 2023 | Externo reservado, con soporte de clases ya inspeccionado |
+| Externo | Entrenamiento | Clases en entrenamiento | `alto` real en el externo | Estado declarado |
+|---|---|---|---|---|
+| 2019 | 2018 | 50 bajo | 0 | `no_entrenable` — una sola clase |
+| 2021 | 2018, 2019 | 98 bajo, 2 medio | 0 | `entrenable_con_clase_ausente` + `recall_alto_no_evaluable` |
+| 2022 | 2018, 2019, 2021 | 150 bajo, 2 medio | 5 | `entrenable_con_clase_ausente` — cero ejemplos de `alto` en entrenamiento |
+| 2023 | 2018, 2019, 2021, 2022 | 186 bajo, 13 medio, 5 alto | 0 | `entrenable` + `recall_alto_no_evaluable` |
+| 2024 | 2018, 2019, 2021, 2022, 2023 | 238 bajo, 13 medio, 5 alto | 0 | `entrenable` + `recall_alto_no_evaluable` |
 
 Los folds 2019–2023 permiten evaluar el mecanismo forward-chaining, pero no son tests finales
-intactos: sus resultados ya influyeron directa o indirectamente en el diagnóstico del proyecto.
-También se conoce anticipadamente que 2024 no tendría semanas `alto` bajo el cálculo preliminar de
-Eduardo; esa tabla todavía debe reproducirse con la fuente canónica y con esta construcción
-prospectiva.
+intactos: sus resultados ya influyeron directa o indirectamente en el diagnóstico del proyecto. La
+tabla ya fue reproducida con la fuente canónica y con esta construcción prospectiva: 2024 contiene 52
+semanas `bajo` y ninguna semana `alto`, por lo que su recall de `alto` será `N/A`. No existe un año que
+sea simultáneamente intacto y evaluable en la clase decisiva.
 
 2018 es el primer año que puede etiquetarse con el piso vigente, pero no puede ser año externo de un
 modelo prospectivo porque no existe un año objetivo anterior y etiquetable con el cual entrenar. No
@@ -245,15 +249,14 @@ Estos estados se determinan antes de ajustar el modelo y nunca justifican cambia
 
 ### Por qué 2016 no es un fold de la Vía −1
 
-2016 no puede utilizarse como segundo año externo prospectivo con los datos y pisos actuales:
-
-- `H(2016)` solo contiene 2014 y 2015, insuficientes para alcanzar 12 observaciones en una ventana ±1;
-- la foto actual no contiene predictores climáticos para 2016.
+2016 no puede utilizarse como segundo año externo prospectivo con la historia de casos y los pisos
+actuales: `H(2016)` solo contiene 2014 y 2015, insuficientes para alcanzar 12 observaciones en una
+ventana ±1. La cobertura climática de 2016 sí existe y no constituye un motivo de rechazo.
 
 Las seis semanas `alto` informadas por Eduardo se obtuvieron etiquetando 2016 contra el pool fijo de
 producción, que contiene años futuros respecto de 2016. Esa cifra puede conservarse como análisis
-retrospectivo, pero no como resultado de la Vía −1. Incorporar 2016 exigiría otra fuente real de clima,
-más historia real de casos y una nueva aprobación; no se bajará el piso para habilitarlo.
+retrospectivo, pero no como resultado de la Vía −1. Incorporar 2016 exigiría más historia semanal
+real de casos y una nueva aprobación; no se bajará el piso para habilitarlo.
 
 ## 8. Folds internos y selección
 
@@ -320,10 +323,10 @@ ese mismo orden fijo si hay empate global. Esta regla se guarda en el manifiesto
 automáticamente.
 
 El criterio formal actualmente registrado sigue siendo superar a la climatológica en F1 macro y
-recall de `alto`, por año evaluable para recall. Si Eduardo firma y registra D3, se aplicará además el
-veto siguiente: un resultado no puede contarse como éxito si cualquiera de los dos predictores
-constantes supera al modelo en F1 macro. Persistencia y las constantes se reportan, pero no se
-convierten en umbrales adicionales.
+recall de `alto`, por año evaluable para recall. D3 ya está firmada; cuando el coordinador complete su
+registro formal se aplicará además el veto siguiente: un resultado no puede contarse como éxito si
+cualquiera de los dos predictores constantes supera al modelo en F1 macro. Persistencia y las
+constantes se reportan, pero no se convierten en umbrales adicionales.
 
 Un año con cero semanas `alto` no puede confirmar ni refutar la parte del criterio basada en recall.
 Permanece en la tabla para F1 macro, precisión, clases `bajo`/`medio` y falsos positivos de `alto`.
@@ -386,11 +389,11 @@ Antes de cualquier corrida de las Vías 0–3 deben existir pruebas automáticas
 5. la etiqueta de un año no usa ese mismo año;
 6. la etiqueta de un año es idéntica en todos los folds externos que la reutilizan;
 7. la ventana ±1 de la etiqueta no cruza el año y respeta observaciones ausentes;
-8. los rezagos climáticos sí cruzan años de 51, 52 o 53 semanas usando el calendario real;
+8. los rezagos climáticos sí cruzan años de 52 o 53 semanas usando el calendario real;
 9. un faltante no se convierte en cero ni se imputa silenciosamente;
 10. un año sin `alto` conserva F1 macro y falsos positivos, con recall `N/A`;
 11. la configuración elegida internamente no cambia al alterar solo el externo;
-12. 2016 es rechazado como fold prospectivo con la cobertura actual.
+12. 2016 es rechazado como fold prospectivo con la historia de casos y los pisos actuales.
 
 Además de pasar con la implementación correcta, las pruebas de independencia deben **verse fallar**
 contra una mutación deliberadamente contaminada que introduzca el año externo en una etiqueta de
@@ -416,41 +419,54 @@ Una corrida no puede presentarse como evidencia prospectiva si ocurre cualquiera
 La corrida puede conservarse como diagnóstico retrospectivo si se etiqueta claramente y se explica
 la causa de invalidez. No se mezcla en la tabla prospectiva.
 
-## 15. Compatibilidad con la respuesta de Eduardo
+## 15. Resolución de la respuesta de Eduardo
 
-| Decisión | Compatibilidad con esta definición | Acción antes de aprobar |
+| Decisión | Resolución | Estado posterior a la respuesta v2 |
 |---|---|---|
-| D1 — excluir 2020 de objetivo y pool | Compatible para la Vía −1 nacional | Firmar y registrar el cambio de alcance donde corresponda |
-| D2 — 2024 externo | Compatible, pero su soporte debe recalcularse con `H(2024)` y la fuente canónica | Reproducir la tabla y declarar que no existe test intacto y evaluable a la vez |
-| D2 — 2016 segundo externo | **Incompatible** con la Vía −1 | Retirarlo del protocolo prospectivo o reclasificarlo explícitamente como retrospectivo |
-| D3 — cuatro referencias y veto de constantes | Compatible | Firmar y registrar el veto antes de aplicarlo |
-| D4 — argmax fijo | Compatible | Firmar; cualquier reapertura futura requiere un anexo por vía |
+| D1 — excluir 2020 de objetivo y pool | Compatible; el alcance se amplió a todo país y toda vía | Firmada; registro del coordinador pendiente |
+| D2 — 2024 externo | Se reprodujo con `H(2024)`: 52 bajo, cero `alto`; recall de `alto` en `N/A` | Firmada |
+| D2 — 2016 segundo externo | Retirado del protocolo prospectivo por insuficiencia de `H(2016)` | Firmada y corregida |
+| D3 — cuatro referencias y veto de constantes | Compatible | Firmada; registro del coordinador pendiente |
+| D4 — argmax fijo | Compatible | Firmada |
+| Estados de fold | Congelados según la matriz de la sección 7 | Firmados |
 
-La tabla preliminar de D2 se construyó contra el pool fijo de producción. Esta Vía −1 utiliza una
-historia distinta para cada año, por lo que esa tabla no valida la distribución prospectiva salvo para
-los casos en que ambos pools coincidan. No se copiarán sus cifras al informe sin reproducción.
+La reproducción prospectiva confirma que no existe un test que sea simultáneamente intacto y
+evaluable para recall de `alto`. Ese límite se declara antes de correr y no altera el objetivo de la
+Vía −1: demostrar reproducibilidad e independencia temporal.
 
 ## 16. Puerta para comenzar las Vías 0–3
 
-No comienza ningún experimento hasta que:
+No comienza ningún experimento hasta completar todos los elementos. Estado posterior a la respuesta
+v2 y a las correcciones de este protocolo:
 
-- Eduardo confirme por escrito que recibió esta definición completa;
-- D1–D4 estén firmadas y D2 corregida respecto de 2016;
-- la tabla D2 se reproduzca con el seed y `H(t)`;
-- D1 y D3 estén registrados formalmente si modifican decisiones cerradas;
-- los años externos queden congelados por escrito;
-- exista la implementación separada de producción;
-- todas las pruebas de independencia pasen;
-- al menos una prueba se haya visto fallar ante la fuga deliberada documentada;
-- el manifiesto de configuración esté congelado antes de ejecutar.
+- [x] Eduardo confirmó por escrito que recibió esta definición completa.
+- [x] D1–D4 están firmadas y D2 fue corregida respecto de 2016.
+- [x] La tabla D2 fue reproducida con el seed y `H(t)`.
+- [ ] D1 y D3 están registradas formalmente en decisiones cerradas y en el historial.
+- [x] Los años externos quedaron congelados por escrito.
+- [x] Existe la implementación separada de producción.
+- [x] Todas las pruebas de independencia pasan.
+- [x] Al menos una prueba se vio fallar ante la fuga deliberada documentada.
+- [x] El manifiesto de configuración está congelado antes de ejecutar.
+- [x] Se corrigió la cobertura climática de 2014–2024 y se retiró el motivo inválido contra 2016.
+- [x] Los estados de fold se declararon, firmaron y congelaron antes de ejecutar.
 
 ## 17. Registro de aprobación
 
-- **Definición completa de la Vía −1 recibida por Eduardo:** pendiente
-- **D1 — 2020:** respuesta emitida, pendiente de firma y registro
-- **D2 — años externos:** requiere corrección sobre 2016 y reproducción de cifras
-- **D3 — referencias y veto:** respuesta emitida, pendiente de firma y registro
-- **D4 — argmax:** respuesta emitida, pendiente de firma
-- **Años externos congelados:** pendiente
-- **Aprobado por:** pendiente
-- **Fecha de aprobación:** pendiente
+- **Definición completa de la Vía −1 recibida por Eduardo:** confirmado
+- **D1 — 2020 excluido de objetivo y pool en todo país y toda vía:** firmado; registro pendiente
+- **D2 — 2016 retirado y 2024 reservado con recall de `alto` en `N/A`:** firmado
+- **D3 — cuatro referencias, climatológica decisiva y veto de constantes:** firmado; registro pendiente
+- **D4 — argmax fijo:** firmado
+- **Estados de fold y años externos:** firmados y congelados según la sección 7
+- **Aprobado por:** Eduardo Rivas (0V3R)
+- **Fecha de aprobación:** 2026-08-18 08:23 GMT-6
+
+Las tres acciones asignadas al autor del protocolo están completas: se corrigió la cobertura
+climática en la sección 4, se retiró el segundo motivo de rechazo de 2016 en la sección 7 y se
+sincronizó este registro.
+
+Permanecen a cargo del coordinador el registro de D1 y D3 en
+`docs/contexto/01-decisiones-cerradas.md` y `docs/contexto/CHANGELOG.md`, y el registro histórico de
+D2, D4 y los estados de fold. La implementación, las pruebas y el manifiesto de la sección 16 son
+requisitos de ejecución, no firmas pendientes.
