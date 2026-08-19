@@ -1,40 +1,145 @@
 ---
-// Mapa departamental -- capa DESCRIPTIVA (tarjeta 25), no de riesgo. Leaflet
-// necesita el DOM del navegador (no hay forma de renderizarlo en el
-// servidor), así que todo el trabajo con L.* vive en el <script> de abajo,
-// que Astro procesa y ejecuta solo en el cliente. No se agregó React/Preact
-// para esto -- un componente .astro + <script> ya resuelve "solo en el
-// navegador" sin sumar un framework de UI nuevo al proyecto.
+// Mapa departamental -- selector de capas DESCRIPTIVAS (Camino Ancho v3,
+// docs/contexto). Leaflet necesita el DOM del navegador (no hay forma de
+// renderizarlo en el servidor), así que todo el trabajo con L.* vive en el
+// <script> de abajo, que Astro procesa y ejecuta solo en el cliente. No se
+// agregó React/Preact para esto -- un componente .astro + <script> ya
+// resuelve "solo en el navegador" sin sumar un framework de UI nuevo.
 //
-// Colorea por volumen de casos "probable" (MINSAL, tarjeta 22), acumulado
-// en TODA la ventana cargada (2018-2023), no una sola semana -- con 87-93%
-// de celdas departamento-semana en cero (docs/contexto/03-fuentes-de-datos.md),
-// una sola semana sale casi vacía y no representa bien la distribución real.
-// Elección de presentación, no decisión de equipo cerrada.
+// Ninguna de las capas es salida del clasificador de riesgo (ese vive en
+// MetricasModelo.astro, a nivel nacional). Todas son descriptivas: volumen
+// de casos MINSAL, idoneidad biofísica, anomalía climática continua, y dos
+// capas todavía no implementadas (presión relativa, índice de confianza de
+// vigilancia) que se muestran deshabilitadas ("próximamente") en vez de
+// inventar una fórmula.
+//
+// La capa de anomalía climática es deliberadamente NO un semáforo de
+// alerta -- este proyecto retiró un diseño de alerta binaria porque se
+// demostró empíricamente que no discriminaba nada. Escala continua,
+// colores neutros (azul/gris/naranja), sin rojo de urgencia ni lenguaje de
+// "cruce de umbral".
 ---
 
 <section class="rounded-lg border border-border bg-surface p-4">
   <h2 class="font-sans text-base font-semibold text-ink">Mapa departamental</h2>
+  <p class="mt-1 font-sans text-sm text-ink-muted">
+    Capas descriptivas, no de riesgo. El clasificador de esta primera entrega opera a nivel
+    nacional (ver "Riesgo nacional y métricas del modelo" abajo); estas capas todavía no
+    alimentan ningún modelo.
+  </p>
 
-  <div class="mt-2 rounded-md border border-border bg-bg p-3">
+  <div id="mapa-selector" class="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Capas del mapa"></div>
+
+  <div class="mt-3 rounded-md border border-border bg-bg p-3">
+    <p class="font-sans text-xs font-semibold uppercase text-ink-muted">Aviso de la capa</p>
+    <p id="mapa-aviso" class="mt-1 font-sans text-sm text-ink"></p>
+  </div>
+
+  <div id="mapa-no-disponible" class="mt-2 hidden rounded-md border border-border bg-bg p-3">
     <p class="font-sans text-sm text-ink-muted">
-      <strong class="text-ink">Capa descriptiva, no de riesgo.</strong>
-      El color representa volumen de casos "probable" reportado por MINSAL, acumulado 2018-2023
-      -- no una clasificación de riesgo por departamento. El clasificador de esta primera entrega
-      opera a nivel nacional (ver la sección de riesgo nacional); estos datos todavía no alimentan
-      ningún modelo.
+      Capa no disponible todavía -- el endpoint del backend para esta capa no respondió como se
+      esperaba. El mapa se muestra sin colorear hasta que esté listo.
     </p>
   </div>
 
   <div id="mapa-departamentos" class="mt-3 h-[360px] w-full rounded-md border border-border"></div>
   <div id="mapa-leyenda" class="mt-2"></div>
+
+  <div class="mt-3 rounded-md border border-border bg-bg p-3">
+    <p class="font-sans text-xs font-semibold uppercase text-ink-muted">
+      Nota sobre calidad de la vigilancia departamental
+    </p>
+    <p class="mt-1 font-sans text-sm text-ink-muted">
+      Tres hallazgos independientes de este proyecto apuntan a que la escasez de datos
+      departamentales de MINSAL es una limitación estructural de la fuente, no un defecto
+      corregible del pipeline (huecos por semanas festivas, tablas en imagen sin OCR general, y
+      cobertura real de ~49/52 semanas por año). La capa "Índice de confianza de vigilancia"
+      (más abajo, todavía no implementada) busca hacer esa limitación visible en vez de
+      ocultarla detrás de un mapa que luce completo.
+    </p>
+  </div>
 </section>
 
 <script>
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
 
-  interface DatoDepartamento {
+  // ---------------------------------------------------------------------
+  // Tipos y datos compartidos
+  // ---------------------------------------------------------------------
+
+  type IdCapa = 'minsal_volumen' | 'iv' | 'anomalia' | 'presion' | 'confianza';
+
+  interface DefinicionCapa {
+    id: IdCapa;
+    etiqueta: string;
+    disponible: boolean; // false => botón deshabilitado, "próximamente"
+    aviso: string;
+    tituloLeyenda: string;
+    rampa: string[];
+    sinDatoColor: string;
+    // Carga los valores por código de departamento. undefined = sin dato
+    // para ese departamento (se pinta con sinDatoColor). null de retorno
+    // completo = falla de fetch / capa no disponible en el backend todavía.
+    cargarValores: () => Promise<Map<string, number | undefined> | null>;
+    calcularCortes: (valores: number[]) => number[];
+    etiquetasLeyenda: (cortes: number[]) => string[];
+    tooltipValor: (valor: number | undefined) => string;
+  }
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const SIN_DATO = '#e4e4e7';
+
+  // Semana/año fijos para las capas espaciales -- todavía no hay selector de
+  // semana en la UI (mismo compromiso de "primera versión, semana fija" que
+  // MetricasModelo.astro). Cuando exista un selector real, esto deja de ser
+  // una constante.
+  const SEMANA_ESPACIAL = 1;
+  const ANIO_ESPACIAL = 2023;
+
+  // ---------------------------------------------------------------------
+  // Funciones genéricas de color / cortes / leyenda, reutilizadas por todas
+  // las capas -- cada capa solo aporta su rampa, sus cortes y sus textos.
+  // ---------------------------------------------------------------------
+
+  function cortesPorCuantiles(valores: number[]): number[] {
+    const ordenados = [...valores].sort((a, b) => a - b);
+    if (ordenados.length === 0) return [1, 2, 3, 4];
+    const corte = (p: number) => ordenados[Math.min(ordenados.length - 1, Math.floor(p * (ordenados.length - 1)))];
+    return [corte(0.2), corte(0.4), corte(0.6), corte(0.8)];
+  }
+
+  function colorGenerico(valor: number | undefined, cortes: number[], rampa: string[], sinDato: string): string {
+    if (valor === undefined) return sinDato;
+    for (let i = 0; i < cortes.length; i++) {
+      if (valor <= cortes[i]) return rampa[i];
+    }
+    return rampa[rampa.length - 1];
+  }
+
+  function dibujarLeyenda(contenedor: HTMLElement, capa: DefinicionCapa, cortes: number[]) {
+    const rangos = capa.etiquetasLeyenda(cortes);
+    const items = capa.rampa
+      .map(
+        (color, i) =>
+          `<span class="inline-flex items-center gap-1 mr-3"><span style="background:${color}" class="inline-block h-3 w-3 rounded-sm"></span><span class="font-mono text-xs text-ink-muted">${rangos[i]}</span></span>`
+      )
+      .join('');
+    contenedor.innerHTML = `
+      <div class="flex flex-wrap items-center font-sans text-xs text-ink-muted">
+        <span class="mr-2">${capa.tituloLeyenda}:</span>
+        ${items}
+        <span class="inline-flex items-center gap-1"><span style="background:${capa.sinDatoColor}" class="inline-block h-3 w-3 rounded-sm"></span><span class="font-mono text-xs text-ink-muted">sin dato</span></span>
+      </div>
+    `;
+  }
+
+  // ---------------------------------------------------------------------
+  // Capa 1: volumen de casos MINSAL -- ya funcionaba, mismo comportamiento,
+  // ahora expresado en la forma genérica de DefinicionCapa.
+  // ---------------------------------------------------------------------
+
+  interface DatoDepartamentoMinsal {
     nombre: string;
     codigo: string;
     probable_total: number;
@@ -44,100 +149,350 @@
     ultimo_anio: number | null;
   }
 
-  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  let detallesMinsal = new Map<string, DatoDepartamentoMinsal>();
 
-  // Rampa secuencial de un solo tono (azul, claro->oscuro) -- deliberadamente
-  // distinta de los colores del semáforo de riesgo nacional (verde/ámbar/rojo)
-  // para que nadie confunda "volumen de casos" con "nivel de riesgo".
-  const RAMPA = ['#cde2fb', '#9ec5f4', '#5598e7', '#256abf', '#0d366b'];
-  const SIN_DATO = '#e4e4e7';
+  const RAMPA_MINSAL = ['#cde2fb', '#9ec5f4', '#5598e7', '#256abf', '#0d366b'];
 
-  function calcularCortes(valores: number[]): number[] {
-    const positivos = valores.filter((v) => v > 0).sort((a, b) => a - b);
-    if (positivos.length === 0) return [1, 2, 3, 4];
-    const corte = (p: number) => positivos[Math.min(positivos.length - 1, Math.floor(p * (positivos.length - 1)))];
-    return [corte(0.2), corte(0.4), corte(0.6), corte(0.8)];
+  const capaMinsal: DefinicionCapa = {
+    id: 'minsal_volumen',
+    etiqueta: 'Volumen de casos (MINSAL)',
+    disponible: true,
+    aviso:
+      'El color representa volumen de casos "probable" reportado por MINSAL, acumulado ' +
+      '2018-2023 -- no una clasificación de riesgo por departamento. No alimenta ningún modelo.',
+    tituloLeyenda: 'Casos "probable" acumulados 2018-2023',
+    rampa: RAMPA_MINSAL,
+    sinDatoColor: SIN_DATO,
+    async cargarValores() {
+      const resp = await fetch(`${API_BASE}/api/casos-departamentales`);
+      if (!resp.ok) return null;
+      const datos: { departamentos: DatoDepartamentoMinsal[] } = await resp.json();
+      detallesMinsal = new Map(datos.departamentos.map((d) => [d.codigo, d]));
+      const valores = new Map<string, number | undefined>();
+      for (const d of datos.departamentos) {
+        valores.set(d.codigo, d.probable_total > 0 ? d.probable_total : undefined);
+      }
+      return valores;
+    },
+    calcularCortes: cortesPorCuantiles,
+    etiquetasLeyenda(cortes) {
+      return [
+        `1–${cortes[0]}`,
+        `${cortes[0] + 1}–${cortes[1]}`,
+        `${cortes[1] + 1}–${cortes[2]}`,
+        `${cortes[2] + 1}–${cortes[3]}`,
+        `> ${cortes[3]}`,
+      ];
+    },
+    tooltipValor(valor) {
+      return valor === undefined ? 'sin dato' : `${valor}`;
+    },
+  };
+
+  // ---------------------------------------------------------------------
+  // Capas 2 y 3: idoneidad biofísica (Iv) y anomalía climática continua --
+  // ambas vienen del mismo endpoint espacial, GET /api/v1/spatial/current.
+  // El backend todavía no está mergeado (equipo en paralelo); el fetch se
+  // aísla en una sola función con caché de un único intento, y el parseo de
+  // nombres de campo vive en un único lugar para que un cambio de contrato
+  // sea un ajuste de una línea.
+  // ---------------------------------------------------------------------
+
+  interface DatoEspacial {
+    codigo: string;
+    iv: number | undefined;
+    anomalia_sigma: number | undefined;
   }
 
-  function colorPara(valor: number, cortes: number[]): string {
-    if (valor <= 0) return SIN_DATO;
-    for (let i = 0; i < cortes.length; i++) {
-      if (valor <= cortes[i]) return RAMPA[i];
+  let cacheEspacial: Promise<Map<string, DatoEspacial> | null> | null = null;
+
+  // Único lugar que conoce la forma exacta de la respuesta del backend.
+  // Contrato asumido (no confirmado): { departamentos: [{ codigo, iv,
+  // anomalia_sigma }] }. Si el contrato real usa otros nombres, este es el
+  // único bloque a tocar.
+  function parsearRespuestaEspacial(json: unknown): Map<string, DatoEspacial> | null {
+    if (!json || typeof json !== 'object' || !Array.isArray((json as any).departamentos)) return null;
+    const mapa = new Map<string, DatoEspacial>();
+    for (const fila of (json as any).departamentos) {
+      const codigo = fila?.codigo;
+      if (typeof codigo !== 'string') continue;
+      const iv = typeof fila?.iv === 'number' ? fila.iv : undefined;
+      const anomalia = typeof fila?.anomalia_sigma === 'number' ? fila.anomalia_sigma : undefined;
+      mapa.set(codigo, { codigo, iv, anomalia_sigma: anomalia });
     }
-    return RAMPA[RAMPA.length - 1];
+    return mapa;
   }
 
-  function dibujarLeyenda(contenedor: HTMLElement, cortes: number[]) {
-    const rangos = [
-      `1–${cortes[0]}`,
-      `${cortes[0] + 1}–${cortes[1]}`,
-      `${cortes[1] + 1}–${cortes[2]}`,
-      `${cortes[2] + 1}–${cortes[3]}`,
-      `> ${cortes[3]}`,
-    ];
-    const items = RAMPA.map(
-      (color, i) =>
-        `<span class="inline-flex items-center gap-1 mr-3"><span style="background:${color}" class="inline-block h-3 w-3 rounded-sm"></span><span class="font-mono text-xs text-ink-muted">${rangos[i]}</span></span>`
-    ).join('');
-    contenedor.innerHTML = `
-      <div class="flex flex-wrap items-center font-sans text-xs text-ink-muted">
-        <span class="mr-2">Casos "probable" acumulados 2018-2023:</span>
-        ${items}
-        <span class="inline-flex items-center gap-1"><span style="background:${SIN_DATO}" class="inline-block h-3 w-3 rounded-sm"></span><span class="font-mono text-xs text-ink-muted">sin dato</span></span>
-      </div>
-    `;
+  async function obtenerDatosEspaciales(): Promise<Map<string, DatoEspacial> | null> {
+    if (!cacheEspacial) {
+      cacheEspacial = (async () => {
+        try {
+          const resp = await fetch(
+            `${API_BASE}/api/v1/spatial/current?week=${SEMANA_ESPACIAL}&year=${ANIO_ESPACIAL}`
+          );
+          if (!resp.ok) return null;
+          return parsearRespuestaEspacial(await resp.json());
+        } catch {
+          return null;
+        }
+      })();
+    }
+    return cacheEspacial;
   }
+
+  const RAMPA_IV = ['#e0d6f7', '#bfa6ef', '#9a75e0', '#6f42c1', '#4a1a8a'];
+
+  const capaIv: DefinicionCapa = {
+    id: 'iv',
+    etiqueta: 'Idoneidad biofísica (Iv)',
+    disponible: true,
+    aviso:
+      'Iv describe qué tan favorables son las condiciones ambientales para el mosquito vector ' +
+      'esa semana (escala 0-1) -- es idoneidad del hábitat, NO un pronóstico de riesgo de ' +
+      'brote ni una predicción de casos.',
+    tituloLeyenda: 'Idoneidad biofísica (Iv, 0-1)',
+    rampa: RAMPA_IV,
+    sinDatoColor: SIN_DATO,
+    async cargarValores() {
+      const datos = await obtenerDatosEspaciales();
+      if (!datos) return null;
+      const valores = new Map<string, number | undefined>();
+      for (const [codigo, fila] of datos) valores.set(codigo, fila.iv);
+      return valores;
+    },
+    // Iv está acotado en [0,1] por definición -- cortes fijos en vez de
+    // cuantiles de los datos (a diferencia del volumen de casos, que es muy
+    // sesgado y sí se beneficia de cuantiles).
+    calcularCortes: () => [0.2, 0.4, 0.6, 0.8],
+    etiquetasLeyenda(cortes) {
+      return [
+        `0.0–${cortes[0]}`,
+        `${cortes[0]}–${cortes[1]}`,
+        `${cortes[1]}–${cortes[2]}`,
+        `${cortes[2]}–${cortes[3]}`,
+        `${cortes[3]}–1.0`,
+      ];
+    },
+    tooltipValor(valor) {
+      return valor === undefined ? 'sin dato' : valor.toFixed(2);
+    },
+  };
+
+  // Rampa diverging neutra (azul / gris / naranja) -- deliberadamente sin
+  // rojo ni ningún color asociado a alerta/urgencia. La anomalía es un
+  // valor continuo descriptivo, no un cruce de umbral.
+  const RAMPA_ANOMALIA = ['#3a6ea5', '#8fb8d9', '#e5e5e5', '#e8b86d', '#b5651d'];
+
+  const capaAnomalia: DefinicionCapa = {
+    id: 'anomalia',
+    etiqueta: 'Anomalía climática (continua)',
+    disponible: true,
+    aviso:
+      'Desviación (en sigmas) de las condiciones ambientales respecto a su promedio histórico ' +
+      'esa semana -- valor descriptivo continuo, NO una alerta ni un umbral de riesgo. Este ' +
+      'proyecto retiró un diseño de alerta binaria porque no discriminaba nada en la práctica; ' +
+      'esta capa muestra el número tal cual, sin clasificarlo en "normal/anómalo".',
+    tituloLeyenda: 'Anomalía climática (σ respecto al promedio histórico)',
+    rampa: RAMPA_ANOMALIA,
+    sinDatoColor: SIN_DATO,
+    async cargarValores() {
+      const datos = await obtenerDatosEspaciales();
+      if (!datos) return null;
+      const valores = new Map<string, number | undefined>();
+      for (const [codigo, fila] of datos) valores.set(codigo, fila.anomalia_sigma);
+      return valores;
+    },
+    // Sigma ya es una unidad estandarizada -- cortes fijos y simétricos en
+    // vez de cuantiles, para que el mismo color siempre signifique la misma
+    // magnitud de desviación entre semanas.
+    calcularCortes: () => [-1.5, -0.5, 0.5, 1.5],
+    etiquetasLeyenda(cortes) {
+      return [
+        `< ${cortes[0]}σ`,
+        `${cortes[0]} a ${cortes[1]}σ`,
+        `${cortes[1]} a ${cortes[2]}σ`,
+        `${cortes[2]} a ${cortes[3]}σ`,
+        `> ${cortes[3]}σ`,
+      ];
+    },
+    tooltipValor(valor) {
+      return valor === undefined ? 'sin dato' : `${valor.toFixed(2)}σ`;
+    },
+  };
+
+  // ---------------------------------------------------------------------
+  // Capas 4 y 5: todavía no implementadas -- "próximamente", sin fórmula
+  // inventada. Se listan en el selector pero deshabilitadas.
+  // ---------------------------------------------------------------------
+
+  const capaPresion: DefinicionCapa = {
+    id: 'presion',
+    etiqueta: 'Presión relativa departamental (próximamente)',
+    disponible: false,
+    aviso: 'Fórmula todavía no definida en el equipo. Esta capa no existe todavía -- no hay datos que mostrar.',
+    tituloLeyenda: '',
+    rampa: [],
+    sinDatoColor: SIN_DATO,
+    async cargarValores() {
+      return null;
+    },
+    calcularCortes: () => [],
+    etiquetasLeyenda: () => [],
+    tooltipValor: () => 'sin dato',
+  };
+
+  const capaConfianza: DefinicionCapa = {
+    id: 'confianza',
+    etiqueta: 'Índice de confianza de vigilancia (próximamente)',
+    disponible: false,
+    aviso:
+      'Fórmula todavía no definida en el equipo. Busca hacer visible dónde la vigilancia ' +
+      'departamental es más escasa -- ver la nota fija debajo del mapa mientras tanto.',
+    tituloLeyenda: '',
+    rampa: [],
+    sinDatoColor: SIN_DATO,
+    async cargarValores() {
+      return null;
+    },
+    calcularCortes: () => [],
+    etiquetasLeyenda: () => [],
+    tooltipValor: () => 'sin dato',
+  };
+
+  const CAPAS: DefinicionCapa[] = [capaMinsal, capaIv, capaAnomalia, capaPresion, capaConfianza];
+
+  // ---------------------------------------------------------------------
+  // Orquestación: un mapa Leaflet, un geojson, una capa geoJSON activa a la
+  // vez -- se reemplaza al cambiar de selector en vez de duplicar mapas.
+  // ---------------------------------------------------------------------
 
   async function iniciar() {
-    const contenedor = document.getElementById('mapa-departamentos');
-    const leyenda = document.getElementById('mapa-leyenda');
-    if (!contenedor || !leyenda) return;
+    const contenedorSelector = document.getElementById('mapa-selector');
+    const contenedorMapa = document.getElementById('mapa-departamentos');
+    const contenedorLeyenda = document.getElementById('mapa-leyenda');
+    const contenedorAviso = document.getElementById('mapa-aviso');
+    const contenedorNoDisponible = document.getElementById('mapa-no-disponible');
+    if (!contenedorSelector || !contenedorMapa || !contenedorLeyenda || !contenedorAviso || !contenedorNoDisponible)
+      return;
 
-    const mapa = L.map(contenedor).setView([13.79, -88.9], 8);
-
+    const mapa = L.map(contenedorMapa).setView([13.79, -88.9], 8);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 12,
     }).addTo(mapa);
 
-    const [respGeo, respCasos] = await Promise.all([
-      fetch('/geo/slv-adm1.geojson'),
-      fetch(`${API_BASE}/api/casos-departamentales`),
-    ]);
+    const respGeo = await fetch('/geo/slv-adm1.geojson');
     const geojson = await respGeo.json();
-    const casos: { departamentos: DatoDepartamento[] } = await respCasos.json();
 
-    const porCodigo = new Map(casos.departamentos.map((d) => [d.codigo, d]));
-    const cortes = calcularCortes(casos.departamentos.map((d) => d.probable_total));
-    dibujarLeyenda(leyenda, cortes);
+    let capaGeoJsonActiva: L.GeoJSON | null = null;
+    const cacheValoresPorCapa = new Map<IdCapa, Map<string, number | undefined> | null>();
 
-    L.geoJSON(geojson, {
-      style: (feature) => {
-        const dato = porCodigo.get(feature?.properties?.codigo ?? '');
-        return {
-          color: '#8a8a90',
-          weight: 1,
-          fillColor: colorPara(dato?.probable_total ?? 0, cortes),
-          fillOpacity: 0.75,
-        };
-      },
-      onEachFeature: (feature, layer) => {
-        const dato = porCodigo.get(feature.properties?.codigo ?? '');
-        const nombre = feature.properties?.shapeName ?? feature.properties?.codigo ?? '';
-        if (!dato) {
-          layer.bindTooltip(nombre);
-          return;
-        }
-        const ventana = dato.primer_anio && dato.ultimo_anio ? `${dato.primer_anio}-${dato.ultimo_anio}` : 'sin dato';
-        layer.bindTooltip(
-          `<strong>${nombre}</strong><br>` +
-            `Probable (acum.): ${dato.probable_total}<br>` +
-            `Confirmado (acum.): ${dato.confirmado_total}<br>` +
-            `Semanas con dato: ${dato.semanas_con_dato_probable}<br>` +
-            `Ventana: ${ventana}`
-        );
-      },
-    }).addTo(mapa);
+    function botonId(id: IdCapa) {
+      return `mapa-boton-${id}`;
+    }
+
+    function pintarSelector(activaId: IdCapa) {
+      contenedorSelector!.innerHTML = CAPAS.map((capa) => {
+        const activa = capa.id === activaId;
+        const base =
+          'rounded-md border px-3 py-1.5 font-sans text-xs font-medium transition-colors';
+        const estilo = !capa.disponible
+          ? 'cursor-not-allowed border-border bg-bg text-ink-muted opacity-60'
+          : activa
+            ? 'border-accent bg-accent text-accent-ink'
+            : 'border-border bg-surface text-ink hover:bg-bg';
+        return `<button type="button" id="${botonId(capa.id)}" data-id="${capa.id}" ${
+          capa.disponible ? '' : 'disabled aria-disabled="true"'
+        } role="tab" aria-selected="${activa}" class="${base} ${estilo}">${capa.etiqueta}</button>`;
+      }).join('');
+
+      for (const capa of CAPAS) {
+        if (!capa.disponible) continue;
+        const boton = document.getElementById(botonId(capa.id));
+        boton?.addEventListener('click', () => activarCapa(capa.id));
+      }
+    }
+
+    async function activarCapa(id: IdCapa) {
+      const capa = CAPAS.find((c) => c.id === id);
+      if (!capa || !capa.disponible) return;
+
+      pintarSelector(id);
+      contenedorAviso!.textContent = capa.aviso;
+      contenedorLeyenda!.innerHTML = '<p class="font-sans text-xs text-ink-muted">Cargando...</p>';
+      contenedorNoDisponible!.classList.add('hidden');
+
+      let valores = cacheValoresPorCapa.get(id);
+      if (valores === undefined) {
+        valores = await capa.cargarValores();
+        cacheValoresPorCapa.set(id, valores);
+      }
+
+      if (capaGeoJsonActiva) {
+        mapa.removeLayer(capaGeoJsonActiva);
+        capaGeoJsonActiva = null;
+      }
+
+      if (!valores) {
+        contenedorNoDisponible!.classList.remove('hidden');
+        contenedorLeyenda!.innerHTML = '';
+        // Se sigue dibujando el contorno departamental, todo en "sin dato",
+        // para que el mapa no se sienta roto.
+        capaGeoJsonActiva = L.geoJSON(geojson, {
+          style: () => ({ color: '#8a8a90', weight: 1, fillColor: SIN_DATO, fillOpacity: 0.5 }),
+          onEachFeature: (feature, layer) => {
+            const nombre = feature.properties?.shapeName ?? feature.properties?.codigo ?? '';
+            layer.bindTooltip(`<strong>${nombre}</strong><br>capa no disponible todavía`);
+          },
+        }).addTo(mapa);
+        return;
+      }
+
+      const numericos = [...valores.values()].filter((v): v is number => v !== undefined);
+      const cortes = capa.calcularCortes(numericos);
+      dibujarLeyenda(contenedorLeyenda!, capa, cortes);
+
+      capaGeoJsonActiva = L.geoJSON(geojson, {
+        style: (feature) => {
+          const codigo = feature?.properties?.codigo ?? '';
+          const valor = valores!.get(codigo);
+          return {
+            color: '#8a8a90',
+            weight: 1,
+            fillColor: colorGenerico(valor, cortes, capa.rampa, capa.sinDatoColor),
+            fillOpacity: 0.75,
+          };
+        },
+        onEachFeature: (feature, layer) => {
+          const codigo = feature.properties?.codigo ?? '';
+          const nombre = feature.properties?.shapeName ?? codigo;
+          const valor = valores!.get(codigo);
+
+          if (capa.id === 'minsal_volumen') {
+            const dato = detallesMinsal.get(codigo);
+            if (!dato) {
+              layer.bindTooltip(nombre);
+              return;
+            }
+            const ventana =
+              dato.primer_anio && dato.ultimo_anio ? `${dato.primer_anio}-${dato.ultimo_anio}` : 'sin dato';
+            layer.bindTooltip(
+              `<strong>${nombre}</strong><br>` +
+                `Probable (acum.): ${dato.probable_total}<br>` +
+                `Confirmado (acum.): ${dato.confirmado_total}<br>` +
+                `Semanas con dato: ${dato.semanas_con_dato_probable}<br>` +
+                `Ventana: ${ventana}`
+            );
+            return;
+          }
+
+          layer.bindTooltip(`<strong>${nombre}</strong><br>${capa.tituloLeyenda}: ${capa.tooltipValor(valor)}`);
+        },
+      }).addTo(mapa);
+    }
+
+    pintarSelector(capaMinsal.id);
+    await activarCapa(capaMinsal.id);
   }
 
   iniciar();
