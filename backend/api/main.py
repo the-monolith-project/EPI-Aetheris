@@ -9,6 +9,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 import psycopg2
 
+from .idoneidad import (
+    ANIOS_CLIMA,
+    calcular_baseline_semana,
+    calcular_serie_iv,
+    calcular_sigma,
+    cargar_clima_departamento,
+    cargar_clima_departamentos,
+    percentil,
+)
+
 # Artefactos de la tarjeta 23/24 -- generados por
 # backend/ingestion/construir_dataset_modelado.py y entrenar_clasificador.py,
 # leidos aqui via el mismo bind mount de ./backend (docker-compose.yml). No
@@ -262,4 +272,161 @@ def casos_departamentales():
             for nombre, codigo, probable_total, confirmado_total, semanas_con_dato, primer_anio, ultimo_anio in filas
         ],
         "aviso": AVISO_HONESTIDAD_CASOS_DEPARTAMENTALES,
+    }
+
+
+# ---------------------------------------------------------------------------
+# "Camino Ancho" -- Módulo 1 (idoneidad biofísica Iv) y Módulo 2 (anomalía
+# climática continua). Ver backend/api/idoneidad.py para las fórmulas y su
+# procedencia (duplicadas literalmente desde
+# backend/ingestion/validar_leadtime_camino_ancho.py, experimento ya
+# validado en docs/experimento-validacion-leadtime-camino-ancho.md).
+#
+# La validación empírica descartó la tesis de "ventana de anticipación"
+# (lead time) -- por eso estos endpoints NO exponen alerta binaria, NO
+# exponen ningún campo de lead time, y NO usan lenguaje de anticipación en
+# ningún lado. Solo Iv y un Z-score continuo (sigma), descriptivos.
+# ---------------------------------------------------------------------------
+
+AVISO_HONESTIDAD_IDONEIDAD = (
+    "Índice de idoneidad biofísica (Iv) para el vector Aedes aegypti, calculado a partir de "
+    "clima ERA5-Land/ERA5 (temperatura, precipitación acumulada a 2 semanas, humedad relativa). "
+    "NO es una predicción de casos ni una alerta -- una validación empírica retrospectiva "
+    "(docs/experimento-validacion-leadtime-camino-ancho.md) encontró que este índice NO anticipa "
+    "de forma medible y consistente el ascenso real de casos, así que esa tesis fue retirada. "
+    "El componente de humedad relativa (f_H) es una estimación propia del equipo, sin cita "
+    "bibliográfica. El 'anomaly_sigma' es un Z-score continuo contra el histórico del propio "
+    "departamento/semana -- no implica alerta ni umbral alguno; un valor alto no es, por sí "
+    "mismo, evidencia de brote."
+)
+
+
+@app.get("/api/v1/spatial/current")
+def idoneidad_espacial_actual(week: int, year: int):
+    """Índice de idoneidad biofísica (Iv) y anomalía climática continua
+    (anomaly_sigma), por departamento, para la semana epidemiológica y año
+    pedidos. Capa DESCRIPTIVA -- no hay campo de lead time ni de alerta
+    binaria (ver AVISO_HONESTIDAD_IDONEIDAD y docstring del módulo
+    idoneidad.py: esa tesis fue retirada tras validación empírica).
+
+    El baseline de anomaly_sigma es leave-one-out sobre el corpus climático
+    completo 2014-2024 (excluye el propio año pedido de su baseline), misma
+    semana exacta, sin ventana de semanas vecinas -- igual método que
+    validar_leadtime_camino_ancho.py. Departamentos con menos de 3 años de
+    baseline disponible devuelven anomaly_sigma=null, no un valor inventado.
+    """
+    if not (1 <= week <= 53):
+        raise HTTPException(status_code=422, detail="El parámetro 'week' debe estar entre 1 y 53.")
+
+    semanas_necesarias = [week] if week == 1 else [week - 1, week]
+
+    try:
+        conn = _conectar()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 ORDER BY nombre")
+                departamentos = cursor.fetchall()
+            clima = cargar_clima_departamentos(conn, anios=ANIOS_CLIMA, semanas=semanas_necesarias)
+        finally:
+            conn.close()
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    serie_iv = calcular_serie_iv(clima)
+
+    resultado = []
+    for codigo, nombre in departamentos:
+        serie_codigo = serie_iv.get(codigo, {})
+        valor = serie_codigo.get(year, {}).get(week)
+        if valor is None:
+            resultado.append({
+                "codigo": codigo,
+                "nombre": nombre,
+                "iv": None,
+                "anomaly_sigma": None,
+                "nota": "sin datos climáticos completos para esta semana/año en este departamento",
+            })
+            continue
+
+        _, mediana, desv = calcular_baseline_semana(serie_codigo, anio_excluir=year, semana=week)
+        sigma = calcular_sigma(valor, mediana, desv)
+        resultado.append({
+            "codigo": codigo,
+            "nombre": nombre,
+            "iv": round(valor, 4),
+            "anomaly_sigma": round(sigma, 4) if sigma is not None else None,
+        })
+
+    return {
+        "semana_epi": week,
+        "anio": year,
+        "departamentos": resultado,
+        "aviso": AVISO_HONESTIDAD_IDONEIDAD,
+    }
+
+
+@app.get("/api/v1/temporal/{departamento_id}")
+def idoneidad_temporal_departamento(departamento_id: str, anio: int):
+    """Serie temporal de un departamento (Módulos 1 y 2): banda histórica
+    (P25/mediana/P75 de Iv por semana-del-año, leave-one-out excluyendo
+    `anio`) vs. la serie real de `anio`, con anomaly_sigma continuo por
+    semana. `departamento_id` es el `codigo` de `regiones` (ISO 3166-2:SV,
+    ej. 'SV-SS') -- es el identificador estable que ya usa el resto de la
+    API (ver /api/casos-departamentales), no el id numérico interno.
+
+    Capa DESCRIPTIVA -- no hay `estimated_transmission_window_start` ni
+    `season_shift_alert` (retirados, ver AVISO_HONESTIDAD_IDONEIDAD)."""
+    try:
+        conn = _conectar()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 AND codigo = %s",
+                    (departamento_id,),
+                )
+                fila_region = cursor.fetchone()
+            if fila_region is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No existe un departamento con código '{departamento_id}'.",
+                )
+            clima_depto = cargar_clima_departamento(conn, codigo=departamento_id, anios=ANIOS_CLIMA)
+        finally:
+            conn.close()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    codigo, nombre = fila_region
+
+    serie_iv = calcular_serie_iv({codigo: clima_depto})
+    serie_codigo = serie_iv.get(codigo, {})
+
+    todas_las_semanas = sorted({
+        semana
+        for semanas in serie_codigo.values()
+        for semana in semanas
+    })
+
+    semanas_salida = []
+    for semana in todas_las_semanas:
+        pool, mediana, desv = calcular_baseline_semana(serie_codigo, anio_excluir=anio, semana=semana)
+        iv_real = serie_codigo.get(anio, {}).get(semana)
+        sigma = calcular_sigma(iv_real, mediana, desv) if iv_real is not None else None
+        semanas_salida.append({
+            "semana_epi": semana,
+            "iv_real": round(iv_real, 4) if iv_real is not None else None,
+            "p25_baseline": round(percentil(pool, 0.25), 4) if pool else None,
+            "mediana_baseline": round(mediana, 4) if mediana is not None else None,
+            "p75_baseline": round(percentil(pool, 0.75), 4) if pool else None,
+            "anomaly_sigma": round(sigma, 4) if sigma is not None else None,
+        })
+
+    return {
+        "departamento_codigo": codigo,
+        "departamento_nombre": nombre,
+        "anio": anio,
+        "semanas": semanas_salida,
+        "aviso": AVISO_HONESTIDAD_IDONEIDAD,
     }
