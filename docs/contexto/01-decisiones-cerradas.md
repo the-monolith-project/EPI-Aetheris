@@ -2,10 +2,29 @@
 
 > Todo lo marcado aquí está **cerrado / no negociable**. Respételo salvo instrucción explícita del usuario reabriéndolo. Para lo que sigue sin resolver, ver `02-decisiones-abiertas.md`. Para la evidencia empírica detrás de las decisiones de fuentes de datos, ver `03-fuentes-de-datos.md`.
 
+## Pivote "Camino Ancho": cierre de la clasificación predictiva (cerrado 2026-08-18)
+
+**Reemplaza en la práctica el "Pivote de fase 1 — Opción C" de más abajo, que queda registrado como historia de cómo se llegó aquí, no como el estado vigente.** Léase primero esta sección; la de Opción C describe una fase intermedia ya superada.
+
+**Motivo.** El informe de cierre de la línea de rescate de predicción (`docs/informe-cierre-rescate-prediccion.md`, 2026-08-18) evaluó cinco vías (−1 a 3: fuga temporal, transferencia multipaís, casos previos como predictor, clima como clasificador de posición estacional, features climáticas con mecanismo biológico) y ninguna sostuvo de forma estable el criterio de éxito predeclarado. Las dos vías que conservaban la etiqueta histórica (1 y 3) obtuvieron 0 de 10 semillas en el único fold externo con semanas "alto" evaluables — el mismo resultado que ya había mostrado el clasificador nacional de producción (recall de "alto" = 0,000 en 2019 y 2022, `docs/experimento-ventana-climatica-ampliada.md`). Un experimento adicional (`docs/experimento-validacion-leadtime-camino-ancho.md`, mismo día) cerró además la tesis específica de "ventana de anticipación": de los dos únicos casos comparables (uno nacional, uno departamental — San Salvador), los lead times obtenidos fueron +29 y −30 semanas, sin acuerdo de signo — no hay cifra de anticipación defendible.
+
+**Decisión.** Se retira del pitch y del informe cualquier afirmación de capacidad predictiva. El clasificador nacional entrenado (`entrenar_clasificador.py`, serie OpenDengue, corte P75/P90) **no se adopta como producto** — el código permanece en el repositorio como evidencia reproducible de la evaluación (recomendación explícita del informe: "entregar el resultado negativo como evidencia reproducible"), no como algo a extender o volver a exponer como predicción en vivo. Esto también retira, de hecho, el "Pivote de fase 1 — Opción C" (2026-08-09, más abajo) como plan vigente: ya no hay ninguna clasificación nacional ni departamental en producción, así que la pregunta de si el clasificador departamental "se activa" deja de tener objeto — no hay clasificador de ningún nivel que activar.
+
+**Lo que sí se conserva y se reorienta:** el proyecto pasa a llamarse, en su narrativa de producto, **"Camino Ancho"** — una herramienta descriptiva y no predictiva de análisis espacio-temporal. La pregunta central cambia de "¿habrá un brote?" a "¿qué está ocurriendo epidemiológica y ambientalmente en cada departamento, qué tan inusual es respecto a su historia, y qué tan confiable es la información?". Se organiza en cuatro módulos:
+
+- **M1 — Idoneidad biofísica (`Iv`).** Implementado (`backend/api/idoneidad.py`, mismas fórmulas y constantes ya validadas en `backend/ingestion/validar_leadtime_camino_ancho.py`): `f_T` forma Brière (Tmin=16°C, Tmax=38°C, constante de normalización resuelta numéricamente, no publicada), `f_R` logística sobre precipitación acumulada a 2 semanas (R0=30 mm/semana, k=0.1), `f_H` rampa lineal — **estimación propia del equipo, no citada**, el documento fuente solo pedía "penaliza humedad bajo 50%" sin fórmula.
+- **M2 — Anomalía climática continua.** Implementado, mismo archivo. Z-score leave-one-out de `Iv` por (departamento, semana), línea base 2014–2024, expuesto como **serie continua únicamente** — sin alerta binaria, sin regla de dos semanas consecutivas, sin lenguaje de "temporada adelantada" ni lead time. Retirado deliberadamente tras el hallazgo de que Z≥1,5 se cruza en el 100 % de los años evaluados y no discrimina nada por sí solo.
+- **M3 — Presión epidemiológica relativa.** No implementado. Sin fórmula aprobada — ver `02-decisiones-abiertas.md`.
+- **M4 — Confianza de vigilancia.** No implementado. Sin fórmula aprobada — ver `02-decisiones-abiertas.md`.
+
+**Endpoints (sin cambio de esquema, nada persistido, cálculo on-demand):** `GET /api/v1/spatial/current?week=&year=` y `GET /api/v1/temporal/{departamento_codigo}?anio=`, ninguno de los dos incluye `lead_time_weeks`, `estimated_transmission_window_start` ni `season_shift_alert` (retirados a propósito). El selector de capas del mapa (`web/src/components/MapaDepartamentos.astro`) tiene botones funcionales para M1/M2 contra ese contrato, y botones deshabilitados de "capa no disponible todavía" para M3/M4.
+
+**Lo que NO queda invalidado por este pivote:** la metodología de canal endémico por percentil (`backend/ingestion/corrida_canal_endemico_nacional.py`) sigue siendo válida como **comparación histórica descriptiva** — el informe de cierre la conserva explícitamente para ese uso. Lo que se retira es presentar la salida de un modelo climático como alerta de riesgo. Cualquier lectura de percentil o anomalía debe describir lo ya ocurrido frente a su propia historia, nunca pronosticar lo que va a pasar.
+
 ## Alcance y encuadre
 
 - **Alcance geográfico:** nacional (El Salvador) para el MVP; regional/multinacional queda como refuerzo del argumento de escalabilidad, no como entregable.
-- **Granularidad regional — "Opción B ampliada", producto amendado por el pivote "Opción C" (2026-08-09):** se sigue construyendo el parser departamental completo de boletines MINSAL (2018–2023) — no se revierte, sigue siendo compromiso, no opción en evaluación —, pero su producto cambia de "variable objetivo de la primera entrega" a "capa descriptiva para el mapa + variable objetivo condicionada a un reconteo posterior". Ver "Pivote de fase 1 — Opción C" más abajo para el detalle y el motivo.
+- **Granularidad regional — histórico, superado por el pivote "Camino Ancho" (2026-08-18, ver sección arriba):** el parser departamental completo de boletines MINSAL (2018–2023) sigue existiendo y sigue alimentando la capa descriptiva del mapa — eso no cambió —, pero ya no hay ningún clasificador (nacional ni departamental) al que ese dato pueda convertirse en variable objetivo. La idea de "condicionado a un reconteo posterior" (Opción C, 2026-08-09) queda sin objeto: no hay clasificador departamental que activar.
 - **Regla de ejecución:** dengue funcionando primero. La escalabilidad se diseña y se argumenta, pero el entregable es dengue funcionando — no sobre-ingenierizar la capa agnóstica a costa del MVP.
 
 ## Esquema de ingesta
@@ -75,15 +94,17 @@ Dos endpoints en combinación: `archive-api` (histórico, entrenamiento) y `fore
 
 **Agregación climática departamental → nacional — cerrado 2026-08-15 (coordinador): promedio.** Para construir el predictor climático de una sola serie nacional (tarjeta 23, requerido por el pivote "Opción C" — el clasificador de la primera entrega es nacional) las 7 variables de `variables_ambientales` se colapsan de 14 departamentos a 1 país por semana usando el **promedio simple de los 14 departamentos**, para las 7 variables por igual (no un criterio distinto para las acumulativas de precipitación). Elección de implementación del coordinador, no una regla derivada de otra decisión ya cerrada.
 
-## Ventana de entrenamiento del modelo (cerrado)
+## Ventana de entrenamiento del modelo (cerrado) — histórico; la exclusión de 2020 sigue vigente para cualquier comparación histórica de Camino Ancho
 
 El clasificador departamental entrena con MINSAL **2018, 2019, 2021, 2022, 2023 — 2020 excluido**. Motivo doble: riesgo de desalineación en extracción de texto (Familia A) y evidencia real de subregistro por disrupción de vigilancia epidemiológica durante la pandemia. 2019 (26.434 casos, pico histórico) es indispensable para que el modelo vea un brote severo real — una ventana 2021–2023 sola nunca se lo muestra. Esta exclusión es solo de *entrenamiento departamental*: la serie nacional narrativa/exploratoria (OpenDengue Admin0, 2018–2024) sí incluye 2020, con nota aclaratoria en vez de ocultarlo.
 
-## Predictor del modelo (cerrado 2026-08-09)
+## Predictor del modelo (cerrado 2026-08-09) — histórico, aplicaba al clasificador retirado
 
 El predictor es **únicamente clima rezagado**; los casos MINSAL tienen un solo rol, construir la etiqueta — no son predictor. Confirmado contra el informe de investigación (la variable independiente son las climáticas; los casos son referencia de validación) y contra la promesa de anticipación ya comprometida ante el docente: un predictor autorregresivo con casos recientes rompería esa promesa porque no hay fuente departamental automatizable desde 2024. Sub-decisión con inclinación pero no cerrada: departamento no entra como categórica, se usa elevación como proxy geográfico.
 
-## Etiqueta de riesgo alto/medio/bajo — método (cerrado 2026-08-05), corte de percentil (cerrado 2026-08-15)
+## Etiqueta de riesgo alto/medio/bajo — método (cerrado 2026-08-05), corte de percentil (cerrado 2026-08-15) — histórico, la etiqueta ya no se produce en producción
+
+> Esta sección documenta el método usado por el clasificador retirado (ver "Pivote 'Camino Ancho'" arriba). La lógica de canal endémico por percentil descrita aquí sigue siendo la base plausible de M3 (presión epidemiológica relativa), pero M3 no tiene fórmula ni parámetros aprobados todavía — no asumir que estos valores (P75/P90, ventana ±1, años base) se heredan automáticamente sin que alguien lo decida explícitamente para M3.
 
 Se construye por **canal endémico** (percentil histórico dentro de cada departamento), nunca por umbral de incidencia poblacional. Motivo decisivo: el denominador poblacional de la ventana quedó invalidado por el Censo 2024 (~5% de sobrestimación nacional, error departamental no cuantificable) — un error ahí caería en la **variable objetivo**, no en un predictor, volviendo ininterpretables las métricas. La incidencia se conserva solo como métrica de contexto, nunca como etiqueta.
 
@@ -93,7 +114,7 @@ Dos criterios de método fijados (no debatibles): el año etiquetado nunca puede
 
 Parámetros que siguen abiertos como decisión formal de proyecto (variable base, ventana de semanas vecinas, esquema de años base, piso de suficiencia, techo de columnas) — ver `02-decisiones-abiertas.md`, punto A. La mayoría ya corre con un valor fijo en el pipeline nacional de producción (tarjetas 23-24); el punto A detalla cuáles y por qué eso no equivale a un cierre.
 
-## Criterio de éxito, línea base y margen de error (cerrado 2026-08-09)
+## Criterio de éxito, línea base y margen de error (cerrado 2026-08-09) — histórico, criterio que llevó al cierre de la predicción
 
 **Línea base doble:** climatológica (predice la banda típica histórica; ancla el contraste de hipótesis pese a colapsar casi siempre en la clase media por cómo se fijan los cortes de percentil) y de persistencia (semana = semana anterior; referencia dura pero **no desplegable en vivo**, porque depende de una etiqueta de la semana anterior que no existe para departamentos desde 2024 — se muestra igual si el modelo no la supera, con esa aclaración).
 
@@ -107,7 +128,9 @@ Esto resuelve como efecto colateral la validación retrospectiva con OpenDengue 
 
 Se adopta `epiweeks` (PyPI, cálculo CDC/MMWR que PAHO adopta) en vez de recalcular límites de semana a mano. Fijada en `backend/requirements.txt` junto con `pdfplumber`, ambas con versión pinneada.
 
-## Pivote de fase 1 — Opción C: clasificador nacional primero (cerrado 2026-08-09)
+## Pivote de fase 1 — Opción C: clasificador nacional primero (cerrado 2026-08-09, superado 2026-08-18)
+
+> **Superado por el pivote "Camino Ancho"** (sección al inicio de este documento). Esta sección se conserva como registro de cómo se llegó a la decisión de cerrar la predicción, no como plan vigente — a la fecha de esta nota **no hay ningún clasificador, nacional ni departamental, en producción**.
 
 **Motivo:** el punto H de `02-decisiones-abiertas.md` (semántica acumulada de Probable/Confirmado MINSAL) bloqueaba por completo el parser departamental. Una corrida exploratoria (`backend/ingestion/corrida_distribucion.py`, 264 PDF, ver `03-fuentes-de-datos.md` trampa 8) validó la desacumulación pero mostró que la señal departamental es delgada — especialmente confirmado, que no sirve como única variable objetivo departamental (92,8 % de celdas en cero). Esperar a resolver eso por completo antes de tener cualquier clasificador funcionando ponía en riesgo el hito de rebanada vertical.
 
@@ -115,7 +138,9 @@ Se adopta `epiweeks` (PyPI, cálculo CDC/MMWR que PAHO adopta) en vez de recalcu
 
 **Lo que NO cambia:** el parser departamental de MINSAL se sigue construyendo (alimenta la capa descriptiva del mapa desde ya) y, si la señal de `probable` sobrevive a un reconteo posterior (tras rescatar los boletines de 2019 con tabla-imagen, ver `03-fuentes-de-datos.md` trampa 11, y aplicar la ventana de semanas vecinas ±1), se agrega como segundo clasificador sobre la misma infraestructura — cambiar el filtro de región, no reescribir código. Ver `02-decisiones-abiertas.md`, punto H, para lo que sigue condicionado.
 
-## Alcance del MVP (bloqueado, 2 meses, 3 personas)
+## Alcance del MVP (bloqueado, 2 meses, 3 personas) — puntos 1, 2 y 4 vigentes; punto 3 superado por "Camino Ancho"
+
+> El punto 3 de abajo (clasificación alto/medio/bajo) describe el plan previo al cierre de la predicción (2026-08-18). Se conserva sin reescribir para no perder el registro de qué se prometió y por qué se descartó, pero **ya no es el entregable** — ver "Pivote 'Camino Ancho'" al inicio de este documento para lo que lo reemplaza (M1–M4).
 
 1. Ingesta: OpenDengue nacional (narrativo 2018–2024, y ahora también variable objetivo de la primera entrega — ver "Pivote de fase 1" arriba) + MINSAL departamental (capa descriptiva desde el primer hito; entrenamiento de un segundo clasificador condicionado: 2018, 2019, 2021, 2022, 2023) + Open-Meteo (modelo por variable, ver arriba).
 2. Pipeline de limpieza + features temporales (rezagos climáticos, medias móviles) a escala **semanal**: humedad relativa media, punto de rocío, precipitación acumulada, horas de lluvia. ET₀ fuera de alcance.
