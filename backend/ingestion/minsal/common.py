@@ -126,8 +126,15 @@ def _nombre_desde_url_directa(url: str) -> str:
     # Resolve URL path first, then decode URL entities, and FINALLY extract filename.
     # This prevents path traversal payloads like %2e%2e%2f (../) from bypassing Path().name
     path = urllib.parse.urlparse(url).path
-    path = urllib.parse.unquote(path)
-    return _clean_filename(Path(path).name)
+
+    # Loop to handle multiple levels of URL encoding
+    while True:
+        unquoted = urllib.parse.unquote(path)
+        if unquoted == path:
+            break
+        path = unquoted
+
+    return Path(_clean_filename(Path(path).name)).name
 
 
 def _descargar_bytes(session: requests.Session, url: str, timeout: int = 30) -> requests.Response:
