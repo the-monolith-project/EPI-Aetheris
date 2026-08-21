@@ -12,6 +12,10 @@
   --color-border: var(--color-border);
   --color-accent: var(--color-accent);
   --color-accent-ink: var(--color-accent-ink);
+  --color-secondary: var(--color-secondary);
+  --color-secondary-ink: var(--color-secondary-ink);
+  --color-deep: var(--color-deep);
+  --color-deep-ink: var(--color-deep-ink);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 }
@@ -20,6 +24,43 @@ body {
   background-color: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background-color: var(--color-secondary);
+  color: var(--color-secondary-ink);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-ink-muted);
+}
+
+a {
+  color: var(--color-accent);
+}
+
+/* Sombra elevada compartida por las tarjetas del dashboard -- se define una
+   sola vez porque Tailwind v4 no tiene un valor equivalente en su escala
+   por defecto y el mismo par de sombras se repite en varios componentes. */
+.card-elevated {
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 150ms ease;
+}
+.card-elevated:hover {
+  box-shadow: var(--shadow-card-hover);
 }
 
 /* Placeholder de carga (skeleton) compartido por los componentes que hacen
