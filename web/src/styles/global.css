@@ -20,36 +20,43 @@
   --font-mono: var(--font-mono);
 }
 
-body {
-  background-color: var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
+/* @layer base: sin esto, estas reglas quedan "sin capa" y ganan por encima
+   de CUALQUIER utilidad de Tailwind (incluida .text-accent-ink), sin
+   importar especificidad -- las capas de CSS siempre le ganan a lo que no
+   tiene capa. Bug real: el texto blanco de los botones de acento se volvía
+   invisible porque "a { color }" pisaba "text-accent-ink". */
+@layer base {
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
 
-::selection {
-  background-color: var(--color-secondary);
-  color: var(--color-secondary-ink);
-}
+  ::selection {
+    background-color: var(--color-secondary);
+    color: var(--color-secondary-ink);
+  }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background-color: var(--color-border);
-  border-radius: 999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-ink-muted);
-}
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-ink-muted);
+  }
 
-a {
-  color: var(--color-accent);
+  a {
+    color: var(--color-accent);
+  }
 }
 
 /* Sombra elevada compartida por las tarjetas del dashboard -- se define una

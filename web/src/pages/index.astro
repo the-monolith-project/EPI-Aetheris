@@ -6,6 +6,11 @@ import Layout from '../layouts/Layout.astro';
 // explícitamente NO hace, antes de que alguien vea un mapa sin contexto.
 // Mismo lenguaje de estatuto que el resto del sitio: descriptivo, no
 // predictivo, ayuda de priorización -- nunca diagnóstico ni pronóstico.
+//
+// Contenedor a max-w-7xl (no max-w-5xl): en pantallas anchas la versión
+// angosta dejaba la mitad de la pantalla en blanco. El hero usa dos columnas
+// en lg para llenar ese espacio con una cifras reales del proyecto en vez de
+// solo estirar el margen -- ningún dato del panel derecho es inventado.
 
 const MODULOS = [
   {
@@ -37,51 +42,69 @@ const MODULOS = [
       'Va a mostrar qué tan completa es la cobertura de reporte detrás de cada lectura, en vez de un puntaje de confianza opaco. Sin fórmula aprobada todavía.',
   },
 ];
+
+const CIFRAS = [
+  { valor: '14', etiqueta: 'departamentos cubiertos' },
+  { valor: '3', etiqueta: 'fuentes públicas: MINSAL, OpenDengue, Open-Meteo' },
+  { valor: '2018-2024', etiqueta: 'ventana de datos cargada' },
+  { valor: '$0', etiqueta: 'costo de replicar el sistema' },
+];
 ---
 
 <Layout title="EPI-Aetheris">
-  <main class="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
-    <section class="max-w-2xl">
-      <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">
-        Vigilancia epidemiológica &middot; dengue en El Salvador
-      </p>
-      <h1 class="mt-2 font-sans text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-        Qué está pasando con el dengue, departamento por departamento
-      </h1>
-      <p class="mt-4 font-sans text-base leading-relaxed text-ink-muted">
-        EPI-Aetheris cruza casos reportados por MINSAL con clima (Open-Meteo) para describir,
-        semana a semana, qué tan inusual es lo que está pasando en cada departamento contra su
-        propia historia -- y qué tan confiable es el dato detrás de esa lectura.
-      </p>
+  <main class="mx-auto max-w-7xl px-4 py-12 sm:px-8 sm:py-16 lg:px-12">
+    <section class="grid grid-cols-1 gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+      <div class="max-w-xl">
+        <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">
+          Vigilancia epidemiológica &middot; dengue en El Salvador
+        </p>
+        <h1 class="mt-2 font-sans text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+          Qué está pasando con el dengue, departamento por departamento
+        </h1>
+        <p class="mt-4 font-sans text-base leading-relaxed text-ink-muted">
+          EPI-Aetheris cruza casos reportados por MINSAL con clima (Open-Meteo) para describir,
+          semana a semana, qué tan inusual es lo que está pasando en cada departamento contra su
+          propia historia -- y qué tan confiable es el dato detrás de esa lectura.
+        </p>
 
-      <div class="mt-6 flex flex-wrap gap-3">
-        <a
-          href="/panel"
-          class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-sans text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-deep"
-        >
-          Ver el panel
-          <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path
-              d="M4 10h12M11 5l5 5-5 5"
-              stroke="currentColor"
-              stroke-width="1.75"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </a>
-        <a
-          href="https://github.com/the-monolith-project/EPI-Aetheris"
-          class="inline-flex items-center rounded-full border border-border bg-surface px-5 py-2.5 font-sans text-sm font-medium text-ink transition-colors hover:border-accent/40 hover:bg-secondary/30"
-        >
-          Ver el código
-        </a>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a
+            href="/panel"
+            class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-sans text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-deep"
+          >
+            Ver el panel
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M4 10h12M11 5l5 5-5 5"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </a>
+          <a
+            href="https://github.com/the-monolith-project/EPI-Aetheris"
+            class="inline-flex items-center rounded-full border border-border bg-surface px-5 py-2.5 font-sans text-sm font-medium text-ink transition-colors hover:border-accent/40 hover:bg-secondary/30"
+          >
+            Ver el código
+          </a>
+        </div>
+      </div>
+
+      <div class="card-elevated grid grid-cols-2 gap-4 rounded-2xl border border-border bg-surface p-5 sm:p-6">
+        {CIFRAS.map((c) => (
+          <div>
+            <p class="font-sans text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{c.valor}</p>
+            <p class="mt-1 font-sans text-xs leading-snug text-ink-muted">{c.etiqueta}</p>
+          </div>
+        ))}
       </div>
     </section>
 
-    <section class="mt-12 rounded-2xl border border-dashed border-border bg-surface p-5 sm:p-6">
+    <section class="mt-12 rounded-2xl border border-dashed border-border bg-surface p-5 sm:p-6 lg:p-8">
       <p class="font-sans text-sm font-semibold text-ink">Qué NO es este proyecto</p>
-      <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
+      <p class="mt-2 max-w-3xl font-sans text-sm leading-relaxed text-ink-muted">
         No predice brotes ni asigna un nivel de riesgo por departamento. Un clasificador
         predictivo piloto fue evaluado y <strong class="text-ink">retirado</strong> tras su
         validación empírica: en los únicos años con un brote real, no mostró capacidad
@@ -94,11 +117,11 @@ const MODULOS = [
 
     <section class="mt-12">
       <h2 class="font-sans text-lg font-semibold text-ink">Cuatro preguntas, cuatro módulos</h2>
-      <p class="mt-1 font-sans text-sm text-ink-muted">
+      <p class="mt-1 max-w-2xl font-sans text-sm text-ink-muted">
         "Camino Ancho": en vez de "¿va a haber un brote?", cada módulo responde una pregunta más
         chica y verificable contra la propia historia del departamento.
       </p>
-      <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {MODULOS.map((m) => (
           <div class="card-elevated rounded-2xl border border-border bg-surface p-4">
             <div class="flex items-center justify-between gap-2">
@@ -121,8 +144,8 @@ const MODULOS = [
       </div>
     </section>
 
-    <section class="mt-12 flex flex-col items-start gap-4 rounded-2xl bg-deep p-6 sm:flex-row sm:items-center sm:justify-between">
-      <div>
+    <section class="mt-12 flex flex-col items-start gap-4 rounded-2xl bg-deep p-6 sm:flex-row sm:items-center sm:justify-between lg:p-8">
+      <div class="max-w-2xl">
         <p class="font-sans text-sm font-semibold text-deep-ink">Datos públicos, sin costo de replicar</p>
         <p class="mt-1 font-sans text-sm leading-relaxed text-deep-ink-muted">
           MINSAL, OpenDengue y Open-Meteo -- ninguna API de pago, ningún dato personal, todo
