@@ -84,7 +84,11 @@ class YearSummary:
 
 
 def _clean_filename(name: str) -> str:
+    # 🛡️ SECURITY: Unquote URL-encoded characters (like %20), but immediately
+    # extract the basename again with Path().name to prevent path traversal
+    # attacks via double URL-encoding (e.g. %252e%252e%252f -> ../).
     name = urllib.parse.unquote(name)
+    name = Path(name).name
     name = unicodedata.normalize("NFC", name)
     return name.strip()
 
