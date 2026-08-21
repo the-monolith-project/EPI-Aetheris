@@ -34,7 +34,11 @@
     </p>
 
     <div id="riesgo-nacional" class="mt-3">
-      <p class="font-sans text-sm text-ink-muted" data-estado>Cargando...</p>
+      <div data-estado aria-hidden="true">
+        <div class="skeleton h-16 w-full"></div>
+        <div class="skeleton mt-3 h-24 w-full"></div>
+        <div class="skeleton mt-3 h-3 w-1/2"></div>
+      </div>
     </div>
   </details>
 </section>
@@ -113,6 +117,7 @@
         <p class="font-sans text-xs font-semibold uppercase text-ink-muted">
           Métricas del modelo (entrenado ${m.anios_entrenamiento.join(', ')} · probado ${m.anio_prueba} · corte ${m.corte_percentil})
         </p>
+        <div class="overflow-x-auto">
         <table class="mt-2 w-full font-mono text-xs text-ink">
           <thead>
             <tr class="text-left text-ink-muted">
@@ -134,6 +139,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
         <p class="mt-2 font-sans text-sm text-ink">
           ¿Supera a la línea base climatológica (criterio decisivo)?
           <strong>${m.supera_baseline_climatologica ? 'Sí' : 'No, esta pasada'}</strong>
