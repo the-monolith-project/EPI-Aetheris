@@ -3,6 +3,16 @@ import Layout from '../layouts/Layout.astro';
 import CurvaEpidemicaNacional from '../components/CurvaEpidemicaNacional.astro';
 import MapaDepartamentos from '../components/MapaDepartamentos.astro';
 import MetricasModelo from '../components/MetricasModelo.astro';
+
+// Jerarquía del dashboard (decisión del coordinador, 2026-08-21): Camino
+// Ancho -- descriptivo, no predictivo -- es la narrativa principal. El mapa
+// departamental va primero, la curva nacional (OpenDengue crudo, también
+// descriptiva) después, y el clasificador nacional RETIRADO queda al final
+// como sección colapsable claramente etiquetada de histórico (ver
+// MetricasModelo.astro y docs/informe-cierre-rescate-prediccion.md). No se
+// eliminó del dashboard: el estatuto del proyecto exige que las métricas y
+// errores del modelo sigan siendo consultables, solo que ya no como pieza
+// central ni como predicción en vivo.
 ---
 
 <Layout title="EPI-Aetheris">
@@ -10,15 +20,20 @@ import MetricasModelo from '../components/MetricasModelo.astro';
     <header class="mb-6">
       <h1 class="font-sans text-2xl font-semibold text-ink">EPI-Aetheris</h1>
       <p class="mt-1 font-sans text-sm text-ink-muted">
-        Vigilancia epidemiológica de dengue en El Salvador -- ayuda de priorización, no
-        diagnóstico. Clasificador piloto a nivel nacional; el mapa muestra además una capa
-        descriptiva departamental (MINSAL), sin nivel de riesgo.
+        Análisis descriptivo espaciotemporal de dengue en El Salvador ("Camino Ancho"): qué está
+        pasando epidemiológica y ambientalmente en cada departamento, qué tan inusual es contra su
+        propia historia, y qué tan confiable es el dato detrás de esa lectura. No predice brotes ni
+        asigna niveles de riesgo -- es una ayuda de priorización, no un diagnóstico.
+      </p>
+      <p class="mt-1 font-sans text-xs text-ink-muted">
+        El clasificador predictivo piloto fue retirado tras su validación empírica; queda al final
+        de esta página como referencia histórica, con sus métricas y errores a la vista.
       </p>
     </header>
 
     <div class="grid grid-cols-1 gap-4">
-      <CurvaEpidemicaNacional />
       <MapaDepartamentos />
+      <CurvaEpidemicaNacional />
       <MetricasModelo />
     </div>
   </main>
