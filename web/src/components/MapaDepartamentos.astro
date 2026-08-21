@@ -43,7 +43,7 @@
     </p>
   </div>
 
-  <div id="mapa-departamentos" class="mt-3 h-[360px] w-full rounded-md border border-border"></div>
+  <div id="mapa-departamentos" class="mt-3 h-[300px] w-full rounded-md border border-border sm:h-[420px]"></div>
   <div id="mapa-leyenda" class="mt-2"></div>
 
   <div class="mt-3 rounded-md border border-border bg-bg p-3">
@@ -207,6 +207,10 @@
 
   let cacheEspacial: Promise<Map<string, DatoEspacial> | null> | null = null;
 
+  // Último resultado resuelto del endpoint espacial, para que el tooltip
+  // unificado de Camino Ancho pueda leerlo de forma síncrona.
+  let detallesEspacial = new Map<string, DatoEspacial>();
+
   // Único lugar que conoce la forma exacta de la respuesta del backend.
   // Contrato asumido (no confirmado): { departamentos: [{ codigo, iv,
   // anomalia_sigma }] }. Si el contrato real usa otros nombres, este es el
@@ -232,7 +236,9 @@
             `${API_BASE}/api/v1/spatial/current?week=${SEMANA_ESPACIAL}&year=${ANIO_ESPACIAL}`
           );
           if (!resp.ok) return null;
-          return parsearRespuestaEspacial(await resp.json());
+          const mapa = parsearRespuestaEspacial(await resp.json());
+          if (mapa) detallesEspacial = mapa;
+          return mapa;
         } catch {
           return null;
         }
@@ -375,7 +381,9 @@
             `${API_BASE}/api/v1/presion/current?week=${SEMANA_ESPACIAL}&year=${ANIO_ESPACIAL}`
           );
           if (!resp.ok) return null;
-          return parsearRespuestaPresion(await resp.json());
+          const mapa = parsearRespuestaPresion(await resp.json());
+          if (mapa) detallesPresion = mapa;
+          return mapa;
         } catch {
           return null;
         }
@@ -406,7 +414,6 @@
       async cargarValores() {
         const datos = await obtenerDatosPresion();
         if (!datos) return null;
-        detallesPresion = datos;
         const valores = new Map<string, number | undefined>();
         for (const [codigo, fila] of datos) {
           const celda = fila[serie];
@@ -455,6 +462,56 @@
     capaPresionConfirmado,
     capaConfianza,
   ];
+
+  // ---------------------------------------------------------------------
+  // Tooltip unificado de Camino Ancho: al pasar sobre un departamento en
+  // cualquiera de las capas M1/M2/M3 se ven los cuatro valores a la vez
+  // (Iv, anomalía, presión probable y confirmado), no solo el de la capa
+  // activa -- la capa activa solo decide el COLOR del mapa. La línea de la
+  // capa activa va al final con el detalle extra de su baseline.
+  // ---------------------------------------------------------------------
+
+  const ES_CAPA_CAMINO_ANCHO: Partial<Record<IdCapa, boolean>> = {
+    iv: true,
+    anomalia: true,
+    presion_probable: true,
+    presion_confirmado: true,
+  };
+
+  function lineaPresion(celda: CeldaPresion | undefined, etiqueta: string): string {
+    if (!celda || celda.percentil === null || celda.categoria === null) {
+      return `${etiqueta}: sin datos suficientes`;
+    }
+    return `${etiqueta}: ${celda.categoria} (percentil ${celda.percentil})`;
+  }
+
+  function tooltipCaminoAncho(codigo: string, nombre: string, capaActiva: IdCapa): string {
+    const esp = detallesEspacial.get(codigo);
+    const pres = detallesPresion.get(codigo);
+    const lineas = [
+      `Iv (idoneidad): ${esp?.iv !== undefined ? esp.iv.toFixed(2) : 'sin dato'}`,
+      `Anomalía climática: ${esp?.anomalia_sigma !== undefined ? `${esp.anomalia_sigma.toFixed(2)}σ` : 'sin dato'}`,
+      lineaPresion(pres?.probable, 'Presión (probable)'),
+      lineaPresion(pres?.confirmado, 'Presión (confirmado)'),
+    ];
+
+    // Detalle extra de la serie de presión activa: casos observados y
+    // baseline P50/P75, para poder verificar el color contra el número.
+    if (capaActiva === 'presion_probable' || capaActiva === 'presion_confirmado') {
+      const serie = capaActiva === 'presion_probable' ? 'probable' : 'confirmado';
+      const celda = pres?.[serie];
+      if (celda && celda.percentil !== null) {
+        lineas.push(
+          `Casos observados (${serie}): ${celda.casos_observados} · baseline P50/P75: ` +
+            `${celda.p50_baseline} / ${celda.p75_baseline}`
+        );
+      } else if (celda?.nota) {
+        lineas.push(celda.nota);
+      }
+    }
+
+    return `<strong>${nombre}</strong><br>${lineas.join('<br>')}`;
+  }
 
   // ---------------------------------------------------------------------
   // Orquestación: un mapa Leaflet, un geojson, una capa geoJSON activa a la
@@ -514,13 +571,24 @@
 
       pintarSelector(id);
       contenedorAviso!.textContent = capa.aviso;
-      contenedorLeyenda!.innerHTML = '<p class="font-sans text-xs text-ink-muted">Cargando...</p>';
+      contenedorLeyenda!.innerHTML =
+        '<div class="flex items-center gap-2" aria-hidden="true">' +
+        '<div class="skeleton h-4 w-40"></div><div class="skeleton h-4 w-24"></div><div class="skeleton h-4 w-24"></div>' +
+        '</div>';
       contenedorNoDisponible!.classList.add('hidden');
 
       let valores = cacheValoresPorCapa.get(id);
       if (valores === undefined) {
         valores = await capa.cargarValores();
         cacheValoresPorCapa.set(id, valores);
+      }
+
+      // Para las capas de Camino Ancho el tooltip muestra los CUATRO valores
+      // (Iv, anomalía, presión probable/confirmado) a la vez -- se esperan
+      // ambos endpoints aquí (cacheados: 2 fetch en total como máximo) para
+      // que el tooltip no dependa de qué capa se visitó antes.
+      if (ES_CAPA_CAMINO_ANCHO[id]) {
+        await Promise.all([obtenerDatosEspaciales(), obtenerDatosPresion()]);
       }
 
       if (capaGeoJsonActiva) {
@@ -581,22 +649,8 @@
             return;
           }
 
-          if (capa.id === 'presion_probable' || capa.id === 'presion_confirmado') {
-            const serie = capa.id === 'presion_probable' ? 'probable' : 'confirmado';
-            const celda = detallesPresion.get(codigo)?.[serie];
-            if (!celda || celda.percentil === null) {
-              layer.bindTooltip(
-                `<strong>${nombre}</strong><br>${celda?.nota ?? 'sin datos suficientes para baseline'}`
-              );
-              return;
-            }
-            layer.bindTooltip(
-              `<strong>${nombre}</strong><br>` +
-                `Presión (${serie}): ${celda.categoria}<br>` +
-                `Percentil vs. su historia: ${celda.percentil}<br>` +
-                `Casos observados: ${celda.casos_observados}<br>` +
-                `Baseline P50/P75: ${celda.p50_baseline} / ${celda.p75_baseline}`
-            );
+          if (ES_CAPA_CAMINO_ANCHO[capa.id]) {
+            layer.bindTooltip(tooltipCaminoAncho(codigo, nombre, capa.id));
             return;
           }
 

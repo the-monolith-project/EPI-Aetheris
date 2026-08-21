@@ -21,3 +21,34 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
 }
+
+/* Placeholder de carga (skeleton) compartido por los componentes que hacen
+   fetch -- construido solo con tokens existentes (border/bg), sin colores
+   nuevos, para que siga a la paleta cuando el coordinador la reemplace. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.375rem;
+  background-color: var(--color-border);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--color-bg), transparent);
+  transform: translateX(-100%);
+  animation: skeleton-brillo 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-brillo {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}
