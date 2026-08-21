@@ -264,6 +264,30 @@ def _extraer_semanas(texto: str, familia: str) -> tuple[int | None, int | None]:
     return None, None
 
 
+def clasificar_sin_tabla(texto_p0: str, menciones_dengue: int, resultado: ResultadoBoletin) -> ResultadoBoletin:
+    """Clasifica un boletin SIN pagina de tabla departamental de dengue:
+    vacaciones (deteccion por CONTENIDO de portada, nunca por nombre de
+    archivo -- `SE142023-Semana-Santa.pdf` contiene un patron SEnn valido),
+    sin texto extraible, o anomalia real a revisar. Separado de
+    procesar_boletin para poder probarse sobre texto extraido sin PDF."""
+    if RE_MARCADORES_VACACION.search(texto_p0):
+        resultado.estado = "ausencia_esperada_vacacion"
+        resultado.nota = "sin pagina con tabla departamental de dengue; portada marca vacaciones/vigilancia intensificada"
+    elif menciones_dengue == 0:
+        # Descubierto en esta corrida, distinto de la trampa 9 (SE182023): el
+        # boletin no es de vacaciones y no menciona "dengue" ni una sola vez en
+        # todo el texto extraible -- indicio de tabla pegada como imagen/raster
+        # (glifos como XObject, no como texto de fuente), no de ausencia real de
+        # contenido. Requeriria OCR para confirmar/leer, fuera de alcance de esta
+        # corrida exploratoria.
+        resultado.estado = "sin_texto_extraible"
+        resultado.nota = "0 menciones de 'dengue' en todo el documento -- sospecha de tabla renderizada como imagen, no ausencia de contenido"
+    else:
+        resultado.estado = "sin_tabla_no_vacacional"
+        resultado.nota = "sin pagina con tabla departamental de dengue; portada NO marca vacaciones y el documento SI menciona dengue en otras secciones (ver trampa 9, SE182023)"
+    return resultado
+
+
 def procesar_boletin(path: Path) -> ResultadoBoletin:
     anio, semana_archivo, version = parsear_nombre(path)
     resultado = ResultadoBoletin(
@@ -285,24 +309,19 @@ def procesar_boletin(path: Path) -> ResultadoBoletin:
         return resultado
 
     if ubicacion is None:
-        if RE_MARCADORES_VACACION.search(texto_p0):
-            resultado.estado = "ausencia_esperada_vacacion"
-            resultado.nota = "sin pagina con tabla departamental de dengue; portada marca vacaciones/vigilancia intensificada"
-        elif menciones_dengue == 0:
-            # Descubierto en esta corrida, distinto de la trampa 9 (SE182023): el
-            # boletin no es de vacaciones y no menciona "dengue" ni una sola vez en
-            # todo el texto extraible -- indicio de tabla pegada como imagen/raster
-            # (glifos como XObject, no como texto de fuente), no de ausencia real de
-            # contenido. Requeriria OCR para confirmar/leer, fuera de alcance de esta
-            # corrida exploratoria.
-            resultado.estado = "sin_texto_extraible"
-            resultado.nota = "0 menciones de 'dengue' en todo el documento -- sospecha de tabla renderizada como imagen, no ausencia de contenido"
-        else:
-            resultado.estado = "sin_tabla_no_vacacional"
-            resultado.nota = "sin pagina con tabla departamental de dengue; portada NO marca vacaciones y el documento SI menciona dengue en otras secciones (ver trampa 9, SE182023)"
-        return resultado
+        return clasificar_sin_tabla(texto_p0, menciones_dengue, resultado)
 
     _, texto_pagina = ubicacion
+    return analizar_texto_pagina(texto_pagina, resultado)
+
+
+def analizar_texto_pagina(texto_pagina: str, resultado: ResultadoBoletin) -> ResultadoBoletin:
+    """Analisis completo de la pagina que contiene la tabla departamental
+    (familia, semanas de corte, filas, blancos=cero, multisemana,
+    validaciones de cuadre). Opera sobre TEXTO ya extraido -- separado de
+    procesar_boletin (que solo agrega la I/O de pdfplumber) para poder
+    probarse contra extractos reales guardados como fixture, sin versionar
+    PDFs (docs/contexto/03-fuentes-de-datos.md, seccion pytest)."""
     bloque = _recortar_bloque_depto(texto_pagina)
     if bloque is None:
         resultado.estado = "error_extraccion"
