@@ -1,0 +1,86 @@
+---
+// Panel lateral de cifras reales -- mismos datos que ya carga
+// CurvaEpidemicaNacional.astro (GET /api/casos-nacional), agregados del
+// lado del cliente. No inventa ninguna métrica nueva ni implica lectura de
+// riesgo: es un resumen histórico ("lo que ya pasó"), no una alerta.
+---
+
+<aside class="card-elevated flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 sm:p-6">
+  <div>
+    <h2 class="font-sans text-sm font-semibold text-ink">Resumen histórico nacional</h2>
+    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+      OpenDengue, clasificación "total" -- agregado de la misma serie de la curva epidémica.
+    </p>
+  </div>
+
+  <div id="resumen-nacional" class="flex flex-col gap-3">
+    <div data-estado aria-hidden="true" class="flex flex-col gap-3">
+      <div class="skeleton h-14 w-full"></div>
+      <div class="skeleton h-14 w-full"></div>
+      <div class="skeleton h-14 w-full"></div>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-border bg-bg p-3">
+    <p class="font-sans text-2xl font-semibold tracking-tight text-ink">14</p>
+    <p class="mt-0.5 font-sans text-xs leading-snug text-ink-muted">departamentos con capas descriptivas</p>
+  </div>
+</aside>
+
+<script>
+  interface CasoSemanal {
+    semana_inicio: string;
+    anio: number;
+    conteo: number;
+  }
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+
+  function formatearSemana(fecha: string): string {
+    const d = new Date(`${fecha}T00:00:00`);
+    return d.toLocaleDateString('es-SV', { year: 'numeric', month: 'short', day: '2-digit' });
+  }
+
+  async function iniciar() {
+    const contenedor = document.getElementById('resumen-nacional');
+    if (!contenedor) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/casos-nacional`);
+      if (!resp.ok) throw new Error('respuesta no OK');
+      const datos: CasoSemanal[] = await resp.json();
+      if (datos.length === 0) throw new Error('sin datos');
+
+      const total = datos.reduce((acc, d) => acc + d.conteo, 0);
+      const pico = datos.reduce((a, b) => (b.conteo > a.conteo ? b : a));
+      const primero = datos[0];
+      const ultimo = datos[datos.length - 1];
+
+      contenedor.innerHTML = `
+        <div class="rounded-xl border border-border bg-bg p-3">
+          <p class="font-sans text-2xl font-semibold tracking-tight text-ink">${total.toLocaleString('es-SV')}</p>
+          <p class="mt-0.5 font-sans text-xs leading-snug text-ink-muted">
+            casos acumulados, ${primero.anio}-${ultimo.anio} (nacional)
+          </p>
+        </div>
+        <div class="rounded-xl border border-border bg-bg p-3">
+          <p class="font-sans text-2xl font-semibold tracking-tight text-ink">${pico.conteo.toLocaleString('es-SV')}</p>
+          <p class="mt-0.5 font-sans text-xs leading-snug text-ink-muted">
+            pico semanal histórico -- semana del ${formatearSemana(pico.semana_inicio)}
+          </p>
+        </div>
+        <div class="rounded-xl border border-border bg-bg p-3">
+          <p class="font-sans text-2xl font-semibold tracking-tight text-ink">${datos.length}</p>
+          <p class="mt-0.5 font-sans text-xs leading-snug text-ink-muted">
+            semanas epidemiológicas con dato nacional cargado
+          </p>
+        </div>
+      `;
+    } catch {
+      contenedor.innerHTML =
+        '<p class="font-sans text-sm text-ink-muted">No se pudo cargar el resumen en este momento.</p>';
+    }
+  }
+
+  iniciar();
+</script>

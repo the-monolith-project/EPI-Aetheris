@@ -7,10 +7,11 @@ import Layout from '../layouts/Layout.astro';
 // Mismo lenguaje de estatuto que el resto del sitio: descriptivo, no
 // predictivo, ayuda de priorización -- nunca diagnóstico ni pronóstico.
 //
-// Contenedor a max-w-7xl (no max-w-5xl): en pantallas anchas la versión
-// angosta dejaba la mitad de la pantalla en blanco. El hero usa dos columnas
-// en lg para llenar ese espacio con una cifras reales del proyecto en vez de
-// solo estirar el margen -- ningún dato del panel derecho es inventado.
+// Contenedor a max-w-[1600px] (mismo ancho que el header/footer del Layout):
+// en pantallas anchas una versión angosta dejaba la mitad de la pantalla en
+// blanco. El hero usa dos columnas en lg para llenar ese espacio con cifras
+// reales del proyecto en vez de solo estirar el margen -- ningún dato del
+// panel derecho es inventado.
 
 const MODULOS = [
   {
@@ -52,7 +53,7 @@ const CIFRAS = [
 ---
 
 <Layout title="EPI-Aetheris">
-  <main class="mx-auto max-w-7xl px-4 py-12 sm:px-8 sm:py-16 lg:px-12">
+  <main class="mx-auto max-w-[1600px] px-4 py-12 sm:px-8 sm:py-16 lg:px-12">
     <section class="grid grid-cols-1 gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
       <div class="max-w-xl">
         <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">

@@ -6,6 +6,12 @@ interface Props {
 }
 
 const { title = 'EPI-Aetheris' } = Astro.props;
+
+const ruta = Astro.url.pathname;
+const NAV = [
+  { href: '/', etiqueta: 'Inicio' },
+  { href: '/panel', etiqueta: 'Panel' },
+];
 ---
 
 <html lang="es">
@@ -22,7 +28,7 @@ const { title = 'EPI-Aetheris' } = Astro.props;
   </head>
   <body class="min-h-screen bg-bg text-ink">
     <header class="sticky top-0 z-40 bg-accent shadow-[0_1px_0_rgba(255,255,255,0.06)]">
-      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <div class="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-8 lg:px-12">
         <a href="/" class="flex items-center gap-3">
           <span
             class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary font-sans text-sm font-bold text-secondary-ink"
@@ -34,8 +40,26 @@ const { title = 'EPI-Aetheris' } = Astro.props;
             <p class="font-sans text-xs text-white/60">Vigilancia de dengue &middot; El Salvador</p>
           </div>
         </a>
+
+        <nav class="flex items-center gap-1 font-sans text-sm" aria-label="Navegación principal">
+          {NAV.map((item) => (
+            <a
+              href={item.href}
+              aria-current={ruta === item.href ? 'page' : undefined}
+              class:list={[
+                'rounded-full px-3.5 py-1.5 font-medium transition-colors',
+                ruta === item.href
+                  ? 'bg-white/15 text-white'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white',
+              ]}
+            >
+              {item.etiqueta}
+            </a>
+          ))}
+        </nav>
+
         <span
-          class="hidden shrink-0 rounded-full border border-white/15 bg-white/5 px-3 py-1 font-sans text-[11px] font-medium uppercase tracking-wide text-white/80 sm:inline-block"
+          class="hidden shrink-0 rounded-full border border-white/15 bg-white/5 px-3 py-1 font-sans text-[11px] font-medium uppercase tracking-wide text-white/80 lg:inline-block"
         >
           Camino Ancho &middot; descriptivo, no predictivo
         </span>
@@ -45,7 +69,7 @@ const { title = 'EPI-Aetheris' } = Astro.props;
     <slot />
 
     <footer class="mt-12 bg-deep">
-      <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+      <div class="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 lg:px-12">
         <p class="font-sans text-xs leading-relaxed text-deep-ink-muted">
           Datos públicos agregados (MINSAL, OpenDengue, Open-Meteo) &middot; software libre y
           reproducible. Este panel es una ayuda de priorización, no un diagnóstico ni un

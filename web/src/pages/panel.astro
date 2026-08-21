@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import CurvaEpidemicaNacional from '../components/CurvaEpidemicaNacional.astro';
 import MapaDepartamentos from '../components/MapaDepartamentos.astro';
 import MetricasModelo from '../components/MetricasModelo.astro';
+import ResumenNacional from '../components/ResumenNacional.astro';
 
 // Jerarquía del dashboard (decisión del coordinador, 2026-08-21): Camino
 // Ancho -- descriptivo, no predictivo -- es la narrativa principal. El mapa
@@ -16,15 +17,9 @@ import MetricasModelo from '../components/MetricasModelo.astro';
 ---
 
 <Layout title="EPI-Aetheris — Panel">
-  <main class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+  <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
     <header class="mb-8 max-w-3xl">
-      <a
-        href="/"
-        class="inline-flex items-center gap-1 font-sans text-xs font-medium text-ink-muted hover:text-accent"
-      >
-        &larr; Volver a la presentación
-      </a>
-      <p class="mt-4 font-sans text-xs font-semibold uppercase tracking-wider text-accent">
+      <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">
         Panel descriptivo
       </p>
       <h1 class="mt-1 font-sans text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">
@@ -42,10 +37,15 @@ import MetricasModelo from '../components/MetricasModelo.astro';
       </p>
     </header>
 
-    <div class="grid grid-cols-1 gap-6">
-      <MapaDepartamentos />
-      <CurvaEpidemicaNacional />
-      <MetricasModelo />
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+      <div class="grid grid-cols-1 gap-6">
+        <MapaDepartamentos />
+        <CurvaEpidemicaNacional />
+        <MetricasModelo />
+      </div>
+      <div class="lg:sticky lg:top-20">
+        <ResumenNacional />
+      </div>
     </div>
   </main>
 </Layout>
