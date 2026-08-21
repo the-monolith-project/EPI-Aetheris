@@ -1,24 +1,42 @@
 ---
-// Riesgo nacional (semáforo) + métricas del modelo, siempre visibles
-// (CLAUDE.md, no negociable). Tarjeta 25 -- primera versión, semana fija,
-// colores planos; selector de semanas viene después. Fetch del lado del
-// cliente contra GET /api/riesgo-nacional, mismo patrón que
-// CurvaEpidemicaNacional.astro. La capa departamental descriptiva NO está
-// aquí todavía -- el parser de producción de MINSAL (tarjeta 22) no existe,
-// decisión explícita de no inventar esa capa para este hito (ver
-// docs/contexto/CHANGELOG.md, 2026-08-15).
+// Clasificador nacional HISTÓRICO (retirado) -- referencia, no predicción
+// en vivo. El pivote "Camino Ancho" (docs/informe-cierre-rescate-
+// prediccion.md, cerrado 2026-08-18) retiró este clasificador tras cinco
+// líneas de validación sin capacidad predictiva utilizable; el CLAUDE.md
+// prohíbe re-presentar su salida como predicción en vivo. Decisión del
+// coordinador (2026-08-21): deja de ser la pieza central del dashboard y
+// pasa a esta sección secundaria colapsable, claramente etiquetada de
+// histórica. Se eligió la variante colapsable (no una página aparte) para
+// que las métricas y errores del modelo sigan siendo consultables desde el
+// dashboard, como exige el estatuto del proyecto -- reversible si el
+// coordinador prefiere la página aparte.
+//
+// El endpoint GET /api/riesgo-nacional y el modelo entrenado NO se tocan:
+// siguen en el repo como referencia histórica válida.
 ---
 
 <section class="rounded-lg border border-border bg-surface p-4">
-  <h2 class="font-sans text-base font-semibold text-ink">Riesgo nacional y métricas del modelo</h2>
-  <p class="mt-1 font-sans text-sm text-ink-muted">
-    Herramienta de priorización, no diagnóstico. Clasificación a nivel nacional -- no representa
-    riesgo por departamento.
-  </p>
+  <details>
+    <summary class="cursor-pointer font-sans text-base font-semibold text-ink">
+      Clasificador histórico (retirado) -- referencia, no predicción en vivo
+    </summary>
+    <p class="mt-2 font-sans text-sm text-ink-muted">
+      Salida del clasificador predictivo nacional <strong>retirado el 2026-08-18</strong> tras su
+      validación empírica: en los únicos años externos con brote real, no mostró capacidad
+      predictiva utilizable (recall de la clase "alto" = 0). Se conserva aquí como referencia
+      histórica con sus métricas y errores a la vista -- <strong>no es una predicción en
+      vivo</strong> y no debe usarse para decidir nada. Ver el
+      <a
+        class="underline"
+        href="https://github.com/the-monolith-project/EPI-Aetheris/blob/main/docs/informe-cierre-rescate-prediccion.md"
+        >informe de cierre</a
+      >.
+    </p>
 
-  <div id="riesgo-nacional" class="mt-3">
-    <p class="font-sans text-sm text-ink-muted" data-estado>Cargando...</p>
-  </div>
+    <div id="riesgo-nacional" class="mt-3">
+      <p class="font-sans text-sm text-ink-muted" data-estado>Cargando...</p>
+    </div>
+  </details>
 </section>
 
 <script>
@@ -76,7 +94,7 @@
     contenedor.innerHTML = `
       <div class="rounded-md border border-border bg-bg p-3">
         <p class="font-sans text-sm text-ink">
-          Semana ${datos.semana_epi} / ${datos.anio} -- predicción del modelo: ${badge(datos.etiqueta_predicha)}
+          Semana ${datos.semana_epi} / ${datos.anio} -- salida retrospectiva del clasificador retirado: ${badge(datos.etiqueta_predicha)}
           &nbsp;·&nbsp; clase real observada (retrospectiva, no en vivo): ${badge(datos.etiqueta_real)}
         </p>
         <ul class="mt-2 font-mono text-xs text-ink-muted">${probas}</ul>
