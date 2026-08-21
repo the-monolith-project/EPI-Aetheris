@@ -18,6 +18,13 @@ from .idoneidad import (
     cargar_clima_departamentos,
     percentil,
 )
+from .presion import (
+    ANIOS_BASE as ANIOS_BASE_PRESION,
+    SERIES as SERIES_PRESION,
+    calcular_presion,
+    cargar_casos_departamentales,
+    cargar_casos_departamento,
+)
 
 # Artefactos de la tarjeta 23/24 -- generados por
 # backend/ingestion/construir_dataset_modelado.py y entrenar_clasificador.py,
@@ -362,6 +369,132 @@ def idoneidad_espacial_actual(week: int, year: int):
         "anio": year,
         "departamentos": resultado,
         "aviso": AVISO_HONESTIDAD_IDONEIDAD,
+    }
+
+
+# ---------------------------------------------------------------------------
+# "Camino Ancho" -- Módulo 3 (presión epidemiológica relativa). Ver
+# backend/api/presion.py para la fórmula (cerrada por el coordinador,
+# docs/modulo-3-presion-epidemiologica.md) y su procedencia (mismo patrón de
+# percentil leave-one-out que corrida_canal_endemico_nacional.py). Igual que
+# M1/M2: calculado on-request, nada persistido, sin cambios de esquema.
+# ---------------------------------------------------------------------------
+
+AVISO_HONESTIDAD_PRESION = (
+    "Presión epidemiológica relativa: percentil del conteo de casos observado "
+    "(MINSAL, desacumulado) dentro de la historia del propio departamento "
+    "(años base 2018, 2019, 2021, 2022, 2023 -- 2020 excluido por colapso real de "
+    "vigilancia durante covid, no por baja transmisión; ventana ±1 semana, "
+    "leave-one-out). Es 100% DESCRIPTIVO: dice qué tan inusual es lo ya observado "
+    "contra su propia historia, NO predice nada, NO es una alerta ni un nivel de "
+    "riesgo. Los cortes P50/P75 son deliberadamente sensibles (decisión del equipo): "
+    "'alta' puede aparecer en semanas de años de baja transmisión. 'probable' y "
+    "'confirmado' son series separadas y no comparables entre sí. Los huecos "
+    "(null + nota) reflejan límites reales de la fuente MINSAL, no errores."
+)
+
+
+@app.get("/api/v1/presion/current")
+def presion_espacial_actual(week: int, year: int):
+    """Presión epidemiológica relativa (Módulo 3) por departamento, para la
+    semana epidemiológica y año pedidos, en dos series separadas
+    ('probable' y 'confirmado', nunca fusionadas). Estructura espejo de
+    /api/v1/spatial/current. Capa DESCRIPTIVA -- ver
+    AVISO_HONESTIDAD_PRESION y el docstring de presion.py.
+
+    Celdas sin baseline suficiente (menos de 3 de los 4 años leave-one-out
+    con observaciones en la ventana ±1) devuelven percentil=null con nota
+    explícita -- nunca un valor inventado ni interpolado.
+    """
+    if not (1 <= week <= 53):
+        raise HTTPException(status_code=422, detail="El parámetro 'week' debe estar entre 1 y 53.")
+
+    # Solo la ventana ±1 de la semana pedida; el baseline necesita los años
+    # base completos más el año descrito (si no es uno de ellos).
+    semanas_necesarias = [w for w in (week - 1, week, week + 1) if w >= 1]
+    anios_necesarios = sorted(set(ANIOS_BASE_PRESION) | {year})
+
+    try:
+        conn = _conectar()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 ORDER BY nombre")
+                departamentos = cursor.fetchall()
+            casos = cargar_casos_departamentales(conn, anios=anios_necesarios, semanas=semanas_necesarias)
+        finally:
+            conn.close()
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    resultado = []
+    for codigo, nombre in departamentos:
+        fila = {"codigo": codigo, "nombre": nombre}
+        for serie in SERIES_PRESION:
+            fila[serie] = calcular_presion(casos.get(codigo, {}).get(serie, {}), anio=year, semana=week)
+        resultado.append(fila)
+
+    return {
+        "semana_epi": week,
+        "anio": year,
+        "departamentos": resultado,
+        "aviso": AVISO_HONESTIDAD_PRESION,
+    }
+
+
+@app.get("/api/v1/presion/temporal/{departamento_id}")
+def presion_temporal_departamento(departamento_id: str, anio: int):
+    """Serie temporal de presión epidemiológica relativa (Módulo 3) de un
+    departamento para `anio`, en las dos series separadas. Espejo de
+    /api/v1/temporal/{departamento_id}. `departamento_id` es el `codigo`
+    de `regiones` (ISO 3166-2:SV, ej. 'SV-SS')."""
+    anios_necesarios = sorted(set(ANIOS_BASE_PRESION) | {anio})
+
+    try:
+        conn = _conectar()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 AND codigo = %s",
+                    (departamento_id,),
+                )
+                fila_region = cursor.fetchone()
+            if fila_region is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No existe un departamento con código '{departamento_id}'.",
+                )
+            casos_depto = cargar_casos_departamento(conn, codigo=departamento_id, anios=anios_necesarios)
+        finally:
+            conn.close()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    codigo, nombre = fila_region
+
+    # Todas las semanas con alguna observación en cualquier año/serie -- las
+    # semanas sin dato del propio `anio` salen con nota, no se omiten.
+    todas_las_semanas = sorted({
+        semana
+        for series in casos_depto.values()
+        for semanas in series.values()
+        for semana in semanas
+    })
+
+    semanas_salida = []
+    for semana in todas_las_semanas:
+        fila = {"semana_epi": semana}
+        for serie in SERIES_PRESION:
+            fila[serie] = calcular_presion(casos_depto.get(serie, {}), anio=anio, semana=semana)
+        semanas_salida.append(fila)
+
+    return {
+        "departamento_codigo": codigo,
+        "departamento_nombre": nombre,
+        "anio": anio,
+        "semanas": semanas_salida,
+        "aviso": AVISO_HONESTIDAD_PRESION,
     }
 
 
