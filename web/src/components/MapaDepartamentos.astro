@@ -20,37 +20,55 @@
 // "cruce de umbral".
 ---
 
-<section class="rounded-lg border border-border bg-surface p-4">
-  <h2 class="font-sans text-base font-semibold text-ink">Mapa departamental</h2>
-  <p class="mt-1 font-sans text-sm text-ink-muted">
-    Capas descriptivas, no de riesgo: describen lo ya observado (casos, ambiente) contra la
-    propia historia de cada departamento. Ninguna capa es salida de un clasificador ni implica
-    una lectura de riesgo departamental -- el clasificador nacional piloto fue retirado y queda
-    solo como referencia histórica al final de la página.
-  </p>
-
-  <div id="mapa-selector" class="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Capas del mapa"></div>
-
-  <div class="mt-3 rounded-md border border-border bg-bg p-3">
-    <p class="font-sans text-xs font-semibold uppercase text-ink-muted">Aviso de la capa</p>
-    <p id="mapa-aviso" class="mt-1 font-sans text-sm text-ink"></p>
+<section class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
+  <div class="flex items-start gap-3">
+    <span class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+    <div>
+      <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">Mapa departamental</h2>
+      <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
+        Capas descriptivas, no de riesgo: describen lo ya observado (casos, ambiente) contra la
+        propia historia de cada departamento. Ninguna capa es salida de un clasificador ni implica
+        una lectura de riesgo departamental -- el clasificador nacional piloto fue retirado y queda
+        solo como referencia histórica al final de la página.
+      </p>
+    </div>
   </div>
 
-  <div id="mapa-no-disponible" class="mt-2 hidden rounded-md border border-border bg-bg p-3">
-    <p class="font-sans text-sm text-ink-muted">
+  <div id="mapa-selector" class="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Capas del mapa"></div>
+
+  <div class="mt-3 flex gap-2 rounded-lg border border-border bg-bg p-3">
+    <svg class="mt-0.5 h-4 w-4 shrink-0 text-accent" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <circle cx="10" cy="10" r="8.25" stroke="currentColor" stroke-width="1.5" />
+      <path d="M10 9v4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+      <circle cx="10" cy="6.75" r="0.9" fill="currentColor" />
+    </svg>
+    <div>
+      <p class="font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+        Aviso de la capa
+      </p>
+      <p id="mapa-aviso" class="mt-0.5 font-sans text-sm text-ink"></p>
+    </div>
+  </div>
+
+  <div id="mapa-no-disponible" class="mt-2 hidden rounded-lg border border-secondary bg-secondary/25 p-3">
+    <p class="font-sans text-sm text-ink">
       Capa no disponible todavía -- el endpoint del backend para esta capa no respondió como se
       esperaba. El mapa se muestra sin colorear hasta que esté listo.
     </p>
   </div>
 
-  <div id="mapa-departamentos" class="mt-3 h-[300px] w-full rounded-md border border-border sm:h-[420px]"></div>
-  <div id="mapa-leyenda" class="mt-2"></div>
+  <div
+    id="mapa-departamentos"
+    class="mt-4 h-[300px] w-full overflow-hidden rounded-xl border border-border shadow-inner sm:h-[420px]"
+  >
+  </div>
+  <div id="mapa-leyenda" class="mt-3"></div>
 
-  <div class="mt-3 rounded-md border border-border bg-bg p-3">
-    <p class="font-sans text-xs font-semibold uppercase text-ink-muted">
+  <div class="mt-4 rounded-lg border border-border bg-bg p-3">
+    <p class="font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
       Nota sobre calidad de la vigilancia departamental
     </p>
-    <p class="mt-1 font-sans text-sm text-ink-muted">
+    <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
       Tres hallazgos independientes de este proyecto apuntan a que la escasez de datos
       departamentales de MINSAL es una limitación estructural de la fuente, no un defecto
       corregible del pipeline (huecos por semanas festivas, tablas en imagen sin OCR general, y
@@ -60,6 +78,34 @@
     </p>
   </div>
 </section>
+
+<style>
+  :global(.leaflet-container) {
+    font-family: var(--font-sans);
+    background: var(--color-bg);
+  }
+  :global(.leaflet-control-zoom) {
+    border: 1px solid var(--color-border) !important;
+    box-shadow: var(--shadow-card) !important;
+  }
+  :global(.leaflet-control-zoom a) {
+    color: var(--color-accent) !important;
+    background-color: var(--color-surface) !important;
+  }
+  :global(.leaflet-control-zoom a:hover) {
+    background-color: var(--color-secondary) !important;
+  }
+  :global(.leaflet-tooltip) {
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-ink);
+    padding: 6px 10px;
+  }
+</style>
 
 <script>
   import L from 'leaflet';
@@ -120,17 +166,16 @@
 
   function dibujarLeyenda(contenedor: HTMLElement, capa: DefinicionCapa, cortes: number[]) {
     const rangos = capa.etiquetasLeyenda(cortes);
-    const items = capa.rampa
-      .map(
-        (color, i) =>
-          `<span class="inline-flex items-center gap-1 mr-3"><span style="background:${color}" class="inline-block h-3 w-3 rounded-sm"></span><span class="font-mono text-xs text-ink-muted">${rangos[i]}</span></span>`
-      )
-      .join('');
+    const item = (color: string, etiqueta: string) =>
+      `<span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-1">` +
+      `<span style="background:${color}" class="inline-block h-2.5 w-2.5 rounded-full ring-1 ring-black/5"></span>` +
+      `<span class="font-mono text-[11px] text-ink-muted">${etiqueta}</span></span>`;
+    const items = capa.rampa.map((color, i) => item(color, rangos[i])).join('');
     contenedor.innerHTML = `
-      <div class="flex flex-wrap items-center font-sans text-xs text-ink-muted">
-        <span class="mr-2">${capa.tituloLeyenda}:</span>
+      <div class="flex flex-wrap items-center gap-1.5 font-sans text-xs text-ink-muted">
+        <span class="mr-1 font-medium text-ink">${capa.tituloLeyenda}:</span>
         ${items}
-        <span class="inline-flex items-center gap-1"><span style="background:${capa.sinDatoColor}" class="inline-block h-3 w-3 rounded-sm"></span><span class="font-mono text-xs text-ink-muted">sin dato</span></span>
+        ${item(capa.sinDatoColor, 'sin dato')}
       </div>
     `;
   }
@@ -547,12 +592,12 @@
       contenedorSelector!.innerHTML = CAPAS.map((capa) => {
         const activa = capa.id === activaId;
         const base =
-          'rounded-md border px-3 py-1.5 font-sans text-xs font-medium transition-colors';
+          'rounded-full border px-3.5 py-1.5 font-sans text-xs font-medium transition-colors duration-150';
         const estilo = !capa.disponible
           ? 'cursor-not-allowed border-border bg-bg text-ink-muted opacity-60'
           : activa
-            ? 'border-accent bg-accent text-accent-ink'
-            : 'border-border bg-surface text-ink hover:bg-bg';
+            ? 'border-accent bg-accent text-accent-ink shadow-sm'
+            : 'border-border bg-surface text-ink hover:border-accent/40 hover:bg-secondary/30';
         return `<button type="button" id="${botonId(capa.id)}" data-id="${capa.id}" ${
           capa.disponible ? '' : 'disabled aria-disabled="true"'
         } role="tab" aria-selected="${activa}" class="${base} ${estilo}">${capa.etiqueta}</button>`;
