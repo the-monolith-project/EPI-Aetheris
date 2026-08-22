@@ -25,6 +25,11 @@ from .presion import (
     cargar_casos_departamentales,
     cargar_casos_departamento,
 )
+from .ira import (
+    AVISO_HONESTIDAD_IRA,
+    cargar_ira_departamental,
+    cargar_ira_departamento_temporal,
+)
 
 # Artefactos de la tarjeta 23/24 -- generados por
 # backend/ingestion/construir_dataset_modelado.py y entrenar_clasificador.py,
@@ -562,4 +567,78 @@ def idoneidad_temporal_departamento(departamento_id: str, anio: int):
         "anio": anio,
         "semanas": semanas_salida,
         "aviso": AVISO_HONESTIDAD_IDONEIDAD,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Infección Respiratoria Aguda (IRA) -- ADR 0011 (aceptado 2026-08-22).
+# Ver backend/api/ira.py: NO es un módulo de "El Camino Ancho" (M1-M4), es
+# otro tipo_evento con su propia serie 'notificado', sin Iv/anomalía/presión
+# calculados. Cargado por backend/ingestion/cargar_ira.py (2742 filas,
+# 2018-2023 sin 2020, 14 departamentos).
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/ira/departamental")
+def ira_departamental():
+    """Resumen por departamento del conteo notificado de IRA (total
+    acumulado en la ventana cargada, semanas con dato, rango de años) --
+    espejo de /api/casos-departamentales. Capa DESCRIPTIVA, ver
+    AVISO_HONESTIDAD_IRA."""
+    try:
+        conn = _conectar()
+        try:
+            departamentos = cargar_ira_departamental(conn)
+        finally:
+            conn.close()
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    return {
+        "departamentos": departamentos,
+        "aviso": AVISO_HONESTIDAD_IRA,
+    }
+
+
+@app.get("/api/ira/temporal/{departamento_id}")
+def ira_temporal_departamento(departamento_id: str):
+    """Serie semanal de IRA notificada de un departamento, por año
+    (2018-2023, sin 2020). `departamento_id` es el `codigo` de `regiones`
+    (ISO 3166-2:SV, ej. 'SV-SS'). Las semanas sin fila son huecos reales de
+    la fuente MINSAL (boletín de vacaciones, tabla como imagen, corrección
+    retroactiva excluida) -- se devuelven como ausentes, nunca como cero ni
+    valor interpolado."""
+    try:
+        conn = _conectar()
+        try:
+            serie = cargar_ira_departamento_temporal(conn, codigo=departamento_id)
+            if serie is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No existe un departamento con código '{departamento_id}'.",
+                )
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT nombre FROM regiones WHERE nivel_admin = 1 AND codigo = %s",
+                (departamento_id,),
+            )
+            (nombre,) = cur.fetchone()
+            cur.close()
+        finally:
+            conn.close()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    anios = sorted(serie.keys())
+    return {
+        "departamento_codigo": departamento_id,
+        "departamento_nombre": nombre,
+        "anios": anios,
+        "series": {
+            str(anio): [[semana, valor] for semana, valor in sorted(semanas.items())]
+            for anio, semanas in serie.items()
+        },
+        "aviso": AVISO_HONESTIDAD_IRA,
     }
