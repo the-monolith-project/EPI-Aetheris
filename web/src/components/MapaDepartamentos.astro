@@ -173,6 +173,15 @@
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const SIN_DATO = '#e4e4e7';
 
+  // El shapeName del geojson (geoBoundaries) es inconsistente: 12 de los 14
+  // departamentos traen el prefijo "Departamento de ..." pero La Libertad y
+  // San Vicente no -- se ve como un error tipográfico en los tooltips si no
+  // se normaliza en un solo lugar. Mismo criterio que index.astro (el hero
+  // de la landing ya lo aplicaba, esto lo extiende a los tooltips del mapa).
+  function normalizarNombreDepto(shapeName: string): string {
+    return shapeName.replace(/^Departamento de /, '');
+  }
+
   // Semana/año fijos para las capas espaciales -- todavía no hay selector de
   // semana en la UI (mismo compromiso de "primera versión, semana fija" que
   // MetricasModelo.astro). Cuando exista un selector real, esto deja de ser
@@ -739,7 +748,9 @@
         capaGeoJsonActiva = L.geoJSON(geojson, {
           style: () => ({ color: '#8a8a90', weight: 1, fillColor: SIN_DATO, fillOpacity: 0.5 }),
           onEachFeature: (feature, layer) => {
-            const nombre = feature.properties?.shapeName ?? feature.properties?.codigo ?? '';
+            const nombre = feature.properties?.shapeName
+              ? normalizarNombreDepto(feature.properties.shapeName)
+              : (feature.properties?.codigo ?? '');
             layer.bindTooltip(`<strong>${nombre}</strong><br>capa no disponible todavía`);
           },
         }).addTo(mapa);
@@ -763,7 +774,7 @@
         },
         onEachFeature: (feature, layer) => {
           const codigo = feature.properties?.codigo ?? '';
-          const nombre = feature.properties?.shapeName ?? codigo;
+          const nombre = feature.properties?.shapeName ? normalizarNombreDepto(feature.properties.shapeName) : codigo;
           const valor = valores!.get(codigo);
 
           if (capa.id === 'minsal_volumen') {

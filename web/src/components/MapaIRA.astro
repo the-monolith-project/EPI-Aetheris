@@ -91,6 +91,14 @@
   // que "más oscuro = más casos" se lea igual en ambos mapas.
   const RAMPA = ['#cde2fb', '#9ec5f4', '#5598e7', '#256abf', '#0d366b'];
 
+  // El shapeName del geojson (geoBoundaries) es inconsistente: 12 de los 14
+  // departamentos traen el prefijo "Departamento de ..." pero La Libertad y
+  // San Vicente no -- se normaliza en un solo lugar (mismo criterio que
+  // MapaDepartamentos.astro e index.astro).
+  function normalizarNombreDepto(shapeName: string): string {
+    return shapeName.replace(/^Departamento de /, '');
+  }
+
   interface DatoDepartamentoIra {
     nombre: string;
     codigo: string;
@@ -213,7 +221,9 @@
       L.geoJSON(geojson, {
         style: () => ({ color: '#8a8a90', weight: 1, fillColor: SIN_DATO, fillOpacity: 0.5 }),
         onEachFeature: (feature, layer) => {
-          const nombre = feature.properties?.shapeName ?? feature.properties?.codigo ?? '';
+          const nombre = feature.properties?.shapeName
+            ? normalizarNombreDepto(feature.properties.shapeName)
+            : (feature.properties?.codigo ?? '');
           layer.bindTooltip(`<strong>${nombre}</strong><br>mapa no disponible todavía`);
         },
       }).addTo(mapa);
@@ -236,7 +246,7 @@
       },
       onEachFeature: (feature, layer) => {
         const codigo = feature.properties?.codigo ?? '';
-        const nombre = feature.properties?.shapeName ?? codigo;
+        const nombre = feature.properties?.shapeName ? normalizarNombreDepto(feature.properties.shapeName) : codigo;
         const dato = detalles.get(codigo);
         if (!dato) {
           layer.bindTooltip(nombre);
