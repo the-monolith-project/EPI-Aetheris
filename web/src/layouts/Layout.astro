@@ -11,6 +11,9 @@ const ruta = Astro.url.pathname;
 const NAV = [
   { href: '/', etiqueta: 'Inicio' },
   { href: '/panel', etiqueta: 'Panel' },
+  // Sección aparte del panel de dengue: otro evento, dato exploratorio aún
+  // sin ingerir (ADR 0011 propuesto) -- la etiqueta lo dice explícitamente.
+  { href: '/ira', etiqueta: 'IRA (exploración)' },
 ];
 ---
 
