@@ -32,4 +32,10 @@
 
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+  /* Voz de titular, aparte del cuerpo -- Inter hacía tanto los H1 como el
+     texto de párrafo, sin ninguna diferenciación tipográfica real. Fraunces
+     con optical sizing alto (~144) da un serif editorial con carácter, con
+     restricción: solo en H1 de página y los 2 H2 de sección de la landing,
+     nunca en subtítulos de tarjeta ni en UI funcional. */
+  --font-display: 'Fraunces', Georgia, serif;
 }
