@@ -15,6 +15,9 @@ const NAV = [
   // 2026-08-22), ya cargado, pero sin capas Camino Ancho (Iv/anomalía/
   // presión) -- esas fórmulas siguen cerradas solo para dengue.
   { href: '/ira', etiqueta: 'IRA' },
+  // Selección curada de docs/ y docs/adr/ del repo, renderizada a HTML --
+  // ver web/src/content.config.ts para qué documentos entran y por qué.
+  { href: '/biblioteca', etiqueta: 'Biblioteca' },
 ];
 ---
 
@@ -46,20 +49,23 @@ const NAV = [
         </a>
 
         <nav class="flex items-center gap-1 font-sans text-sm" aria-label="Navegación principal">
-          {NAV.map((item) => (
-            <a
-              href={item.href}
-              aria-current={ruta === item.href ? 'page' : undefined}
-              class:list={[
-                'rounded-full px-3.5 py-1.5 font-medium transition-colors',
-                ruta === item.href
-                  ? 'bg-white/15 text-white'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white',
-              ]}
-            >
-              {item.etiqueta}
-            </a>
-          ))}
+          {NAV.map((item) => {
+            const activo = item.href === '/' ? ruta === '/' : ruta.startsWith(item.href);
+            return (
+              <a
+                href={item.href}
+                aria-current={activo ? 'page' : undefined}
+                class:list={[
+                  'rounded-full px-3.5 py-1.5 font-medium transition-colors',
+                  activo
+                    ? 'bg-white/15 text-white'
+                    : 'text-white/70 hover:bg-white/10 hover:text-white',
+                ]}
+              >
+                {item.etiqueta}
+              </a>
+            );
+          })}
         </nav>
 
         <span

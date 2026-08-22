@@ -54,6 +54,12 @@ services:
     volumes:
       - ./web:/app
       - /app/node_modules
+      # Solo lectura -- la pestaña Biblioteca (web/src/content.config.ts) lee
+      # una selección curada de estos .md en build. Montado en /docs (raíz
+      # del contenedor) a propósito: coincide con la ruta relativa
+      # '../../docs' que ese archivo usa también fuera de Docker, donde
+      # docs/ es hermano de web/ en el checkout del host.
+      - ./docs:/docs:ro
     depends_on:
       - backend
     networks:
