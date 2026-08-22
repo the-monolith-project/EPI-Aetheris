@@ -9,15 +9,25 @@
 ---
 
 <section class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
-  <div class="flex items-start gap-3">
-    <span class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
-    <div>
-      <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">Curva epidémica nacional</h2>
-      <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
-        Serie semanal de casos de dengue, OpenDengue (nivel nacional, 2018-2024). No representa una
-        clasificación de riesgo -- eso todavía no está definido.
-      </p>
+  <div class="flex items-start justify-between gap-3">
+    <div class="flex items-start gap-3">
+      <span class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+      <div>
+        <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">Curva epidémica nacional</h2>
+        <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
+          Serie semanal de casos de dengue, OpenDengue (nivel nacional, 2018-2024). No representa una
+          clasificación de riesgo -- eso todavía no está definido.
+        </p>
+      </div>
     </div>
+    <button
+      type="button"
+      id="curva-descargar-csv"
+      disabled
+      class="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 font-sans text-xs font-medium text-ink transition-colors hover:border-accent/40 hover:bg-secondary/30 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      Descargar CSV
+    </button>
   </div>
   <div id="curva-epidemica" class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4">
     <!-- Skeleton con la misma altura aproximada del SVG final (viewBox 720x240,
@@ -170,8 +180,27 @@
     contenedor.appendChild(svg);
   }
 
+  // Exporta exactamente lo mismo que dibuja el SVG -- mismo endpoint, sin
+  // transformación adicional. Generado 100% en el cliente (Blob + URL de
+  // objeto), no hay endpoint de exportación nuevo en el backend.
+  function descargarCsv(datos: CasoSemanal[]) {
+    const encabezado = 'semana_inicio,anio,conteo';
+    const filas = datos.map((d) => `${d.semana_inicio},${d.anio},${d.conteo}`);
+    const csv = [encabezado, ...filas].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = 'epi-aetheris-dengue-nacional-2018-2024.csv';
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function iniciar() {
     const contenedor = document.getElementById('curva-epidemica');
+    const botonDescarga = document.getElementById('curva-descargar-csv') as HTMLButtonElement | null;
     if (!contenedor) return;
 
     try {
@@ -179,6 +208,10 @@
       if (!resp.ok) throw new Error('respuesta no OK');
       const datos: CasoSemanal[] = await resp.json();
       dibujar(contenedor, datos);
+      if (botonDescarga && datos.length > 0) {
+        botonDescarga.disabled = false;
+        botonDescarga.addEventListener('click', () => descargarCsv(datos));
+      }
     } catch {
       contenedor.innerHTML =
         '<p class="font-sans text-sm text-ink-muted">No se pudo cargar la serie en este momento.</p>';
