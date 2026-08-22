@@ -29,3 +29,24 @@ exploratoria validada (`corrida_distribucion.py`, verificación 4/4, ver
 | `SE142023-Semana-Santa.portada.txt` / `.texto_completo.txt` | `Boletin_epidemiologico_SE142023-Semana-Santa.pdf` | Boletín de vacaciones: se detecta por CONTENIDO (sin tabla departamental + portada de vacación), nunca por nombre de archivo (el nombre contiene un patrón `SE14` válido) |
 
 Las páginas del texto completo van separadas por `\f` (form feed).
+
+## Fixtures de IRA (`*.pagina_tabla_ira.txt`)
+
+Extractos de la página que contiene la **tabla departamental de Infección
+Respiratoria Aguda (IRA)** de cada boletín (misma regla: texto extraído tal
+cual con pdfplumber, nunca PDFs), extraídos el 2026-08-21 para la corrida
+exploratoria `corrida_ira.py` (ver `docs/exploracion-ira-boletines-minsal.md`).
+Los usa `tests/test_corrida_ira.py`.
+
+| Fixture | Boletín | Por qué está aquí |
+|---|---|---|
+| `SE01-02-2018.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE01-02-2018.pdf` | Layout lado-a-lado 2018 (sin tildes); la narrativa previa trae "…Chalatenango 1,377, San Salvador 1,005…" (tasas) que NO deben capturarse como filas; corte SE2 (boletín combinado SE1+SE2) |
+| `SE032018.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE032018.pdf` | La narrativa repite la semana ANTERIOR ("SE 2-2018"); el título de la tabla dice "SE-03 de 2018" y es la única fuente válida de la semana de corte |
+| `SE092018.pagina_tabla_ira.txt` / `SE102018.pagina_tabla_ira.txt` | `…SE092018.pdf` / `…SE102018.pdf` | Par de re-impresión: la tabla departamental de SE10 es idéntica a la de SE09 (San Salvador 119,670 en ambas) mientras la tabla de edad de SE10 ya trae datos nuevos — `detectar_reimpresiones` debe reclasificar SE10 |
+| `SE382018.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE382018.pdf` | Total impreso malformado "1363,652" (primera coma de millares perdida) — debe leerse 1,363,652 y cuadrar con la suma de celdas |
+| `SE012019.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE012019.pdf` | Título de tabla presente pero 0 filas extraíbles — tabla renderizada como imagen (sospecha explícita, nunca se rellena) |
+| `SE432019_v3.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE432019_v3.pdf` | Variante de título "Casos y tasas **de IRA** por grupo de edad y departamento" (otro orden de palabras) |
+| `SE522019_v2.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE522019_v2.pdf` | Layout lado-a-lado con tildes; acumulado final 2019 (San Salvador 700,913; total 1,951,867) |
+| `SE522021.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE522021.pdf` | Título con rango "SE01-52 2021" (el corte es el segundo número); fila "Otros países" presente pero vacía; tasa sin separador ("19460") |
+| `SE012023.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE012023.pdf` | Layout 2023 temprano: tabla departamental en página propia SIN título y con encabezado de columna erróneo ("Grupo de edad") — la semana sale del pie de estratificación |
+| `SE522023.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE522023.pdf` | Separador de miles punto ("615.619"); discrepancia mínima real: las celdas suman 1,574,871 y el total impreso dice 1,574,872 |
