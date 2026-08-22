@@ -612,7 +612,17 @@
     if (!contenedorSelector || !contenedorMapa || !contenedorLeyenda || !contenedorAviso || !contenedorNoDisponible)
       return;
 
-    const mapa = L.map(contenedorMapa).setView([13.79, -88.9], 8);
+    // Límites duros a El Salvador (bbox real del geojson + margen) -- sin
+    // esto, un scroll de más con la rueda del mouse manda a ver Guatemala u
+    // Honduras, que el proyecto todavía no cubre. maxBoundsViscosity: 1
+    // hace que el mapa "rebote" en vez de dejar salir el pan; minZoom evita
+    // alejar hasta ver la región entera.
+    const LIMITES_SV = L.latLngBounds([12.95, -90.35], [14.65, -87.45]);
+    const mapa = L.map(contenedorMapa, {
+      minZoom: 8,
+      maxBounds: LIMITES_SV,
+      maxBoundsViscosity: 1.0,
+    }).setView([13.79, -88.9], 8);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 12,
