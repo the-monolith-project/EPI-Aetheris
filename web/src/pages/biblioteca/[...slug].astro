@@ -44,7 +44,8 @@ const titulo = headings.find((h) => h.depth === 1)?.text ?? entrada.id;
      docs originales (escritos para lectura en editor, no en HTML) queden
      legibles con la paleta del proyecto. */
   .doc-md :global(h1) {
-    font-size: 1.5rem;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--color-ink);

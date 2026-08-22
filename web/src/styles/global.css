@@ -19,6 +19,7 @@
   --color-deep-ink-muted: var(--color-deep-ink-muted);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
 }
 
 /* @layer base: sin esto, estas reglas quedan "sin capa" y ganan por encima
@@ -57,6 +58,16 @@
 
   a {
     color: var(--color-accent);
+  }
+
+  /* Foco de teclado intencional -- antes dependía del anillo azul default
+     del navegador, sin ninguna decisión de marca. currentColor sigue el
+     color de texto real de cada elemento (blanco en el header/footer
+     oscuros, acento en enlaces sobre fondo claro), así que un solo valor
+     funciona en ambos contrastes sin reglas por sección. */
+  :focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
   }
 }
 
