@@ -1,10 +1,14 @@
 # 0011 - Clasificación para el conteo departamental de IRA (nuevo valor de `clasificacion`)
 
-**Estado:** Propuesto
+**Estado:** Aceptado (2026-08-22)
 
-> **Borrador para decisión del coordinador — NO aplicado.** Ninguna migración
-> acompaña este ADR y nada de IRA se ha insertado en `casos_epidemiologicos`.
-> La evidencia empírica que lo sustenta está en
+> Aceptado por el coordinador (Eduardo) el 2026-08-22, con un cambio sobre la
+> propuesta original: el valor se llama **`'notificado'`**, no `'reportado'`
+> (ver justificación del nombre en "Decisión" más abajo). Migración:
+> `db/migrations/0007_clasificacion_notificado_ira.sql`. Sigue sin insertarse
+> ningún dato de IRA en `casos_epidemiologicos` -- este ADR solo habilita el
+> esquema, no ejecuta la ingesta (eso es una tarea aparte, todavía no
+> encargada). La evidencia empírica que lo sustenta está en
 > `docs/exploracion-ira-boletines-minsal.md` (corrida exploratoria
 > `backend/ingestion/corrida_ira.py`, 2026-08-21).
 
@@ -41,17 +45,30 @@ Ninguno de los tres valores existentes describe bien este conteo:
 La regla del proyecto es "ADR antes de cambio de esquema", y ampliar un CHECK
 constraint es cambio de esquema.
 
-## Decisión (propuesta)
+## Decisión
 
-Agregar el valor **`'reportado'`** al CHECK de
-`casos_epidemiologicos.clasificacion`, con semántica: *conteo clínico
-notificado por la fuente sin desagregación probable/confirmado ni
-confirmación de laboratorio declarada*.
+Agregar el valor **`'notificado'`** al CHECK de
+`casos_epidemiologicos.clasificacion`, con semántica: *conteo notificado por
+la fuente sin desagregación probable/confirmado ni confirmación de
+laboratorio declarada*.
 
-Alternativa considerada: `'total_clinico'`. Se prefiere `'reportado'` por ser
-más corto, no colisionar léxicamente con el `'total'` de OpenDengue (evita
-confusión al leer queries) y describir el hecho epidemiológico real (casos
-reportados al sistema de vigilancia, definición clínica).
+Alternativas consideradas y descartadas:
+
+* `'total_clinico'` — descartado por colisionar léxicamente con el `'total'`
+  de OpenDengue (ADR 0005) al leer queries.
+* `'reportado'` — nombre del borrador original, descartado por ser demasiado
+  genérico: `'probable'` y `'confirmado'` también son, en sentido amplio,
+  cosas que MINSAL "reportó"; el nombre no distinguía la propiedad real que
+  importa (sin desagregación de definición de caso).
+* `'clinico'` — descartado por ambigüedad con `'confirmado'`, que también es
+  un estado clínico (con confirmación de laboratorio).
+
+Se elige **`'notificado'`** porque es el término que la propia fuente usa
+para este tipo de conteo: el boletín MINSAL titula la tabla nacional de la
+que se deriva este dato "Resumen acumulado de **eventos de notificación**"
+(`SE012023.pdf`, página 2) -- no es una etiqueta inventada por el proyecto,
+es la palabra que MINSAL ya usa para "conteo reportado al sistema de
+vigilancia sin clasificación de laboratorio".
 
 La fila de catálogo para el evento **no** requiere ADR (es dato, no esquema);
 queda lista para cuando el coordinador decida:
@@ -70,10 +87,15 @@ VALUES ('ira', 'Infección Respiratoria Aguda',
   estricto y `'total'` su exclusividad OpenDengue (ADR 0005 intacto).
 * Positivo: el diseño agnóstico a enfermedad se ejercita de verdad por primera
   vez (segundo evento en `tipos_evento` sin tocar columnas).
-* Negativo: toda query que hoy hace `WHERE clasificacion IN (...)` debe
-  revisarse — la regla vigente "nunca sumar `conteo` entre valores de
-  `clasificacion` sin filtrar" pasa a tener un cuarto valor que excluir o
-  incluir explícitamente.
+* Negativo (mitigado): en teoría, toda query que hoy hace
+  `WHERE clasificacion IN (...)` debería revisarse contra un cuarto valor
+  posible. Verificado en la aceptación (2026-08-22) contra el código real
+  (`presion.py`, `main.py`, `inicio_temporada_departamental.py`,
+  `corrida_canal_endemico_nacional.py`): todas las queries existentes ya
+  filtran por valor explícito (`= 'total'`, `IN ('probable','confirmado')`),
+  nunca por exclusión -- ninguna puede absorber filas de `'notificado'` por
+  accidente. El riesgo es real como regla a mantener hacia adelante, pero no
+  hay deuda que corregir hoy.
 * Negativo: requiere migración nueva (ampliar el CHECK) aplicada con
   `db/aplicar_migraciones.py` (ADR 0009); el seed versionado (ADR 0010) no la
   conoce hasta regenerarse.
