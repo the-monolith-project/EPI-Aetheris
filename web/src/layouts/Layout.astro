@@ -7,6 +7,12 @@ interface Props {
 
 const { title = 'EPI-Aetheris' } = Astro.props;
 
+// API pública real -- FastAPI genera /docs (Swagger UI) gratis a partir de
+// los mismos endpoints que consume este frontend. Enlazarlo desde el
+// footer refuerza "aporte de ingeniería reproducible" sin escribir nada
+// nuevo en el backend.
+const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+
 const ruta = Astro.url.pathname;
 const NAV = [
   { href: '/', etiqueta: 'Inicio' },
@@ -85,6 +91,20 @@ const NAV = [
           reproducible. Este panel es una ayuda de priorización, no un diagnóstico ni un
           pronóstico -- ninguna capa asigna un nivel de riesgo departamental.
         </p>
+        <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-sans text-xs">
+          <a
+            href={`${API_BASE}/docs`}
+            class="text-deep-ink underline underline-offset-2 hover:text-white"
+          >
+            API pública (Swagger)
+          </a>
+          <a
+            href="https://github.com/the-monolith-project/EPI-Aetheris"
+            class="text-deep-ink underline underline-offset-2 hover:text-white"
+          >
+            Código en GitHub
+          </a>
+        </div>
       </div>
     </footer>
   </body>
