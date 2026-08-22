@@ -50,6 +50,29 @@ const CIFRAS = [
   { valor: '2018-2024', etiqueta: 'ventana de datos cargada' },
   { valor: '$0', etiqueta: 'costo de replicar el sistema' },
 ];
+
+const STACK = [
+  {
+    capa: 'Backend',
+    tecnologia: 'Python · FastAPI',
+    texto: 'API REST sobre PostgreSQL directo (sin ORM, psycopg2) -- todas las capas del mapa se calculan on-request, nada queda precomputado ni oculto.',
+  },
+  {
+    capa: 'Base de datos',
+    tecnologia: 'PostgreSQL 15',
+    texto: 'Esquema deliberadamente agnóstico a enfermedad y región (catálogos, no columnas fijas) -- dengue e IRA comparten la misma tabla de casos.',
+  },
+  {
+    capa: 'Frontend',
+    tecnologia: 'Astro · TypeScript · Leaflet',
+    texto: 'Sitio estático con mapa interactivo departamental; consume la misma API pública que cualquiera puede llamar directamente.',
+  },
+  {
+    capa: 'Infraestructura',
+    tecnologia: 'Docker Compose',
+    texto: '3 servicios (base de datos, backend, frontend) orquestados con un solo comando -- sin API de pago, sin suscripción obligatoria.',
+  },
+];
 ---
 
 <Layout title="EPI-Aetheris">
@@ -154,12 +177,31 @@ const CIFRAS = [
       </div>
     </section>
 
+    <section class="mt-12">
+      <h2 class="font-sans text-lg font-semibold text-ink">Con qué está construido</h2>
+      <p class="mt-1 max-w-2xl font-sans text-sm text-ink-muted">
+        El aporte de este proyecto es de ingeniería de software, no de novedad epidemiológica --
+        por eso el stack importa tanto como los módulos.
+      </p>
+      <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {STACK.map((s) => (
+          <div class="card-elevated rounded-2xl border border-border bg-surface p-4">
+            <p class="font-sans text-xs font-semibold uppercase tracking-wide text-accent">{s.capa}</p>
+            <p class="mt-1 font-sans text-sm font-semibold text-ink">{s.tecnologia}</p>
+            <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">{s.texto}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
     <section class="mt-12 flex flex-col items-start gap-4 rounded-2xl bg-deep p-6 sm:flex-row sm:items-center sm:justify-between lg:p-8">
       <div class="max-w-2xl">
         <p class="font-sans text-sm font-semibold text-deep-ink">Datos públicos, sin costo de replicar</p>
         <p class="mt-1 font-sans text-sm leading-relaxed text-deep-ink-muted">
           MINSAL, OpenDengue y Open-Meteo -- ninguna API de pago, ningún dato personal, todo
           agregado. `docker compose up` levanta el sistema completo con datos reales incluidos.
+          ¿Querés el porqué de cada decisión, no solo el resultado? Está en la
+          <a href="/biblioteca" class="font-semibold text-deep-ink underline underline-offset-2">Biblioteca</a>.
         </p>
       </div>
       <a
