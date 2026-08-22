@@ -3,40 +3,40 @@ import Layout from '../layouts/Layout.astro';
 import CurvaIRADepartamental from '../components/CurvaIRADepartamental.astro';
 
 // Sección aparte del panel de dengue, a propósito: IRA es otro evento
-// (tipos_evento es catálogo justamente para esto), con otra definición de
-// caso (conteo clínico único, sin split probable/confirmado) y todavía SIN
-// ingerir al sistema -- la clasificación que necesitaría el CHECK de
-// casos_epidemiologicos está propuesta en docs/adr/0011 (estado: propuesto,
-// decisión del coordinador pendiente). Mientras esa decisión no exista, esta
-// página se alimenta solo del extracto exploratorio local (corrida_ira.py) y
-// se etiqueta como exploración en todo el copy. No comparte capas ni
-// componentes con el mapa de dengue para no sugerir una lectura conjunta que
-// nadie ha validado.
+// (tipos_evento es catálogo justamente para esto) con otra definición de
+// caso (conteo clínico único "notificado", sin split probable/confirmado --
+// ADR 0011, aceptado 2026-08-22). Ya está cargada en Postgres
+// (backend/ingestion/cargar_ira.py, 2742 filas 2018-2023 sin 2020) y esta
+// página consume la API real (/api/ira/departamental, /api/ira/temporal/
+// {codigo}), no un extracto local. Sigue sin compartir capas ni componentes
+// con el mapa de dengue -- no hay Iv/anomalía/presión calculados para IRA,
+// esas fórmulas están cerradas solo para dengue -- para no sugerir una
+// lectura conjunta que nadie ha validado.
 ---
 
-<Layout title="EPI-Aetheris — IRA (exploración)">
+<Layout title="EPI-Aetheris — IRA">
   <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
     <header class="mb-8 max-w-3xl">
       <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">
-        Exploración · no ingerido al sistema
+        Capa descriptiva · sin clasificación de riesgo
       </p>
       <h1 class="mt-1 font-sans text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">
         Infección Respiratoria Aguda (IRA) en los boletines MINSAL
       </h1>
       <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
         Los mismos boletines PDF usados para dengue publican una tabla departamental de IRA:
-        dato real, público y ya descargado. Esta sección muestra el resultado del parser
-        exploratorio sobre ese corpus (2018-2023, sin 2020). Es lectura descriptiva de lo que
-        MINSAL publicó -- no predice nada y no asigna niveles de riesgo.
+        dato real, público y ya cargado en el sistema. Es lectura descriptiva de lo que MINSAL
+        publicó (2018-2023, sin 2020) -- no predice nada y no asigna niveles de riesgo.
       </p>
       <div
         class="mt-4 rounded-xl border border-border bg-secondary px-4 py-3 font-sans text-sm leading-relaxed text-secondary-ink"
       >
-        <strong>Estado del dato:</strong> exploratorio. IRA no está cargada en la base de datos:
-        su tabla no trae split probable/confirmado y la clasificación que requeriría el esquema
-        está propuesta (no aprobada) en el ADR 0011. Nada de lo que se ve aquí sale de la API del
-        sistema; sale del extracto local de la corrida exploratoria, con su auditoría de
-        extracción a la vista.
+        <strong>Estado del dato:</strong> cargado. IRA vive en <code class="font-mono text-xs">casos_epidemiologicos</code>
+        con <code class="font-mono text-xs">clasificacion='notificado'</code> (ADR 0011) -- un solo
+        conteo clínico por departamento, sin split probable/confirmado ni confirmación de
+        laboratorio declarada. Esta página se alimenta de <code class="font-mono text-xs">/api/ira/departamental</code>
+        y <code class="font-mono text-xs">/api/ira/temporal/{'{codigo}'}</code>, la misma API que
+        sirve el panel de dengue.
       </div>
     </header>
 

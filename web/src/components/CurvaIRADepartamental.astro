@@ -1,14 +1,15 @@
 ---
-// Curva semanal departamental de IRA (exploración). A diferencia de los
-// componentes del panel de dengue, NO consulta la API: lee el JSON estático
-// /datos-exploracion/ira.json que genera backend/ingestion/exportar_ira_web.py
-// a partir de la corrida exploratoria (corrida_ira.py). IRA no está ingerida
-// en Postgres (clasificación pendiente de ADR 0011), así que no existe
-// endpoint -- y este componente no lo simula. Si el JSON no está generado,
-// se muestra un estado vacío explícito, nunca un dato inventado.
+// Curva semanal departamental de IRA. Consulta la API real
+// (/api/ira/departamental para la lista de departamentos, /api/ira/temporal/
+// {codigo} para la serie por año) -- IRA ya está cargada en Postgres
+// (clasificacion='notificado', ADR 0011, backend/ingestion/cargar_ira.py,
+// 2742 filas 2018-2023 sin 2020). Ya no lee el JSON estático de la corrida
+// exploratoria.
 //
-// Los huecos de la serie (semanas sin corte publicado, correcciones
-// retroactivas excluidas) rompen la línea: no se interpola.
+// Los huecos de la serie (semanas sin fila en casos_epidemiologicos: boletín
+// de vacaciones, tabla como imagen, corrección retroactiva excluida -- ver
+// docs/exploracion-ira-boletines-minsal.md) rompen la línea: no se
+// interpola.
 ---
 
 <section class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
@@ -42,25 +43,32 @@
       <div class="skeleton mt-2 h-3 w-1/3"></div>
     </div>
   </div>
-
-  <div id="ira-auditoria" class="mt-4 hidden">
-    <p class="font-sans text-xs font-semibold uppercase tracking-wider text-ink-muted">
-      Auditoría de extracción por año (boletines del corpus)
-    </p>
-    <div id="ira-auditoria-chips" class="mt-2 flex flex-wrap gap-2"></div>
-  </div>
 </section>
 
 <script>
-  // [semana, valor|null, nota?]
-  type Punto = [number, number | null, string?];
+  // [semana, valor|null]
+  type Punto = [number, number | null];
 
-  interface DatosIRA {
-    generado: string;
-    fuente: string;
-    advertencia: string;
-    estados_extraccion: Record<string, Record<string, number>>;
-    series: Record<string, Record<string, Punto[]>>;
+  interface DepartamentoIRA {
+    nombre: string;
+    codigo: string;
+    notificado_total: number;
+    semanas_con_dato: number;
+    primer_anio: number | null;
+    ultimo_anio: number | null;
+  }
+
+  interface RespuestaDepartamental {
+    departamentos: DepartamentoIRA[];
+    aviso: string;
+  }
+
+  interface RespuestaTemporal {
+    departamento_codigo: string;
+    departamento_nombre: string;
+    anios: number[];
+    series: Record<string, [number, number][]>;
+    aviso: string;
   }
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -75,15 +83,6 @@
     '2021': 0.55,
     '2022': 0.75,
     '2023': 1,
-  };
-
-  const ETIQUETA_ESTADO: Record<string, string> = {
-    ok: 'extraído y cuadra',
-    revision_manual: 'revisión manual (no cuadra / tabla rezagada)',
-    sin_filas_sospecha_imagen: 'tabla como imagen (sin texto extraíble)',
-    ausencia_esperada_vacacion: 'boletín de vacaciones (ausencia esperada)',
-    sin_texto_extraible: 'documento sin texto extraíble',
-    sin_tabla_ira: 'sin tabla departamental de IRA',
   };
 
   function dibujar(contenedor: HTMLElement, series: Record<string, Punto[]>, depto: string) {
@@ -211,22 +210,17 @@
     }
   }
 
-  function pintarAuditoria(estados: DatosIRA['estados_extraccion']) {
-    const bloque = document.getElementById('ira-auditoria');
-    const chips = document.getElementById('ira-auditoria-chips');
-    if (!bloque || !chips) return;
-    bloque.classList.remove('hidden');
-    for (const [anio, conteos] of Object.entries(estados)) {
-      const detalle = Object.entries(conteos)
-        .sort((a, b) => b[1] - a[1])
-        .map(([estado, n]) => `${n} ${ETIQUETA_ESTADO[estado] ?? estado}`)
-        .join(', ');
-      const chip = document.createElement('span');
-      chip.className =
-        'rounded-full border border-border bg-bg px-3 py-1 font-sans text-xs text-ink-muted';
-      chip.textContent = `${anio}: ${detalle}`;
-      chips.appendChild(chip);
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+
+  async function cargarTemporal(codigo: string): Promise<Record<string, Punto[]>> {
+    const resp = await fetch(`${API_BASE}/api/ira/temporal/${codigo}`);
+    if (!resp.ok) throw new Error('respuesta no OK');
+    const datos: RespuestaTemporal = await resp.json();
+    const series: Record<string, Punto[]> = {};
+    for (const anio of datos.anios) {
+      series[String(anio)] = datos.series[String(anio)] ?? [];
     }
+    return series;
   }
 
   async function iniciar() {
@@ -234,34 +228,43 @@
     const selector = document.getElementById('ira-depto') as HTMLSelectElement | null;
     if (!contenedor || !selector) return;
 
-    let datos: DatosIRA;
+    let departamentos: DepartamentoIRA[];
     try {
-      const resp = await fetch('/datos-exploracion/ira.json');
+      const resp = await fetch(`${API_BASE}/api/ira/departamental`);
       if (!resp.ok) throw new Error('respuesta no OK');
-      datos = await resp.json();
+      const datos: RespuestaDepartamental = await resp.json();
+      departamentos = datos.departamentos;
     } catch {
       contenedor.innerHTML =
         '<p class="font-sans text-sm leading-relaxed text-ink-muted">' +
-        'El extracto exploratorio no está generado en esta instalación. Se produce con ' +
-        '<code class="font-mono text-xs">backend/ingestion/corrida_ira.py</code> seguido de ' +
-        '<code class="font-mono text-xs">backend/ingestion/exportar_ira_web.py</code> ' +
-        '(requiere los PDF de MINSAL descargados). No se muestra ningún dato sustituto.</p>';
+        'No se pudo cargar la serie de IRA desde la API. Verificá que el backend esté ' +
+        'levantado (<code class="font-mono text-xs">docker compose up</code>). No se muestra ' +
+        'ningún dato sustituto.</p>';
       return;
     }
 
-    const departamentos = Object.keys(datos.series).sort((a, b) => a.localeCompare(b, 'es'));
+    departamentos.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
     for (const d of departamentos) {
       const opcion = document.createElement('option');
-      opcion.value = d;
-      opcion.textContent = d;
-      if (d === 'San Salvador') opcion.selected = true;
+      opcion.value = d.codigo;
+      opcion.textContent = d.nombre;
+      if (d.nombre === 'San Salvador') opcion.selected = true;
       selector.appendChild(opcion);
     }
 
-    const refrescar = () => dibujar(contenedor, datos.series[selector.value] ?? {}, selector.value);
+    const refrescar = async () => {
+      const codigo = selector.value;
+      const nombre = selector.selectedOptions[0]?.textContent ?? codigo;
+      try {
+        const series = await cargarTemporal(codigo);
+        dibujar(contenedor, series, nombre);
+      } catch {
+        contenedor.innerHTML =
+          '<p class="font-sans text-sm text-ink-muted">No se pudo cargar la serie de este departamento.</p>';
+      }
+    };
     selector.addEventListener('change', refrescar);
     refrescar();
-    pintarAuditoria(datos.estados_extraccion);
   }
 
   iniciar();

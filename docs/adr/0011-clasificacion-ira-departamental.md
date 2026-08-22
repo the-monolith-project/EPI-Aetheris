@@ -5,12 +5,14 @@
 > Aceptado por el coordinador (Eduardo) el 2026-08-22, con un cambio sobre la
 > propuesta original: el valor se llama **`'notificado'`**, no `'reportado'`
 > (ver justificación del nombre en "Decisión" más abajo). Migración:
-> `db/migrations/0007_clasificacion_notificado_ira.sql`. Sigue sin insertarse
-> ningún dato de IRA en `casos_epidemiologicos` -- este ADR solo habilita el
-> esquema, no ejecuta la ingesta (eso es una tarea aparte, todavía no
-> encargada). La evidencia empírica que lo sustenta está en
-> `docs/exploracion-ira-boletines-minsal.md` (corrida exploratoria
-> `backend/ingestion/corrida_ira.py`, 2026-08-21).
+> `db/migrations/0007_clasificacion_notificado_ira.sql`. Cargado el mismo
+> día: `backend/ingestion/cargar_ira.py` insertó 2742 filas en
+> `casos_epidemiologicos` (2018-2023 sin 2020, 14 departamentos), servidas
+> descriptivamente por `GET /api/ira/departamental` y
+> `GET /api/ira/temporal/{departamento_codigo}` (`backend/api/ira.py`) y
+> consumidas por la página `/ira` del frontend. La evidencia empírica que lo
+> sustenta está en `docs/exploracion-ira-boletines-minsal.md` (corrida
+> exploratoria `backend/ingestion/corrida_ira.py`, 2026-08-21).
 
 ## Contexto
 
