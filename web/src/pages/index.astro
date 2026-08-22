@@ -1,4 +1,5 @@
 ---
+import { readFileSync } from 'node:fs';
 import Layout from '../layouts/Layout.astro';
 
 // Landing de presentación (antes de entrar al panel en /panel). No repite el
@@ -9,9 +10,84 @@ import Layout from '../layouts/Layout.astro';
 //
 // Contenedor a max-w-[1600px] (mismo ancho que el header/footer del Layout):
 // en pantallas anchas una versión angosta dejaba la mitad de la pantalla en
-// blanco. El hero usa dos columnas en lg para llenar ese espacio con cifras
-// reales del proyecto en vez de solo estirar el margen -- ningún dato del
-// panel derecho es inventado.
+// blanco.
+//
+// Firma visual (revisión de diseño 2026-08-22): el hero ya NO usa el patrón
+// genérico "número grande + etiqueta + stats" -- ese patrón describía el
+// proyecto desde afuera. En su lugar, la mitad derecha es el propio mapa
+// departamental (14 siluetas reales, del mismo geojson que consume
+// MapaDepartamentos.astro en /panel), proyectado a SVG en build time. Es el
+// objeto central del proyecto mostrándose a sí mismo, no una cifra sobre él.
+// Las 4 cifras que antes eran una grilla de tarjetas ahora son una sola
+// línea de texto (ver <CIFRAS>) -- información de pie, no la pieza visual.
+
+interface DepartamentoGeo {
+  codigo: string;
+  nombre: string;
+  d: string;
+}
+
+function construirSiluetaDepartamentos(): { paths: DepartamentoGeo[]; viewBox: string } {
+  const ruta = new URL('../../public/geo/slv-adm1.geojson', import.meta.url);
+  const geojson = JSON.parse(readFileSync(ruta, 'utf-8'));
+
+  const ANCHO = 480;
+  const ALTO = 340;
+  const MARGEN = 10;
+
+  let minLon = Infinity;
+  let minLat = Infinity;
+  let maxLon = -Infinity;
+  let maxLat = -Infinity;
+  for (const f of geojson.features) {
+    const anillos = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    for (const poligono of anillos) {
+      for (const anillo of poligono) {
+        for (const [lon, lat] of anillo) {
+          if (lon < minLon) minLon = lon;
+          if (lon > maxLon) maxLon = lon;
+          if (lat < minLat) minLat = lat;
+          if (lat > maxLat) maxLat = lat;
+        }
+      }
+    }
+  }
+
+  // Corrección de aspecto: 1° de longitud cubre menos distancia real que 1°
+  // de latitud a esta latitud (~14°N) -- sin esto, El Salvador se ve
+  // artificialmente ancho.
+  const corrOAspecto = Math.cos(((minLat + maxLat) / 2) * (Math.PI / 180));
+  const anchoGeo = (maxLon - minLon) * corrOAspecto;
+  const altoGeo = maxLat - minLat;
+  const escala = Math.min((ANCHO - MARGEN * 2) / anchoGeo, (ALTO - MARGEN * 2) / altoGeo);
+  const offsetX = (ANCHO - anchoGeo * escala) / 2;
+  const offsetY = (ALTO - altoGeo * escala) / 2;
+
+  const proyectar = ([lon, lat]: [number, number]): [number, number] => {
+    const x = (lon - minLon) * corrOAspecto * escala + offsetX;
+    const y = ALTO - ((lat - minLat) * escala + offsetY);
+    return [x, y];
+  };
+
+  const paths: DepartamentoGeo[] = geojson.features.map((f: any) => {
+    const anillos = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    const d = anillos
+      .map((poligono: number[][][]) =>
+        poligono
+          .map((anillo: [number, number][]) => {
+            const puntos = anillo.map(proyectar);
+            return `M${puntos.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join('L')}Z`;
+          })
+          .join(' '),
+      )
+      .join(' ');
+    return { codigo: f.properties.codigo, nombre: f.properties.shapeName.replace(/^Departamento de /, ''), d };
+  });
+
+  return { paths, viewBox: `0 0 ${ANCHO} ${ALTO}` };
+}
+
+const { paths: DEPARTAMENTOS_SVG, viewBox: MAPA_VIEWBOX } = construirSiluetaDepartamentos();
 
 const MODULOS = [
   {
@@ -45,10 +121,10 @@ const MODULOS = [
 ];
 
 const CIFRAS = [
-  { valor: '14', etiqueta: 'departamentos cubiertos' },
-  { valor: '3', etiqueta: 'fuentes públicas: MINSAL, OpenDengue, Open-Meteo' },
-  { valor: '2018-2024', etiqueta: 'ventana de datos cargada' },
-  { valor: '$0', etiqueta: 'costo de replicar el sistema' },
+  '14 departamentos cubiertos',
+  '3 fuentes públicas -- MINSAL, OpenDengue, Open-Meteo',
+  'ventana de datos 2018-2024',
+  '$0 de costo de replicar el sistema',
 ];
 
 const STACK = [
@@ -116,24 +192,35 @@ const STACK = [
         </div>
       </div>
 
-      <div class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
-        <div id="hero-sparkline" class="h-16 w-full">
-          <div class="skeleton h-full w-full" aria-hidden="true"></div>
+      <a href="/panel" class="group block" aria-label="Ver el mapa departamental completo en el panel">
+        <div class="rounded-[28px] bg-deep p-4 sm:p-6">
+          <svg
+            viewBox={MAPA_VIEWBOX}
+            role="img"
+            aria-label="Silueta de los 14 departamentos de El Salvador que cubre el sistema"
+            class="h-auto w-full"
+          >
+            {DEPARTAMENTOS_SVG.map((d, i) => (
+              <path
+                d={d.d}
+                class="hero-depto origin-center fill-secondary/90 stroke-deep transition-colors duration-200 group-hover:fill-secondary/70 hover:!fill-accent"
+                style={`stroke-width:1.5; animation-delay:${i * 45}ms`}
+              >
+                <title>{d.nombre}</title>
+              </path>
+            ))}
+          </svg>
+          <p class="mt-3 font-sans text-xs leading-snug text-deep-ink-muted">
+            Los 14 departamentos, tal como se ven en el mapa del panel -- cada uno comparado
+            contra su propia historia, nunca entre sí.
+          </p>
         </div>
-        <p class="mt-2 font-sans text-[11px] leading-snug text-ink-muted">
-          Casos de dengue reportados por semana, El Salvador 2013-2024 (OpenDengue, nacional) --
-          así se ve la curva completa en el panel.
-        </p>
-        <div class="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4">
-          {CIFRAS.map((c) => (
-            <div>
-              <p class="font-sans text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{c.valor}</p>
-              <p class="mt-1 font-sans text-xs leading-snug text-ink-muted">{c.etiqueta}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      </a>
     </section>
+
+    <p class="mt-6 font-sans text-xs leading-relaxed text-ink-muted">
+      {CIFRAS.join('  ·  ')}
+    </p>
 
     <section class="mt-12 rounded-2xl border border-dashed border-border bg-surface p-5 sm:p-6 lg:p-8">
       <p class="font-sans text-sm font-semibold text-ink">Qué NO es este proyecto</p>
@@ -214,64 +301,26 @@ const STACK = [
   </main>
 </Layout>
 
-<script>
-  // Sparkline decorativo pero real: mismo endpoint que usa la curva completa
-  // del panel (GET /api/casos-nacional). Sin ejes ni tooltip -- solo "vender"
-  // que hay una serie real detrás, el detalle vive en /panel.
-  interface CasoSemanal {
-    conteo: number;
-  }
-
-  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
-  const SVG_NS = 'http://www.w3.org/2000/svg';
-
-  async function iniciarSparkline() {
-    const contenedor = document.getElementById('hero-sparkline');
-    if (!contenedor) return;
-
-    try {
-      const resp = await fetch(`${API_BASE}/api/casos-nacional`);
-      if (!resp.ok) throw new Error('respuesta no OK');
-      const datos: CasoSemanal[] = await resp.json();
-      if (datos.length === 0) throw new Error('sin datos');
-
-      const ANCHO = 400;
-      const ALTO = 64;
-      const max = Math.max(...datos.map((d) => d.conteo)) || 1;
-      const escalaX = (i: number) => (i / Math.max(datos.length - 1, 1)) * ANCHO;
-      const escalaY = (v: number) => ALTO - (v / max) * (ALTO - 4) - 2;
-
-      const svg = document.createElementNS(SVG_NS, 'svg');
-      svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
-      svg.setAttribute('class', 'h-full w-full');
-      svg.setAttribute('preserveAspectRatio', 'none');
-      svg.setAttribute('role', 'img');
-      svg.setAttribute('aria-label', 'Miniatura de la curva epidémica nacional de dengue, 2013-2024');
-
-      const puntos = datos.map((d, i) => `${escalaX(i)},${escalaY(d.conteo)}`).join(' ');
-      const base = ALTO;
-      const area = document.createElementNS(SVG_NS, 'polygon');
-      area.setAttribute('points', `0,${base} ${puntos} ${ANCHO},${base}`);
-      area.setAttribute('fill', 'var(--color-secondary)');
-      area.setAttribute('opacity', '0.5');
-      svg.appendChild(area);
-
-      const linea = document.createElementNS(SVG_NS, 'polyline');
-      linea.setAttribute('points', puntos);
-      linea.setAttribute('fill', 'none');
-      linea.setAttribute('stroke', 'var(--color-accent)');
-      linea.setAttribute('stroke-width', '1.5');
-      linea.setAttribute('stroke-linejoin', 'round');
-      linea.setAttribute('stroke-linecap', 'round');
-      svg.appendChild(linea);
-
-      contenedor.innerHTML = '';
-      contenedor.appendChild(svg);
-    } catch {
-      contenedor.innerHTML =
-        '<p class="font-sans text-xs text-ink-muted">Serie no disponible en este momento.</p>';
+<style>
+  /* Entrada escalonada de los 14 departamentos -- una sola vez al cargar,
+     nunca en loop. prefers-reduced-motion la desactiva por completo (los
+     departamentos aparecen ya visibles, sin animación). */
+  @keyframes hero-depto-entra {
+    from {
+      opacity: 0;
+      transform: scale(0.94);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
     }
   }
-
-  iniciarSparkline();
-</script>
+  .hero-depto {
+    animation: hero-depto-entra 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-depto {
+      animation: none;
+    }
+  }
+</style>
