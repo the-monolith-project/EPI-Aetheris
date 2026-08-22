@@ -127,6 +127,36 @@
   </div>
   <div id="mapa-leyenda" class="mt-3"></div>
 
+  <div id="mapa-detalle" class="mt-4 hidden rounded-xl border border-accent/30 bg-secondary/20 p-4 sm:p-5">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <p class="font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+          Detalle de departamento
+        </p>
+        <h3 id="mapa-detalle-nombre" class="mt-0.5 font-display text-lg font-semibold text-ink"></h3>
+      </div>
+      <button
+        type="button"
+        id="mapa-detalle-cerrar"
+        class="rounded-full border border-border bg-surface px-2.5 py-1 font-sans text-xs text-ink-muted transition-colors hover:border-accent/40 hover:text-ink"
+        aria-label="Cerrar detalle de departamento"
+      >
+        Cerrar
+      </button>
+    </div>
+
+    <dl id="mapa-detalle-snapshot" class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"></dl>
+
+    <div class="mt-4">
+      <p class="font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+        Idoneidad biofísica (Iv) -- banda histórica P25-P75 vs. el año seleccionado
+      </p>
+      <div id="mapa-detalle-curva" class="mt-2 h-24 w-full">
+        <div class="skeleton h-full w-full" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="mt-4 rounded-lg border border-border bg-bg p-3">
     <p class="font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
       Nota sobre calidad de la vigilancia departamental
@@ -654,6 +684,81 @@
   }
 
   // ---------------------------------------------------------------------
+  // Detalle de departamento (click en el mapa): snapshot de las 4 capas de
+  // Camino Ancho para la semana/año seleccionados + mini-curva de Iv del
+  // año contra su banda histórica P25-P75. Mismo patrón hecho a mano de
+  // <svg><polyline> que CurvaEpidemicaNacional.astro -- sin librería de
+  // charts nueva.
+  // ---------------------------------------------------------------------
+
+  interface SemanaTemporal {
+    semana_epi: number;
+    iv_real: number | null;
+    p25_baseline: number | null;
+    mediana_baseline: number | null;
+    p75_baseline: number | null;
+    anomaly_sigma: number | null;
+  }
+
+  function dibujarCurvaDetalle(contenedor: HTMLElement, semanas: SemanaTemporal[], semanaActiva: number) {
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const ANCHO = 600;
+    const ALTO = 96;
+    const conBanda = semanas.filter((s) => s.p25_baseline !== null && s.p75_baseline !== null);
+    const valores = conBanda.flatMap((s) => [s.p25_baseline!, s.p75_baseline!, s.iv_real ?? s.p25_baseline!]);
+    const min = Math.min(...valores, 0);
+    const max = Math.max(...valores, 0.01);
+    const escalaX = (i: number) => (i / Math.max(semanas.length - 1, 1)) * ANCHO;
+    const escalaY = (v: number) => ALTO - ((v - min) / (max - min || 1)) * (ALTO - 8) - 4;
+
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
+    svg.setAttribute('class', 'h-full w-full');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Idoneidad biofísica del año seleccionado contra su banda histórica P25-P75');
+
+    if (conBanda.length > 1) {
+      const puntosSup = conBanda.map((s, i) => `${escalaX(i)},${escalaY(s.p75_baseline!)}`);
+      const puntosInf = [...conBanda].reverse().map((s, i) => `${escalaX(conBanda.length - 1 - i)},${escalaY(s.p25_baseline!)}`);
+      const banda = document.createElementNS(SVG_NS, 'polygon');
+      banda.setAttribute('points', [...puntosSup, ...puntosInf].join(' '));
+      banda.setAttribute('fill', 'var(--color-secondary)');
+      banda.setAttribute('opacity', '0.6');
+      svg.appendChild(banda);
+    }
+
+    const puntosReales = semanas
+      .map((s, i) => (s.iv_real !== null ? `${escalaX(i)},${escalaY(s.iv_real)}` : null))
+      .filter((p): p is string => p !== null);
+    if (puntosReales.length > 1) {
+      const linea = document.createElementNS(SVG_NS, 'polyline');
+      linea.setAttribute('points', puntosReales.join(' '));
+      linea.setAttribute('fill', 'none');
+      linea.setAttribute('stroke', 'var(--color-accent)');
+      linea.setAttribute('stroke-width', '1.75');
+      linea.setAttribute('stroke-linejoin', 'round');
+      linea.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(linea);
+    }
+
+    const indiceActiva = semanas.findIndex((s) => s.semana_epi === semanaActiva);
+    if (indiceActiva >= 0 && semanas[indiceActiva].iv_real !== null) {
+      const punto = document.createElementNS(SVG_NS, 'circle');
+      punto.setAttribute('cx', `${escalaX(indiceActiva)}`);
+      punto.setAttribute('cy', `${escalaY(semanas[indiceActiva].iv_real!)}`);
+      punto.setAttribute('r', '3.5');
+      punto.setAttribute('fill', 'var(--color-deep)');
+      punto.setAttribute('stroke', 'var(--color-surface)');
+      punto.setAttribute('stroke-width', '1.5');
+      svg.appendChild(punto);
+    }
+
+    contenedor.innerHTML = '';
+    contenedor.appendChild(svg);
+  }
+
+  // ---------------------------------------------------------------------
   // Orquestación: un mapa Leaflet, un geojson, una capa geoJSON activa a la
   // vez -- se reemplaza al cambiar de selector en vez de duplicar mapas.
   // ---------------------------------------------------------------------
@@ -690,8 +795,75 @@
     const contenedorLeyenda = document.getElementById('mapa-leyenda');
     const contenedorAviso = document.getElementById('mapa-aviso');
     const contenedorNoDisponible = document.getElementById('mapa-no-disponible');
-    if (!contenedorSelector || !contenedorMapa || !contenedorLeyenda || !contenedorAviso || !contenedorNoDisponible)
+    const contenedorDetalle = document.getElementById('mapa-detalle');
+    const detalleNombre = document.getElementById('mapa-detalle-nombre');
+    const detalleSnapshot = document.getElementById('mapa-detalle-snapshot');
+    const detalleCurva = document.getElementById('mapa-detalle-curva');
+    const detalleCerrar = document.getElementById('mapa-detalle-cerrar');
+    if (
+      !contenedorSelector ||
+      !contenedorMapa ||
+      !contenedorLeyenda ||
+      !contenedorAviso ||
+      !contenedorNoDisponible ||
+      !contenedorDetalle ||
+      !detalleNombre ||
+      !detalleSnapshot ||
+      !detalleCurva ||
+      !detalleCerrar
+    )
       return;
+
+    detalleCerrar.addEventListener('click', () => contenedorDetalle.classList.add('hidden'));
+
+    function celdaSnapshot(etiqueta: string, valor: string): string {
+      return (
+        `<div class="rounded-lg border border-border bg-surface px-3 py-2">` +
+        `<dt class="font-sans text-[11px] font-medium uppercase tracking-wide text-ink-muted">${etiqueta}</dt>` +
+        `<dd class="mt-0.5 font-mono text-sm text-ink">${valor}</dd></div>`
+      );
+    }
+
+    async function mostrarDetalle(codigo: string, nombre: string) {
+      contenedorDetalle.classList.remove('hidden');
+      detalleNombre.textContent = nombre;
+      detalleSnapshot.innerHTML =
+        '<div class="skeleton h-12 rounded-lg"></div><div class="skeleton h-12 rounded-lg"></div>' +
+        '<div class="skeleton h-12 rounded-lg"></div><div class="skeleton h-12 rounded-lg"></div>';
+      detalleCurva.innerHTML = '<div class="skeleton h-full w-full" aria-hidden="true"></div>';
+
+      await Promise.all([obtenerDatosEspaciales(), obtenerDatosPresion()]);
+      const esp = detallesEspacial.get(codigo);
+      const pres = detallesPresion.get(codigo);
+
+      detalleSnapshot.innerHTML = [
+        celdaSnapshot('Iv (idoneidad)', esp?.iv !== undefined ? esp.iv.toFixed(2) : 'sin dato'),
+        celdaSnapshot(
+          'Anomalía climática',
+          esp?.anomalia_sigma !== undefined ? `${esp.anomalia_sigma.toFixed(2)}σ` : 'sin dato'
+        ),
+        celdaSnapshot(
+          'Presión (probable)',
+          pres?.probable?.categoria ? `${pres.probable.categoria} (p${pres.probable.percentil})` : 'sin datos suficientes'
+        ),
+        celdaSnapshot(
+          'Presión (confirmado)',
+          pres?.confirmado?.categoria
+            ? `${pres.confirmado.categoria} (p${pres.confirmado.percentil})`
+            : 'sin datos suficientes'
+        ),
+      ].join('');
+
+      try {
+        const resp = await fetch(`${API_BASE}/api/v1/temporal/${codigo}?anio=${ANIO_ESPACIAL}`);
+        if (!resp.ok) throw new Error('respuesta no OK');
+        const datos: { semanas: SemanaTemporal[] } = await resp.json();
+        dibujarCurvaDetalle(detalleCurva, datos.semanas, SEMANA_ESPACIAL);
+      } catch {
+        detalleCurva.innerHTML =
+          '<p class="font-sans text-xs text-ink-muted">Serie histórica no disponible en este momento.</p>';
+      }
+    }
 
     // Límites duros a El Salvador (bbox real del geojson + margen) -- sin
     // esto, un scroll de más con la rueda del mouse manda a ver Guatemala u
@@ -817,6 +989,8 @@
           const codigo = feature.properties?.codigo ?? '';
           const nombre = feature.properties?.shapeName ? normalizarNombreDepto(feature.properties.shapeName) : codigo;
           const valor = valores!.get(codigo);
+
+          layer.on('click', () => mostrarDetalle(codigo, nombre));
 
           if (capa.id === 'minsal_volumen') {
             const dato = detallesMinsal.get(codigo);
