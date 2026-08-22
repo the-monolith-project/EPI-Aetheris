@@ -51,6 +51,40 @@
     </p>
   </div>
 
+  <div class="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-bg p-3">
+    <label for="mapa-semana" class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted">
+      Semana epidemiológica
+    </label>
+    <select
+      id="mapa-semana"
+      class="rounded-lg border border-border bg-surface px-2 py-1 font-mono text-xs text-ink"
+      aria-label="Semana epidemiológica"
+    >
+      {Array.from({ length: 53 }, (_, i) => i + 1).map((s) => (
+        <option value={s} selected={s === 1}>
+          SE{String(s).padStart(2, '0')}
+        </option>
+      ))}
+    </select>
+    <label for="mapa-anio" class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted">
+      Año
+    </label>
+    <select
+      id="mapa-anio"
+      class="rounded-lg border border-border bg-surface px-2 py-1 font-mono text-xs text-ink"
+      aria-label="Año"
+    >
+      {[2018, 2019, 2021, 2022, 2023].map((a) => (
+        <option value={a} selected={a === 2023}>
+          {a}
+        </option>
+      ))}
+    </select>
+    <span class="font-sans text-xs text-ink-muted">
+      Afecta Iv, anomalía y presión -- volumen MINSAL siempre muestra el acumulado 2018-2023.
+    </span>
+  </div>
+
   <div id="mapa-selector" class="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Capas del mapa"></div>
 
   <div class="mt-3 flex gap-2 rounded-lg border border-border bg-bg p-3">
@@ -182,12 +216,11 @@
     return shapeName.replace(/^Departamento de /, '');
   }
 
-  // Semana/año fijos para las capas espaciales -- todavía no hay selector de
-  // semana en la UI (mismo compromiso de "primera versión, semana fija" que
-  // MetricasModelo.astro). Cuando exista un selector real, esto deja de ser
-  // una constante.
-  const SEMANA_ESPACIAL = 1;
-  const ANIO_ESPACIAL = 2023;
+  // Semana/año de las capas espaciales -- mutables porque ahora hay
+  // selectores reales (#mapa-semana / #mapa-anio) en vez del compromiso de
+  // "primera versión, semana fija" que sigue teniendo MetricasModelo.astro.
+  let SEMANA_ESPACIAL = 1;
+  let ANIO_ESPACIAL = 2023;
 
   // ---------------------------------------------------------------------
   // Funciones genéricas de color / cortes / leyenda, reutilizadas por todas
@@ -312,7 +345,13 @@
       const codigo = fila?.codigo;
       if (typeof codigo !== 'string') continue;
       const iv = typeof fila?.iv === 'number' ? fila.iv : undefined;
-      const anomalia = typeof fila?.anomalia_sigma === 'number' ? fila.anomalia_sigma : undefined;
+      // El backend devuelve "anomaly_sigma" (inglés, ver GET
+      // /api/v1/spatial/current en main.py) -- bug real encontrado al
+      // conectar el selector de semana/año: esto leía "anomalia_sigma"
+      // (español) y siempre caía en undefined, así que la capa de anomalía
+      // mostraba "sin dato" en todos los departamentos sin importar la
+      // semana pedida.
+      const anomalia = typeof fila?.anomaly_sigma === 'number' ? fila.anomaly_sigma : undefined;
       mapa.set(codigo, { codigo, iv, anomalia_sigma: anomalia });
     }
     return mapa;
@@ -681,6 +720,7 @@
     }).addTo(mapa);
 
     let capaGeoJsonActiva: L.GeoJSON | null = null;
+    let capaActivaId: IdCapa = capaMinsal.id;
     const cacheValoresPorCapa = new Map<IdCapa, Map<string, number | undefined> | null>();
 
     function botonId(id: IdCapa) {
@@ -712,6 +752,7 @@
     async function activarCapa(id: IdCapa) {
       const capa = CAPAS.find((c) => c.id === id);
       if (!capa || !capa.disponible) return;
+      capaActivaId = id;
 
       pintarSelector(id);
       contenedorAviso!.textContent = capa.aviso;
@@ -807,6 +848,31 @@
 
     pintarSelector(capaMinsal.id);
     await activarCapa(capaMinsal.id);
+
+    // Selector de semana/año -- solo afecta a las capas de Camino Ancho
+    // (Iv, anomalía, presión); volumen MINSAL y confianza lo ignoran, pero
+    // se limpia igual el caché de las 4 capas de Camino Ancho para no
+    // servir datos de la semana/año anterior si el usuario cambia de capa
+    // después de mover el selector.
+    const selectSemana = document.getElementById('mapa-semana') as HTMLSelectElement | null;
+    const selectAnio = document.getElementById('mapa-anio') as HTMLSelectElement | null;
+
+    function onCambioTiempo() {
+      const semana = Number(selectSemana?.value ?? SEMANA_ESPACIAL);
+      const anio = Number(selectAnio?.value ?? ANIO_ESPACIAL);
+      if (semana === SEMANA_ESPACIAL && anio === ANIO_ESPACIAL) return;
+      SEMANA_ESPACIAL = semana;
+      ANIO_ESPACIAL = anio;
+      cacheEspacial = null;
+      cachePresion = null;
+      (['iv', 'anomalia', 'presion_probable', 'presion_confirmado'] as IdCapa[]).forEach((id) =>
+        cacheValoresPorCapa.delete(id)
+      );
+      activarCapa(capaActivaId);
+    }
+
+    selectSemana?.addEventListener('change', onCambioTiempo);
+    selectAnio?.addEventListener('change', onCambioTiempo);
   }
 
   iniciar();
