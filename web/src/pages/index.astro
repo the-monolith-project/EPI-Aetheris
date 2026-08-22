@@ -93,13 +93,22 @@ const CIFRAS = [
         </div>
       </div>
 
-      <div class="card-elevated grid grid-cols-2 gap-4 rounded-2xl border border-border bg-surface p-5 sm:p-6">
-        {CIFRAS.map((c) => (
-          <div>
-            <p class="font-sans text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{c.valor}</p>
-            <p class="mt-1 font-sans text-xs leading-snug text-ink-muted">{c.etiqueta}</p>
-          </div>
-        ))}
+      <div class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
+        <div id="hero-sparkline" class="h-16 w-full">
+          <div class="skeleton h-full w-full" aria-hidden="true"></div>
+        </div>
+        <p class="mt-2 font-sans text-[11px] leading-snug text-ink-muted">
+          Casos de dengue reportados por semana, El Salvador 2013-2024 (OpenDengue, nacional) --
+          así se ve la curva completa en el panel.
+        </p>
+        <div class="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4">
+          {CIFRAS.map((c) => (
+            <div>
+              <p class="font-sans text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{c.valor}</p>
+              <p class="mt-1 font-sans text-xs leading-snug text-ink-muted">{c.etiqueta}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
 
@@ -162,3 +171,65 @@ const CIFRAS = [
     </section>
   </main>
 </Layout>
+
+<script>
+  // Sparkline decorativo pero real: mismo endpoint que usa la curva completa
+  // del panel (GET /api/casos-nacional). Sin ejes ni tooltip -- solo "vender"
+  // que hay una serie real detrás, el detalle vive en /panel.
+  interface CasoSemanal {
+    conteo: number;
+  }
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  async function iniciarSparkline() {
+    const contenedor = document.getElementById('hero-sparkline');
+    if (!contenedor) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/casos-nacional`);
+      if (!resp.ok) throw new Error('respuesta no OK');
+      const datos: CasoSemanal[] = await resp.json();
+      if (datos.length === 0) throw new Error('sin datos');
+
+      const ANCHO = 400;
+      const ALTO = 64;
+      const max = Math.max(...datos.map((d) => d.conteo)) || 1;
+      const escalaX = (i: number) => (i / Math.max(datos.length - 1, 1)) * ANCHO;
+      const escalaY = (v: number) => ALTO - (v / max) * (ALTO - 4) - 2;
+
+      const svg = document.createElementNS(SVG_NS, 'svg');
+      svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
+      svg.setAttribute('class', 'h-full w-full');
+      svg.setAttribute('preserveAspectRatio', 'none');
+      svg.setAttribute('role', 'img');
+      svg.setAttribute('aria-label', 'Miniatura de la curva epidémica nacional de dengue, 2013-2024');
+
+      const puntos = datos.map((d, i) => `${escalaX(i)},${escalaY(d.conteo)}`).join(' ');
+      const base = ALTO;
+      const area = document.createElementNS(SVG_NS, 'polygon');
+      area.setAttribute('points', `0,${base} ${puntos} ${ANCHO},${base}`);
+      area.setAttribute('fill', 'var(--color-secondary)');
+      area.setAttribute('opacity', '0.5');
+      svg.appendChild(area);
+
+      const linea = document.createElementNS(SVG_NS, 'polyline');
+      linea.setAttribute('points', puntos);
+      linea.setAttribute('fill', 'none');
+      linea.setAttribute('stroke', 'var(--color-accent)');
+      linea.setAttribute('stroke-width', '1.5');
+      linea.setAttribute('stroke-linejoin', 'round');
+      linea.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(linea);
+
+      contenedor.innerHTML = '';
+      contenedor.appendChild(svg);
+    } catch {
+      contenedor.innerHTML =
+        '<p class="font-sans text-xs text-ink-muted">Serie no disponible en este momento.</p>';
+    }
+  }
+
+  iniciarSparkline();
+</script>
