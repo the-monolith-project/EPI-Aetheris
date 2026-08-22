@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import CurvaIRADepartamental from '../components/CurvaIRADepartamental.astro';
+import MapaIRA from '../components/MapaIRA.astro';
 
 // Sección aparte del panel de dengue, a propósito: IRA es otro evento
 // (tipos_evento es catálogo justamente para esto) con otra definición de
@@ -41,6 +42,9 @@ import CurvaIRADepartamental from '../components/CurvaIRADepartamental.astro';
     </header>
 
     <div class="grid grid-cols-1 gap-6">
+      <div class="rounded-[28px] bg-deep p-2 sm:p-3">
+        <MapaIRA />
+      </div>
       <CurvaIRADepartamental />
 
       <section class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
