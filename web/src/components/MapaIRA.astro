@@ -137,6 +137,32 @@
     `;
   }
 
+  // Máscara visual: un rectángulo enorme con un "agujero" recortado por
+  // cada departamento (SVG fill-rule evenodd, soportado nativamente por
+  // L.Polygon con múltiples anillos). No evita las peticiones de tiles de
+  // países vecinos -- son ráster de OpenStreetMap, no hay forma de pedir
+  // "sin Guatemala/Honduras" a ese proveedor -- pero atenúa visualmente
+  // todo lo que no sea El Salvador, incluyendo los nombres de lugar que
+  // trae el tile, para que la atención quede en el país que sí cubre el
+  // proyecto.
+  const ANILLO_MUNDO: [number, number][] = [
+    [-85, -170],
+    [-85, 10],
+    [85, 10],
+    [85, -170],
+  ];
+
+  function construirMascara(geojson: any): [number, number][][] {
+    const agujeros: [number, number][][] = [];
+    for (const f of geojson.features) {
+      const partes = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+      for (const poligono of partes) {
+        agujeros.push(poligono[0].map(([lon, lat]: [number, number]) => [lat, lon]));
+      }
+    }
+    return [ANILLO_MUNDO, ...agujeros];
+  }
+
   async function iniciar() {
     const contenedorMapa = document.getElementById('mapa-ira-departamentos');
     const contenedorLeyenda = document.getElementById('mapa-ira-leyenda');
@@ -159,6 +185,13 @@
 
     const respGeo = await fetch('/geo/slv-adm1.geojson');
     const geojson = await respGeo.json();
+
+    L.polygon(construirMascara(geojson), {
+      stroke: false,
+      fillColor: '#f0f0f0',
+      fillOpacity: 0.85,
+      interactive: false,
+    }).addTo(mapa);
 
     let detalles = new Map<string, DatoDepartamentoIra>();
     let valores: Map<string, number | undefined> | null = null;
