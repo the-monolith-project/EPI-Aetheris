@@ -34,6 +34,23 @@
     </div>
   </div>
 
+  <div class="mt-4 flex gap-2 rounded-lg border border-dashed border-border bg-bg p-3">
+    <svg class="mt-0.5 h-4 w-4 shrink-0 text-accent" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path
+        d="M4 6h12M4 10h12M4 14h8"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+      />
+    </svg>
+    <p class="font-sans text-xs leading-relaxed text-ink-muted">
+      <strong class="font-semibold text-ink">Cómo leer los colores:</strong> cada capa compara el
+      departamento contra <strong class="text-ink">su propia historia</strong> -- oscuro/naranja no
+      significa "riesgo", significa "más inusual que lo normal para ese departamento en esa
+      semana". Ningún color es una alerta ni un pronóstico.
+    </p>
+  </div>
+
   <div id="mapa-selector" class="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Capas del mapa"></div>
 
   <div class="mt-3 flex gap-2 rounded-lg border border-border bg-bg p-3">
@@ -51,10 +68,22 @@
   </div>
 
   <div id="mapa-no-disponible" class="mt-2 hidden rounded-lg border border-secondary bg-secondary/25 p-3">
-    <p class="font-sans text-sm text-ink">
-      Capa no disponible todavía -- el endpoint del backend para esta capa no respondió como se
-      esperaba. El mapa se muestra sin colorear hasta que esté listo.
-    </p>
+    <div class="flex gap-2">
+      <svg class="mt-0.5 h-4 w-4 shrink-0 text-secondary-ink" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path
+          d="M10 2.5 18 16.5H2L10 2.5Z"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linejoin="round"
+        />
+        <path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        <circle cx="10" cy="14" r="0.9" fill="currentColor" />
+      </svg>
+      <p class="font-sans text-sm text-ink">
+        Capa no disponible todavía -- el endpoint del backend para esta capa no respondió como se
+        esperaba. El mapa se muestra sin colorear (gris = sin dato) hasta que esté listo.
+      </p>
+    </div>
   </div>
 
   <div
@@ -312,17 +341,22 @@
       for (const [codigo, fila] of datos) valores.set(codigo, fila.iv);
       return valores;
     },
-    // Iv está acotado en [0,1] por definición -- cortes fijos en vez de
-    // cuantiles de los datos (a diferencia del volumen de casos, que es muy
-    // sesgado y sí se beneficia de cuantiles).
-    calcularCortes: () => [0.2, 0.4, 0.6, 0.8],
+    // Iv está acotado en [0,1] por definición, pero eso NO significa que los
+    // valores reales usen ese rango completo -- medido en vivo (SE01/2023):
+    // Iv real va de 0.076 a 0.277 en los 14 departamentos, muy por debajo de
+    // los cortes fijos que había antes (0.2/0.4/0.6/0.8), así que casi todo
+    // el país caía en el mismo balde de color. Cuantiles de los datos (igual
+    // que la capa de volumen MINSAL) en vez de cortes fijos sobre [0,1] --
+    // siempre usa el rango completo de la rampa contra lo que realmente varía
+    // esa semana, en vez de asumir una dispersión que no existe.
+    calcularCortes: cortesPorCuantiles,
     etiquetasLeyenda(cortes) {
       return [
-        `0.0–${cortes[0]}`,
-        `${cortes[0]}–${cortes[1]}`,
-        `${cortes[1]}–${cortes[2]}`,
-        `${cortes[2]}–${cortes[3]}`,
-        `${cortes[3]}–1.0`,
+        `0.00–${cortes[0].toFixed(2)}`,
+        `${cortes[0].toFixed(2)}–${cortes[1].toFixed(2)}`,
+        `${cortes[1].toFixed(2)}–${cortes[2].toFixed(2)}`,
+        `${cortes[2].toFixed(2)}–${cortes[3].toFixed(2)}`,
+        `> ${cortes[3].toFixed(2)}`,
       ];
     },
     tooltipValor(valor) {
@@ -438,7 +472,13 @@
   }
 
   const CATEGORIA_A_INDICE: Record<string, number> = { baja: 0, media: 1, alta: 2 };
-  const RAMPA_PRESION = ['#cfe8e2', '#6fb5a8', '#2e7d6e'];
+  // Presión solo tiene 3 categorías posibles (baja/media/alta) -- los 3 tonos
+  // de teal anteriores eran demasiado parecidos entre sí y con pocos
+  // departamentos en "media"/"alta" el mapa se veía casi de un solo color.
+  // Mismo family de verde de la marca, pero mucho más separado en luminosidad
+  // y saturación para que la diferencia se note incluso con pocos casos en
+  // las categorías altas.
+  const RAMPA_PRESION = ['#e8f3ef', '#4fae95', '#0b3d33'];
 
   let detallesPresion = new Map<string, DatoPresion>();
 

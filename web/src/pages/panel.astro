@@ -4,6 +4,19 @@ import CurvaEpidemicaNacional from '../components/CurvaEpidemicaNacional.astro';
 import MapaDepartamentos from '../components/MapaDepartamentos.astro';
 import MetricasModelo from '../components/MetricasModelo.astro';
 import ResumenNacional from '../components/ResumenNacional.astro';
+import AuditoriaDatos from '../components/AuditoriaDatos.astro';
+
+// Nav lateral + fila de resumen + panel de auditoría: patrón de layout
+// reciclado de referencias_no_trakear/boceto_dashboard_pre-camino-ancho_DESACTUALIZADO.png
+// (el boceto es de antes del pivote y su CONTENIDO de riesgo en vivo no se
+// usa -- ver LEEME.md en esa carpeta). El nav son anclas a las secciones de
+// esta misma página, no rutas nuevas.
+const SECCIONES = [
+  { href: '#resumen', etiqueta: 'Resumen' },
+  { href: '#mapa', etiqueta: 'Mapa departamental' },
+  { href: '#curva', etiqueta: 'Serie nacional' },
+  { href: '#historico', etiqueta: 'Clasificador histórico' },
+];
 
 // Jerarquía del dashboard (decisión del coordinador, 2026-08-21): Camino
 // Ancho -- descriptivo, no predictivo -- es la narrativa principal. El mapa
@@ -18,33 +31,59 @@ import ResumenNacional from '../components/ResumenNacional.astro';
 
 <Layout title="EPI-Aetheris — Panel">
   <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
-    <header class="mb-8 max-w-3xl">
-      <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">
-        Panel descriptivo
-      </p>
-      <h1 class="mt-1 font-sans text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">
-        Qué está pasando con el dengue en El Salvador
-      </h1>
-      <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
-        Análisis descriptivo espaciotemporal ("Camino Ancho"): qué está pasando epidemiológica y
-        ambientalmente en cada departamento, qué tan inusual es contra su propia historia, y qué
-        tan confiable es el dato detrás de esa lectura. No predice brotes ni asigna niveles de
-        riesgo -- es una ayuda de priorización, no un diagnóstico.
-      </p>
-      <p class="mt-2 font-sans text-xs text-ink-muted">
-        El clasificador predictivo piloto fue retirado tras su validación empírica; queda al final
-        de esta página como referencia histórica, con sus métricas y errores a la vista.
-      </p>
-    </header>
+    <div class="lg:flex lg:items-start lg:gap-8">
+      <nav aria-label="Secciones del panel" class="mb-6 lg:sticky lg:top-20 lg:mb-0 lg:w-48 lg:shrink-0">
+        <p class="font-sans text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+          En esta página
+        </p>
+        <ul class="mt-2 flex flex-wrap gap-1.5 lg:mt-3 lg:flex-col">
+          {SECCIONES.map((s) => (
+            <li>
+              <a
+                href={s.href}
+                class="block rounded-full px-3 py-1.5 font-sans text-sm text-ink-muted transition-colors hover:bg-secondary/30 hover:text-ink lg:rounded-lg"
+              >
+                {s.etiqueta}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-      <div class="grid grid-cols-1 gap-6">
-        <MapaDepartamentos />
-        <CurvaEpidemicaNacional />
-        <MetricasModelo />
-      </div>
-      <div class="lg:sticky lg:top-20">
-        <ResumenNacional />
+      <div class="min-w-0 flex-1">
+        <header id="resumen" class="max-w-3xl scroll-mt-24">
+          <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">
+            Panel descriptivo
+          </p>
+          <h1 class="mt-1 font-sans text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">
+            Qué está pasando con el dengue en El Salvador
+          </h1>
+          <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+            Análisis descriptivo espaciotemporal ("Camino Ancho"): qué está pasando epidemiológica y
+            ambientalmente en cada departamento, qué tan inusual es contra su propia historia, y qué
+            tan confiable es el dato detrás de esa lectura. No predice brotes ni asigna niveles de
+            riesgo -- es una ayuda de priorización, no un diagnóstico.
+          </p>
+          <p class="mt-2 font-sans text-xs text-ink-muted">
+            El clasificador predictivo piloto fue retirado tras su validación empírica; queda al final
+            de esta página como referencia histórica, con sus métricas y errores a la vista.
+          </p>
+        </header>
+
+        <div class="mt-6 flex flex-col gap-4">
+          <ResumenNacional />
+          <AuditoriaDatos />
+        </div>
+
+        <div id="mapa" class="mt-8 scroll-mt-24">
+          <MapaDepartamentos />
+        </div>
+        <div id="curva" class="mt-6 scroll-mt-24">
+          <CurvaEpidemicaNacional />
+        </div>
+        <div id="historico" class="mt-6 scroll-mt-24">
+          <MetricasModelo />
+        </div>
       </div>
     </div>
   </main>
