@@ -16,6 +16,7 @@
   --color-secondary-ink: var(--color-secondary-ink);
   --color-deep: var(--color-deep);
   --color-deep-ink: var(--color-deep-ink);
+  --color-deep-ink-muted: var(--color-deep-ink-muted);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 }
