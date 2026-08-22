@@ -36,6 +36,11 @@ backend/ingestion/data/raw/
 # normalizar) — derivada del dato crudo, misma regla de exclusión.
 backend/ingestion/data/interim/
 
+# Extracto exploratorio de IRA para la web (exportar_ira_web.py) — derivado
+# de data/interim/, misma regla: no se versiona; la página /ira muestra un
+# estado vacío explícito cuando no está generado.
+web/public/datos-exploracion/
+
 # db/seed/seed_datos_reales.sql SÍ se trackea: excepción deliberada, igual
 # criterio que el GeoJSON de arriba (ver docs/adr/0010-*.md) — volcado de
 # datos ya procesados (4,4 MB), no boletines crudos.

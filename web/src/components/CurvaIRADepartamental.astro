@@ -1,0 +1,268 @@
+---
+// Curva semanal departamental de IRA (exploración). A diferencia de los
+// componentes del panel de dengue, NO consulta la API: lee el JSON estático
+// /datos-exploracion/ira.json que genera backend/ingestion/exportar_ira_web.py
+// a partir de la corrida exploratoria (corrida_ira.py). IRA no está ingerida
+// en Postgres (clasificación pendiente de ADR 0011), así que no existe
+// endpoint -- y este componente no lo simula. Si el JSON no está generado,
+// se muestra un estado vacío explícito, nunca un dato inventado.
+//
+// Los huecos de la serie (semanas sin corte publicado, correcciones
+// retroactivas excluidas) rompen la línea: no se interpola.
+---
+
+<section class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="flex items-start gap-3">
+      <span class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+      <div>
+        <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+          Casos semanales de IRA por departamento
+        </h2>
+        <p class="mt-1 max-w-2xl font-sans text-sm leading-relaxed text-ink-muted">
+          Serie desacumulada de los boletines MINSAL (la fuente publica acumulados desde SE1;
+          aquí se diferencia entre cortes consecutivos). Un año por línea; los huecos son semanas
+          sin dato publicado o correcciones retroactivas de MINSAL -- se dejan vacíos, no se
+          interpolan.
+        </p>
+      </div>
+    </div>
+    <label class="flex items-center gap-2 font-sans text-sm text-ink-muted">
+      Departamento
+      <select
+        id="ira-depto"
+        class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
+      ></select>
+    </label>
+  </div>
+
+  <div id="curva-ira" class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4">
+    <div data-estado aria-hidden="true">
+      <div class="skeleton h-40 w-full sm:h-52"></div>
+      <div class="skeleton mt-2 h-3 w-1/3"></div>
+    </div>
+  </div>
+
+  <div id="ira-auditoria" class="mt-4 hidden">
+    <p class="font-sans text-xs font-semibold uppercase tracking-wider text-ink-muted">
+      Auditoría de extracción por año (boletines del corpus)
+    </p>
+    <div id="ira-auditoria-chips" class="mt-2 flex flex-wrap gap-2"></div>
+  </div>
+</section>
+
+<script>
+  // [semana, valor|null, nota?]
+  type Punto = [number, number | null, string?];
+
+  interface DatosIRA {
+    generado: string;
+    fuente: string;
+    advertencia: string;
+    estados_extraccion: Record<string, Record<string, number>>;
+    series: Record<string, Record<string, Punto[]>>;
+  }
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const ANCHO = 720;
+  const ALTO = 260;
+  const MARGEN = { arriba: 20, abajo: 40, izquierda: 44, derecha: 8 };
+  // Años dentro de la misma gama del acento (sin inventar paleta nueva):
+  // opacidad graduada, el año más reciente al frente y a trazo pleno.
+  const OPACIDAD_ANIO: Record<string, number> = {
+    '2018': 0.25,
+    '2019': 0.4,
+    '2021': 0.55,
+    '2022': 0.75,
+    '2023': 1,
+  };
+
+  const ETIQUETA_ESTADO: Record<string, string> = {
+    ok: 'extraído y cuadra',
+    revision_manual: 'revisión manual (no cuadra / tabla rezagada)',
+    sin_filas_sospecha_imagen: 'tabla como imagen (sin texto extraíble)',
+    ausencia_esperada_vacacion: 'boletín de vacaciones (ausencia esperada)',
+    sin_texto_extraible: 'documento sin texto extraíble',
+    sin_tabla_ira: 'sin tabla departamental de IRA',
+  };
+
+  function dibujar(contenedor: HTMLElement, series: Record<string, Punto[]>, depto: string) {
+    contenedor.innerHTML = '';
+
+    const anios = Object.keys(series).sort();
+    const valores = anios.flatMap((a) => series[a].map((p) => p[1]).filter((v) => v !== null));
+    if (valores.length === 0) {
+      contenedor.innerHTML =
+        '<p class="font-sans text-sm text-ink-muted">Sin puntos con dato para este departamento.</p>';
+      return;
+    }
+    const maxValor = Math.max(...(valores as number[]));
+    const areaGrafica = ALTO - MARGEN.arriba - MARGEN.abajo;
+    const escalaY = (v: number) => ALTO - MARGEN.abajo - (v / (maxValor || 1)) * areaGrafica;
+    const escalaX = (semana: number) =>
+      MARGEN.izquierda + ((semana - 1) / 51) * (ANCHO - MARGEN.izquierda - MARGEN.derecha);
+
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
+    svg.setAttribute('class', 'w-full');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute(
+      'aria-label',
+      `Casos semanales de IRA en ${depto}, por año (2018-2023, sin 2020)`
+    );
+
+    for (const nivel of [0, maxValor / 2, maxValor]) {
+      const y = escalaY(nivel);
+      const linea = document.createElementNS(SVG_NS, 'line');
+      linea.setAttribute('x1', String(MARGEN.izquierda));
+      linea.setAttribute('x2', String(ANCHO - MARGEN.derecha));
+      linea.setAttribute('y1', String(y));
+      linea.setAttribute('y2', String(y));
+      linea.setAttribute('stroke', 'var(--color-border)');
+      linea.setAttribute('stroke-width', '1');
+      svg.appendChild(linea);
+
+      const etiqueta = document.createElementNS(SVG_NS, 'text');
+      etiqueta.setAttribute('x', String(MARGEN.izquierda - 8));
+      etiqueta.setAttribute('y', String(y + 3));
+      etiqueta.setAttribute('text-anchor', 'end');
+      etiqueta.setAttribute('font-family', 'var(--font-mono)');
+      etiqueta.setAttribute('font-size', '9');
+      etiqueta.setAttribute('fill', 'var(--color-ink-muted)');
+      etiqueta.textContent = Math.round(nivel).toLocaleString('es-SV');
+      svg.appendChild(etiqueta);
+    }
+
+    for (const semana of [1, 10, 20, 30, 40, 50]) {
+      const etiqueta = document.createElementNS(SVG_NS, 'text');
+      etiqueta.setAttribute('x', String(escalaX(semana)));
+      etiqueta.setAttribute('y', String(ALTO - 24));
+      etiqueta.setAttribute('text-anchor', 'middle');
+      etiqueta.setAttribute('font-family', 'var(--font-mono)');
+      etiqueta.setAttribute('font-size', '9');
+      etiqueta.setAttribute('fill', 'var(--color-ink-muted)');
+      etiqueta.textContent = `SE${semana}`;
+      svg.appendChild(etiqueta);
+    }
+
+    for (const anio of anios) {
+      // Un <path> con M en cada reinicio: los null (huecos) parten la línea.
+      let d = '';
+      let enTramo = false;
+      for (const [semana, valor] of series[anio]) {
+        if (valor === null) {
+          enTramo = false;
+          continue;
+        }
+        d += `${enTramo ? 'L' : 'M'}${escalaX(semana).toFixed(1)},${escalaY(valor).toFixed(1)} `;
+        enTramo = true;
+      }
+      if (!d) continue;
+      const trazo = document.createElementNS(SVG_NS, 'path');
+      trazo.setAttribute('d', d.trim());
+      trazo.setAttribute('fill', 'none');
+      trazo.setAttribute('stroke', 'var(--color-accent)');
+      trazo.setAttribute('stroke-opacity', String(OPACIDAD_ANIO[anio] ?? 0.5));
+      trazo.setAttribute('stroke-width', anio === anios[anios.length - 1] ? '2' : '1.5');
+      trazo.setAttribute('stroke-linejoin', 'round');
+      trazo.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(trazo);
+    }
+
+    // Leyenda de años sobre la línea base inferior.
+    let x = MARGEN.izquierda;
+    for (const anio of anios) {
+      const muestra = document.createElementNS(SVG_NS, 'line');
+      muestra.setAttribute('x1', String(x));
+      muestra.setAttribute('x2', String(x + 14));
+      muestra.setAttribute('y1', String(ALTO - 8));
+      muestra.setAttribute('y2', String(ALTO - 8));
+      muestra.setAttribute('stroke', 'var(--color-accent)');
+      muestra.setAttribute('stroke-opacity', String(OPACIDAD_ANIO[anio] ?? 0.5));
+      muestra.setAttribute('stroke-width', '2');
+      svg.appendChild(muestra);
+      const texto = document.createElementNS(SVG_NS, 'text');
+      texto.setAttribute('x', String(x + 18));
+      texto.setAttribute('y', String(ALTO - 5));
+      texto.setAttribute('font-family', 'var(--font-mono)');
+      texto.setAttribute('font-size', '10');
+      texto.setAttribute('fill', 'var(--color-ink-muted)');
+      texto.textContent = anio;
+      svg.appendChild(texto);
+      x += 60;
+    }
+
+    contenedor.appendChild(svg);
+
+    // Nota de huecos: cuántas semanas por año quedaron sin dato, y por qué
+    // tipo (hueco entre cortes vs corrección retroactiva excluida).
+    const resumen = anios
+      .map((a) => {
+        const sinDato = series[a].filter((p) => p[1] === null).length;
+        return sinDato > 0 ? `${a}: ${sinDato} semanas sin dato` : null;
+      })
+      .filter(Boolean)
+      .join(' · ');
+    if (resumen) {
+      const p = document.createElement('p');
+      p.className = 'mt-2 font-sans text-xs text-ink-muted';
+      p.textContent = `Huecos (no interpolados) -- ${resumen}`;
+      contenedor.appendChild(p);
+    }
+  }
+
+  function pintarAuditoria(estados: DatosIRA['estados_extraccion']) {
+    const bloque = document.getElementById('ira-auditoria');
+    const chips = document.getElementById('ira-auditoria-chips');
+    if (!bloque || !chips) return;
+    bloque.classList.remove('hidden');
+    for (const [anio, conteos] of Object.entries(estados)) {
+      const detalle = Object.entries(conteos)
+        .sort((a, b) => b[1] - a[1])
+        .map(([estado, n]) => `${n} ${ETIQUETA_ESTADO[estado] ?? estado}`)
+        .join(', ');
+      const chip = document.createElement('span');
+      chip.className =
+        'rounded-full border border-border bg-bg px-3 py-1 font-sans text-xs text-ink-muted';
+      chip.textContent = `${anio}: ${detalle}`;
+      chips.appendChild(chip);
+    }
+  }
+
+  async function iniciar() {
+    const contenedor = document.getElementById('curva-ira');
+    const selector = document.getElementById('ira-depto') as HTMLSelectElement | null;
+    if (!contenedor || !selector) return;
+
+    let datos: DatosIRA;
+    try {
+      const resp = await fetch('/datos-exploracion/ira.json');
+      if (!resp.ok) throw new Error('respuesta no OK');
+      datos = await resp.json();
+    } catch {
+      contenedor.innerHTML =
+        '<p class="font-sans text-sm leading-relaxed text-ink-muted">' +
+        'El extracto exploratorio no está generado en esta instalación. Se produce con ' +
+        '<code class="font-mono text-xs">backend/ingestion/corrida_ira.py</code> seguido de ' +
+        '<code class="font-mono text-xs">backend/ingestion/exportar_ira_web.py</code> ' +
+        '(requiere los PDF de MINSAL descargados). No se muestra ningún dato sustituto.</p>';
+      return;
+    }
+
+    const departamentos = Object.keys(datos.series).sort((a, b) => a.localeCompare(b, 'es'));
+    for (const d of departamentos) {
+      const opcion = document.createElement('option');
+      opcion.value = d;
+      opcion.textContent = d;
+      if (d === 'San Salvador') opcion.selected = true;
+      selector.appendChild(opcion);
+    }
+
+    const refrescar = () => dibujar(contenedor, datos.series[selector.value] ?? {}, selector.value);
+    selector.addEventListener('change', refrescar);
+    refrescar();
+    pintarAuditoria(datos.estados_extraccion);
+  }
+
+  iniciar();
+</script>
