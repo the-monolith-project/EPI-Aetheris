@@ -1,31 +1,26 @@
 ---
-// Panel lateral de cifras reales -- mismos datos que ya carga
-// CurvaEpidemicaNacional.astro (GET /api/casos-nacional), agregados del
-// lado del cliente. No inventa ninguna métrica nueva ni implica lectura de
-// riesgo: es un resumen histórico ("lo que ya pasó"), no una alerta.
+// Fila de cifras reales -- mismos datos que ya carga CurvaEpidemicaNacional.astro
+// (GET /api/casos-nacional), agregados del lado del cliente. No inventa ninguna
+// métrica nueva ni implica lectura de riesgo: es un resumen histórico ("lo que
+// ya pasó"), no una alerta. Diseño horizontal inspirado en la fila de tarjetas
+// de resumen de referencias_no_trakear/boceto_dashboard_pre-camino-ancho_DESACTUALIZADO.png
+// (layout reciclado, contenido de riesgo de ese boceto NO -- ver LEEME.md ahí).
 ---
 
-<aside class="card-elevated flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 sm:p-6">
-  <div>
-    <h2 class="font-sans text-sm font-semibold text-ink">Resumen histórico nacional</h2>
-    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
-      OpenDengue, clasificación "total" -- agregado de la misma serie de la curva epidémica.
-    </p>
-  </div>
-
-  <div id="resumen-nacional" class="flex flex-col gap-3">
-    <div data-estado aria-hidden="true" class="flex flex-col gap-3">
-      <div class="skeleton h-14 w-full"></div>
-      <div class="skeleton h-14 w-full"></div>
-      <div class="skeleton h-14 w-full"></div>
+<section aria-label="Resumen histórico nacional" class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+  <div id="resumen-nacional" class="contents">
+    <div data-estado aria-hidden="true" class="contents">
+      <div class="skeleton h-24 border border-border"></div>
+      <div class="skeleton h-24 border border-border"></div>
+      <div class="skeleton h-24 border border-border"></div>
     </div>
   </div>
 
-  <div class="rounded-xl border border-border bg-bg p-3">
+  <div class="card-elevated rounded-2xl border border-border bg-surface p-4">
     <p class="font-sans text-2xl font-semibold tracking-tight text-ink">14</p>
     <p class="mt-0.5 font-sans text-xs leading-snug text-ink-muted">departamentos con capas descriptivas</p>
   </div>
-</aside>
+</section>
 
 <script>
   interface CasoSemanal {
@@ -57,19 +52,19 @@
       const ultimo = datos[datos.length - 1];
 
       contenedor.innerHTML = `
-        <div class="rounded-xl border border-border bg-bg p-3">
+        <div class="card-elevated rounded-2xl border border-border bg-surface p-4">
           <p class="font-sans text-2xl font-semibold tracking-tight text-ink">${total.toLocaleString('es-SV')}</p>
           <p class="mt-0.5 font-sans text-xs leading-snug text-ink-muted">
             casos acumulados, ${primero.anio}-${ultimo.anio} (nacional)
           </p>
         </div>
-        <div class="rounded-xl border border-border bg-bg p-3">
+        <div class="card-elevated rounded-2xl border border-border bg-surface p-4">
           <p class="font-sans text-2xl font-semibold tracking-tight text-ink">${pico.conteo.toLocaleString('es-SV')}</p>
           <p class="mt-0.5 font-sans text-xs leading-snug text-ink-muted">
             pico semanal histórico -- semana del ${formatearSemana(pico.semana_inicio)}
           </p>
         </div>
-        <div class="rounded-xl border border-border bg-bg p-3">
+        <div class="card-elevated rounded-2xl border border-border bg-surface p-4">
           <p class="font-sans text-2xl font-semibold tracking-tight text-ink">${datos.length}</p>
           <p class="mt-0.5 font-sans text-xs leading-snug text-ink-muted">
             semanas epidemiológicas con dato nacional cargado
@@ -78,7 +73,7 @@
       `;
     } catch {
       contenedor.innerHTML =
-        '<p class="font-sans text-sm text-ink-muted">No se pudo cargar el resumen en este momento.</p>';
+        '<p class="col-span-3 font-sans text-sm text-ink-muted">No se pudo cargar el resumen en este momento.</p>';
     }
   }
 
