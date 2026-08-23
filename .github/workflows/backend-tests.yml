@@ -1,0 +1,53 @@
+name: Backend tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: aetheris_user
+          POSTGRES_PASSWORD: aetheris_ci_password
+          POSTGRES_DB: epi_aetheris
+        ports:
+          - 5432:5432
+        # Mismo mecanismo que docker-compose.yml: las migraciones numeradas
+        # corren solas, en orden alfabetico, via docker-entrypoint-initdb.d
+        # -- una sola vez, al crear el volumen del contenedor (ver CLAUDE.md).
+        volumes:
+          - ${{ github.workspace }}/db/migrations:/docker-entrypoint-initdb.d
+        options: >-
+          --health-cmd "pg_isready -U aetheris_user -d epi_aetheris"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: aetheris_user
+      POSTGRES_PASSWORD: aetheris_ci_password
+      POSTGRES_DB: epi_aetheris
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        working-directory: backend
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Correr suite pytest
+        working-directory: backend
+        run: python -m pytest ingestion/tests/ api/tests/ -v
