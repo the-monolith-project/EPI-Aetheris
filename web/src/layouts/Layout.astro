@@ -3,9 +3,13 @@ import '../styles/global.css';
 
 interface Props {
   title?: string;
+  descripcion?: string;
 }
 
-const { title = 'EPI-Aetheris' } = Astro.props;
+const {
+  title = 'EPI-Aetheris',
+  descripcion = 'Vigilancia epidemiológica descriptiva de dengue e IRA en El Salvador -- datos públicos, software libre y reproducible. No es un diagnóstico ni un pronóstico.',
+} = Astro.props;
 
 // API pública real -- FastAPI genera /docs (Swagger UI) gratis a partir de
 // los mismos endpoints que consume este frontend. Enlazarlo desde el
@@ -31,6 +35,8 @@ const NAV = [
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={descripcion} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -38,6 +44,14 @@ const NAV = [
       rel="stylesheet"
     />
     <title>{title}</title>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={descripcion} />
+    <meta property="og:site_name" content="EPI-Aetheris" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={descripcion} />
   </head>
   <body class="min-h-screen bg-bg text-ink">
     <header class="sticky top-0 z-40 bg-accent shadow-[0_1px_0_rgba(255,255,255,0.06)]">
@@ -103,6 +117,27 @@ const NAV = [
             class="text-deep-ink underline underline-offset-2 hover:text-white"
           >
             Código en GitHub
+          </a>
+        </div>
+        <p class="mt-4 font-sans text-[11px] uppercase tracking-wide text-deep-ink-muted/80">Fuentes</p>
+        <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 font-sans text-xs">
+          <a
+            href="https://www.salud.gob.sv/category/publicaciones/informes-de-vigilancia-sanitaria/"
+            class="text-deep-ink-muted underline underline-offset-2 hover:text-white"
+          >
+            MINSAL -- boletines de vigilancia
+          </a>
+          <a
+            href="https://opendengue.org/"
+            class="text-deep-ink-muted underline underline-offset-2 hover:text-white"
+          >
+            OpenDengue
+          </a>
+          <a
+            href="https://open-meteo.com/en/license"
+            class="text-deep-ink-muted underline underline-offset-2 hover:text-white"
+          >
+            Open-Meteo (CC BY 4.0)
           </a>
         </div>
       </div>
