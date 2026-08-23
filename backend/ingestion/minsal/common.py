@@ -123,11 +123,18 @@ def es_pdf_valido_en_disco(path: Path) -> bool:
 
 
 def _nombre_desde_url_directa(url: str) -> str:
-    # Resolve URL path first, then decode URL entities, and FINALLY extract filename.
-    # This prevents path traversal payloads like %2e%2e%2f (../) from bypassing Path().name
+    # Resolve URL path first, then fully decode URL entities (looping to unwind
+    # multi-layer encoding like %252e%252e%252f), and FINALLY extract filename.
+    # This prevents path traversal payloads from bypassing Path().name -- a
+    # single unquote() pass left one residual encoding layer exploitable via
+    # _clean_filename's own unquote() call, which had no basename re-extraction.
     path = urllib.parse.urlparse(url).path
-    path = urllib.parse.unquote(path)
-    return _clean_filename(Path(path).name)
+    while True:
+        unquoted = urllib.parse.unquote(path)
+        if unquoted == path:
+            break
+        path = unquoted
+    return Path(_clean_filename(Path(path).name)).name
 
 
 def _descargar_bytes(session: requests.Session, url: str, timeout: int = 30) -> requests.Response:
