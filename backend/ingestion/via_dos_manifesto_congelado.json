@@ -12,7 +12,7 @@
   "interpretacion": "clasificacion_relativa_de_temporada_con_validacion_reconstructiva",
   "fuente": {
     "seed_relativo": "db/seed/seed_datos_reales.sql",
-    "seed_sha256": "25feff52b0347244814545522925dd924c3fb1a5f9c678aeffd2764515921bed",
+    "seed_sha256": "1161df94805717d9aaf00b8667eadb239d70f2b3b7bf536f271627401553e9c4",
     "casos": {
       "pais": "SV",
       "nivel": "nacional",
