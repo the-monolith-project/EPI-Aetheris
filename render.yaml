@@ -5,11 +5,11 @@
 # la base gestionada, algo que docker-compose hace solo via
 # docker-entrypoint-initdb.d y Render no replica automáticamente).
 #
-# Los tres servicios quedan en la misma región para que el backend hable con
-# la base por red privada. Plan "starter"/"basic-256mb" en los tres --
-# elegido por costo-beneficio (~$14/mes backend+DB), no por ser el más
-# barato posible: ver docs/despliegue-render.md para la comparación frente a
-# Railway/Fly.io/Vercel.
+# El backend y la base quedan en la misma región para hablarse por red
+# privada. El sitio estático no acepta región (se sirve por CDN global).
+# Plan "starter"/"basic-256mb" en backend y DB -- elegido por costo-beneficio
+# (~$14/mes backend+DB), no por ser el más barato posible: ver
+# docs/despliegue-render.md para la comparación frente a Railway/Fly.io/Vercel.
 
 databases:
   - name: epi-aetheris-db
@@ -65,7 +65,6 @@ services:
   - type: web
     name: epi-aetheris-web
     runtime: static
-    region: oregon
     rootDir: ./web
     buildCommand: pnpm install --frozen-lockfile && pnpm build
     staticPublishPath: ./dist
