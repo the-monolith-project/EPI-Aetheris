@@ -11,6 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
+      # Sin volumes aqui a proposito: un volume que apunte a un path de
+      # github.workspace se monta ANTES del checkout (los contenedores de
+      # servicio arrancan antes que los steps), asi que Docker crea ese
+      # directorio vacio con permisos que el runner no puede borrar despues
+      # al clonar -- "EACCES: permission denied, rmdir db/migrations"
+      # (confirmado en la corrida 32669784885). Las migraciones y el seed se
+      # aplican explicitamente mas abajo, despues del checkout, via psql.
       db:
         image: postgres:15-alpine
         env:
@@ -19,11 +26,6 @@ jobs:
           POSTGRES_DB: epi_aetheris
         ports:
           - 5432:5432
-        # Mismo mecanismo que docker-compose.yml: las migraciones numeradas
-        # corren solas, en orden alfabetico, via docker-entrypoint-initdb.d
-        # -- una sola vez, al crear el volumen del contenedor (ver CLAUDE.md).
-        volumes:
-          - ${{ github.workspace }}/db/migrations:/docker-entrypoint-initdb.d
         options: >-
           --health-cmd "pg_isready -U aetheris_user -d epi_aetheris"
           --health-interval 5s
@@ -36,6 +38,7 @@ jobs:
       POSTGRES_USER: aetheris_user
       POSTGRES_PASSWORD: aetheris_ci_password
       POSTGRES_DB: epi_aetheris
+      PGPASSWORD: aetheris_ci_password
 
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +50,15 @@ jobs:
       - name: Instalar dependencias
         working-directory: backend
         run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Aplicar migraciones y seed de datos reales
+        run: |
+          set -e
+          for f in db/migrations/*.sql; do
+            echo "-- $f"
+            psql -h localhost -U aetheris_user -d epi_aetheris -v ON_ERROR_STOP=1 -f "$f"
+          done
+          psql -h localhost -U aetheris_user -d epi_aetheris -v ON_ERROR_STOP=1 -f db/seed/seed_datos_reales.sql
 
       - name: Correr suite pytest
         working-directory: backend
