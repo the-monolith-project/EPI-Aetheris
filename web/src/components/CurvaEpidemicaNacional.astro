@@ -24,6 +24,7 @@
       type="button"
       id="curva-descargar-csv"
       disabled
+      title="Cargando datos para descargar..."
       class="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 font-sans text-xs font-medium text-ink transition-colors hover:border-accent/40 hover:bg-secondary/30 disabled:cursor-not-allowed disabled:opacity-50"
     >
       Descargar CSV
@@ -210,6 +211,7 @@
       dibujar(contenedor, datos);
       if (botonDescarga && datos.length > 0) {
         botonDescarga.disabled = false;
+        botonDescarga.removeAttribute('title');
         botonDescarga.addEventListener('click', () => descargarCsv(datos));
       }
     } catch {
