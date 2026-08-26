@@ -210,6 +210,7 @@
 <script>
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
+  import { escapeHtml } from '../utils/security';
 
   // ---------------------------------------------------------------------
   // Tipos y datos compartidos
@@ -277,11 +278,11 @@
     const item = (color: string, etiqueta: string) =>
       `<span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-1">` +
       `<span style="background:${color}" class="inline-block h-2.5 w-2.5 rounded-full ring-1 ring-black/5"></span>` +
-      `<span class="font-mono text-[11px] text-ink-muted">${etiqueta}</span></span>`;
+      `<span class="font-mono text-[11px] text-ink-muted">${escapeHtml(etiqueta)}</span></span>`;
     const items = capa.rampa.map((color, i) => item(color, rangos[i])).join('');
     contenedor.innerHTML = `
       <div class="flex flex-wrap items-center gap-1.5 font-sans text-xs text-ink-muted">
-        <span class="mr-1 font-medium text-ink">${capa.tituloLeyenda}:</span>
+        <span class="mr-1 font-medium text-ink">${escapeHtml(capa.tituloLeyenda)}:</span>
         ${items}
         ${item(capa.sinDatoColor, 'sin dato')}
       </div>
@@ -819,8 +820,8 @@
     function celdaSnapshot(etiqueta: string, valor: string): string {
       return (
         `<div class="rounded-lg border border-border bg-surface px-3 py-2">` +
-        `<dt class="font-sans text-[11px] font-medium uppercase tracking-wide text-ink-muted">${etiqueta}</dt>` +
-        `<dd class="mt-0.5 font-mono text-sm text-ink">${valor}</dd></div>`
+        `<dt class="font-sans text-[11px] font-medium uppercase tracking-wide text-ink-muted">${escapeHtml(etiqueta)}</dt>` +
+        `<dd class="mt-0.5 font-mono text-sm text-ink">${escapeHtml(valor)}</dd></div>`
       );
     }
 
@@ -911,7 +912,7 @@
             : 'border-border bg-surface text-ink hover:border-accent/40 hover:bg-secondary/30';
         return `<button type="button" id="${botonId(capa.id)}" data-id="${capa.id}" ${
           capa.disponible ? '' : 'disabled aria-disabled="true"'
-        } role="tab" aria-selected="${activa}" class="${base} ${estilo}">${capa.etiqueta}</button>`;
+        } role="tab" aria-selected="${activa}" class="${base} ${estilo}">${escapeHtml(capa.etiqueta)}</button>`;
       }).join('');
 
       for (const capa of CAPAS) {
