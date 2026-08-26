@@ -59,9 +59,18 @@ app = FastAPI(
 
 # El frontend Astro corre en un origen distinto (puerto 4321) al de esta API
 # (puerto 8000) tanto en desarrollo local como dentro de docker-compose.
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:4321").split(",")
+    if origin.strip()
+]
+
+if "*" in cors_origins:
+    raise ValueError("CORS_ALLOWED_ORIGINS must not contain '*' for security reasons.")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:4321").split(","),
+    allow_origins=cors_origins,
     allow_methods=["GET"],
     allow_headers=["*"],
 )
