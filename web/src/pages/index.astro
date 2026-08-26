@@ -1,5 +1,6 @@
 ---
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import Layout from '../layouts/Layout.astro';
 
 // Landing de presentación (antes de entrar al panel en /panel). No repite el
@@ -28,7 +29,13 @@ interface DepartamentoGeo {
 }
 
 function construirSiluetaDepartamentos(): { paths: DepartamentoGeo[]; viewBox: string } {
-  const ruta = new URL('../../public/geo/slv-adm1.geojson', import.meta.url);
+  // No usar new URL('../../public/...', import.meta.url): en dev resuelve
+  // contra la ruta fuente real, pero astro build empaqueta este codigo en
+  // dist/.prerender/chunks/, asi que la misma ruta relativa termina
+  // apuntando a dist/public/geo/... -- ese directorio no existe, Astro copia
+  // public/ a la raiz de dist/ (dist/geo/...). process.cwd() es estable en
+  // ambos casos: astro build y astro dev corren con cwd en la raiz de web/.
+  const ruta = join(process.cwd(), 'public/geo/slv-adm1.geojson');
   const geojson = JSON.parse(readFileSync(ruta, 'utf-8'));
 
   const ANCHO = 480;
