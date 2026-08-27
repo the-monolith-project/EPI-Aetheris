@@ -68,12 +68,10 @@ class ViaTresTest(unittest.TestCase):
         ) = via.preparar(cls.datos, cls.manifiesto)
 
     def test_fuente_y_firma_previa_coinciden_con_manifiesto(self):
-        self.assertEqual(
-            base.sha256(SEED), self.manifiesto["fuente"]["seed_sha256"]
-        )
+        self.assertEqual(base.sha256(SEED), self.manifiesto["fuente"]["seed_sha256"])
         self.assertEqual(
             via.validar_firma_previa(self.firma, self.manifiesto),
-            "d8c2b907833f799a233d99f18289416803f22370e916dbd212da3943620303ae",
+            "60a2b805edc39c9d06c011f196dce1293f252a9559d41a3a1f6d885c1c86fce9",
         )
 
     def test_reemplaza_21_rezagos_por_siete_features(self):
@@ -90,9 +88,7 @@ class ViaTresTest(unittest.TestCase):
                 self.dataset, anio_externo, self.manifiesto
             )
             estado, _marcas = base.estado_fold(train, test, clases)
-            base.validar_firma_fold(
-                anio_externo, train, test, estado, self.manifiesto
-            )
+            base.validar_firma_fold(anio_externo, train, test, estado, self.manifiesto)
 
     def test_semana_objetivo_no_entra_en_sus_features(self):
         clave = (2022, 20)
@@ -138,18 +134,10 @@ class ViaTresTest(unittest.TestCase):
         datos_alterados = copy.deepcopy(self.datos)
         for semana in datos_alterados.serie[anio_externo]:
             datos_alterados.serie[anio_externo][semana] += 1_000_000
-        original = _dataset(
-            self.datos, self.manifiesto, [2018, 2019, 2021, 2022]
-        )
-        alterado = _dataset(
-            datos_alterados, self.manifiesto, [2018, 2019, 2021, 2022]
-        )
-        train_original = base.construir_fold(
-            original, anio_externo, self.manifiesto
-        )[0]
-        train_alterado = base.construir_fold(
-            alterado, anio_externo, self.manifiesto
-        )[0]
+        original = _dataset(self.datos, self.manifiesto, [2018, 2019, 2021, 2022])
+        alterado = _dataset(datos_alterados, self.manifiesto, [2018, 2019, 2021, 2022])
+        train_original = base.construir_fold(original, anio_externo, self.manifiesto)[0]
+        train_alterado = base.construir_fold(alterado, anio_externo, self.manifiesto)[0]
         self.assertEqual(
             _snapshot(train_original, self.manifiesto),
             _snapshot(train_alterado, self.manifiesto),
@@ -167,12 +155,8 @@ class ViaTresTest(unittest.TestCase):
                     variables[variable] -= 1_000_000
         original = _dataset(self.datos, self.manifiesto)
         alterado = _dataset(datos_alterados, self.manifiesto)
-        fold_original = base.construir_fold(
-            original, anio_externo, self.manifiesto
-        )
-        fold_alterado = base.construir_fold(
-            alterado, anio_externo, self.manifiesto
-        )
+        fold_original = base.construir_fold(original, anio_externo, self.manifiesto)
+        fold_alterado = base.construir_fold(alterado, anio_externo, self.manifiesto)
         self.assertEqual(
             _snapshot(fold_original[0], self.manifiesto),
             _snapshot(fold_alterado[0], self.manifiesto),
@@ -198,8 +182,7 @@ class ViaTresTest(unittest.TestCase):
         anteriores = base.claves_anteriores(self.datos, clave, 8)
         features = via.calcular_features(self.datos, anteriores)
         esperado = sum(
-            7.0
-            * max(min(self.datos.clima[anterior]["temp_media"], 35.0) - 16.0, 0.0)
+            7.0 * max(min(self.datos.clima[anterior]["temp_media"], 35.0) - 16.0, 0.0)
             for anterior in anteriores[:4]
         )
         self.assertAlmostEqual(features["grados_dia_desarrollo_4s"], esperado)

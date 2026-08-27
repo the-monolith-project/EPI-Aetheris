@@ -48,9 +48,8 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import requests
-from psycopg2.extras import execute_values
-
 from db import get_connection
+from psycopg2.extras import execute_values
 
 RAIZ = Path(__file__).parent
 CENTROIDES_PATH = RAIZ / "geo" / "centroides_departamentos.csv"
@@ -60,8 +59,11 @@ ANIO_INICIO_DEFAULT = 2018
 ANIO_FIN_DEFAULT = 2024
 
 VARIABLES_ERA5_LAND = [
-    "temperature_2m_max", "temperature_2m_min", "temperature_2m_mean",
-    "relative_humidity_2m_mean", "dew_point_2m_mean",
+    "temperature_2m_max",
+    "temperature_2m_min",
+    "temperature_2m_mean",
+    "relative_humidity_2m_mean",
+    "dew_point_2m_mean",
 ]
 VARIABLES_ERA5 = ["precipitation_sum", "precipitation_hours"]
 
@@ -113,12 +115,21 @@ def leer_departamentos() -> list[Departamento]:
     deptos = []
     with open(CENTROIDES_PATH, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            deptos.append(Departamento(row["codigo"], row["nombre"], float(row["lat"]), float(row["lon"])))
+            deptos.append(
+                Departamento(
+                    row["codigo"], row["nombre"], float(row["lat"]), float(row["lon"])
+                )
+            )
     return deptos
 
 
-def llamar_open_meteo(deptos: list[Departamento], modelo: str, variables: list[str],
-                       fecha_inicio: str, fecha_fin: str) -> list[dict]:
+def llamar_open_meteo(
+    deptos: list[Departamento],
+    modelo: str,
+    variables: list[str],
+    fecha_inicio: str,
+    fecha_fin: str,
+) -> list[dict]:
     params = {
         "latitude": ",".join(f"{d.lat:.6f}" for d in deptos),
         "longitude": ",".join(f"{d.lon:.6f}" for d in deptos),
@@ -138,8 +149,10 @@ def llamar_open_meteo(deptos: list[Departamento], modelo: str, variables: list[s
         if resp.status_code != 429:
             break
         espera = 15 * (intento + 1)
-        print(f"  429 Too Many Requests -- esperando {espera}s antes de reintentar "
-              f"({intento + 1}/5)...")
+        print(
+            f"  429 Too Many Requests -- esperando {espera}s antes de reintentar "
+            f"({intento + 1}/5)..."
+        )
         time.sleep(espera)
     resp.raise_for_status()
     datos = resp.json()
@@ -159,8 +172,9 @@ class PuntoDiario:
     valor: float
 
 
-def extraer_puntos_diarios(deptos: list[Departamento], respuesta: list[dict],
-                            variables: list[str]) -> list[PuntoDiario]:
+def extraer_puntos_diarios(
+    deptos: list[Departamento], respuesta: list[dict], variables: list[str]
+) -> list[PuntoDiario]:
     puntos = []
     for depto, resultado in zip(deptos, respuesta):
         diario = resultado["daily"]
@@ -184,7 +198,9 @@ def extraer_puntos_diarios(deptos: list[Departamento], respuesta: list[dict],
 
 def construir_mapa_fecha_a_semana(conn) -> dict[str, tuple[int, int]]:
     with conn.cursor() as cur:
-        cur.execute("SELECT anio, semana_epi, fecha_inicio, fecha_fin FROM semanas_epidemiologicas")
+        cur.execute(
+            "SELECT anio, semana_epi, fecha_inicio, fecha_fin FROM semanas_epidemiologicas"
+        )
         calendario = cur.fetchall()
 
     mapa: dict[str, tuple[int, int]] = {}
@@ -196,8 +212,9 @@ def construir_mapa_fecha_a_semana(conn) -> dict[str, tuple[int, int]]:
     return mapa
 
 
-def agregar_a_semana(puntos: list[PuntoDiario],
-                      mapa_fecha_a_semana: dict[str, tuple[int, int]]) -> dict[tuple[str, int, int, str], list[float]]:
+def agregar_a_semana(
+    puntos: list[PuntoDiario], mapa_fecha_a_semana: dict[str, tuple[int, int]]
+) -> dict[tuple[str, int, int, str], list[float]]:
     grupos: dict[tuple[str, int, int, str], list[float]] = defaultdict(list)
     sin_semana = set()
     for p in puntos:
@@ -222,15 +239,23 @@ def cargar(anio_inicio: int, anio_fin: int) -> int:
     fecha_inicio = date(anio_inicio, 1, 1).isoformat()
     fecha_fin = date(anio_fin, 12, 31).isoformat()
 
-    print(f"Llamando Open-Meteo (era5_land, 5 variables, {len(deptos)} departamentos, "
-          f"{fecha_inicio} a {fecha_fin})...")
-    resp_era5_land = llamar_open_meteo(deptos, "era5_land", VARIABLES_ERA5_LAND, fecha_inicio, fecha_fin)
+    print(
+        f"Llamando Open-Meteo (era5_land, 5 variables, {len(deptos)} departamentos, "
+        f"{fecha_inicio} a {fecha_fin})..."
+    )
+    resp_era5_land = llamar_open_meteo(
+        deptos, "era5_land", VARIABLES_ERA5_LAND, fecha_inicio, fecha_fin
+    )
     print(f"Llamando Open-Meteo (era5, 2 variables, {len(deptos)} departamentos)...")
-    resp_era5 = llamar_open_meteo(deptos, "era5", VARIABLES_ERA5, fecha_inicio, fecha_fin)
+    resp_era5 = llamar_open_meteo(
+        deptos, "era5", VARIABLES_ERA5, fecha_inicio, fecha_fin
+    )
 
     puntos = extraer_puntos_diarios(deptos, resp_era5_land, VARIABLES_ERA5_LAND)
     puntos += extraer_puntos_diarios(deptos, resp_era5, VARIABLES_ERA5)
-    print(f"{len(puntos)} observaciones diarias válidas extraídas (tras la guarda de precipitación).")
+    print(
+        f"{len(puntos)} observaciones diarias válidas extraídas (tras la guarda de precipitación)."
+    )
 
     conn = get_connection()
     try:
@@ -244,13 +269,20 @@ def cargar(anio_inicio: int, anio_fin: int) -> int:
             cur.execute("SELECT codigo, id FROM fuentes_datos")
             fuente_id_por_codigo = dict(cur.fetchall())
 
-            elevacion_por_codigo = {d.codigo: r["elevation"] for d, r in zip(deptos, resp_era5_land)}
-            for depto in deptos:
-                cur.execute(
-                    "UPDATE regiones SET centroide_lat = %s, centroide_lon = %s, elevacion_m = %s "
-                    "WHERE codigo = %s",
-                    (depto.lat, depto.lon, elevacion_por_codigo[depto.codigo], depto.codigo),
-                )
+            elevacion_por_codigo = {
+                d.codigo: r["elevation"] for d, r in zip(deptos, resp_era5_land)
+            }
+            valores_update = [
+                (depto.lat, depto.lon, elevacion_por_codigo[depto.codigo], depto.codigo)
+                for depto in deptos
+            ]
+            execute_values(
+                cur,
+                "UPDATE regiones SET centroide_lat = data.lat, centroide_lon = data.lon, elevacion_m = data.elev "
+                "FROM (VALUES %s) AS data (lat, lon, elev, codigo) "
+                "WHERE regiones.codigo = data.codigo",
+                valores_update,
+            )
 
             valores_insert = []
             for (codigo, anio, semana_epi, variable), vals in grupos.items():
@@ -258,8 +290,21 @@ def cargar(anio_inicio: int, anio_fin: int) -> int:
                 if region_id is None:
                     continue
                 fuente_id = fuente_id_por_codigo[FUENTE_POR_VARIABLE[variable]]
-                valor_final = sum(vals) if AGREGACION[variable] == "suma" else sum(vals) / len(vals)
-                valores_insert.append((region_id, anio, semana_epi, variable, round(valor_final, 3), fuente_id))
+                valor_final = (
+                    sum(vals)
+                    if AGREGACION[variable] == "suma"
+                    else sum(vals) / len(vals)
+                )
+                valores_insert.append(
+                    (
+                        region_id,
+                        anio,
+                        semana_epi,
+                        variable,
+                        round(valor_final, 3),
+                        fuente_id,
+                    )
+                )
 
             if not valores_insert:
                 print("Nada que insertar.")
