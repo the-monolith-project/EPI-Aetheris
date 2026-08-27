@@ -177,11 +177,16 @@ def calcular_serie_Iv(
     for codigo, por_anio in clima.items():
         for anio, semanas in por_anio.items():
             for semana, valores in semanas.items():
-                if not all(v in valores for v in ("temp_media", "precipitation_sum", "humedad_relativa_media")):
+                temp_media = valores.get("temp_media")
+                precip_sum = valores.get("precipitation_sum")
+                humedad = valores.get("humedad_relativa_media")
+
+                if temp_media is None or precip_sum is None or humedad is None:
                     continue
+
                 precip_prev = semanas.get(semana - 1, {}).get("precipitation_sum", 0.0) if semana > 1 else 0.0
-                r_acum = valores["precipitation_sum"] + precip_prev
-                iv = calcular_Iv(valores["temp_media"], r_acum, valores["humedad_relativa_media"])
+                r_acum = precip_sum + precip_prev
+                iv = calcular_Iv(temp_media, r_acum, humedad)
                 resultado[codigo][anio][semana] = iv
     return resultado
 
