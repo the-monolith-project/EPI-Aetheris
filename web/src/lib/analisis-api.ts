@@ -2,6 +2,8 @@ import type {
   AnioAnalisisDengue,
   CasoNacionalSemanal,
   DatasetAnaliticoDengue,
+  FiltrosAnalisis,
+  ProcedenciaAnalitica,
 } from './tipos-analisis';
 
 const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -10,6 +12,7 @@ const cachePorAnio = new Map<
   Promise<DatasetAnaliticoDengue>
 >();
 let cacheCasosNacionales: Promise<CasoNacionalSemanal[]> | null = null;
+const cacheProcedencia = new Map<string, Promise<ProcedenciaAnalitica>>();
 
 function cargarDataset(
   anio: AnioAnalisisDengue,
@@ -69,4 +72,46 @@ export function obtenerCasosNacionales(): Promise<CasoNacionalSemanal[]> {
       });
   }
   return cacheCasosNacionales;
+}
+
+export function obtenerProcedenciaAnalitica(
+  filtros: Pick<FiltrosAnalisis, 'anio' | 'semana' | 'serie' | 'departamento'>,
+): Promise<ProcedenciaAnalitica> {
+  if (!filtros.departamento) {
+    return Promise.reject(
+      new Error('Se requiere un departamento para consultar procedencia.'),
+    );
+  }
+  const clave = [
+    filtros.anio,
+    filtros.semana,
+    filtros.serie,
+    filtros.departamento,
+  ].join(':');
+  let solicitud = cacheProcedencia.get(clave);
+  if (!solicitud) {
+    const parametros = new URLSearchParams({
+      year: String(filtros.anio),
+      week: String(filtros.semana),
+      serie: filtros.serie,
+      dept: filtros.departamento,
+    });
+    solicitud = fetch(
+      `${API_BASE}/api/v1/analisis/dengue/procedencia?${parametros}`,
+    )
+      .then(async (respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error(
+            `No se pudo cargar la procedencia (${respuesta.status}).`,
+          );
+        }
+        return (await respuesta.json()) as ProcedenciaAnalitica;
+      })
+      .catch((error) => {
+        cacheProcedencia.delete(clave);
+        throw error;
+      });
+    cacheProcedencia.set(clave, solicitud);
+  }
+  return solicitud;
 }

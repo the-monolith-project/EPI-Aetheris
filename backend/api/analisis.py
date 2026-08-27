@@ -29,6 +29,122 @@ SEMANAS_EPIDEMIOLOGICAS = tuple(range(1, 54))
 NOTA_SIN_CLIMA = "sin datos climaticos completos para esta semana/año en este departamento"
 
 
+def _iso_o_none(valor):
+    return valor.isoformat() if valor is not None else None
+
+
+def cargar_procedencia_observacion(
+    conn,
+    *,
+    anio: int,
+    semana: int,
+    departamento_codigo: str,
+    serie: str,
+) -> dict | None:
+    """Devuelve trazabilidad almacenada para una celda epidemiologica.
+
+    ``None`` significa que el codigo departamental no existe. Una region
+    valida sin filas devuelve ``disponible=False`` y ``registros=[]``; no se
+    fabrica una fuente para un dato ausente.
+    """
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT nombre
+            FROM regiones
+            WHERE nivel_admin = 1 AND codigo = %s
+            """,
+            (departamento_codigo,),
+        )
+        fila_region = cursor.fetchone()
+        if fila_region is None:
+            return None
+
+        cursor.execute(
+            """
+            SELECT
+                c.conteo,
+                c.fecha_ingesta,
+                f.codigo,
+                f.nombre,
+                f.url_referencia,
+                b.anio,
+                b.semana_archivo,
+                b.nombre_archivo,
+                b.url_origen,
+                b.estado,
+                b.validacion_cuadra,
+                b.fecha_procesado
+            FROM casos_epidemiologicos c
+            JOIN regiones r ON r.id = c.region_id
+            JOIN tipos_evento t ON t.id = c.tipo_evento_id
+            JOIN fuentes_datos f ON f.id = c.fuente_id
+            LEFT JOIN boletines_procesados b ON b.id = c.boletin_id
+            WHERE r.codigo = %s
+              AND r.nivel_admin = 1
+              AND t.codigo = 'dengue'
+              AND c.anio = %s
+              AND c.semana_epi = %s
+              AND c.clasificacion = %s
+            ORDER BY f.codigo, b.nombre_archivo NULLS LAST
+            """,
+            (departamento_codigo, anio, semana, serie),
+        )
+        filas = cursor.fetchall()
+
+    registros = []
+    for (
+        conteo,
+        fecha_ingesta,
+        fuente_codigo,
+        fuente_nombre,
+        fuente_url,
+        boletin_anio,
+        boletin_semana,
+        boletin_archivo,
+        boletin_url,
+        estado_extraccion,
+        validacion_cuadra,
+        fecha_procesado,
+    ) in filas:
+        boletin = None
+        if boletin_archivo is not None:
+            boletin = {
+                "anio": boletin_anio,
+                "semana_archivo": boletin_semana,
+                "nombre_archivo": boletin_archivo,
+                "url_origen": boletin_url,
+                "estado_extraccion": estado_extraccion,
+                "validacion_cuadra": validacion_cuadra,
+                "fecha_procesado": _iso_o_none(fecha_procesado),
+            }
+        registros.append(
+            {
+                "conteo": int(conteo),
+                "fecha_ingesta": _iso_o_none(fecha_ingesta),
+                "fuente": {
+                    "codigo": fuente_codigo,
+                    "nombre": fuente_nombre,
+                    "url_referencia": fuente_url,
+                },
+                "boletin": boletin,
+            }
+        )
+
+    return {
+        "anio": anio,
+        "semana_epi": semana,
+        "serie": serie,
+        "departamento_codigo": departamento_codigo,
+        "departamento_nombre": fila_region[0],
+        "disponible": bool(registros),
+        "conteo_observado": sum(registro["conteo"] for registro in registros)
+        if registros
+        else None,
+        "registros": registros,
+    }
+
+
 def construir_dataset_dengue(conn, anio: int) -> dict:
     """Construye el dataset anual sin duplicar los calculos de M1/M2/M3."""
     with conn.cursor() as cursor:

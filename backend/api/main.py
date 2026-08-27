@@ -9,7 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 import psycopg2
 
-from .analisis import ANIOS_ANALISIS_DENGUE, construir_dataset_dengue
+from .analisis import (
+    ANIOS_ANALISIS_DENGUE,
+    cargar_procedencia_observacion,
+    construir_dataset_dengue,
+)
 from .idoneidad import (
     ANIOS_CLIMA,
     calcular_baseline_semana,
@@ -441,6 +445,49 @@ def dataset_analitico_dengue(year: int):
         "idoneidad": AVISO_HONESTIDAD_IDONEIDAD,
         "presion": AVISO_HONESTIDAD_PRESION,
     }
+    return respuesta
+
+
+@app.get("/api/v1/analisis/dengue/procedencia")
+def procedencia_analitica_dengue(year: int, week: int, dept: str, serie: str):
+    """Trazabilidad almacenada de una observacion departamental de dengue."""
+    if year not in ANIOS_ANALISIS_DENGUE:
+        disponibles = ", ".join(str(anio) for anio in ANIOS_ANALISIS_DENGUE)
+        raise HTTPException(
+            status_code=422,
+            detail=f"El parametro 'year' debe ser uno de: {disponibles}.",
+        )
+    if not (1 <= week <= 53):
+        raise HTTPException(
+            status_code=422,
+            detail="El parámetro 'week' debe estar entre 1 y 53.",
+        )
+    if serie not in SERIES_PRESION:
+        raise HTTPException(
+            status_code=422,
+            detail="El parámetro 'serie' debe ser 'probable' o 'confirmado'.",
+        )
+
+    try:
+        conn = _conectar()
+        try:
+            respuesta = cargar_procedencia_observacion(
+                conn,
+                anio=year,
+                semana=week,
+                departamento_codigo=dept,
+                serie=serie,
+            )
+        finally:
+            conn.close()
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    if respuesta is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No existe un departamento con código '{dept}'.",
+        )
     return respuesta
 
 

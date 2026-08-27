@@ -128,6 +128,70 @@ class DatasetAnaliticoTest(unittest.TestCase):
             self.assertGreaterEqual(fila["semana_epi"], 1)
             self.assertLessEqual(fila["semana_epi"], 53)
 
+    def test_procedencia_de_observacion_conserva_fuente_y_boletin(self):
+        departamento = self.cuerpo["departamentos"][0]
+        fila = next(
+            semana
+            for semana in departamento["semanas"]
+            if semana["probable"] is not None
+        )
+        respuesta = self.client.get(
+            "/api/v1/analisis/dengue/procedencia",
+            params={
+                "year": self.cuerpo["anio"],
+                "week": fila["semana_epi"],
+                "dept": departamento["codigo"],
+                "serie": "probable",
+            },
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        cuerpo = respuesta.json()
+        self.assertTrue(cuerpo["disponible"])
+        self.assertEqual(cuerpo["conteo_observado"], fila["probable"])
+        self.assertGreater(len(cuerpo["registros"]), 0)
+        registro = cuerpo["registros"][0]
+        self.assertEqual(registro["fuente"]["codigo"], "minsal_pdf")
+        self.assertIsNotNone(registro["boletin"])
+        self.assertTrue(registro["boletin"]["nombre_archivo"])
+        self.assertTrue(registro["fecha_ingesta"])
+
+    def test_procedencia_no_inventa_registro_para_hueco(self):
+        departamento = self.cuerpo["departamentos"][0]
+        fila = next(
+            semana
+            for semana in departamento["semanas"]
+            if semana["probable"] is None
+        )
+        respuesta = self.client.get(
+            "/api/v1/analisis/dengue/procedencia",
+            params={
+                "year": self.cuerpo["anio"],
+                "week": fila["semana_epi"],
+                "dept": departamento["codigo"],
+                "serie": "probable",
+            },
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        cuerpo = respuesta.json()
+        self.assertFalse(cuerpo["disponible"])
+        self.assertIsNone(cuerpo["conteo_observado"])
+        self.assertEqual(cuerpo["registros"], [])
+
+    def test_procedencia_rechaza_seleccion_invalida(self):
+        casos = (
+            ({"year": 2020, "week": 1, "dept": "SV-SS", "serie": "probable"}, 422),
+            ({"year": 2019, "week": 0, "dept": "SV-SS", "serie": "probable"}, 422),
+            ({"year": 2019, "week": 1, "dept": "SV-SS", "serie": "total"}, 422),
+            ({"year": 2019, "week": 1, "dept": "SV-X", "serie": "probable"}, 404),
+        )
+        for parametros, esperado in casos:
+            with self.subTest(parametros=parametros):
+                respuesta = self.client.get(
+                    "/api/v1/analisis/dengue/procedencia",
+                    params=parametros,
+                )
+                self.assertEqual(respuesta.status_code, esperado)
+
 
 if __name__ == "__main__":
     unittest.main()
