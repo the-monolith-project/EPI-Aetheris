@@ -51,3 +51,10 @@ export interface DatasetAnaliticoDengue {
     presion: string;
   };
 }
+
+export interface CasoNacionalSemanal {
+  semana_inicio: string;
+  anio: number;
+  semana_epi: number;
+  conteo: number;
+}

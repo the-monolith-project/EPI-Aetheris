@@ -1,0 +1,158 @@
+<article
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+>
+  <header>
+    <h3 class="font-sans text-base font-semibold text-ink">
+      Calendario epidémico nacional
+    </h3>
+    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+      Conteos nacionales semanales de OpenDengue. Incluye 2020 cuando existe en
+      la fuente, pero ese año no forma parte del baseline departamental de M3.
+    </p>
+  </header>
+
+  <div class="mt-4 overflow-x-auto">
+    <div
+      id="calendario-epidemico"
+      class="min-h-[300px] min-w-[760px]"
+      role="img"
+      aria-label="Calendario de casos nacionales por año y semana epidemiológica"
+    >
+    </div>
+  </div>
+
+  <div
+    class="mt-3 flex flex-wrap items-center gap-2 font-sans text-[11px] text-ink-muted"
+  >
+    <span>Menor conteo</span>
+    <span
+      id="calendario-leyenda-rampa"
+      class="h-2.5 w-44 rounded-full ring-1 ring-black/10"
+      aria-hidden="true"></span>
+    <span>Mayor conteo</span>
+    <span class="ml-2 inline-flex items-center gap-1.5">
+      <span class="h-2.5 w-2.5 rounded-sm bg-zinc-200 ring-1 ring-black/10"
+      ></span> Sin dato
+    </span>
+  </div>
+  <p
+    id="calendario-resumen"
+    class="mt-3 font-sans text-xs text-ink-muted"
+    role="status"
+  >
+  </p>
+</article>
+
+<script>
+  import * as Plot from '@observablehq/plot';
+  import { obtenerCasosNacionales } from '../../lib/analisis-api';
+  import {
+    obtenerFiltrosAnalisis,
+    suscribirFiltrosAnalisis,
+  } from '../../lib/analisis-state';
+  import { colorCasos, gradienteCss, RAMPA_CASOS } from '../../lib/colores';
+  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+
+  interface CeldaCalendario {
+    anio: number;
+    semana: number;
+    conteo: number | null;
+  }
+
+  const contenedor = document.getElementById('calendario-epidemico');
+  const resumen = document.getElementById('calendario-resumen');
+  const leyenda = document.getElementById('calendario-leyenda-rampa');
+  if (leyenda) leyenda.style.background = gradienteCss(RAMPA_CASOS);
+
+  let revision = 0;
+  let filtrosActuales = obtenerFiltrosAnalisis();
+
+  async function renderizar(filtros: FiltrosAnalisis) {
+    if (!contenedor) return;
+    const idRevision = ++revision;
+    if (resumen) resumen.textContent = 'Cargando serie nacional…';
+
+    try {
+      const filas = await obtenerCasosNacionales();
+      if (idRevision !== revision) return;
+      const anios = [...new Set(filas.map((fila) => fila.anio))].sort(
+        (a, b) => a - b,
+      );
+      const porCelda = new Map(
+        filas.map(
+          (fila) => [`${fila.anio}-${fila.semana_epi}`, fila.conteo] as const,
+        ),
+      );
+      const celdas: CeldaCalendario[] = anios.flatMap((anio) =>
+        Array.from({ length: 53 }, (_, indice) => ({
+          anio,
+          semana: indice + 1,
+          conteo: porCelda.get(`${anio}-${indice + 1}`) ?? null,
+        })),
+      );
+      const observados = celdas
+        .map((celda) => celda.conteo)
+        .filter((conteo): conteo is number => conteo !== null);
+      const maximo = Math.max(...observados, 0);
+      const seleccion = celdas.filter(
+        (celda) =>
+          celda.anio === filtros.anio && celda.semana === filtros.semana,
+      );
+
+      const grafica = Plot.plot({
+        width: Math.max(contenedor.clientWidth, 760),
+        height: 310,
+        marginLeft: 58,
+        marginBottom: 48,
+        x: {
+          domain: Array.from({ length: 53 }, (_, indice) => indice + 1),
+          label: 'Semana epidemiológica',
+          tickFormat: (valor) => `SE${String(valor).padStart(2, '0')}`,
+          ticks: 10,
+        },
+        y: { domain: anios, label: 'Año', tickFormat: String },
+        style: { background: 'transparent', color: 'var(--color-ink-muted)' },
+        marks: [
+          Plot.cell(celdas, {
+            x: 'semana',
+            y: 'anio',
+            fill: (celda: CeldaCalendario) => colorCasos(celda.conteo, maximo),
+            inset: 0.5,
+            title: (celda: CeldaCalendario) =>
+              `${celda.anio} · SE${String(celda.semana).padStart(2, '0')}\n${celda.conteo === null ? 'Sin dato registrado' : `${celda.conteo} casos nacionales`}`,
+          }),
+          Plot.cell(seleccion, {
+            x: 'semana',
+            y: 'anio',
+            fill: 'none',
+            stroke: 'var(--color-ink)',
+            strokeWidth: 2,
+            inset: 0.5,
+          }),
+          Plot.frame({ stroke: 'var(--color-border)' }),
+        ],
+      });
+      contenedor.replaceChildren(grafica);
+
+      const activa = seleccion[0];
+      if (resumen) {
+        resumen.textContent = activa
+          ? `${activa.anio} · SE${String(activa.semana).padStart(2, '0')} · ${activa.conteo === null ? 'sin dato nacional' : `${activa.conteo} casos nacionales`}.`
+          : `${anios.length} años disponibles en la serie nacional.`;
+      }
+    } catch {
+      if (idRevision !== revision) return;
+      contenedor.replaceChildren();
+      if (resumen)
+        resumen.textContent = 'No fue posible cargar el calendario epidémico.';
+    }
+  }
+
+  suscribirFiltrosAnalisis((filtros) => {
+    filtrosActuales = filtros;
+    void renderizar(filtros);
+  });
+  new ResizeObserver(() => void renderizar(filtrosActuales)).observe(
+    contenedor!,
+  );
+</script>

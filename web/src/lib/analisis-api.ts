@@ -1,5 +1,6 @@
 import type {
   AnioAnalisisDengue,
+  CasoNacionalSemanal,
   DatasetAnaliticoDengue,
 } from './tipos-analisis';
 
@@ -8,6 +9,7 @@ const cachePorAnio = new Map<
   AnioAnalisisDengue,
   Promise<DatasetAnaliticoDengue>
 >();
+let cacheCasosNacionales: Promise<CasoNacionalSemanal[]> | null = null;
 
 function cargarDataset(
   anio: AnioAnalisisDengue,
@@ -44,4 +46,27 @@ export function obtenerDatasetAnalitico(
     cachePorAnio.set(anio, solicitud);
   }
   return solicitud;
+}
+
+export function obtenerCasosNacionales(): Promise<CasoNacionalSemanal[]> {
+  if (!cacheCasosNacionales) {
+    cacheCasosNacionales = fetch(`${API_BASE}/api/casos-nacional`)
+      .then(async (respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error(
+            `No se pudo cargar la serie nacional (${respuesta.status}).`,
+          );
+        }
+        const datos: unknown = await respuesta.json();
+        if (!Array.isArray(datos)) {
+          throw new Error('La serie nacional no tiene el contrato esperado.');
+        }
+        return datos as CasoNacionalSemanal[];
+      })
+      .catch((error) => {
+        cacheCasosNacionales = null;
+        throw error;
+      });
+  }
+  return cacheCasosNacionales;
 }
