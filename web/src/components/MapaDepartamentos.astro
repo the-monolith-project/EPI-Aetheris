@@ -913,8 +913,6 @@
         return `<button type="button" id="${botonId(capa.id)}" data-id="${capa.id}" ${
           capa.disponible ? '' : 'disabled aria-disabled="true" title="Capa no disponible temporalmente"'
         } role="tab" aria-selected="${activa}" class="${base} ${estilo}">${capa.etiqueta}</button>`;
-          capa.disponible ? '' : 'disabled aria-disabled="true"'
-        } role="tab" aria-selected="${activa}" class="${base} ${estilo}">${escapeHtml(capa.etiqueta)}</button>`;
       }).join('');
 
       for (const capa of CAPAS) {
