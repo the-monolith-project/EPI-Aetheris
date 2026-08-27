@@ -77,11 +77,11 @@ _PREFIJO_RE = re.compile(r"^Departamento de\s+", re.IGNORECASE)
 
 def normalizar(nombre: str) -> str:
     sin_prefijo = _PREFIJO_RE.sub("", nombre)
-    sin_diacriticos = "".join(
+    sin_diacriticos = "".join([
         c
         for c in unicodedata.normalize("NFD", sin_prefijo)
         if unicodedata.category(c) != "Mn"
-    )
+    ])
     return re.sub(r"\s+", " ", sin_diacriticos.lower().strip())
 
 
