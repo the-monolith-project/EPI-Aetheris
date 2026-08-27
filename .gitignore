@@ -20,6 +20,8 @@ pnpm-debug.log*
 # Astro y construcciones
 .astro/
 dist/
+test-results/
+playwright-report/
 
 # Logs y base de datos local
 *.log

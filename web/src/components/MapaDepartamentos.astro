@@ -88,6 +88,8 @@
 
   <div
     id="mapa-departamentos"
+    role="region"
+    aria-label="Mapa interactivo de departamentos de El Salvador"
     class="mt-4 h-[300px] w-full overflow-hidden rounded-xl border border-border shadow-inner sm:h-[420px] lg:h-[540px]"
   >
   </div>
@@ -131,9 +133,9 @@
       Tres hallazgos independientes de este proyecto apuntan a que la escasez de datos
       departamentales de MINSAL es una limitación estructural de la fuente, no un defecto
       corregible del pipeline (huecos por semanas festivas, tablas en imagen sin OCR general, y
-      cobertura real de ~49/52 semanas por año). La capa "Índice de confianza de vigilancia"
-      (más abajo, todavía no implementada) busca hacer esa limitación visible en vez de
-      ocultarla detrás de un mapa que luce completo.
+      cobertura real de ~49/52 semanas por año). El perfil de calidad y el heatmap de
+      disponibilidad, más abajo, muestran esos componentes por separado. No se calcula un índice
+      compuesto de confianza porque no existe una fórmula aprobada.
     </p>
   </div>
 </section>
@@ -935,6 +937,29 @@
       });
     }
 
+    function vincularSeleccionDepartamento(
+      capa: L.Layer,
+      codigo: string,
+      nombre: string,
+    ) {
+      const seleccionar = () =>
+        actualizarFiltrosAnalisis({ departamento: codigo });
+      capa.on('click', seleccionar);
+      capa.on('add', () => {
+        const elemento = (capa as L.Path).getElement();
+        if (!elemento) return;
+        elemento.setAttribute('data-departamento', codigo);
+        elemento.setAttribute('tabindex', '0');
+        elemento.setAttribute('role', 'button');
+        elemento.setAttribute('aria-label', `Seleccionar ${nombre}`);
+        elemento.addEventListener('keydown', (evento: KeyboardEvent) => {
+          if (evento.key !== 'Enter' && evento.key !== ' ') return;
+          evento.preventDefault();
+          seleccionar();
+        });
+      });
+    }
+
     function botonId(id: IdCapa) {
       return `mapa-boton-${id}`;
     }
@@ -1012,9 +1037,11 @@
         capaGeoJsonActiva = L.geoJSON(geojson, {
           style: () => ({ color: '#8a8a90', weight: 1, fillColor: SIN_DATO, fillOpacity: 0.5 }),
           onEachFeature: (feature, layer) => {
+            const codigo = feature.properties?.codigo ?? '';
             const nombre = feature.properties?.shapeName
               ? normalizarNombreDepto(feature.properties.shapeName)
-              : (feature.properties?.codigo ?? '');
+              : codigo;
+            vincularSeleccionDepartamento(layer, codigo, nombre);
             layer.bindTooltip(`<strong>${nombre}</strong><br>capa no disponible todavía`);
           },
         }).addTo(mapa);
@@ -1042,7 +1069,7 @@
           const nombre = feature.properties?.shapeName ? normalizarNombreDepto(feature.properties.shapeName) : codigo;
           const valor = valores!.get(codigo);
 
-          layer.on('click', () => actualizarFiltrosAnalisis({ departamento: codigo }));
+          vincularSeleccionDepartamento(layer, codigo, nombre);
 
           if (capa.id === 'minsal_volumen') {
             const dato = detallesMinsal.get(codigo);

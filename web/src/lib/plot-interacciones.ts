@@ -5,6 +5,9 @@ export function vincularMarcasPlot<T>(
   etiqueta: (dato: T) => string,
   activar: (dato: T) => void,
 ): void {
+  grafica.querySelectorAll<SVGElement>('[aria-label]').forEach((marca) => {
+    if (!marca.matches(selector)) marca.removeAttribute('aria-label');
+  });
   grafica.querySelectorAll<SVGElement>(selector).forEach((marca, indice) => {
     const indiceVinculado = (marca as SVGElement & { __data__?: unknown })
       .__data__;
