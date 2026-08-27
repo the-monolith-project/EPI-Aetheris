@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 import psycopg2
 
+from .analisis import ANIOS_ANALISIS_DENGUE, construir_dataset_dengue
 from .idoneidad import (
     ANIOS_CLIMA,
     calcular_baseline_semana,
@@ -131,7 +132,7 @@ def casos_nacional():
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT s.fecha_inicio, c.anio, c.conteo
+                SELECT s.fecha_inicio, c.anio, c.semana_epi, c.conteo
                 FROM casos_epidemiologicos c
                 JOIN regiones r ON r.id = c.region_id
                 JOIN fuentes_datos f ON f.id = c.fuente_id
@@ -152,8 +153,13 @@ def casos_nacional():
         )
 
     return [
-        {"semana_inicio": fecha_inicio.isoformat(), "anio": anio, "conteo": conteo}
-        for fecha_inicio, anio, conteo in filas
+        {
+            "semana_inicio": fecha_inicio.isoformat(),
+            "anio": anio,
+            "semana_epi": semana_epi,
+            "conteo": conteo,
+        }
+        for fecha_inicio, anio, semana_epi, conteo in filas
     ]
 
 
@@ -406,6 +412,36 @@ AVISO_HONESTIDAD_PRESION = (
     "'confirmado' son series separadas y no comparables entre sí. Los huecos "
     "(null + nota) reflejan límites reales de la fuente MINSAL, no errores."
 )
+
+
+@app.get("/api/v1/analisis/dengue")
+def dataset_analitico_dengue(year: int):
+    """Dataset anual compartido para exploracion descriptiva de dengue.
+
+    Agrega casos MINSAL, M1, M2 y M3 por departamento/semana reutilizando
+    sus motores actuales. No persiste resultados ni modifica metodologia.
+    """
+    if year not in ANIOS_ANALISIS_DENGUE:
+        disponibles = ", ".join(str(anio) for anio in ANIOS_ANALISIS_DENGUE)
+        raise HTTPException(
+            status_code=422,
+            detail=f"El parametro 'year' debe ser uno de: {disponibles}.",
+        )
+
+    try:
+        conn = _conectar()
+        try:
+            respuesta = construir_dataset_dengue(conn, anio=year)
+        finally:
+            conn.close()
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    respuesta["avisos"] = {
+        "idoneidad": AVISO_HONESTIDAD_IDONEIDAD,
+        "presion": AVISO_HONESTIDAD_PRESION,
+    }
+    return respuesta
 
 
 @app.get("/api/v1/presion/current")

@@ -5,7 +5,7 @@ import Layout from '../../layouts/Layout.astro';
 
 export async function getStaticPaths() {
   const entradas = await getCollection('biblioteca');
-  return entradas.map((entrada) => ({
+  return entradas.map((entrada: CollectionEntry<'biblioteca'>) => ({
     params: { slug: entrada.id },
     props: { entrada },
   }));
@@ -17,7 +17,7 @@ interface Props {
 
 const { entrada } = Astro.props;
 const { Content, headings } = await render(entrada);
-const titulo = headings.find((h) => h.depth === 1)?.text ?? entrada.id;
+const titulo = headings.find((heading: { depth: number; text: string }) => heading.depth === 1)?.text ?? entrada.id;
 ---
 
 <Layout title={`EPI-Aetheris — ${titulo}`}>
