@@ -148,7 +148,9 @@ def _rango_empate(ordenados: list[float], valor: float) -> float:
     `valor` -- convencion de empates de rango_percentil."""
     n = len(ordenados)
     primero = ordenados.index(valor)
-    ultimo = n - 1 - ordenados[::-1].index(valor)
+    ultimo = primero
+    while ultimo + 1 < n and ordenados[ultimo + 1] == valor:
+        ultimo += 1
     return 100.0 * ((primero + ultimo) / 2.0) / (n - 1)
 
 
