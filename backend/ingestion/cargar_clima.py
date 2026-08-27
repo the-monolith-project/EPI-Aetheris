@@ -188,11 +188,13 @@ def construir_mapa_fecha_a_semana(conn) -> dict[str, tuple[int, int]]:
         calendario = cur.fetchall()
 
     mapa: dict[str, tuple[int, int]] = {}
+    td = timedelta(days=1)
     for anio, semana_epi, f_ini, f_fin in calendario:
         d = f_ini
+        val = (anio, semana_epi)
         while d <= f_fin:
-            mapa[d.isoformat()] = (anio, semana_epi)
-            d += timedelta(days=1)
+            mapa[str(d)] = val
+            d += td
     return mapa
 
 
