@@ -5,6 +5,7 @@ import MapaDepartamentos from '../components/MapaDepartamentos.astro';
 import MetricasModelo from '../components/MetricasModelo.astro';
 import ResumenNacional from '../components/ResumenNacional.astro';
 import AuditoriaDatos from '../components/AuditoriaDatos.astro';
+import FiltrosAnalisis from '../components/FiltrosAnalisis.astro';
 
 // Nav lateral + fila de resumen + panel de auditoría: patrón de layout
 // reciclado de referencias_no_trakear/boceto_dashboard_pre-camino-ancho_DESACTUALIZADO.png
@@ -73,6 +74,10 @@ const SECCIONES = [
         <div class="mt-6 flex flex-col gap-4">
           <ResumenNacional />
           <AuditoriaDatos />
+        </div>
+
+        <div class="mt-6">
+          <FiltrosAnalisis />
         </div>
 
         <div id="mapa" class="mt-8 scroll-mt-24 rounded-[28px] bg-deep p-2 sm:p-3">

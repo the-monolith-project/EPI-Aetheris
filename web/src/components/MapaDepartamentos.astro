@@ -51,40 +51,6 @@
     </p>
   </div>
 
-  <div class="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-bg p-3">
-    <label for="mapa-semana" class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted">
-      Semana epidemiológica
-    </label>
-    <select
-      id="mapa-semana"
-      class="rounded-lg border border-border bg-surface px-2 py-1 font-mono text-xs text-ink"
-      aria-label="Semana epidemiológica"
-    >
-      {Array.from({ length: 53 }, (_, i) => i + 1).map((s) => (
-        <option value={s} selected={s === 1}>
-          SE{String(s).padStart(2, '0')}
-        </option>
-      ))}
-    </select>
-    <label for="mapa-anio" class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted">
-      Año
-    </label>
-    <select
-      id="mapa-anio"
-      class="rounded-lg border border-border bg-surface px-2 py-1 font-mono text-xs text-ink"
-      aria-label="Año"
-    >
-      {[2018, 2019, 2021, 2022, 2023].map((a) => (
-        <option value={a} selected={a === 2023}>
-          {a}
-        </option>
-      ))}
-    </select>
-    <span class="font-sans text-xs text-ink-muted">
-      Afecta Iv, anomalía y presión -- volumen MINSAL siempre muestra el acumulado 2018-2023.
-    </span>
-  </div>
-
   <div id="mapa-selector" class="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Capas del mapa"></div>
 
   <div class="mt-3 flex gap-2 rounded-lg border border-border bg-bg p-3">
@@ -210,6 +176,12 @@
 <script>
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
+  import { obtenerDatasetAnalitico } from '../lib/analisis-api';
+  import {
+    actualizarFiltrosAnalisis,
+    obtenerFiltrosAnalisis,
+    suscribirFiltrosAnalisis,
+  } from '../lib/analisis-state';
   import { escapeHtml } from '../utils/security';
 
   // ---------------------------------------------------------------------
@@ -247,11 +219,10 @@
     return shapeName.replace(/^Departamento de /, '');
   }
 
-  // Semana/año de las capas espaciales -- mutables porque ahora hay
-  // selectores reales (#mapa-semana / #mapa-anio) en vez del compromiso de
-  // "primera versión, semana fija" que sigue teniendo MetricasModelo.astro.
-  let SEMANA_ESPACIAL = 1;
-  let ANIO_ESPACIAL = 2023;
+  // Semana/año de las capas espaciales, derivados del estado global del panel.
+  const filtrosIniciales = obtenerFiltrosAnalisis();
+  let SEMANA_ESPACIAL = filtrosIniciales.semana;
+  let ANIO_ESPACIAL = filtrosIniciales.anio;
 
   // ---------------------------------------------------------------------
   // Funciones genéricas de color / cortes / leyenda, reutilizadas por todas
@@ -365,39 +336,21 @@
   // unificado de Camino Ancho pueda leerlo de forma síncrona.
   let detallesEspacial = new Map<string, DatoEspacial>();
 
-  // Único lugar que conoce la forma exacta de la respuesta del backend.
-  // Contrato asumido (no confirmado): { departamentos: [{ codigo, iv,
-  // anomalia_sigma }] }. Si el contrato real usa otros nombres, este es el
-  // único bloque a tocar.
-  function parsearRespuestaEspacial(json: unknown): Map<string, DatoEspacial> | null {
-    if (!json || typeof json !== 'object' || !Array.isArray((json as any).departamentos)) return null;
-    const mapa = new Map<string, DatoEspacial>();
-    for (const fila of (json as any).departamentos) {
-      const codigo = fila?.codigo;
-      if (typeof codigo !== 'string') continue;
-      const iv = typeof fila?.iv === 'number' ? fila.iv : undefined;
-      // El backend devuelve "anomaly_sigma" (inglés, ver GET
-      // /api/v1/spatial/current en main.py) -- bug real encontrado al
-      // conectar el selector de semana/año: esto leía "anomalia_sigma"
-      // (español) y siempre caía en undefined, así que la capa de anomalía
-      // mostraba "sin dato" en todos los departamentos sin importar la
-      // semana pedida.
-      const anomalia = typeof fila?.anomaly_sigma === 'number' ? fila.anomaly_sigma : undefined;
-      mapa.set(codigo, { codigo, iv, anomalia_sigma: anomalia });
-    }
-    return mapa;
-  }
-
   async function obtenerDatosEspaciales(): Promise<Map<string, DatoEspacial> | null> {
     if (!cacheEspacial) {
       cacheEspacial = (async () => {
         try {
-          const resp = await fetch(
-            `${API_BASE}/api/v1/spatial/current?week=${SEMANA_ESPACIAL}&year=${ANIO_ESPACIAL}`
-          );
-          if (!resp.ok) return null;
-          const mapa = parsearRespuestaEspacial(await resp.json());
-          if (mapa) detallesEspacial = mapa;
+          const datos = await obtenerDatasetAnalitico(ANIO_ESPACIAL);
+          const mapa = new Map<string, DatoEspacial>();
+          for (const departamento of datos.departamentos) {
+            const fila = departamento.semanas.find((semana) => semana.semana_epi === SEMANA_ESPACIAL);
+            mapa.set(departamento.codigo, {
+              codigo: departamento.codigo,
+              iv: fila?.iv ?? undefined,
+              anomalia_sigma: fila?.anomaly_sigma ?? undefined,
+            });
+          }
+          detallesEspacial = mapa;
           return mapa;
         } catch {
           return null;
@@ -525,29 +478,23 @@
 
   let cachePresion: Promise<Map<string, DatoPresion> | null> | null = null;
 
-  // Único lugar que conoce la forma exacta de la respuesta de
-  // /api/v1/presion/current (espejo del bloque parsearRespuestaEspacial).
-  function parsearRespuestaPresion(json: unknown): Map<string, DatoPresion> | null {
-    if (!json || typeof json !== 'object' || !Array.isArray((json as any).departamentos)) return null;
-    const mapa = new Map<string, DatoPresion>();
-    for (const fila of (json as any).departamentos) {
-      const codigo = fila?.codigo;
-      if (typeof codigo !== 'string') continue;
-      mapa.set(codigo, { codigo, probable: fila?.probable, confirmado: fila?.confirmado });
-    }
-    return mapa;
-  }
-
+  // Adaptación de la semana activa del dataset analítico compartido a la
+  // forma que ya consume el mapa para M3.
   async function obtenerDatosPresion(): Promise<Map<string, DatoPresion> | null> {
     if (!cachePresion) {
       cachePresion = (async () => {
         try {
-          const resp = await fetch(
-            `${API_BASE}/api/v1/presion/current?week=${SEMANA_ESPACIAL}&year=${ANIO_ESPACIAL}`
-          );
-          if (!resp.ok) return null;
-          const mapa = parsearRespuestaPresion(await resp.json());
-          if (mapa) detallesPresion = mapa;
+          const datos = await obtenerDatasetAnalitico(ANIO_ESPACIAL);
+          const mapa = new Map<string, DatoPresion>();
+          for (const departamento of datos.departamentos) {
+            const fila = departamento.semanas.find((semana) => semana.semana_epi === SEMANA_ESPACIAL);
+            mapa.set(departamento.codigo, {
+              codigo: departamento.codigo,
+              probable: fila?.presion_probable,
+              confirmado: fila?.presion_confirmado,
+            });
+          }
+          detallesPresion = mapa;
           return mapa;
         } catch {
           return null;
@@ -815,7 +762,9 @@
     )
       return;
 
-    detalleCerrar.addEventListener('click', () => contenedorDetalle.classList.add('hidden'));
+    detalleCerrar.addEventListener('click', () => {
+      actualizarFiltrosAnalisis({ departamento: null });
+    });
 
     function celdaSnapshot(etiqueta: string, valor: string): string {
       return (
@@ -884,6 +833,14 @@
 
     const respGeo = await fetch('/geo/slv-adm1.geojson');
     const geojson = await respGeo.json();
+    const nombresPorCodigo = new Map<string, string>(
+      geojson.features.map((feature: any) => [
+        feature.properties?.codigo ?? '',
+        feature.properties?.shapeName
+          ? normalizarNombreDepto(feature.properties.shapeName)
+          : (feature.properties?.codigo ?? ''),
+      ]),
+    );
 
     L.polygon(construirMascara(geojson), {
       stroke: false,
@@ -918,7 +875,17 @@
       for (const capa of CAPAS) {
         if (!capa.disponible) continue;
         const boton = document.getElementById(botonId(capa.id));
-        boton?.addEventListener('click', () => activarCapa(capa.id));
+        boton?.addEventListener('click', () => {
+          if (capa.id === 'presion_probable' || capa.id === 'presion_confirmado') {
+            const serie = capa.id === 'presion_probable' ? 'probable' : 'confirmado';
+            if (obtenerFiltrosAnalisis().serie !== serie) {
+              capaActivaId = capa.id;
+              actualizarFiltrosAnalisis({ serie });
+              return;
+            }
+          }
+          void activarCapa(capa.id);
+        });
       }
     }
 
@@ -991,7 +958,7 @@
           const nombre = feature.properties?.shapeName ? normalizarNombreDepto(feature.properties.shapeName) : codigo;
           const valor = valores!.get(codigo);
 
-          layer.on('click', () => mostrarDetalle(codigo, nombre));
+          layer.on('click', () => actualizarFiltrosAnalisis({ departamento: codigo }));
 
           if (capa.id === 'minsal_volumen') {
             const dato = detallesMinsal.get(codigo);
@@ -1024,30 +991,40 @@
     pintarSelector(capaMinsal.id);
     await activarCapa(capaMinsal.id);
 
-    // Selector de semana/año -- solo afecta a las capas de Camino Ancho
-    // (Iv, anomalía, presión); volumen MINSAL y confianza lo ignoran, pero
-    // se limpia igual el caché de las 4 capas de Camino Ancho para no
-    // servir datos de la semana/año anterior si el usuario cambia de capa
-    // después de mover el selector.
-    const selectSemana = document.getElementById('mapa-semana') as HTMLSelectElement | null;
-    const selectAnio = document.getElementById('mapa-anio') as HTMLSelectElement | null;
+    let filtrosAplicados = obtenerFiltrosAnalisis();
+    suscribirFiltrosAnalisis((filtros) => {
+      const cambioTiempo =
+        filtros.semana !== filtrosAplicados.semana || filtros.anio !== filtrosAplicados.anio;
+      const cambioSerie = filtros.serie !== filtrosAplicados.serie;
+      const cambioDepartamento = filtros.departamento !== filtrosAplicados.departamento;
+      filtrosAplicados = filtros;
 
-    function onCambioTiempo() {
-      const semana = Number(selectSemana?.value ?? SEMANA_ESPACIAL);
-      const anio = Number(selectAnio?.value ?? ANIO_ESPACIAL);
-      if (semana === SEMANA_ESPACIAL && anio === ANIO_ESPACIAL) return;
-      SEMANA_ESPACIAL = semana;
-      ANIO_ESPACIAL = anio;
-      cacheEspacial = null;
-      cachePresion = null;
-      (['iv', 'anomalia', 'presion_probable', 'presion_confirmado'] as IdCapa[]).forEach((id) =>
-        cacheValoresPorCapa.delete(id)
-      );
-      activarCapa(capaActivaId);
-    }
+      if (cambioTiempo) {
+        SEMANA_ESPACIAL = filtros.semana;
+        ANIO_ESPACIAL = filtros.anio;
+        cacheEspacial = null;
+        cachePresion = null;
+        (['iv', 'anomalia', 'presion_probable', 'presion_confirmado'] as IdCapa[]).forEach((id) =>
+          cacheValoresPorCapa.delete(id),
+        );
+      }
 
-    selectSemana?.addEventListener('change', onCambioTiempo);
-    selectAnio?.addEventListener('change', onCambioTiempo);
+      if (cambioSerie && (capaActivaId === 'presion_probable' || capaActivaId === 'presion_confirmado')) {
+        capaActivaId = filtros.serie === 'probable' ? 'presion_probable' : 'presion_confirmado';
+      }
+
+      void (async () => {
+        if (cambioTiempo || cambioSerie) await activarCapa(capaActivaId);
+        if (cambioDepartamento || (cambioTiempo && filtros.departamento)) {
+          if (!filtros.departamento) {
+            contenedorDetalle.classList.add('hidden');
+            return;
+          }
+          const nombre = nombresPorCodigo.get(filtros.departamento) ?? filtros.departamento;
+          await mostrarDetalle(filtros.departamento, nombre);
+        }
+      })();
+    }, false);
   }
 
   iniciar();
