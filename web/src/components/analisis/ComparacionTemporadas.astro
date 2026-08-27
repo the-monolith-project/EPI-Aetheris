@@ -33,11 +33,16 @@
   import * as Plot from '@observablehq/plot';
   import { obtenerDatasetAnalitico } from '../../lib/analisis-api';
   import {
+    actualizarFiltrosAnalisis,
     obtenerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
+  import { vincularMarcasPlot } from '../../lib/plot-interacciones';
   import { ANIOS_ANALISIS_DENGUE } from '../../lib/tipos-analisis';
-  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+  import type {
+    AnioAnalisisDengue,
+    FiltrosAnalisis,
+  } from '../../lib/tipos-analisis';
 
   interface PuntoTemporada {
     anio: number;
@@ -94,6 +99,7 @@
         (punto) => punto.anio === filtros.anio,
       );
       const contexto = puntos.filter((punto) => punto.anio !== filtros.anio);
+      const puntosObservados = puntos.filter((punto) => punto.casos !== null);
 
       const grafica = Plot.plot({
         width: Math.max(contenedor.clientWidth, 720),
@@ -123,21 +129,19 @@
             stroke: 'var(--color-accent)',
             strokeWidth: 2.75,
           }),
-          Plot.dot(
-            puntos.filter((punto) => punto.casos !== null),
-            {
-              x: 'semana',
-              y: 'casos',
-              fill: (punto: PuntoTemporada) =>
-                punto.anio === filtros.anio ? 'var(--color-accent)' : '#9ca3af',
-              fillOpacity: (punto: PuntoTemporada) =>
-                punto.anio === filtros.anio ? 1 : 0.45,
-              r: (punto: PuntoTemporada) =>
-                punto.anio === filtros.anio ? 3 : 1.8,
-              title: (punto: PuntoTemporada) =>
-                `${punto.departamento} · ${punto.anio} · SE${String(punto.semana).padStart(2, '0')}\n${punto.casos} casos ${filtros.serie}`,
-            },
-          ),
+          Plot.dot(puntosObservados, {
+            className: 'epi-temporadas-puntos',
+            x: 'semana',
+            y: 'casos',
+            fill: (punto: PuntoTemporada) =>
+              punto.anio === filtros.anio ? 'var(--color-accent)' : '#9ca3af',
+            fillOpacity: (punto: PuntoTemporada) =>
+              punto.anio === filtros.anio ? 1 : 0.45,
+            r: (punto: PuntoTemporada) =>
+              punto.anio === filtros.anio ? 3 : 1.8,
+            title: (punto: PuntoTemporada) =>
+              `${punto.departamento} · ${punto.anio} · SE${String(punto.semana).padStart(2, '0')}\n${punto.casos} casos ${filtros.serie}`,
+          }),
           Plot.ruleX([filtros.semana], {
             stroke: 'var(--color-ink)',
             strokeOpacity: 0.4,
@@ -146,6 +150,18 @@
           Plot.frame({ stroke: 'var(--color-border)' }),
         ],
       });
+      vincularMarcasPlot(
+        grafica,
+        '.epi-temporadas-puntos circle',
+        puntosObservados,
+        (punto) =>
+          `${punto.departamento}, ${punto.anio}, SE${String(punto.semana).padStart(2, '0')}, ${punto.casos} casos ${filtros.serie}`,
+        (punto) =>
+          actualizarFiltrosAnalisis({
+            anio: punto.anio as AnioAnalisisDengue,
+            semana: punto.semana,
+          }),
+      );
       contenedor.replaceChildren(grafica);
 
       const departamento = puntos[0]?.departamento ?? filtros.departamento;

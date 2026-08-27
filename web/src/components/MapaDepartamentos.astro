@@ -853,6 +853,22 @@
     let capaActivaId: IdCapa = capaMinsal.id;
     const cacheValoresPorCapa = new Map<IdCapa, Map<string, number | undefined> | null>();
 
+    function resaltarDepartamento(codigoActivo: string | null) {
+      capaGeoJsonActiva?.eachLayer((capa) => {
+        const ruta = capa as L.Path & {
+          feature?: { properties?: { codigo?: string } };
+          bringToFront?: () => void;
+        };
+        const codigo = ruta.feature?.properties?.codigo ?? '';
+        const activa = codigoActivo !== null && codigo === codigoActivo;
+        ruta.setStyle({
+          color: activa ? '#18181b' : '#8a8a90',
+          weight: activa ? 3 : 1,
+        });
+        if (activa) ruta.bringToFront?.();
+      });
+    }
+
     function botonId(id: IdCapa) {
       return `mapa-boton-${id}`;
     }
@@ -935,6 +951,7 @@
             layer.bindTooltip(`<strong>${nombre}</strong><br>capa no disponible todavía`);
           },
         }).addTo(mapa);
+        resaltarDepartamento(obtenerFiltrosAnalisis().departamento);
         return;
       }
 
@@ -986,6 +1003,7 @@
           layer.bindTooltip(`<strong>${nombre}</strong><br>${capa.tituloLeyenda}: ${capa.tooltipValor(valor)}`);
         },
       }).addTo(mapa);
+      resaltarDepartamento(obtenerFiltrosAnalisis().departamento);
     }
 
     pintarSelector(capaMinsal.id);
@@ -1016,6 +1034,7 @@
       void (async () => {
         if (cambioTiempo || cambioSerie) await activarCapa(capaActivaId);
         if (cambioDepartamento || (cambioTiempo && filtros.departamento)) {
+          resaltarDepartamento(filtros.departamento);
           if (!filtros.departamento) {
             contenedorDetalle.classList.add('hidden');
             return;

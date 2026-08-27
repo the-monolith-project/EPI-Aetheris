@@ -33,9 +33,11 @@
   import * as Plot from '@observablehq/plot';
   import { obtenerDatasetAnalitico } from '../../lib/analisis-api';
   import {
+    actualizarFiltrosAnalisis,
     obtenerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
+  import { vincularMarcasPlot } from '../../lib/plot-interacciones';
   import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
 
   interface PuntoScatter {
@@ -121,6 +123,7 @@
         marks: [
           Plot.ruleX([0], { stroke: 'var(--color-border)', strokeWidth: 1.5 }),
           Plot.dot(puntos, {
+            className: 'epi-scatter-puntos',
             x: 'anomalia',
             y: 'percentil',
             r: 5,
@@ -137,6 +140,7 @@
             fill: 'none',
             stroke: 'var(--color-ink)',
             strokeWidth: 2.5,
+            pointerEvents: 'none',
           }),
           Plot.text(puntoActivo, {
             x: 'anomalia',
@@ -149,6 +153,13 @@
           Plot.frame({ stroke: 'var(--color-border)' }),
         ],
       });
+      vincularMarcasPlot(
+        grafica,
+        '.epi-scatter-puntos circle',
+        puntos,
+        (punto) => tooltip(punto, filtros).replaceAll('\n', '. '),
+        (punto) => actualizarFiltrosAnalisis({ departamento: punto.codigo }),
+      );
       contenedor.replaceChildren(grafica);
 
       const omitidos = datos.departamentos.length - puntos.length;

@@ -47,11 +47,17 @@
   import * as Plot from '@observablehq/plot';
   import { obtenerCasosNacionales } from '../../lib/analisis-api';
   import {
+    actualizarFiltrosAnalisis,
     obtenerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { colorCasos, gradienteCss, RAMPA_CASOS } from '../../lib/colores';
-  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+  import { vincularMarcasPlot } from '../../lib/plot-interacciones';
+  import { ANIOS_ANALISIS_DENGUE } from '../../lib/tipos-analisis';
+  import type {
+    AnioAnalisisDengue,
+    FiltrosAnalisis,
+  } from '../../lib/tipos-analisis';
 
   interface CeldaCalendario {
     anio: number;
@@ -114,6 +120,7 @@
         style: { background: 'transparent', color: 'var(--color-ink-muted)' },
         marks: [
           Plot.cell(celdas, {
+            className: 'epi-calendario-celdas',
             x: 'semana',
             y: 'anio',
             fill: (celda: CeldaCalendario) => colorCasos(celda.conteo, maximo),
@@ -128,10 +135,30 @@
             stroke: 'var(--color-ink)',
             strokeWidth: 2,
             inset: 0.5,
+            pointerEvents: 'none',
           }),
           Plot.frame({ stroke: 'var(--color-border)' }),
         ],
       });
+      vincularMarcasPlot(
+        grafica,
+        '.epi-calendario-celdas rect',
+        celdas,
+        (celda) =>
+          `${celda.anio}, SE${String(celda.semana).padStart(2, '0')}, ${celda.conteo === null ? 'sin dato nacional' : `${celda.conteo} casos nacionales`}`,
+        (celda) => {
+          if (
+            ANIOS_ANALISIS_DENGUE.includes(celda.anio as AnioAnalisisDengue)
+          ) {
+            actualizarFiltrosAnalisis({
+              anio: celda.anio as AnioAnalisisDengue,
+              semana: celda.semana,
+            });
+          } else if (resumen) {
+            resumen.textContent = `${celda.anio} se conserva como historia nacional, pero no tiene análisis departamental MINSAL seleccionable.`;
+          }
+        },
+      );
       contenedor.replaceChildren(grafica);
 
       const activa = seleccion[0];

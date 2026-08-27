@@ -48,10 +48,12 @@
   import * as Plot from '@observablehq/plot';
   import { obtenerDatasetAnalitico } from '../../lib/analisis-api';
   import {
+    actualizarFiltrosAnalisis,
     obtenerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { colorPresion, gradienteCss, RAMPA_PRESION } from '../../lib/colores';
+  import { vincularMarcasPlot } from '../../lib/plot-interacciones';
   import type {
     FiltrosAnalisis,
     PresionAnalitica,
@@ -146,6 +148,7 @@
         style: { background: 'transparent', color: 'var(--color-ink-muted)' },
         marks: [
           Plot.cell(celdas, {
+            className: 'epi-heatmap-celdas',
             x: 'semana',
             y: 'departamento',
             fill: (celda: CeldaHeatmap) => colorPresion(celda.percentil),
@@ -159,10 +162,22 @@
             stroke: 'var(--color-ink)',
             strokeWidth: 2,
             inset: 0.5,
+            pointerEvents: 'none',
           }),
           Plot.frame({ stroke: 'var(--color-border)' }),
         ],
       });
+      vincularMarcasPlot(
+        grafica,
+        '.epi-heatmap-celdas rect',
+        celdas,
+        (celda) => textoCelda(celda, filtros).replaceAll('\n', '. '),
+        (celda) =>
+          actualizarFiltrosAnalisis({
+            departamento: celda.codigo,
+            semana: celda.semana,
+          }),
+      );
       contenedor.replaceChildren(grafica);
 
       if (resumen) {
