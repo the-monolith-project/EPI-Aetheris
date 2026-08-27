@@ -1,0 +1,176 @@
+<article
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+>
+  <header>
+    <h3 class="font-sans text-base font-semibold text-ink">
+      Comparación de departamentos
+    </h3>
+    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+      Series semanales alineadas para un máximo de cuatro departamentos. Todos
+      los paneles comparten escala; los huecos corresponden a observaciones
+      ausentes y no se interpolan.
+    </p>
+  </header>
+
+  <div class="mt-4 overflow-x-auto">
+    <div
+      id="comparacion-departamentos"
+      class="min-h-[240px] min-w-[720px]"
+      role="img"
+      aria-label="Comparación semanal en paneles alineados para los departamentos seleccionados"
+    >
+    </div>
+  </div>
+  <p
+    id="comparacion-departamentos-resumen"
+    class="mt-3 font-sans text-xs text-ink-muted"
+    role="status"
+  >
+  </p>
+</article>
+
+<script>
+  import * as Plot from '@observablehq/plot';
+  import { obtenerDatasetAnalitico } from '../../lib/analisis-api';
+  import {
+    actualizarFiltrosAnalisis,
+    obtenerFiltrosAnalisis,
+    suscribirFiltrosAnalisis,
+  } from '../../lib/analisis-state';
+  import { vincularMarcasPlot } from '../../lib/plot-interacciones';
+  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+
+  interface PuntoDepartamento {
+    codigo: string;
+    departamento: string;
+    semana: number;
+    casos: number | null;
+  }
+
+  const contenedor = document.getElementById('comparacion-departamentos');
+  const resumen = document.getElementById('comparacion-departamentos-resumen');
+  let revision = 0;
+  let filtrosActuales = obtenerFiltrosAnalisis();
+
+  async function renderizar(filtros: FiltrosAnalisis) {
+    if (!contenedor) return;
+    const idRevision = ++revision;
+    if (filtros.comparar.length === 0) {
+      contenedor.replaceChildren();
+      if (resumen)
+        resumen.textContent =
+          'Seleccione entre uno y cuatro departamentos en los filtros globales.';
+      return;
+    }
+    if (resumen) resumen.textContent = 'Cargando comparación departamental…';
+
+    try {
+      const dataset = await obtenerDatasetAnalitico(filtros.anio);
+      if (idRevision !== revision) return;
+      const orden = new Map(
+        filtros.comparar.map((codigo, indice) => [codigo, indice]),
+      );
+      const departamentos = dataset.departamentos
+        .filter((departamento) => orden.has(departamento.codigo))
+        .sort(
+          (a, b) => (orden.get(a.codigo) ?? 0) - (orden.get(b.codigo) ?? 0),
+        );
+      const puntos: PuntoDepartamento[] = departamentos.flatMap(
+        (departamento) =>
+          departamento.semanas
+            .filter(
+              (semana) =>
+                semana.semana_epi >= filtros.semanaDesde &&
+                semana.semana_epi <= filtros.semanaHasta,
+            )
+            .map((semana) => ({
+              codigo: departamento.codigo,
+              departamento: departamento.nombre,
+              semana: semana.semana_epi,
+              casos: semana[filtros.serie],
+            })),
+      );
+      const observados = puntos.filter((punto) => punto.casos !== null);
+      const dominios = departamentos.map((departamento) => departamento.nombre);
+      const grafica = Plot.plot({
+        width: Math.max(contenedor.clientWidth, 720),
+        height: Math.max(260, departamentos.length * 170),
+        marginLeft: 130,
+        marginBottom: 48,
+        x: {
+          domain: [filtros.semanaDesde, filtros.semanaHasta],
+          label: 'Semana epidemiológica',
+          tickFormat: (valor) => `SE${String(valor).padStart(2, '0')}`,
+          ticks: 10,
+        },
+        y: { label: `Casos ${filtros.serie}`, grid: true, zero: true },
+        fy: { domain: dominios, label: null, padding: 0.12 },
+        style: { background: 'transparent', color: 'var(--color-ink-muted)' },
+        marks: [
+          Plot.line(puntos, {
+            x: 'semana',
+            y: 'casos',
+            fy: 'departamento',
+            stroke: 'var(--color-accent)',
+            strokeWidth: 2,
+          }),
+          Plot.dot(observados, {
+            className: 'epi-comparacion-departamentos-puntos',
+            x: 'semana',
+            y: 'casos',
+            fy: 'departamento',
+            r: (punto: PuntoDepartamento) =>
+              punto.codigo === filtros.departamento &&
+              punto.semana === filtros.semana
+                ? 4
+                : 2.25,
+            fill: (punto: PuntoDepartamento) =>
+              punto.codigo === filtros.departamento
+                ? 'var(--color-accent)'
+                : '#5598e7',
+            title: (punto: PuntoDepartamento) =>
+              `${punto.departamento} · SE${String(punto.semana).padStart(2, '0')}\n${punto.casos} casos ${filtros.serie}`,
+          }),
+          Plot.frame({ stroke: 'var(--color-border)' }),
+        ],
+      });
+      vincularMarcasPlot(
+        grafica,
+        '.epi-comparacion-departamentos-puntos circle',
+        observados,
+        (punto) =>
+          `${punto.departamento}, SE${String(punto.semana).padStart(2, '0')}, ${punto.casos} casos ${filtros.serie}`,
+        (punto) =>
+          actualizarFiltrosAnalisis({
+            departamento: punto.codigo,
+            semana: punto.semana,
+          }),
+      );
+      contenedor.replaceChildren(grafica);
+
+      if (resumen) {
+        const coberturas = departamentos.map((departamento) => {
+          const cantidad = observados.filter(
+            (punto) => punto.codigo === departamento.codigo,
+          ).length;
+          return `${departamento.nombre}: ${cantidad} semanas`;
+        });
+        resumen.textContent = `${filtros.anio} · ${filtros.serie} · ${coberturas.join(' · ')}.`;
+      }
+    } catch {
+      if (idRevision !== revision) return;
+      contenedor.replaceChildren();
+      if (resumen)
+        resumen.textContent =
+          'No fue posible cargar la comparación departamental.';
+    }
+  }
+
+  suscribirFiltrosAnalisis((filtros) => {
+    filtrosActuales = filtros;
+    void renderizar(filtros);
+  });
+  new ResizeObserver(() => void renderizar(filtrosActuales)).observe(
+    contenedor!,
+  );
+</script>

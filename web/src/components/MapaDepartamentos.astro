@@ -182,6 +182,10 @@
     obtenerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../lib/analisis-state';
+  import {
+    ANIOS_ANALISIS_DENGUE,
+    type AnioAnalisisDengue,
+  } from '../lib/tipos-analisis';
   import { escapeHtml } from '../utils/security';
 
   // ---------------------------------------------------------------------
@@ -265,53 +269,115 @@
   // ahora expresado en la forma genérica de DefinicionCapa.
   // ---------------------------------------------------------------------
 
-  interface DatoDepartamentoMinsal {
+  interface DetalleDepartamentoMinsal {
     nombre: string;
     codigo: string;
-    probable_total: number;
-    confirmado_total: number;
-    semanas_con_dato_probable: number;
-    primer_anio: number | null;
-    ultimo_anio: number | null;
+    valor: number | undefined;
+    semanasObservadas: number;
+    semanasEsperadas: number;
+    periodo: string;
   }
 
-  let detallesMinsal = new Map<string, DatoDepartamentoMinsal>();
+  let detallesMinsal = new Map<string, DetalleDepartamentoMinsal>();
 
   const RAMPA_MINSAL = ['#cde2fb', '#9ec5f4', '#5598e7', '#256abf', '#0d366b'];
+
+  function descripcionMinsal() {
+    const filtros = obtenerFiltrosAnalisis();
+    const serie = `"${filtros.serie}"`;
+    if (filtros.modoMinsal === 'semana') {
+      return {
+        periodo: `SE${String(filtros.semana).padStart(2, '0')} / ${filtros.anio}`,
+        titulo: `Casos ${serie} en SE${String(filtros.semana).padStart(2, '0')} / ${filtros.anio}`,
+        aviso: `El color representa casos ${serie} observados por MINSAL en la semana seleccionada. Un cero observado se conserva; una semana ausente se muestra como sin dato. No es una clasificación de riesgo.`,
+      };
+    }
+    if (filtros.modoMinsal === 'ytd') {
+      return {
+        periodo: `SE01–SE${String(filtros.semana).padStart(2, '0')} / ${filtros.anio}`,
+        titulo: `Casos ${serie} acumulados hasta SE${String(filtros.semana).padStart(2, '0')} / ${filtros.anio}`,
+        aviso: `El color suma observaciones ${serie} disponibles de MINSAL entre SE01 y la semana seleccionada. Los huecos no se convierten en cero y la cobertura se informa en el tooltip. No es una clasificación de riesgo.`,
+      };
+    }
+    return {
+      periodo: '2018–2023 (2020 sin serie departamental)',
+      titulo: `Casos ${serie} acumulados en la historia disponible`,
+      aviso: `El color suma observaciones ${serie} de los años departamentales disponibles: 2018, 2019, 2021, 2022 y 2023. Los huecos no se convierten en cero. No es una clasificación de riesgo.`,
+    };
+  }
+
+  function actualizarDescripcionMinsal() {
+    const descripcion = descripcionMinsal();
+    capaMinsal.aviso = descripcion.aviso;
+    capaMinsal.tituloLeyenda = descripcion.titulo;
+  }
 
   const capaMinsal: DefinicionCapa = {
     id: 'minsal_volumen',
     etiqueta: 'Volumen de casos (MINSAL)',
     disponible: true,
-    aviso:
-      'El color representa volumen de casos "probable" reportado por MINSAL, acumulado ' +
-      '2018-2023 -- no una clasificación de riesgo por departamento. No alimenta ningún modelo.',
-    tituloLeyenda: 'Casos "probable" acumulados 2018-2023',
+    aviso: '',
+    tituloLeyenda: '',
     rampa: RAMPA_MINSAL,
     sinDatoColor: SIN_DATO,
     async cargarValores() {
-      const resp = await fetch(`${API_BASE}/api/casos-departamentales`);
-      if (!resp.ok) return null;
-      const datos: { departamentos: DatoDepartamentoMinsal[] } = await resp.json();
-      detallesMinsal = new Map(datos.departamentos.map((d) => [d.codigo, d]));
-      const valores = new Map<string, number | undefined>();
-      for (const d of datos.departamentos) {
-        valores.set(d.codigo, d.probable_total > 0 ? d.probable_total : undefined);
+      const filtros = obtenerFiltrosAnalisis();
+      actualizarDescripcionMinsal();
+      const anios: readonly AnioAnalisisDengue[] =
+        filtros.modoMinsal === 'historico'
+          ? ANIOS_ANALISIS_DENGUE
+          : [filtros.anio];
+      const datasets = await Promise.all(
+        anios.map((anio) => obtenerDatasetAnalitico(anio)),
+      );
+      const descripcion = descripcionMinsal();
+      const nuevosDetalles = new Map<string, DetalleDepartamentoMinsal>();
+      for (const dataset of datasets) {
+        for (const departamento of dataset.departamentos) {
+          const detalle = nuevosDetalles.get(departamento.codigo) ?? {
+            nombre: departamento.nombre,
+            codigo: departamento.codigo,
+            valor: undefined,
+            semanasObservadas: 0,
+            semanasEsperadas: 0,
+            periodo: descripcion.periodo,
+          };
+          const semanas = departamento.semanas.filter((semana) => {
+            if (filtros.modoMinsal === 'historico') return true;
+            if (filtros.modoMinsal === 'ytd') {
+              return semana.semana_epi <= filtros.semana;
+            }
+            return semana.semana_epi === filtros.semana;
+          });
+          detalle.semanasEsperadas += semanas.length;
+          for (const semana of semanas) {
+            const casos = semana[filtros.serie];
+            if (casos === null) continue;
+            detalle.valor = (detalle.valor ?? 0) + casos;
+            detalle.semanasObservadas += 1;
+          }
+          nuevosDetalles.set(departamento.codigo, detalle);
+        }
       }
+      detallesMinsal = nuevosDetalles;
+      const valores = new Map<string, number | undefined>();
+      for (const detalle of detallesMinsal.values())
+        valores.set(detalle.codigo, detalle.valor);
       return valores;
     },
     calcularCortes: cortesPorCuantiles,
     etiquetasLeyenda(cortes) {
       return [
-        `1–${cortes[0]}`,
-        `${cortes[0] + 1}–${cortes[1]}`,
-        `${cortes[1] + 1}–${cortes[2]}`,
-        `${cortes[2] + 1}–${cortes[3]}`,
+        `≤ ${cortes[0]}`,
+        `${cortes[0]}–${cortes[1]}`,
+        `${cortes[1]}–${cortes[2]}`,
+        `${cortes[2]}–${cortes[3]}`,
         `> ${cortes[3]}`,
       ];
     },
     tooltipValor(valor) {
-      return valor === undefined ? 'sin dato' : `${valor}`;
+      if (valor === undefined) return 'sin dato';
+      return valor === 0 ? '0 observado' : `${valor} casos`;
     },
   };
 
@@ -909,6 +975,7 @@
       const capa = CAPAS.find((c) => c.id === id);
       if (!capa || !capa.disponible) return;
       capaActivaId = id;
+      if (id === 'minsal_volumen') actualizarDescripcionMinsal();
 
       pintarSelector(id);
       contenedorAviso!.textContent = capa.aviso;
@@ -980,17 +1047,21 @@
           if (capa.id === 'minsal_volumen') {
             const dato = detallesMinsal.get(codigo);
             if (!dato) {
-              layer.bindTooltip(nombre);
+              layer.bindTooltip(`<strong>${nombre}</strong><br>sin dato`);
               return;
             }
-            const ventana =
-              dato.primer_anio && dato.ultimo_anio ? `${dato.primer_anio}-${dato.ultimo_anio}` : 'sin dato';
+            const valorMinsal =
+              dato.valor === undefined
+                ? 'sin dato'
+                : dato.valor === 0
+                  ? '0 observado'
+                  : `${dato.valor} casos`;
             layer.bindTooltip(
               `<strong>${nombre}</strong><br>` +
-                `Probable (acum.): ${dato.probable_total}<br>` +
-                `Confirmado (acum.): ${dato.confirmado_total}<br>` +
-                `Semanas con dato: ${dato.semanas_con_dato_probable}<br>` +
-                `Ventana: ${ventana}`
+                `Serie: ${escapeHtml(obtenerFiltrosAnalisis().serie)}<br>` +
+                `Periodo: ${escapeHtml(dato.periodo)}<br>` +
+                `Valor: ${valorMinsal}<br>` +
+                `Cobertura: ${dato.semanasObservadas}/${dato.semanasEsperadas} semanas`
             );
             return;
           }
@@ -1014,6 +1085,8 @@
       const cambioTiempo =
         filtros.semana !== filtrosAplicados.semana || filtros.anio !== filtrosAplicados.anio;
       const cambioSerie = filtros.serie !== filtrosAplicados.serie;
+      const cambioModoMinsal =
+        filtros.modoMinsal !== filtrosAplicados.modoMinsal;
       const cambioDepartamento = filtros.departamento !== filtrosAplicados.departamento;
       filtrosAplicados = filtros;
 
@@ -1022,9 +1095,13 @@
         ANIO_ESPACIAL = filtros.anio;
         cacheEspacial = null;
         cachePresion = null;
-        (['iv', 'anomalia', 'presion_probable', 'presion_confirmado'] as IdCapa[]).forEach((id) =>
+        (['minsal_volumen', 'iv', 'anomalia', 'presion_probable', 'presion_confirmado'] as IdCapa[]).forEach((id) =>
           cacheValoresPorCapa.delete(id),
         );
+      }
+
+      if (cambioSerie || cambioModoMinsal) {
+        cacheValoresPorCapa.delete('minsal_volumen');
       }
 
       if (cambioSerie && (capaActivaId === 'presion_probable' || capaActivaId === 'presion_confirmado')) {
@@ -1032,7 +1109,8 @@
       }
 
       void (async () => {
-        if (cambioTiempo || cambioSerie) await activarCapa(capaActivaId);
+        if (cambioTiempo || cambioSerie || cambioModoMinsal)
+          await activarCapa(capaActivaId);
         if (cambioDepartamento || (cambioTiempo && filtros.departamento)) {
           resaltarDepartamento(filtros.departamento);
           if (!filtros.departamento) {

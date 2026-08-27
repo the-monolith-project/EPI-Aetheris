@@ -6,18 +6,38 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
   aria-labelledby="filtros-analisis-titulo"
   class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
 >
-  <div>
-    <h2
-      id="filtros-analisis-titulo"
-      class="font-sans text-base font-semibold text-ink"
-    >
-      Filtros globales de análisis
-    </h2>
-    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
-      La semana activa controla el mapa y el detalle; el rango controla las
-      comparaciones temporales. Probable y confirmado se mantienen como series
-      separadas.
-    </p>
+  <div
+    class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+  >
+    <div>
+      <h2
+        id="filtros-analisis-titulo"
+        class="font-sans text-base font-semibold text-ink"
+      >
+        Filtros globales de análisis
+      </h2>
+      <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+        La semana activa controla el mapa y el detalle; el rango controla las
+        comparaciones temporales. Probable y confirmado se mantienen como series
+        separadas.
+      </p>
+    </div>
+    <div class="flex shrink-0 flex-wrap gap-2">
+      <button
+        id="analisis-exportar"
+        type="button"
+        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+      >
+        Descargar vista actual
+      </button>
+      <button
+        id="analisis-copiar-enlace"
+        type="button"
+        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+      >
+        Copiar enlace
+      </button>
+    </div>
   </div>
 
   <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -36,6 +56,20 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
             </option>
           ))
         }
+      </select>
+    </label>
+
+    <label
+      class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+    >
+      Periodo del mapa MINSAL
+      <select
+        id="analisis-modo-minsal"
+        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
+      >
+        <option value="semana">Semana seleccionada</option>
+        <option value="ytd">Acumulado del año (YTD)</option>
+        <option value="historico">Histórico completo</option>
       </select>
     </label>
 
@@ -145,10 +179,17 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
   >
     Cargando departamentos disponibles…
   </p>
+  <p
+    id="analisis-acciones-estado"
+    class="mt-1 min-h-4 font-sans text-xs text-ink-muted"
+    role="status"
+  >
+  </p>
 </section>
 
 <script>
   import { obtenerDatasetAnalitico } from '../lib/analisis-api';
+  import { exportarAnalisisCsv } from '../lib/analisis-export';
   import {
     actualizarFiltrosAnalisis,
     obtenerFiltrosAnalisis,
@@ -156,6 +197,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
   } from '../lib/analisis-state';
   import type {
     AnioAnalisisDengue,
+    ModoMinsal,
     SerieEpidemiologica,
   } from '../lib/tipos-analisis';
 
@@ -167,6 +209,9 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
   ) as HTMLSelectElement | null;
   const selectComparar = document.getElementById(
     'analisis-comparar',
+  ) as HTMLSelectElement | null;
+  const selectModoMinsal = document.getElementById(
+    'analisis-modo-minsal',
   ) as HTMLSelectElement | null;
   const semana = document.getElementById(
     'analisis-semana',
@@ -188,6 +233,13 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
   ) as HTMLOutputElement | null;
   const ayudaComparar = document.getElementById('analisis-comparar-ayuda');
   const estadoCarga = document.getElementById('analisis-filtros-estado');
+  const estadoAcciones = document.getElementById('analisis-acciones-estado');
+  const botonExportar = document.getElementById(
+    'analisis-exportar',
+  ) as HTMLButtonElement | null;
+  const botonCopiar = document.getElementById(
+    'analisis-copiar-enlace',
+  ) as HTMLButtonElement | null;
 
   const etiquetaSemana = (valor: number) =>
     `SE${String(valor).padStart(2, '0')}`;
@@ -205,6 +257,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
     if (selectAnio) selectAnio.value = String(filtros.anio);
     if (selectDepartamento)
       selectDepartamento.value = filtros.departamento ?? '';
+    if (selectModoMinsal) selectModoMinsal.value = filtros.modoMinsal;
     if (semana) semana.value = String(filtros.semana);
     if (desde) desde.value = String(filtros.semanaDesde);
     if (hasta) hasta.value = String(filtros.semanaHasta);
@@ -269,6 +322,11 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
       departamento: selectDepartamento.value || null,
     });
   });
+  selectModoMinsal?.addEventListener('change', () => {
+    actualizarFiltrosAnalisis({
+      modoMinsal: selectModoMinsal.value as ModoMinsal,
+    });
+  });
   semana?.addEventListener('input', () =>
     actualizarFiltrosAnalisis({ semana: Number(semana.value) }),
   );
@@ -294,6 +352,31 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
       .slice(0, 4);
     actualizarFiltrosAnalisis({ comparar: seleccionados });
     sincronizarControles();
+  });
+  botonExportar?.addEventListener('click', async () => {
+    botonExportar.disabled = true;
+    if (estadoAcciones) estadoAcciones.textContent = 'Preparando CSV…';
+    try {
+      const filas = await exportarAnalisisCsv(obtenerFiltrosAnalisis());
+      if (estadoAcciones)
+        estadoAcciones.textContent = `CSV generado con ${filas} filas filtradas.`;
+    } catch {
+      if (estadoAcciones)
+        estadoAcciones.textContent = 'No fue posible generar el CSV.';
+    } finally {
+      botonExportar.disabled = false;
+    }
+  });
+  botonCopiar?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      if (estadoAcciones)
+        estadoAcciones.textContent = 'Enlace reproducible copiado.';
+    } catch {
+      if (estadoAcciones)
+        estadoAcciones.textContent =
+          'No se pudo copiar automáticamente; use la dirección del navegador.';
+    }
   });
 
   suscribirFiltrosAnalisis(sincronizarControles);

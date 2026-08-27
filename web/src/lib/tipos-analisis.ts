@@ -2,6 +2,7 @@ export const ANIOS_ANALISIS_DENGUE = [2018, 2019, 2021, 2022, 2023] as const;
 
 export type AnioAnalisisDengue = (typeof ANIOS_ANALISIS_DENGUE)[number];
 export type SerieEpidemiologica = 'probable' | 'confirmado';
+export type ModoMinsal = 'semana' | 'ytd' | 'historico';
 
 export interface FiltrosAnalisis {
   anio: AnioAnalisisDengue;
@@ -11,6 +12,7 @@ export interface FiltrosAnalisis {
   serie: SerieEpidemiologica;
   departamento: string | null;
   comparar: string[];
+  modoMinsal: ModoMinsal;
 }
 
 export interface PresionAnalitica {
