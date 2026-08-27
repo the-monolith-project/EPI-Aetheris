@@ -1,0 +1,174 @@
+<article
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+>
+  <header>
+    <h3 class="font-sans text-base font-semibold text-ink">
+      Comparación de temporadas
+    </h3>
+    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+      Conteos observados del departamento activo en cada año disponible. Las
+      líneas se interrumpen donde la fuente no contiene una observación; no se
+      interpolan huecos.
+    </p>
+  </header>
+
+  <div class="mt-4 overflow-x-auto">
+    <div
+      id="comparacion-temporadas"
+      class="min-h-[340px] min-w-[720px]"
+      role="img"
+      aria-label="Comparación de conteos semanales por temporada para el departamento activo"
+    >
+    </div>
+  </div>
+  <p
+    id="comparacion-resumen"
+    class="mt-3 font-sans text-xs text-ink-muted"
+    role="status"
+  >
+  </p>
+</article>
+
+<script>
+  import * as Plot from '@observablehq/plot';
+  import { obtenerDatasetAnalitico } from '../../lib/analisis-api';
+  import {
+    obtenerFiltrosAnalisis,
+    suscribirFiltrosAnalisis,
+  } from '../../lib/analisis-state';
+  import { ANIOS_ANALISIS_DENGUE } from '../../lib/tipos-analisis';
+  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+
+  interface PuntoTemporada {
+    anio: number;
+    semana: number;
+    casos: number | null;
+    departamento: string;
+  }
+
+  const contenedor = document.getElementById('comparacion-temporadas');
+  const resumen = document.getElementById('comparacion-resumen');
+  let revision = 0;
+  let filtrosActuales = obtenerFiltrosAnalisis();
+
+  async function renderizar(filtros: FiltrosAnalisis) {
+    if (!contenedor) return;
+    const idRevision = ++revision;
+    if (!filtros.departamento) {
+      contenedor.replaceChildren();
+      if (resumen)
+        resumen.textContent =
+          'Seleccione un departamento en los filtros o en el mapa.';
+      return;
+    }
+    if (resumen) resumen.textContent = 'Cargando temporadas históricas…';
+
+    try {
+      const datasets = await Promise.all(
+        ANIOS_ANALISIS_DENGUE.map((anio) => obtenerDatasetAnalitico(anio)),
+      );
+      if (idRevision !== revision) return;
+
+      const puntos: PuntoTemporada[] = datasets.flatMap((dataset) => {
+        const departamento = dataset.departamentos.find(
+          (fila) => fila.codigo === filtros.departamento,
+        );
+        if (!departamento) return [];
+        return departamento.semanas
+          .filter(
+            (semana) =>
+              semana.semana_epi >= filtros.semanaDesde &&
+              semana.semana_epi <= filtros.semanaHasta,
+          )
+          .map((semana) => ({
+            anio: dataset.anio,
+            semana: semana.semana_epi,
+            casos:
+              filtros.serie === 'probable'
+                ? semana.probable
+                : semana.confirmado,
+            departamento: departamento.nombre,
+          }));
+      });
+      const seleccionada = puntos.filter(
+        (punto) => punto.anio === filtros.anio,
+      );
+      const contexto = puntos.filter((punto) => punto.anio !== filtros.anio);
+
+      const grafica = Plot.plot({
+        width: Math.max(contenedor.clientWidth, 720),
+        height: 350,
+        marginLeft: 60,
+        marginBottom: 48,
+        x: {
+          domain: [filtros.semanaDesde, filtros.semanaHasta],
+          label: 'Semana epidemiológica',
+          tickFormat: (valor) => `SE${String(valor).padStart(2, '0')}`,
+          ticks: 10,
+        },
+        y: { label: `Casos ${filtros.serie}`, grid: true, zero: true },
+        style: { background: 'transparent', color: 'var(--color-ink-muted)' },
+        marks: [
+          Plot.line(contexto, {
+            x: 'semana',
+            y: 'casos',
+            z: 'anio',
+            stroke: '#9ca3af',
+            strokeOpacity: 0.5,
+            strokeWidth: 1.25,
+          }),
+          Plot.line(seleccionada, {
+            x: 'semana',
+            y: 'casos',
+            stroke: 'var(--color-accent)',
+            strokeWidth: 2.75,
+          }),
+          Plot.dot(
+            puntos.filter((punto) => punto.casos !== null),
+            {
+              x: 'semana',
+              y: 'casos',
+              fill: (punto: PuntoTemporada) =>
+                punto.anio === filtros.anio ? 'var(--color-accent)' : '#9ca3af',
+              fillOpacity: (punto: PuntoTemporada) =>
+                punto.anio === filtros.anio ? 1 : 0.45,
+              r: (punto: PuntoTemporada) =>
+                punto.anio === filtros.anio ? 3 : 1.8,
+              title: (punto: PuntoTemporada) =>
+                `${punto.departamento} · ${punto.anio} · SE${String(punto.semana).padStart(2, '0')}\n${punto.casos} casos ${filtros.serie}`,
+            },
+          ),
+          Plot.ruleX([filtros.semana], {
+            stroke: 'var(--color-ink)',
+            strokeOpacity: 0.4,
+            strokeDasharray: '3,3',
+          }),
+          Plot.frame({ stroke: 'var(--color-border)' }),
+        ],
+      });
+      contenedor.replaceChildren(grafica);
+
+      const departamento = puntos[0]?.departamento ?? filtros.departamento;
+      const observacionesSeleccionadas = seleccionada.filter(
+        (punto) => punto.casos !== null,
+      ).length;
+      if (resumen) {
+        resumen.textContent = `${departamento} · ${filtros.serie} · año destacado ${filtros.anio} (${observacionesSeleccionadas} semanas observadas) · rango SE${String(filtros.semanaDesde).padStart(2, '0')}–SE${String(filtros.semanaHasta).padStart(2, '0')}.`;
+      }
+    } catch {
+      if (idRevision !== revision) return;
+      contenedor.replaceChildren();
+      if (resumen)
+        resumen.textContent =
+          'No fue posible cargar la comparación de temporadas.';
+    }
+  }
+
+  suscribirFiltrosAnalisis((filtros) => {
+    filtrosActuales = filtros;
+    void renderizar(filtros);
+  });
+  new ResizeObserver(() => void renderizar(filtrosActuales)).observe(
+    contenedor!,
+  );
+</script>
