@@ -4,6 +4,7 @@ import ComparacionDepartamentos from './ComparacionDepartamentos.astro';
 import ComparacionTemporadas from './ComparacionTemporadas.astro';
 import DisponibilidadDatos from './DisponibilidadDatos.astro';
 import HeatmapDepartamentos from './HeatmapDepartamentos.astro';
+import MapaDepartamentos from '../MapaDepartamentos.astro';
 import PerfilCalidadDatos from './PerfilCalidadDatos.astro';
 import ScatterClimaPresion from './ScatterClimaPresion.astro';
 ---
@@ -17,28 +18,45 @@ import ScatterClimaPresion from './ScatterClimaPresion.astro';
     <p
       class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
     >
-      Análisis
+      Workspace analítico
     </p>
     <h2
       id="panel-analisis-titulo"
       class="mt-1 font-display text-xl font-semibold text-ink"
     >
-      Exploración espacial y temporal
+      Exploración espacial y temporal configurable
     </h2>
     <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
-      Estas vistas organizan observaciones históricas para comparar dónde y
-      cuándo ocurrieron; no asignan riesgo, no anticipan eventos y no establecen
-      causalidad.
+      Seleccione un departamento, compare sus observaciones históricas y cambie
+      los filtros sin salir de esta área. Estas vistas no asignan riesgo, no
+      anticipan eventos y no establecen causalidad.
     </p>
   </header>
 
-  <div class="grid gap-4">
-    <HeatmapDepartamentos />
-    <CalendarioEpidemico />
-    <ComparacionTemporadas />
-    <ComparacionDepartamentos />
-    <ScatterClimaPresion />
-    <DisponibilidadDatos />
-    <PerfilCalidadDatos />
+  <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
+    <div id="mapa" class="min-w-0 xl:col-span-5">
+      <MapaDepartamentos />
+    </div>
+    <div class="min-w-0 xl:col-span-7">
+      <HeatmapDepartamentos />
+    </div>
+    <div class="min-w-0 xl:col-span-6">
+      <ComparacionTemporadas />
+    </div>
+    <div class="min-w-0 xl:col-span-6">
+      <ComparacionDepartamentos />
+    </div>
+    <div class="min-w-0 xl:col-span-6">
+      <CalendarioEpidemico />
+    </div>
+    <div class="min-w-0 xl:col-span-6">
+      <ScatterClimaPresion />
+    </div>
+    <div class="min-w-0 xl:col-span-7">
+      <DisponibilidadDatos />
+    </div>
+    <div class="min-w-0 xl:col-span-5">
+      <PerfilCalidadDatos />
+    </div>
   </div>
 </section>

@@ -1,35 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import CurvaEpidemicaNacional from '../components/CurvaEpidemicaNacional.astro';
-import MapaDepartamentos from '../components/MapaDepartamentos.astro';
 import MetricasModelo from '../components/MetricasModelo.astro';
 import ResumenNacional from '../components/ResumenNacional.astro';
 import AuditoriaDatos from '../components/AuditoriaDatos.astro';
 import FiltrosAnalisis from '../components/FiltrosAnalisis.astro';
 import PanelAnalisis from '../components/analisis/PanelAnalisis.astro';
-
-// Nav lateral + fila de resumen + panel de auditoría: patrón de layout
-// reciclado de referencias_no_trakear/boceto_dashboard_pre-camino-ancho_DESACTUALIZADO.png
-// (el boceto es de antes del pivote y su CONTENIDO de riesgo en vivo no se
-// usa -- ver LEEME.md en esa carpeta). El nav son anclas a las secciones de
-// esta misma página, no rutas nuevas.
-const SECCIONES = [
-  { href: '#resumen', etiqueta: 'Resumen' },
-  { href: '#mapa', etiqueta: 'Mapa departamental' },
-  { href: '#analisis', etiqueta: 'Análisis' },
-  { href: '#curva', etiqueta: 'Serie nacional' },
-  { href: '#historico', etiqueta: 'Clasificador histórico' },
-];
-
-// Jerarquía del dashboard (decisión del coordinador, 2026-08-21): Camino
-// Ancho -- descriptivo, no predictivo -- es la narrativa principal. El mapa
-// departamental va primero, la curva nacional (OpenDengue crudo, también
-// descriptiva) después, y el clasificador nacional RETIRADO queda al final
-// como sección colapsable claramente etiquetada de histórico (ver
-// MetricasModelo.astro y docs/informe-cierre-rescate-prediccion.md). No se
-// eliminó del dashboard: el estatuto del proyecto exige que las métricas y
-// errores del modelo sigan siendo consultables, solo que ya no como pieza
-// central ni como predicción en vivo.
 ---
 
 <Layout title="EPI-Aetheris — Dengue">
@@ -86,10 +62,9 @@ const SECCIONES = [
           </p>
         </header>
 
-        <div class="mt-6 flex flex-col gap-4">
-          <ResumenNacional />
-          <AuditoriaDatos />
-        </div>
+    <div class="mt-6">
+      <PanelAnalisis />
+    </div>
 
         <div class="mt-6">
           <FiltrosAnalisis />
@@ -111,6 +86,13 @@ const SECCIONES = [
           <MetricasModelo />
         </div>
       </div>
+    </section>
+
+    <div id="curva" class="mt-8 scroll-mt-24">
+      <CurvaEpidemicaNacional />
+    </div>
+    <div id="historico" class="mt-6 scroll-mt-24">
+      <MetricasModelo />
     </div>
   </main>
 </Layout>
