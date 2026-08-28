@@ -13,11 +13,17 @@ async function esperarPanel(page: import('@playwright/test').Page) {
   await expect(page.locator('#mapa-aviso')).not.toBeEmpty();
 }
 
+async function abrirFiltros(page: import('@playwright/test').Page) {
+  await page.locator('#analisis-abrir-filtros').click();
+  await expect(page.locator('#analisis-filtros-drawer')).toBeVisible();
+}
+
 test('sincroniza filtros, mapa, scatter, departamento, heatmap y serie', async ({
   page,
 }) => {
   await page.goto(URL_INICIAL);
   await esperarPanel(page);
+  await abrirFiltros(page);
 
   await page.locator('#analisis-anio').selectOption('2022');
   await expect(page).toHaveURL(/year=2022/);
@@ -30,6 +36,7 @@ test('sincroniza filtros, mapa, scatter, departamento, heatmap y serie', async (
     'semana seleccionada',
   );
   await expect(page.locator('#scatter-resumen')).toContainText('2022 · SE31');
+  await page.locator('#analisis-cerrar-filtros').click();
 
   const sanSalvador = page.locator('[data-departamento="SV-SS"]').first();
   await expect(sanSalvador).toHaveAttribute(
@@ -55,6 +62,7 @@ test('sincroniza filtros, mapa, scatter, departamento, heatmap y serie', async (
   await expect(page).toHaveURL(/week=12/);
   await expect(page).toHaveURL(/dept=SV-AH/);
 
+  await abrirFiltros(page);
   await page
     .locator('input[name="analisis-serie"][value="confirmado"]')
     .check();
@@ -72,6 +80,7 @@ test('restaura la URL, limita la comparación y exporta el filtro actual', async
     '/dengue?year=2019&week=24&fromWeek=10&toWeek=30&dept=SV-LI&serie=confirmado&compare=SV-LI%2CSV-SS&minsal=ytd',
   );
   await esperarPanel(page);
+  await abrirFiltros(page);
 
   await expect(page.locator('#analisis-anio')).toHaveValue('2019');
   await expect(page.locator('#analisis-semana')).toHaveValue('24');
@@ -125,11 +134,13 @@ test('aplica vistas del workspace sin alterar los filtros epidemiológicos', asy
 }) => {
   await page.goto(URL_INICIAL);
   await esperarPanel(page);
+  await abrirFiltros(page);
 
   await expect(page.locator('[data-panel-workspace="mapa"]')).toBeVisible();
   await expect(
     page.locator('[data-panel-workspace="calendario"]'),
   ).toBeHidden();
+  await page.locator('#analisis-cerrar-filtros').click();
 
   await page.locator('#analisis-vista').selectOption('temporal');
   await expect(page.locator('[data-panel-workspace="mapa"]')).toBeHidden();
@@ -156,8 +167,10 @@ test('muestra y oculta paneles sin modificar el filtro activo', async ({
 }) => {
   await page.goto(URL_INICIAL);
   await esperarPanel(page);
+  await abrirFiltros(page);
 
   await page.locator('#analisis-semana').fill('27');
+  await page.locator('#analisis-cerrar-filtros').click();
   await page.locator('#analisis-paneles-boton').click();
   await expect(page.locator('#analisis-paneles-boton')).toHaveAttribute(
     'aria-expanded',
@@ -172,6 +185,31 @@ test('muestra y oculta paneles sin modificar el filtro activo', async ({
 
   await page.keyboard.press('Escape');
   await expect(page.locator('#analisis-paneles-boton')).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+});
+
+test('limpia los filtros desde el drawer sin restablecer la vista', async ({
+  page,
+}) => {
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+  await page.locator('#analisis-vista').selectOption('temporal');
+  await abrirFiltros(page);
+
+  await page.locator('#analisis-anio').selectOption('2022');
+  await page.locator('#analisis-semana').fill('31');
+  await page.locator('#analisis-limpiar-filtros').click();
+  await expect(page.locator('#analisis-anio')).toHaveValue('2023');
+  await expect(page.locator('#analisis-semana')).toHaveValue('1');
+  await expect(page.locator('#analisis-desde')).toHaveValue('1');
+  await expect(page.locator('#analisis-hasta')).toHaveValue('53');
+  await expect(page.locator('#analisis-vista')).toHaveValue('temporal');
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#analisis-filtros-drawer')).toBeHidden();
+  await expect(page.locator('#analisis-abrir-filtros')).toHaveAttribute(
     'aria-expanded',
     'false',
   );
