@@ -174,10 +174,11 @@ def calcular_serie_Iv(
     si la semana anterior no existe (semana 1), se usa solo la semana
     actual."""
     resultado: dict[str, dict[int, dict[int, float]]] = defaultdict(lambda: defaultdict(dict))
+    requeridas = ("temp_media", "precipitation_sum", "humedad_relativa_media")
     for codigo, por_anio in clima.items():
         for anio, semanas in por_anio.items():
             for semana, valores in semanas.items():
-                if not all(v in valores for v in ("temp_media", "precipitation_sum", "humedad_relativa_media")):
+                if any(valores.get(v) is None for v in requeridas):
                     continue
                 precip_prev = semanas.get(semana - 1, {}).get("precipitation_sum", 0.0) if semana > 1 else 0.0
                 r_acum = valores["precipitation_sum"] + precip_prev

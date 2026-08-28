@@ -206,6 +206,17 @@ class RangoPercentilTest(unittest.TestCase):
         self.assertEqual(presion.rango_percentil([7.0], 3.0), 0.0)
         self.assertEqual(presion.rango_percentil([7.0], 9.0), 100.0)
 
+    def test_empate_largo_de_ceros_al_inicio(self):
+        # Caso caliente en M3: muchas semanas con 0 casos. El tramo de ceros
+        # ocupa indices 0..3 de 0..5 -> punto medio indice 1.5 -> 30%.
+        pool = [0.0, 0.0, 0.0, 0.0, 4.0, 10.0]
+        self.assertAlmostEqual(presion.rango_percentil(pool, 0.0), 100.0 * 1.5 / 5.0, places=6)
+
+    def test_empate_interno_multiple(self):
+        # Empate en 3.0 sobre indices 2..5 de 0..7 -> punto medio 3.5 -> 50%.
+        pool = [1.0, 2.0, 3.0, 3.0, 3.0, 3.0, 4.0, 5.0]
+        self.assertAlmostEqual(presion.rango_percentil(pool, 3.0), 50.0, places=6)
+
 
 if __name__ == "__main__":
     unittest.main()
