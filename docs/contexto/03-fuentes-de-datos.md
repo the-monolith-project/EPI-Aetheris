@@ -72,6 +72,22 @@ En ambas familias, "probable" y "confirmado" son **semanas epidemiológicas dist
 
 **Límites administrativos (geometría del mapa):** El Salvador tiene 14 departamentos (Admin1), 48 municipios (Admin2), 266 distritos (Admin3) — geoBoundaries gbOpen SLV ADM1 (`boundaryID SLV-ADM1-98794003`, fuente OSM vía osm-boundaries.com, build dic. 2023). **`shapeISO` viene vacío en las 14 features** — `regiones.codigo` (ISO 3166-2:SV) no sirve como llave de unión con el mapa. La unión real es por `shapeName` normalizado (quitar prefijo "Departamento de ", NFD sin diacríticos, minúsculas, espacios colapsados) contra `regiones.nombre` — 14-a-14 exacto, sin sobrantes. Resuelto en tiempo de construcción y horneado en el GeoJSON (`backend/ingestion/build_geo_departamentos.py`, ver `docs/adr/0002-join-mapa-geojson-por-nombre.md`); el frontend compara por igualdad estricta, sin normalización en TypeScript. Aborta si la unión no da 14 a 14. El `boundaryLicense` de esta boundary específica es "CC BY-SA 2.0" (no el CC BY 4.0 genérico de geoBoundaries) — pendiente decidir qué texto de licencia mostrar en la ficha de atribuciones.
 
+## Neumonías y vigilancia de virus en los mismos PDF MINSAL
+
+Los 264 boletines ya usados para dengue e IRA publican, en otras páginas:
+
+- **Neumonías:** tabla departamental `Departamento | Total | Tasa x 100 mil`,
+  acumulada desde SE1, un solo conteo (sin probable/confirmado). Misma
+  familia de trampas que IRA (imagen en 2019 temprana, vacaciones, una
+  reimpresión SE34/2019, discrepancias ±1 en 2023). Informe:
+  `docs/exploracion-neumonias-boletines-minsal.md`.
+- **Vigilancia centinela de influenza y otros virus:** tabla **nacional** de
+  laboratorio (muestras, positivos, detecciones por virus, positividad).
+  No es un conteo clínico. COVID-19 como fila aparece solo en 2023, con el
+  rótulo `COVID 19`, no “SARS-CoV-2”. Informe:
+  `docs/exploracion-vigilancia-virus-boletines-minsal.md`. Persistencia:
+  ADR 0012.
+
 ## Clima — Open-Meteo
 
 `open-meteo.com`. Auditado contra documentación oficial vigente (`/en/docs`, `/pricing`, `/terms`) y el repositorio de código (`open-meteo/open-meteo`, `open-meteo/open-data`), incluyendo hilos de mantenedores. No fue posible ejecutar una llamada real al endpoint (bloqueada por `robots.txt` para la herramienta de fetch disponible en la auditoría original) — verificación contra documentación oficial en vivo, no contra memoria de entrenamiento.

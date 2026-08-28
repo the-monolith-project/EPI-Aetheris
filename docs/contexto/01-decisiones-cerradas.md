@@ -2,6 +2,24 @@
 
 > Todo lo marcado aquí está **cerrado / no negociable**. Respételo salvo instrucción explícita del usuario reabriéndolo. Para lo que sigue sin resolver, ver `02-decisiones-abiertas.md`. Para la evidencia empírica detrás de las decisiones de fuentes de datos, ver `03-fuentes-de-datos.md`.
 
+## Ingesta respiratoria: Neumonías + vigilancia virológica (cerrado 2026-08-28)
+
+Evidencia: `docs/exploracion-neumonias-boletines-minsal.md` y
+`docs/exploracion-vigilancia-virus-boletines-minsal.md` (264 PDF).
+
+- **Neumonías** es un conteo clínico departamental único, acumulado desde SE1,
+  mismo formato que IRA. Reutiliza `casos_epidemiologicos` con
+  `clasificacion='notificado'` (ADR 0011) y `tipos_evento='neumonia'`. No se
+  mezcla con IRA. No se copian M1–M4 de dengue.
+- **Influenza / VSR / SARS-CoV-2** son vigilancia laboratorial centinela
+  **nacional** (muestras, positivos, detecciones, positividad). No caben en
+  `casos_epidemiologicos`. Tabla nueva `vigilancia_virus_respiratorios`
+  (ADR 0012, migración `0008`). No hay mapa departamental.
+- **2020 no se descarga** para esta rama: COVID-19 como fila de la tabla
+  laboratorial solo aparece en 2023; no es una copia de la exclusión de
+  dengue/IRA. 2024+ sigue fuera.
+- OCR no se instala. Tablas-imagen se registran y se dejan como hueco.
+
 ## Pivote "Camino Ancho": cierre de la clasificación predictiva (cerrado 2026-08-18)
 
 **Reemplaza en la práctica el "Pivote de fase 1 — Opción C" de más abajo, que queda registrado como historia de cómo se llegó aquí, no como el estado vigente.** Léase primero esta sección; la de Opción C describe una fase intermedia ya superada.
