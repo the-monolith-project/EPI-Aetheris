@@ -1,0 +1,198 @@
+---
+// Vigilancia laboratorial nacional. No hay mapa: la fuente no desagrega
+// por departamento. Una métrica por escala (no se mezclan conteos y %).
+---
+
+<section class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6" data-panel-virus>
+  <div class="flex items-start gap-3">
+    <span class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+    <div>
+      <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+        Vigilancia centinela de virus (nacional)
+      </h2>
+      <p class="mt-1 max-w-3xl font-sans text-sm leading-relaxed text-ink-muted">
+        Muestras, detecciones y positividad publicadas por MINSAL. No son casos clínicos
+        departamentales. Activar o desactivar virus no implica causalidad con IRA o Neumonías.
+        SARS-CoV-2 aparece como <code class="font-mono text-xs">covid_19</code> solo en 2023.
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-4 flex flex-wrap gap-3 font-sans text-sm">
+    <label class="flex items-center gap-2">Métrica
+      <select data-virus-metrica class="rounded-lg border border-border bg-bg px-3 py-1.5">
+        <option value="detecciones">detecciones (conteo)</option>
+        <option value="positividad">positividad (%)</option>
+        <option value="muestras_analizadas">muestras analizadas (conteo)</option>
+        <option value="muestras_positivas">muestras positivas (conteo)</option>
+      </select>
+    </label>
+    <label class="flex items-center gap-2">Año
+      <select data-virus-anio class="rounded-lg border border-border bg-bg px-3 py-1.5"></select>
+    </label>
+  </div>
+  <fieldset class="mt-3 flex flex-wrap gap-3 font-sans text-sm" data-virus-toggles>
+    <legend class="sr-only">Virus visibles</legend>
+  </fieldset>
+
+  <p data-virus-aviso class="mt-3 font-sans text-xs leading-relaxed text-ink-muted"></p>
+  <div data-virus-error class="mt-3 hidden rounded-lg border border-secondary bg-secondary/25 p-3 font-sans text-sm">
+    No se pudo cargar la vigilancia de virus. El componente no inventa series.
+  </div>
+  <div data-virus-heatmap class="mt-4 overflow-x-auto"></div>
+</section>
+
+<script>
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const VIRUS_DEFAULT = ['influenza', 'vsr', 'covid_19', 'adenovirus', 'parainfluenza'];
+
+  interface CatalogoItem {
+    virus: string;
+    metrica: string;
+    unidad: string;
+  }
+
+  async function jsonOk(url: string) {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('no ok');
+    return resp.json();
+  }
+
+  function color(valor: number, max: number, metrica: string): string {
+    if (max <= 0) return '#e4e4e7';
+    const t = Math.min(1, valor / max);
+    if (metrica === 'positividad') {
+      const r = Math.round(220 * t);
+      return `rgb(${r}, ${80}, ${80 + Math.round(80 * (1 - t))})`;
+    }
+    const b = Math.round(40 + 180 * (1 - t));
+    return `rgb(${40}, ${80 + Math.round(80 * t)}, ${b})`;
+  }
+
+  async function iniciar() {
+    const root = document.querySelector<HTMLElement>('[data-panel-virus]');
+    if (!root) return;
+    const selMetrica = root.querySelector<HTMLSelectElement>('[data-virus-metrica]')!;
+    const selAnio = root.querySelector<HTMLSelectElement>('[data-virus-anio]')!;
+    const toggles = root.querySelector<HTMLElement>('[data-virus-toggles]')!;
+    const aviso = root.querySelector<HTMLElement>('[data-virus-aviso]')!;
+    const error = root.querySelector<HTMLElement>('[data-virus-error]')!;
+    const heatmap = root.querySelector<HTMLElement>('[data-virus-heatmap]')!;
+
+    let catalogo: CatalogoItem[] = [];
+    try {
+      const datos = await jsonOk(`${API_BASE}/api/respiratorios/virus`);
+      catalogo = datos.series;
+      aviso.textContent = datos.aviso;
+    } catch {
+      error.classList.remove('hidden');
+      return;
+    }
+
+    const virusDisponibles = [...new Set(catalogo.map((s) => s.virus))].sort();
+    for (const v of virusDisponibles) {
+      const lab = document.createElement('label');
+      lab.className = 'flex items-center gap-1';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = v;
+      cb.checked = VIRUS_DEFAULT.includes(v);
+      lab.append(cb, document.createTextNode(v));
+      toggles.appendChild(lab);
+    }
+
+    async function refrescar() {
+      const metrica = selMetrica.value;
+      const virusActivos = [...toggles.querySelectorAll<HTMLInputElement>('input:checked')].map((c) => c.value);
+      heatmap.textContent = 'Cargando…';
+      const seriesPorVirus: Record<string, Record<string, [number, number][]>> = {};
+      const anios = new Set<number>();
+      try {
+        for (const virus of virusActivos) {
+          const m = metrica.startsWith('muestras') && virus !== 'todos' ? metrica : metrica;
+          const virusParam = metrica.startsWith('muestras') ? 'todos' : virus;
+          const datos = await jsonOk(
+            `${API_BASE}/api/respiratorios/temporal?virus=${encodeURIComponent(virusParam)}&metrica=${encodeURIComponent(m)}`
+          );
+          seriesPorVirus[virusParam] = datos.series;
+          for (const a of datos.anios) anios.add(a);
+        }
+      } catch {
+        error.classList.remove('hidden');
+        heatmap.textContent = '';
+        return;
+      }
+      error.classList.add('hidden');
+      const listaAnios = [...anios].sort();
+      if (selAnio.options.length === 0) {
+        for (const a of listaAnios) {
+          const op = document.createElement('option');
+          op.value = String(a);
+          op.textContent = String(a);
+          if (a === 2023) op.selected = true;
+          selAnio.appendChild(op);
+        }
+      }
+      const anio = selAnio.value || String(listaAnios[listaAnios.length - 1] ?? 2023);
+      const filas = Object.keys(seriesPorVirus);
+      const semanas = Array.from({ length: 52 }, (_, i) => i + 1);
+      let max = 0;
+      const grid: Record<string, Record<number, number | null>> = {};
+      for (const v of filas) {
+        grid[v] = {};
+        const pts = seriesPorVirus[v][anio] ?? [];
+        const mapa = new Map(pts);
+        for (const s of semanas) {
+          const val = mapa.has(s) ? mapa.get(s)! : null;
+          grid[v][s] = val;
+          if (val != null && val > max) max = val;
+        }
+      }
+
+      const table = document.createElement('table');
+      table.className = 'font-mono text-[10px] border-collapse';
+      const thead = document.createElement('thead');
+      const trh = document.createElement('tr');
+      trh.appendChild(document.createElement('th'));
+      for (const s of semanas) {
+        const th = document.createElement('th');
+        th.textContent = String(s);
+        th.className = 'px-0.5 text-ink-muted font-sans';
+        trh.appendChild(th);
+      }
+      thead.appendChild(trh);
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+      for (const v of filas) {
+        const tr = document.createElement('tr');
+        const name = document.createElement('td');
+        name.textContent = v;
+        name.className = 'pr-2 font-sans text-xs text-ink sticky left-0 bg-surface';
+        tr.appendChild(name);
+        for (const s of semanas) {
+          const td = document.createElement('td');
+          const val = grid[v][s];
+          td.title = val == null ? `${v} SE${s} ${anio}: sin dato` : `${v} SE${s} ${anio}: ${val}`;
+          td.style.background = val == null ? '#f4f4f5' : color(val, max, metrica);
+          td.style.width = '14px';
+          td.style.height = '18px';
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      heatmap.replaceChildren(table);
+      const nota = document.createElement('p');
+      nota.className = 'mt-2 font-sans text-xs text-ink-muted';
+      nota.textContent = `Heatmap ${metrica} · año ${anio} · celdas claras = hueco real. Una sola métrica por escala. Fuente: MINSAL.`;
+      heatmap.appendChild(nota);
+    }
+
+    selMetrica.addEventListener('change', () => void refrescar());
+    selAnio.addEventListener('change', () => void refrescar());
+    toggles.addEventListener('change', () => void refrescar());
+    void refrescar();
+  }
+
+  void iniciar();
+</script>
