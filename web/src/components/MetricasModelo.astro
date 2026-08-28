@@ -67,6 +67,8 @@
 </style>
 
 <script>
+  import { escapeHtml } from '../utils/security';
+
   interface RiesgoNacional {
     anio: number;
     semana_epi: number;
@@ -99,7 +101,7 @@
 
   function badge(clase: string): string {
     const color = COLOR_CLASE[clase] ?? 'var(--color-accent)';
-    return `<span style="background:${color}" class="inline-block rounded-full px-2.5 py-0.5 font-sans text-xs font-semibold uppercase tracking-wide text-white">${clase}</span>`;
+    return `<span style="background:${color}" class="inline-block rounded-full px-2.5 py-0.5 font-sans text-xs font-semibold uppercase tracking-wide text-white">${escapeHtml(clase)}</span>`;
   }
 
   function formatearRecall(valor: number | null, nAltoReal: number): string {
@@ -115,7 +117,7 @@
 
     const m = datos.metricas_modelo;
     const probas = Object.entries(datos.probabilidades)
-      .map(([clase, p]) => `<li>${clase}: ${(p * 100).toFixed(1)}%</li>`)
+      .map(([clase, p]) => `<li>${escapeHtml(clase)}: ${(p * 100).toFixed(1)}%</li>`)
       .join('');
 
     contenedor.innerHTML = `
@@ -132,13 +134,13 @@
 
       <div class="mt-3 rounded-xl border border-border bg-bg p-3">
         <p class="font-sans text-xs font-semibold uppercase text-ink-muted">Aviso</p>
-        <p class="mt-1 font-sans text-sm text-ink">${datos.aviso}</p>
+        <p class="mt-1 font-sans text-sm text-ink">${escapeHtml(datos.aviso)}</p>
       </div>
 
       ${m ? `
       <div class="mt-3 rounded-xl border border-border bg-bg p-3">
         <p class="font-sans text-xs font-semibold uppercase text-ink-muted">
-          Métricas del modelo (entrenado ${m.anios_entrenamiento.join(', ')} · probado ${m.anio_prueba} · corte ${m.corte_percentil})
+          Métricas del modelo (entrenado ${m.anios_entrenamiento.join(', ')} · probado ${m.anio_prueba} · corte ${escapeHtml(m.corte_percentil)})
         </p>
         <div class="overflow-x-auto">
         <table class="mt-2 w-full border-collapse font-mono text-xs text-ink">
@@ -167,7 +169,7 @@
           ¿Supera a la línea base climatológica (criterio decisivo)?
           <strong>${m.supera_baseline_climatologica ? 'Sí' : 'No, esta pasada'}</strong>
         </p>
-        <p class="mt-1 font-sans text-xs text-ink-muted">${m.nota}</p>
+        <p class="mt-1 font-sans text-xs text-ink-muted">${escapeHtml(m.nota)}</p>
       </div>
       ` : `
       <div class="mt-3 rounded-xl border border-border bg-bg p-3">
