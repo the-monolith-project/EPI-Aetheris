@@ -1,0 +1,188 @@
+<article
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+>
+  <header>
+    <h3 class="font-sans text-base font-semibold text-ink">
+      Anomalía climática y presión relativa
+    </h3>
+    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+      Cada punto es un departamento en la semana activa. La coincidencia
+      espacial de ambas variables es descriptiva y no demuestra que una cause la
+      otra.
+    </p>
+  </header>
+
+  <div class="mt-4 overflow-x-auto">
+    <div
+      id="scatter-clima-presion"
+      class="min-h-[340px] min-w-[720px]"
+      role="region"
+      aria-label="Scatter de anomalía climática y percentil de presión epidemiológica por departamento"
+    >
+    </div>
+  </div>
+  <p
+    id="scatter-resumen"
+    class="mt-3 font-sans text-xs text-ink-muted"
+    role="status"
+  >
+  </p>
+</article>
+
+<script>
+  import * as Plot from '@observablehq/plot';
+  import { obtenerDatasetAnalitico } from '../../lib/analisis-api';
+  import {
+    actualizarFiltrosAnalisis,
+    obtenerFiltrosAnalisis,
+    suscribirFiltrosAnalisis,
+  } from '../../lib/analisis-state';
+  import { vincularMarcasPlot } from '../../lib/plot-interacciones';
+  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+
+  interface PuntoScatter {
+    codigo: string;
+    departamento: string;
+    anomalia: number;
+    percentil: number;
+    casos: number | null;
+    iv: number | null;
+    p50: number | null;
+    p75: number | null;
+    observacionesBaseline: number;
+    aniosBaseline: number;
+  }
+
+  const contenedor = document.getElementById('scatter-clima-presion');
+  const resumen = document.getElementById('scatter-resumen');
+  let revision = 0;
+  let filtrosActuales = obtenerFiltrosAnalisis();
+
+  function tooltip(punto: PuntoScatter, filtros: FiltrosAnalisis): string {
+    return (
+      `${punto.departamento} · ${filtros.anio} · SE${String(filtros.semana).padStart(2, '0')}\n` +
+      `Anomalía: ${punto.anomalia.toFixed(2)}σ\nPercentil presión (${filtros.serie}): ${punto.percentil}\n` +
+      `Casos observados: ${punto.casos ?? 'sin dato'} · Iv: ${punto.iv?.toFixed(3) ?? 'sin dato'}\n` +
+      `P50/P75: ${punto.p50 ?? 'sin dato'} / ${punto.p75 ?? 'sin dato'}\n` +
+      `Baseline: ${punto.observacionesBaseline} observaciones, ${punto.aniosBaseline} años`
+    );
+  }
+
+  async function renderizar(filtros: FiltrosAnalisis) {
+    if (!contenedor) return;
+    const idRevision = ++revision;
+    if (resumen)
+      resumen.textContent = `Cargando ${filtros.anio}, SE${String(filtros.semana).padStart(2, '0')}…`;
+
+    try {
+      const datos = await obtenerDatasetAnalitico(filtros.anio);
+      if (idRevision !== revision) return;
+      const puntos: PuntoScatter[] = datos.departamentos.flatMap(
+        (departamento) => {
+          const semana = departamento.semanas.find(
+            (fila) => fila.semana_epi === filtros.semana,
+          );
+          if (!semana || semana.anomaly_sigma === null) return [];
+          const presion =
+            filtros.serie === 'probable'
+              ? semana.presion_probable
+              : semana.presion_confirmado;
+          if (presion.percentil === null) return [];
+          return [
+            {
+              codigo: departamento.codigo,
+              departamento: departamento.nombre,
+              anomalia: semana.anomaly_sigma,
+              percentil: presion.percentil,
+              casos: presion.casos_observados,
+              iv: semana.iv,
+              p50: presion.p50_baseline,
+              p75: presion.p75_baseline,
+              observacionesBaseline: presion.n_obs_baseline,
+              aniosBaseline: presion.anios_baseline,
+            },
+          ];
+        },
+      );
+      const puntoActivo = puntos.filter(
+        (punto) => punto.codigo === filtros.departamento,
+      );
+
+      const grafica = Plot.plot({
+        width: Math.max(contenedor.clientWidth, 720),
+        height: 350,
+        marginLeft: 62,
+        marginBottom: 52,
+        x: { label: 'Anomalía climática (σ)', grid: true, nice: true },
+        y: {
+          label: `Percentil presión (${filtros.serie})`,
+          domain: [0, 100],
+          grid: true,
+        },
+        style: { background: 'transparent', color: 'var(--color-ink-muted)' },
+        marks: [
+          Plot.ruleX([0], { stroke: 'var(--color-border)', strokeWidth: 1.5 }),
+          Plot.dot(puntos, {
+            className: 'epi-scatter-puntos',
+            x: 'anomalia',
+            y: 'percentil',
+            r: 5,
+            fill: '#2171b5',
+            fillOpacity: 0.75,
+            stroke: 'var(--color-surface)',
+            strokeWidth: 1.5,
+            title: (punto: PuntoScatter) => tooltip(punto, filtros),
+          }),
+          Plot.dot(puntoActivo, {
+            x: 'anomalia',
+            y: 'percentil',
+            r: 8,
+            fill: 'none',
+            stroke: 'var(--color-ink)',
+            strokeWidth: 2.5,
+            pointerEvents: 'none',
+          }),
+          Plot.text(puntoActivo, {
+            x: 'anomalia',
+            y: 'percentil',
+            text: 'departamento',
+            dy: -13,
+            fill: 'var(--color-ink)',
+            fontSize: 11,
+          }),
+          Plot.frame({ stroke: 'var(--color-border)' }),
+        ],
+      });
+      vincularMarcasPlot(
+        grafica,
+        '.epi-scatter-puntos circle',
+        puntos,
+        (punto) => tooltip(punto, filtros).replaceAll('\n', '. '),
+        (punto) => actualizarFiltrosAnalisis({ departamento: punto.codigo }),
+      );
+      contenedor.replaceChildren(grafica);
+
+      const omitidos = datos.departamentos.length - puntos.length;
+      const activo = puntoActivo[0];
+      if (resumen) {
+        resumen.textContent = activo
+          ? tooltip(activo, filtros).replaceAll('\n', ' · ')
+          : `${puntos.length} departamentos con ambas variables; ${omitidos} omitidos por huecos reales · ${filtros.anio} · SE${String(filtros.semana).padStart(2, '0')} · serie ${filtros.serie}.`;
+      }
+    } catch {
+      if (idRevision !== revision) return;
+      contenedor.replaceChildren();
+      if (resumen)
+        resumen.textContent =
+          'No fue posible cargar la relación clima-presión.';
+    }
+  }
+
+  suscribirFiltrosAnalisis((filtros) => {
+    filtrosActuales = filtros;
+    void renderizar(filtros);
+  });
+  new ResizeObserver(() => void renderizar(filtrosActuales)).observe(
+    contenedor!,
+  );
+</script>

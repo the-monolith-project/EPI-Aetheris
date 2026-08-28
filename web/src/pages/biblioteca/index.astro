@@ -1,5 +1,6 @@
 ---
 import { getCollection, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 
 // Orden narrativo, no alfabético: cuenta la historia en el orden en que
@@ -42,14 +43,16 @@ const ORDEN_BIBLIOTECA: Array<{ id: string; descripcion: string }> = [
 ];
 
 const entradas = await getCollection('biblioteca');
-const porId = new Map(entradas.map((e) => [e.id, e]));
+const porId = new Map<string, CollectionEntry<'biblioteca'>>(
+  entradas.map((entrada: CollectionEntry<'biblioteca'>) => [entrada.id, entrada]),
+);
 
 const items = await Promise.all(
   ORDEN_BIBLIOTECA.map(async ({ id, descripcion }) => {
     const entrada = porId.get(id);
     if (!entrada) return null;
     const { headings } = await render(entrada);
-    const titulo = headings.find((h) => h.depth === 1)?.text ?? entrada.id;
+    const titulo = headings.find((heading: { depth: number; text: string }) => heading.depth === 1)?.text ?? entrada.id;
     return { id: entrada.id, titulo, descripcion };
   })
 );

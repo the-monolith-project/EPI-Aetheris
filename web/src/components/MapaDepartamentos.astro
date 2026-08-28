@@ -51,40 +51,6 @@
     </p>
   </div>
 
-  <div class="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-bg p-3">
-    <label for="mapa-semana" class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted">
-      Semana epidemiológica
-    </label>
-    <select
-      id="mapa-semana"
-      class="rounded-lg border border-border bg-surface px-2 py-1 font-mono text-xs text-ink"
-      aria-label="Semana epidemiológica"
-    >
-      {Array.from({ length: 53 }, (_, i) => i + 1).map((s) => (
-        <option value={s} selected={s === 1}>
-          SE{String(s).padStart(2, '0')}
-        </option>
-      ))}
-    </select>
-    <label for="mapa-anio" class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted">
-      Año
-    </label>
-    <select
-      id="mapa-anio"
-      class="rounded-lg border border-border bg-surface px-2 py-1 font-mono text-xs text-ink"
-      aria-label="Año"
-    >
-      {[2018, 2019, 2021, 2022, 2023].map((a) => (
-        <option value={a} selected={a === 2023}>
-          {a}
-        </option>
-      ))}
-    </select>
-    <span class="font-sans text-xs text-ink-muted">
-      Afecta Iv, anomalía y presión -- volumen MINSAL siempre muestra el acumulado 2018-2023.
-    </span>
-  </div>
-
   <div id="mapa-selector" class="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Capas del mapa"></div>
 
   <div class="mt-3 flex gap-2 rounded-lg border border-border bg-bg p-3">
@@ -122,6 +88,8 @@
 
   <div
     id="mapa-departamentos"
+    role="region"
+    aria-label="Mapa interactivo de departamentos de El Salvador"
     class="mt-4 h-[300px] w-full overflow-hidden rounded-xl border border-border shadow-inner sm:h-[420px] lg:h-[540px]"
   >
   </div>
@@ -165,9 +133,9 @@
       Tres hallazgos independientes de este proyecto apuntan a que la escasez de datos
       departamentales de MINSAL es una limitación estructural de la fuente, no un defecto
       corregible del pipeline (huecos por semanas festivas, tablas en imagen sin OCR general, y
-      cobertura real de ~49/52 semanas por año). La capa "Índice de confianza de vigilancia"
-      (más abajo, todavía no implementada) busca hacer esa limitación visible en vez de
-      ocultarla detrás de un mapa que luce completo.
+      cobertura real de ~49/52 semanas por año). El perfil de calidad y el heatmap de
+      disponibilidad, más abajo, muestran esos componentes por separado. No se calcula un índice
+      compuesto de confianza porque no existe una fórmula aprobada.
     </p>
   </div>
 </section>
@@ -210,6 +178,16 @@
 <script>
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
+  import { obtenerDatasetAnalitico } from '../lib/analisis-api';
+  import {
+    actualizarFiltrosAnalisis,
+    obtenerFiltrosAnalisis,
+    suscribirFiltrosAnalisis,
+  } from '../lib/analisis-state';
+  import {
+    ANIOS_ANALISIS_DENGUE,
+    type AnioAnalisisDengue,
+  } from '../lib/tipos-analisis';
   import { escapeHtml } from '../utils/security';
 
   // ---------------------------------------------------------------------
@@ -247,11 +225,10 @@
     return shapeName.replace(/^Departamento de /, '');
   }
 
-  // Semana/año de las capas espaciales -- mutables porque ahora hay
-  // selectores reales (#mapa-semana / #mapa-anio) en vez del compromiso de
-  // "primera versión, semana fija" que sigue teniendo MetricasModelo.astro.
-  let SEMANA_ESPACIAL = 1;
-  let ANIO_ESPACIAL = 2023;
+  // Semana/año de las capas espaciales, derivados del estado global del panel.
+  const filtrosIniciales = obtenerFiltrosAnalisis();
+  let SEMANA_ESPACIAL = filtrosIniciales.semana;
+  let ANIO_ESPACIAL = filtrosIniciales.anio;
 
   // ---------------------------------------------------------------------
   // Funciones genéricas de color / cortes / leyenda, reutilizadas por todas
@@ -294,53 +271,115 @@
   // ahora expresado en la forma genérica de DefinicionCapa.
   // ---------------------------------------------------------------------
 
-  interface DatoDepartamentoMinsal {
+  interface DetalleDepartamentoMinsal {
     nombre: string;
     codigo: string;
-    probable_total: number;
-    confirmado_total: number;
-    semanas_con_dato_probable: number;
-    primer_anio: number | null;
-    ultimo_anio: number | null;
+    valor: number | undefined;
+    semanasObservadas: number;
+    semanasEsperadas: number;
+    periodo: string;
   }
 
-  let detallesMinsal = new Map<string, DatoDepartamentoMinsal>();
+  let detallesMinsal = new Map<string, DetalleDepartamentoMinsal>();
 
   const RAMPA_MINSAL = ['#cde2fb', '#9ec5f4', '#5598e7', '#256abf', '#0d366b'];
+
+  function descripcionMinsal() {
+    const filtros = obtenerFiltrosAnalisis();
+    const serie = `"${filtros.serie}"`;
+    if (filtros.modoMinsal === 'semana') {
+      return {
+        periodo: `SE${String(filtros.semana).padStart(2, '0')} / ${filtros.anio}`,
+        titulo: `Casos ${serie} en SE${String(filtros.semana).padStart(2, '0')} / ${filtros.anio}`,
+        aviso: `El color representa casos ${serie} observados por MINSAL en la semana seleccionada. Un cero observado se conserva; una semana ausente se muestra como sin dato. No es una clasificación de riesgo.`,
+      };
+    }
+    if (filtros.modoMinsal === 'ytd') {
+      return {
+        periodo: `SE01–SE${String(filtros.semana).padStart(2, '0')} / ${filtros.anio}`,
+        titulo: `Casos ${serie} acumulados hasta SE${String(filtros.semana).padStart(2, '0')} / ${filtros.anio}`,
+        aviso: `El color suma observaciones ${serie} disponibles de MINSAL entre SE01 y la semana seleccionada. Los huecos no se convierten en cero y la cobertura se informa en el tooltip. No es una clasificación de riesgo.`,
+      };
+    }
+    return {
+      periodo: '2018–2023 (2020 sin serie departamental)',
+      titulo: `Casos ${serie} acumulados en la historia disponible`,
+      aviso: `El color suma observaciones ${serie} de los años departamentales disponibles: 2018, 2019, 2021, 2022 y 2023. Los huecos no se convierten en cero. No es una clasificación de riesgo.`,
+    };
+  }
+
+  function actualizarDescripcionMinsal() {
+    const descripcion = descripcionMinsal();
+    capaMinsal.aviso = descripcion.aviso;
+    capaMinsal.tituloLeyenda = descripcion.titulo;
+  }
 
   const capaMinsal: DefinicionCapa = {
     id: 'minsal_volumen',
     etiqueta: 'Volumen de casos (MINSAL)',
     disponible: true,
-    aviso:
-      'El color representa volumen de casos "probable" reportado por MINSAL, acumulado ' +
-      '2018-2023 -- no una clasificación de riesgo por departamento. No alimenta ningún modelo.',
-    tituloLeyenda: 'Casos "probable" acumulados 2018-2023',
+    aviso: '',
+    tituloLeyenda: '',
     rampa: RAMPA_MINSAL,
     sinDatoColor: SIN_DATO,
     async cargarValores() {
-      const resp = await fetch(`${API_BASE}/api/casos-departamentales`);
-      if (!resp.ok) return null;
-      const datos: { departamentos: DatoDepartamentoMinsal[] } = await resp.json();
-      detallesMinsal = new Map(datos.departamentos.map((d) => [d.codigo, d]));
-      const valores = new Map<string, number | undefined>();
-      for (const d of datos.departamentos) {
-        valores.set(d.codigo, d.probable_total > 0 ? d.probable_total : undefined);
+      const filtros = obtenerFiltrosAnalisis();
+      actualizarDescripcionMinsal();
+      const anios: readonly AnioAnalisisDengue[] =
+        filtros.modoMinsal === 'historico'
+          ? ANIOS_ANALISIS_DENGUE
+          : [filtros.anio];
+      const datasets = await Promise.all(
+        anios.map((anio) => obtenerDatasetAnalitico(anio)),
+      );
+      const descripcion = descripcionMinsal();
+      const nuevosDetalles = new Map<string, DetalleDepartamentoMinsal>();
+      for (const dataset of datasets) {
+        for (const departamento of dataset.departamentos) {
+          const detalle = nuevosDetalles.get(departamento.codigo) ?? {
+            nombre: departamento.nombre,
+            codigo: departamento.codigo,
+            valor: undefined,
+            semanasObservadas: 0,
+            semanasEsperadas: 0,
+            periodo: descripcion.periodo,
+          };
+          const semanas = departamento.semanas.filter((semana) => {
+            if (filtros.modoMinsal === 'historico') return true;
+            if (filtros.modoMinsal === 'ytd') {
+              return semana.semana_epi <= filtros.semana;
+            }
+            return semana.semana_epi === filtros.semana;
+          });
+          detalle.semanasEsperadas += semanas.length;
+          for (const semana of semanas) {
+            const casos = semana[filtros.serie];
+            if (casos === null) continue;
+            detalle.valor = (detalle.valor ?? 0) + casos;
+            detalle.semanasObservadas += 1;
+          }
+          nuevosDetalles.set(departamento.codigo, detalle);
+        }
       }
+      detallesMinsal = nuevosDetalles;
+      const valores = new Map<string, number | undefined>();
+      for (const detalle of detallesMinsal.values())
+        valores.set(detalle.codigo, detalle.valor);
       return valores;
     },
     calcularCortes: cortesPorCuantiles,
     etiquetasLeyenda(cortes) {
       return [
-        `1–${cortes[0]}`,
-        `${cortes[0] + 1}–${cortes[1]}`,
-        `${cortes[1] + 1}–${cortes[2]}`,
-        `${cortes[2] + 1}–${cortes[3]}`,
+        `≤ ${cortes[0]}`,
+        `${cortes[0]}–${cortes[1]}`,
+        `${cortes[1]}–${cortes[2]}`,
+        `${cortes[2]}–${cortes[3]}`,
         `> ${cortes[3]}`,
       ];
     },
     tooltipValor(valor) {
-      return valor === undefined ? 'sin dato' : `${valor}`;
+      if (valor === undefined) return 'sin dato';
+      return valor === 0 ? '0 observado' : `${valor} casos`;
     },
   };
 
@@ -365,39 +404,21 @@
   // unificado de Camino Ancho pueda leerlo de forma síncrona.
   let detallesEspacial = new Map<string, DatoEspacial>();
 
-  // Único lugar que conoce la forma exacta de la respuesta del backend.
-  // Contrato asumido (no confirmado): { departamentos: [{ codigo, iv,
-  // anomalia_sigma }] }. Si el contrato real usa otros nombres, este es el
-  // único bloque a tocar.
-  function parsearRespuestaEspacial(json: unknown): Map<string, DatoEspacial> | null {
-    if (!json || typeof json !== 'object' || !Array.isArray((json as any).departamentos)) return null;
-    const mapa = new Map<string, DatoEspacial>();
-    for (const fila of (json as any).departamentos) {
-      const codigo = fila?.codigo;
-      if (typeof codigo !== 'string') continue;
-      const iv = typeof fila?.iv === 'number' ? fila.iv : undefined;
-      // El backend devuelve "anomaly_sigma" (inglés, ver GET
-      // /api/v1/spatial/current en main.py) -- bug real encontrado al
-      // conectar el selector de semana/año: esto leía "anomalia_sigma"
-      // (español) y siempre caía en undefined, así que la capa de anomalía
-      // mostraba "sin dato" en todos los departamentos sin importar la
-      // semana pedida.
-      const anomalia = typeof fila?.anomaly_sigma === 'number' ? fila.anomaly_sigma : undefined;
-      mapa.set(codigo, { codigo, iv, anomalia_sigma: anomalia });
-    }
-    return mapa;
-  }
-
   async function obtenerDatosEspaciales(): Promise<Map<string, DatoEspacial> | null> {
     if (!cacheEspacial) {
       cacheEspacial = (async () => {
         try {
-          const resp = await fetch(
-            `${API_BASE}/api/v1/spatial/current?week=${SEMANA_ESPACIAL}&year=${ANIO_ESPACIAL}`
-          );
-          if (!resp.ok) return null;
-          const mapa = parsearRespuestaEspacial(await resp.json());
-          if (mapa) detallesEspacial = mapa;
+          const datos = await obtenerDatasetAnalitico(ANIO_ESPACIAL);
+          const mapa = new Map<string, DatoEspacial>();
+          for (const departamento of datos.departamentos) {
+            const fila = departamento.semanas.find((semana) => semana.semana_epi === SEMANA_ESPACIAL);
+            mapa.set(departamento.codigo, {
+              codigo: departamento.codigo,
+              iv: fila?.iv ?? undefined,
+              anomalia_sigma: fila?.anomaly_sigma ?? undefined,
+            });
+          }
+          detallesEspacial = mapa;
           return mapa;
         } catch {
           return null;
@@ -525,29 +546,23 @@
 
   let cachePresion: Promise<Map<string, DatoPresion> | null> | null = null;
 
-  // Único lugar que conoce la forma exacta de la respuesta de
-  // /api/v1/presion/current (espejo del bloque parsearRespuestaEspacial).
-  function parsearRespuestaPresion(json: unknown): Map<string, DatoPresion> | null {
-    if (!json || typeof json !== 'object' || !Array.isArray((json as any).departamentos)) return null;
-    const mapa = new Map<string, DatoPresion>();
-    for (const fila of (json as any).departamentos) {
-      const codigo = fila?.codigo;
-      if (typeof codigo !== 'string') continue;
-      mapa.set(codigo, { codigo, probable: fila?.probable, confirmado: fila?.confirmado });
-    }
-    return mapa;
-  }
-
+  // Adaptación de la semana activa del dataset analítico compartido a la
+  // forma que ya consume el mapa para M3.
   async function obtenerDatosPresion(): Promise<Map<string, DatoPresion> | null> {
     if (!cachePresion) {
       cachePresion = (async () => {
         try {
-          const resp = await fetch(
-            `${API_BASE}/api/v1/presion/current?week=${SEMANA_ESPACIAL}&year=${ANIO_ESPACIAL}`
-          );
-          if (!resp.ok) return null;
-          const mapa = parsearRespuestaPresion(await resp.json());
-          if (mapa) detallesPresion = mapa;
+          const datos = await obtenerDatasetAnalitico(ANIO_ESPACIAL);
+          const mapa = new Map<string, DatoPresion>();
+          for (const departamento of datos.departamentos) {
+            const fila = departamento.semanas.find((semana) => semana.semana_epi === SEMANA_ESPACIAL);
+            mapa.set(departamento.codigo, {
+              codigo: departamento.codigo,
+              probable: fila?.presion_probable,
+              confirmado: fila?.presion_confirmado,
+            });
+          }
+          detallesPresion = mapa;
           return mapa;
         } catch {
           return null;
@@ -815,7 +830,9 @@
     )
       return;
 
-    detalleCerrar.addEventListener('click', () => contenedorDetalle.classList.add('hidden'));
+    detalleCerrar.addEventListener('click', () => {
+      actualizarFiltrosAnalisis({ departamento: null });
+    });
 
     function celdaSnapshot(etiqueta: string, valor: string): string {
       return (
@@ -884,6 +901,14 @@
 
     const respGeo = await fetch('/geo/slv-adm1.geojson');
     const geojson = await respGeo.json();
+    const nombresPorCodigo = new Map<string, string>(
+      geojson.features.map((feature: any) => [
+        feature.properties?.codigo ?? '',
+        feature.properties?.shapeName
+          ? normalizarNombreDepto(feature.properties.shapeName)
+          : (feature.properties?.codigo ?? ''),
+      ]),
+    );
 
     L.polygon(construirMascara(geojson), {
       stroke: false,
@@ -895,6 +920,45 @@
     let capaGeoJsonActiva: L.GeoJSON | null = null;
     let capaActivaId: IdCapa = capaMinsal.id;
     const cacheValoresPorCapa = new Map<IdCapa, Map<string, number | undefined> | null>();
+
+    function resaltarDepartamento(codigoActivo: string | null) {
+      capaGeoJsonActiva?.eachLayer((capa) => {
+        const ruta = capa as L.Path & {
+          feature?: { properties?: { codigo?: string } };
+          bringToFront?: () => void;
+        };
+        const codigo = ruta.feature?.properties?.codigo ?? '';
+        const activa = codigoActivo !== null && codigo === codigoActivo;
+        ruta.setStyle({
+          color: activa ? '#18181b' : '#8a8a90',
+          weight: activa ? 3 : 1,
+        });
+        if (activa) ruta.bringToFront?.();
+      });
+    }
+
+    function vincularSeleccionDepartamento(
+      capa: L.Layer,
+      codigo: string,
+      nombre: string,
+    ) {
+      const seleccionar = () =>
+        actualizarFiltrosAnalisis({ departamento: codigo });
+      capa.on('click', seleccionar);
+      capa.on('add', () => {
+        const elemento = (capa as L.Path).getElement();
+        if (!elemento) return;
+        elemento.setAttribute('data-departamento', codigo);
+        elemento.setAttribute('tabindex', '0');
+        elemento.setAttribute('role', 'button');
+        elemento.setAttribute('aria-label', `Seleccionar ${nombre}`);
+        elemento.addEventListener('keydown', (evento: KeyboardEvent) => {
+          if (evento.key !== 'Enter' && evento.key !== ' ') return;
+          evento.preventDefault();
+          seleccionar();
+        });
+      });
+    }
 
     function botonId(id: IdCapa) {
       return `mapa-boton-${id}`;
@@ -918,7 +982,17 @@
       for (const capa of CAPAS) {
         if (!capa.disponible) continue;
         const boton = document.getElementById(botonId(capa.id));
-        boton?.addEventListener('click', () => activarCapa(capa.id));
+        boton?.addEventListener('click', () => {
+          if (capa.id === 'presion_probable' || capa.id === 'presion_confirmado') {
+            const serie = capa.id === 'presion_probable' ? 'probable' : 'confirmado';
+            if (obtenerFiltrosAnalisis().serie !== serie) {
+              capaActivaId = capa.id;
+              actualizarFiltrosAnalisis({ serie });
+              return;
+            }
+          }
+          void activarCapa(capa.id);
+        });
       }
     }
 
@@ -926,6 +1000,7 @@
       const capa = CAPAS.find((c) => c.id === id);
       if (!capa || !capa.disponible) return;
       capaActivaId = id;
+      if (id === 'minsal_volumen') actualizarDescripcionMinsal();
 
       pintarSelector(id);
       contenedorAviso!.textContent = capa.aviso;
@@ -962,12 +1037,15 @@
         capaGeoJsonActiva = L.geoJSON(geojson, {
           style: () => ({ color: '#8a8a90', weight: 1, fillColor: SIN_DATO, fillOpacity: 0.5 }),
           onEachFeature: (feature, layer) => {
+            const codigo = feature.properties?.codigo ?? '';
             const nombre = feature.properties?.shapeName
               ? normalizarNombreDepto(feature.properties.shapeName)
-              : (feature.properties?.codigo ?? '');
+              : codigo;
+            vincularSeleccionDepartamento(layer, codigo, nombre);
             layer.bindTooltip(`<strong>${nombre}</strong><br>capa no disponible todavía`);
           },
         }).addTo(mapa);
+        resaltarDepartamento(obtenerFiltrosAnalisis().departamento);
         return;
       }
 
@@ -991,22 +1069,26 @@
           const nombre = feature.properties?.shapeName ? normalizarNombreDepto(feature.properties.shapeName) : codigo;
           const valor = valores!.get(codigo);
 
-          layer.on('click', () => mostrarDetalle(codigo, nombre));
+          vincularSeleccionDepartamento(layer, codigo, nombre);
 
           if (capa.id === 'minsal_volumen') {
             const dato = detallesMinsal.get(codigo);
             if (!dato) {
-              layer.bindTooltip(nombre);
+              layer.bindTooltip(`<strong>${nombre}</strong><br>sin dato`);
               return;
             }
-            const ventana =
-              dato.primer_anio && dato.ultimo_anio ? `${dato.primer_anio}-${dato.ultimo_anio}` : 'sin dato';
+            const valorMinsal =
+              dato.valor === undefined
+                ? 'sin dato'
+                : dato.valor === 0
+                  ? '0 observado'
+                  : `${dato.valor} casos`;
             layer.bindTooltip(
               `<strong>${nombre}</strong><br>` +
-                `Probable (acum.): ${dato.probable_total}<br>` +
-                `Confirmado (acum.): ${dato.confirmado_total}<br>` +
-                `Semanas con dato: ${dato.semanas_con_dato_probable}<br>` +
-                `Ventana: ${ventana}`
+                `Serie: ${escapeHtml(obtenerFiltrosAnalisis().serie)}<br>` +
+                `Periodo: ${escapeHtml(dato.periodo)}<br>` +
+                `Valor: ${valorMinsal}<br>` +
+                `Cobertura: ${dato.semanasObservadas}/${dato.semanasEsperadas} semanas`
             );
             return;
           }
@@ -1019,35 +1101,54 @@
           layer.bindTooltip(`<strong>${nombre}</strong><br>${capa.tituloLeyenda}: ${capa.tooltipValor(valor)}`);
         },
       }).addTo(mapa);
+      resaltarDepartamento(obtenerFiltrosAnalisis().departamento);
     }
 
     pintarSelector(capaMinsal.id);
     await activarCapa(capaMinsal.id);
 
-    // Selector de semana/año -- solo afecta a las capas de Camino Ancho
-    // (Iv, anomalía, presión); volumen MINSAL y confianza lo ignoran, pero
-    // se limpia igual el caché de las 4 capas de Camino Ancho para no
-    // servir datos de la semana/año anterior si el usuario cambia de capa
-    // después de mover el selector.
-    const selectSemana = document.getElementById('mapa-semana') as HTMLSelectElement | null;
-    const selectAnio = document.getElementById('mapa-anio') as HTMLSelectElement | null;
+    let filtrosAplicados = obtenerFiltrosAnalisis();
+    suscribirFiltrosAnalisis((filtros) => {
+      const cambioTiempo =
+        filtros.semana !== filtrosAplicados.semana || filtros.anio !== filtrosAplicados.anio;
+      const cambioSerie = filtros.serie !== filtrosAplicados.serie;
+      const cambioModoMinsal =
+        filtros.modoMinsal !== filtrosAplicados.modoMinsal;
+      const cambioDepartamento = filtros.departamento !== filtrosAplicados.departamento;
+      filtrosAplicados = filtros;
 
-    function onCambioTiempo() {
-      const semana = Number(selectSemana?.value ?? SEMANA_ESPACIAL);
-      const anio = Number(selectAnio?.value ?? ANIO_ESPACIAL);
-      if (semana === SEMANA_ESPACIAL && anio === ANIO_ESPACIAL) return;
-      SEMANA_ESPACIAL = semana;
-      ANIO_ESPACIAL = anio;
-      cacheEspacial = null;
-      cachePresion = null;
-      (['iv', 'anomalia', 'presion_probable', 'presion_confirmado'] as IdCapa[]).forEach((id) =>
-        cacheValoresPorCapa.delete(id)
-      );
-      activarCapa(capaActivaId);
-    }
+      if (cambioTiempo) {
+        SEMANA_ESPACIAL = filtros.semana;
+        ANIO_ESPACIAL = filtros.anio;
+        cacheEspacial = null;
+        cachePresion = null;
+        (['minsal_volumen', 'iv', 'anomalia', 'presion_probable', 'presion_confirmado'] as IdCapa[]).forEach((id) =>
+          cacheValoresPorCapa.delete(id),
+        );
+      }
 
-    selectSemana?.addEventListener('change', onCambioTiempo);
-    selectAnio?.addEventListener('change', onCambioTiempo);
+      if (cambioSerie || cambioModoMinsal) {
+        cacheValoresPorCapa.delete('minsal_volumen');
+      }
+
+      if (cambioSerie && (capaActivaId === 'presion_probable' || capaActivaId === 'presion_confirmado')) {
+        capaActivaId = filtros.serie === 'probable' ? 'presion_probable' : 'presion_confirmado';
+      }
+
+      void (async () => {
+        if (cambioTiempo || cambioSerie || cambioModoMinsal)
+          await activarCapa(capaActivaId);
+        if (cambioDepartamento || (cambioTiempo && filtros.departamento)) {
+          resaltarDepartamento(filtros.departamento);
+          if (!filtros.departamento) {
+            contenedorDetalle.classList.add('hidden');
+            return;
+          }
+          const nombre = nombresPorCodigo.get(filtros.departamento) ?? filtros.departamento;
+          await mostrarDetalle(filtros.departamento, nombre);
+        }
+      })();
+    }, false);
   }
 
   iniciar();

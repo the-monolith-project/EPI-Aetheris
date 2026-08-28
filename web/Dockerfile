@@ -16,4 +16,7 @@ COPY . .
 
 EXPOSE 4321
 
-CMD ["pnpm", "run", "dev"]
+# El PID guardado por Astro en .astro/dev.json puede sobrevivir al contenedor
+# porque /app se monta desde el host. Docker ya controla la instancia del
+# servicio, así que se omite ese lock para evitar falsos positivos al reiniciar.
+CMD ["pnpm", "exec", "astro", "dev", "--host", "0.0.0.0", "--ignore-lock"]

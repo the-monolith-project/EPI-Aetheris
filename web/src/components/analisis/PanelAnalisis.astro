@@ -1,0 +1,44 @@
+---
+import CalendarioEpidemico from './CalendarioEpidemico.astro';
+import ComparacionDepartamentos from './ComparacionDepartamentos.astro';
+import ComparacionTemporadas from './ComparacionTemporadas.astro';
+import DisponibilidadDatos from './DisponibilidadDatos.astro';
+import HeatmapDepartamentos from './HeatmapDepartamentos.astro';
+import PerfilCalidadDatos from './PerfilCalidadDatos.astro';
+import ScatterClimaPresion from './ScatterClimaPresion.astro';
+---
+
+<section
+  id="analisis"
+  class="scroll-mt-24"
+  aria-labelledby="panel-analisis-titulo"
+>
+  <header class="mb-4 max-w-3xl">
+    <p
+      class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+    >
+      Análisis
+    </p>
+    <h2
+      id="panel-analisis-titulo"
+      class="mt-1 font-display text-xl font-semibold text-ink"
+    >
+      Exploración espacial y temporal
+    </h2>
+    <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
+      Estas vistas organizan observaciones históricas para comparar dónde y
+      cuándo ocurrieron; no asignan riesgo, no anticipan eventos y no establecen
+      causalidad.
+    </p>
+  </header>
+
+  <div class="grid gap-4">
+    <HeatmapDepartamentos />
+    <CalendarioEpidemico />
+    <ComparacionTemporadas />
+    <ComparacionDepartamentos />
+    <ScatterClimaPresion />
+    <DisponibilidadDatos />
+    <PerfilCalidadDatos />
+  </div>
+</section>

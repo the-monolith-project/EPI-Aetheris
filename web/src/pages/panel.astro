@@ -5,6 +5,8 @@ import MapaDepartamentos from '../components/MapaDepartamentos.astro';
 import MetricasModelo from '../components/MetricasModelo.astro';
 import ResumenNacional from '../components/ResumenNacional.astro';
 import AuditoriaDatos from '../components/AuditoriaDatos.astro';
+import FiltrosAnalisis from '../components/FiltrosAnalisis.astro';
+import PanelAnalisis from '../components/analisis/PanelAnalisis.astro';
 
 // Nav lateral + fila de resumen + panel de auditoría: patrón de layout
 // reciclado de referencias_no_trakear/boceto_dashboard_pre-camino-ancho_DESACTUALIZADO.png
@@ -14,6 +16,7 @@ import AuditoriaDatos from '../components/AuditoriaDatos.astro';
 const SECCIONES = [
   { href: '#resumen', etiqueta: 'Resumen' },
   { href: '#mapa', etiqueta: 'Mapa departamental' },
+  { href: '#analisis', etiqueta: 'Análisis' },
   { href: '#curva', etiqueta: 'Serie nacional' },
   { href: '#historico', etiqueta: 'Clasificador histórico' },
 ];
@@ -75,8 +78,15 @@ const SECCIONES = [
           <AuditoriaDatos />
         </div>
 
+        <div class="mt-6">
+          <FiltrosAnalisis />
+        </div>
+
         <div id="mapa" class="mt-8 scroll-mt-24 rounded-[28px] bg-deep p-2 sm:p-3">
           <MapaDepartamentos />
+        </div>
+        <div class="mt-6">
+          <PanelAnalisis />
         </div>
         <div id="curva" class="mt-6 scroll-mt-24">
           <CurvaEpidemicaNacional />
