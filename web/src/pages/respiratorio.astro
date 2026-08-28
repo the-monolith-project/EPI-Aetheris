@@ -1,7 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import CurvaIRADepartamental from '../components/CurvaIRADepartamental.astro';
+import HeatmapNeumonias from '../components/HeatmapNeumonias.astro';
 import MapaIRA from '../components/MapaIRA.astro';
+import PanelCobertura from '../components/PanelCobertura.astro';
 import PanelVirus from '../components/PanelVirus.astro';
 ---
 
@@ -23,10 +25,15 @@ import PanelVirus from '../components/PanelVirus.astro';
     </header>
 
     <nav class="mb-6 flex flex-wrap gap-2 font-sans text-sm" aria-label="Serie respiratoria">
+      <a href="#cobertura" class="rounded-full border border-border bg-surface px-3 py-1.5">Cobertura</a>
       <a href="#ira" class="rounded-full border border-border bg-surface px-3 py-1.5">IRA</a>
       <a href="#neumonias" class="rounded-full border border-border bg-surface px-3 py-1.5">Neumonías</a>
       <a href="#virus" class="rounded-full border border-border bg-surface px-3 py-1.5">Virus (nacional)</a>
     </nav>
+
+    <section id="cobertura" class="mb-10">
+      <PanelCobertura />
+    </section>
 
     <section id="ira" class="mb-10 grid grid-cols-1 gap-6">
       <h2 class="font-display text-xl font-semibold text-ink">IRA — conteo notificado departamental</h2>
@@ -42,6 +49,7 @@ import PanelVirus from '../components/PanelVirus.astro';
         <MapaIRA evento="neumonias" />
       </div>
       <CurvaIRADepartamental evento="neumonias" />
+      <HeatmapNeumonias />
     </section>
 
     <section id="virus" class="mb-10 grid grid-cols-1 gap-6">

@@ -80,3 +80,32 @@ def cargar_neumonias_departamento_temporal(conn, codigo: str) -> dict[int, dict[
     for anio, semana, conteo in filas:
         serie[anio][semana] = float(conteo)
     return dict(serie)
+
+
+def cargar_heatmap_neumonias(conn, anio: int) -> list[dict]:
+    """Matriz departamento × semana de un año. Semana sin fila = None, nunca 0."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT r.nombre, r.codigo, c.semana_epi, c.conteo
+            FROM regiones r
+            LEFT JOIN casos_epidemiologicos c
+                ON c.region_id = r.id
+                AND c.clasificacion = 'notificado'
+                AND c.tipo_evento_id = (SELECT id FROM tipos_evento WHERE codigo = 'neumonia')
+                AND c.anio = %s
+            WHERE r.nivel_admin = 1
+            ORDER BY r.nombre, c.semana_epi
+            """,
+            (anio,),
+        )
+        filas = cur.fetchall()
+    por_depto: dict[str, dict] = {}
+    for nombre, codigo, semana, conteo in filas:
+        celda = por_depto.setdefault(
+            codigo,
+            {"nombre": nombre, "codigo": codigo, "semanas": {str(s): None for s in range(1, 53)}},
+        )
+        if semana is not None:
+            celda["semanas"][str(int(semana))] = int(conteo)
+    return list(por_depto.values())

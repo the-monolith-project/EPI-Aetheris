@@ -38,9 +38,12 @@ from .ira import (
 )
 from .neumonias import (
     AVISO_HONESTIDAD_NEUMONIAS,
+    ANIOS_NEUMONIAS,
+    cargar_heatmap_neumonias,
     cargar_neumonias_departamental,
     cargar_neumonias_departamento_temporal,
 )
+from .cobertura import cargar_cobertura
 from .respiratorios import (
     AVISO_HONESTIDAD_VIRUS,
     listar_virus,
@@ -804,6 +807,30 @@ def neumonias_temporal_departamento(departamento_id: str):
     }
 
 
+@app.get("/api/neumonias/heatmap/{anio}")
+def neumonias_heatmap(anio: int):
+    """Matriz departamento × semana. Celdas ausentes son huecos, no ceros."""
+    if anio not in ANIOS_NEUMONIAS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"año {anio} fuera de la ventana cargada {ANIOS_NEUMONIAS}",
+        )
+    try:
+        conn = _conectar()
+        try:
+            departamentos = cargar_heatmap_neumonias(conn, anio)
+        finally:
+            conn.close()
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    return {
+        "anio": anio,
+        "unidad": "conteo_notificado",
+        "departamentos": departamentos,
+        "aviso": AVISO_HONESTIDAD_NEUMONIAS,
+    }
+
+
 @app.get("/api/respiratorios/virus")
 def respiratorios_virus():
     """Catálogo de series disponibles (virus × métrica × unidad). Nacional."""
@@ -865,3 +892,16 @@ def respiratorios_semana(anio: int, semana: int):
         "aviso": AVISO_HONESTIDAD_VIRUS,
         "granularidad": "nacional",
     }
+
+
+@app.get("/api/respiratorios/cobertura")
+def respiratorios_cobertura():
+    """Semanas con dato en Postgres + notas de la exploración. No es M4."""
+    try:
+        conn = _conectar()
+        try:
+            return cargar_cobertura(conn)
+        finally:
+            conn.close()
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")

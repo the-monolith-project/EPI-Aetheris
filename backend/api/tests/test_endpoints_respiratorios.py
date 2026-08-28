@@ -96,3 +96,34 @@ class VirusApiTest(unittest.TestCase):
         cuerpo = r.json()
         metricas = {o["metrica"] for o in cuerpo["observaciones"]}
         self.assertTrue(metricas <= {"muestras_analizadas", "muestras_positivas", "detecciones", "positividad"})
+
+    def test_cobertura_no_es_m4(self):
+        r = self.client.get("/api/respiratorios/cobertura")
+        self.assertEqual(r.status_code, 200)
+        cuerpo = r.json()
+        self.assertIn("neumonias", cuerpo)
+        self.assertNotIn("score", cuerpo)
+        self.assertIn("M4", cuerpo["aviso"])
+
+
+class HeatmapNeumoniasTest(unittest.TestCase):
+    def setUp(self):
+        if not _db_disponible():
+            raise unittest.SkipTest("Postgres no disponible")
+        self.client = TestClient(app)
+
+    def test_heatmap_2023_14_deptos_hueco_no_cero(self):
+        r = self.client.get("/api/neumonias/heatmap/2023")
+        self.assertEqual(r.status_code, 200)
+        cuerpo = r.json()
+        self.assertEqual(cuerpo["unidad"], "conteo_notificado")
+        self.assertEqual(len(cuerpo["departamentos"]), 14)
+        semanas = cuerpo["departamentos"][0]["semanas"]
+        self.assertEqual(len(semanas), 52)
+        # Al menos un hueco real (vacaciones): no se rellena con 0.
+        hay_nulo = any(v is None for v in semanas.values())
+        self.assertTrue(hay_nulo)
+
+    def test_heatmap_anio_fuera_de_ventana(self):
+        r = self.client.get("/api/neumonias/heatmap/2020")
+        self.assertEqual(r.status_code, 400)
