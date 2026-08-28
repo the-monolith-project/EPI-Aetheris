@@ -1,3 +1,3 @@
-## 2026-08-27 - Compresión Gzip de payloads de la API
-**Learning:** FastAPI no comprime respuestas por defecto. EPI-Aetheris sirve series históricas completas (varios años de datos semana a semana por región) como JSON sin paginar para procesamiento en el cliente; sin compresión eso es un cuello de botella de red silencioso.
-**Action:** Habilitar `GZipMiddleware` (`minimum_size=1000`) en `backend/api/main.py` y vigilar el tamaño de los endpoints JSON grandes.
+## 2026-08-27 - FastAPI payload compression
+**Learning:** FastAPI does not compress responses out of the box. EPI-Aetheris serves full historical series (several years of week-by-week data per region) as unpaginated JSON for client-side processing; without compression that is a silent network bottleneck.
+**Action:** Enable `GZipMiddleware` (`minimum_size=1000`) in `backend/api/main.py` and keep an eye on the payload size of the large JSON endpoints.

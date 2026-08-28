@@ -8,7 +8,7 @@
 **Learning:** Input validation must occur on environment configuration inputs just as with user input, especially when it concerns security boundaries like CORS origins. Trusting that environment configurations are always secure and specific is a pitfall.
 **Prevention:** Validate explicit CORS origins at application startup. Explicitly check for and reject dangerous wildcard characters like `*` before passing dynamically constructed lists to the application's CORS middleware.
 
-## 2026-08-27 - XSS via `innerHTML` con datos de API sin escapar
-**Vulnerability:** `web/src/components/MetricasModelo.astro` construía HTML con `innerHTML` a partir de campos de la API (`aviso`, `nota`, `corte_percentil`, claves de `probabilidades`) sin escaparlos. Una respuesta de API manipulada podría inyectar `<script>` (XSS almacenado/reflejado).
-**Learning:** Asignar strings con datos externos a `innerHTML` es inseguro por defecto aunque la API sea de confianza hoy.
-**Prevention:** Escapar `<`, `>`, `&`, `"`, `'` con una utilidad `escapeHtml` en toda interpolación dinámica dentro de `innerHTML`, o usar `document.createElement()` + `textContent`.
+## 2026-08-27 - XSS via `innerHTML` with unescaped API data
+**Vulnerability:** `web/src/components/MetricasModelo.astro` built HTML with `innerHTML` from API fields (`aviso`, `nota`, `corte_percentil`, `probabilidades` keys) without escaping them. A manipulated API response could inject `<script>` (stored/reflected XSS).
+**Learning:** Assigning strings that contain external data to `innerHTML` is unsafe by default even if the API is trusted today.
+**Prevention:** Escape `<`, `>`, `&`, `"`, `'` with the shared `escapeHtml` util (`web/src/utils/security`) on every dynamic interpolation inside `innerHTML`, or use `document.createElement()` + `textContent`. Reuse the existing util -- do not redefine it per component.
