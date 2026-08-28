@@ -7,6 +7,7 @@ import HeatmapDepartamentos from './HeatmapDepartamentos.astro';
 import MapaDepartamentos from '../MapaDepartamentos.astro';
 import PerfilCalidadDatos from './PerfilCalidadDatos.astro';
 import ScatterClimaPresion from './ScatterClimaPresion.astro';
+import ToolbarAnalisis from './ToolbarAnalisis.astro';
 ---
 
 <section
@@ -33,30 +34,51 @@ import ScatterClimaPresion from './ScatterClimaPresion.astro';
     </p>
   </header>
 
-  <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
-    <div id="mapa" class="min-w-0 xl:col-span-5">
+  <ToolbarAnalisis />
+
+  <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-12">
+    <div id="mapa" data-panel-workspace="mapa" class="min-w-0 xl:col-span-5">
       <MapaDepartamentos />
     </div>
-    <div class="min-w-0 xl:col-span-7">
+    <div data-panel-workspace="presion" class="min-w-0 xl:col-span-7">
       <HeatmapDepartamentos />
     </div>
-    <div class="min-w-0 xl:col-span-6">
+    <div data-panel-workspace="temporadas" class="min-w-0 xl:col-span-6">
       <ComparacionTemporadas />
     </div>
-    <div class="min-w-0 xl:col-span-6">
+    <div data-panel-workspace="departamentos" class="min-w-0 xl:col-span-6">
       <ComparacionDepartamentos />
     </div>
-    <div class="min-w-0 xl:col-span-6">
+    <div data-panel-workspace="calendario" class="min-w-0 xl:col-span-6" hidden>
       <CalendarioEpidemico />
     </div>
-    <div class="min-w-0 xl:col-span-6">
+    <div data-panel-workspace="clima" class="min-w-0 xl:col-span-6" hidden>
       <ScatterClimaPresion />
     </div>
-    <div class="min-w-0 xl:col-span-7">
+    <div
+      data-panel-workspace="disponibilidad"
+      class="min-w-0 xl:col-span-7"
+      hidden
+    >
       <DisponibilidadDatos />
     </div>
-    <div class="min-w-0 xl:col-span-5">
+    <div data-panel-workspace="calidad" class="min-w-0 xl:col-span-5" hidden>
       <PerfilCalidadDatos />
     </div>
   </div>
 </section>
+
+<script>
+  import { suscribirLayoutAnalisis } from '../../lib/analisis-layout-state';
+
+  const paneles = document.querySelectorAll<HTMLElement>(
+    '[data-panel-workspace]',
+  );
+  suscribirLayoutAnalisis((layout) => {
+    paneles.forEach((panel) => {
+      panel.hidden = !layout.panelesVisibles.includes(
+        panel.dataset.panelWorkspace as (typeof layout.panelesVisibles)[number],
+      );
+    });
+  });
+</script>

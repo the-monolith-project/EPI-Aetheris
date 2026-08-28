@@ -1,0 +1,97 @@
+<section
+  id="toolbar-analisis"
+  aria-label="Controles del workspace analítico"
+  class="sticky top-3 z-20 mt-5 rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur sm:flex sm:items-center sm:justify-between sm:gap-4"
+>
+  <p
+    id="toolbar-analisis-resumen"
+    class="min-w-0 font-sans text-xs leading-relaxed text-ink-muted"
+    aria-live="polite"
+  >
+    Cargando estado del análisis…
+  </p>
+  <div class="mt-3 flex flex-wrap items-center gap-2 sm:mt-0 sm:shrink-0">
+    <label
+      class="flex items-center gap-2 font-sans text-xs font-semibold text-ink"
+    >
+      Vista
+      <select
+        id="analisis-vista"
+        class="rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-normal text-ink"
+      >
+        <option value="general">General</option>
+        <option value="territorial">Territorial</option>
+        <option value="temporal">Temporal</option>
+        <option value="clima">Clima</option>
+        <option value="calidad">Calidad de datos</option>
+      </select>
+    </label>
+    <button
+      id="analisis-restablecer-vista"
+      type="button"
+      class="rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+    >
+      Restablecer vista
+    </button>
+  </div>
+</section>
+
+<script>
+  import {
+    aplicarVistaAnalisis,
+    restablecerLayoutAnalisis,
+    suscribirLayoutAnalisis,
+  } from '../../lib/analisis-layout-state';
+  import { suscribirFiltrosAnalisis } from '../../lib/analisis-state';
+  import type {
+    EstadoLayoutAnalisis,
+    VistaAnalisis,
+  } from '../../lib/analisis-layout-state';
+  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+
+  const selectorVista = document.getElementById(
+    'analisis-vista',
+  ) as HTMLSelectElement | null;
+  const resumen = document.getElementById('toolbar-analisis-resumen');
+  const botonRestablecer = document.getElementById(
+    'analisis-restablecer-vista',
+  ) as HTMLButtonElement | null;
+
+  let filtrosActuales: FiltrosAnalisis | null = null;
+  let layoutActual: EstadoLayoutAnalisis | null = null;
+
+  function etiquetaSemana(semana: number): string {
+    return `SE${String(semana).padStart(2, '0')}`;
+  }
+
+  function actualizarResumen(): void {
+    if (!resumen || !filtrosActuales || !layoutActual) return;
+    const departamento =
+      filtrosActuales.departamento ?? 'Todos los departamentos';
+    resumen.textContent = [
+      `Dengue · ${departamento}`,
+      String(filtrosActuales.anio),
+      etiquetaSemana(filtrosActuales.semana),
+      filtrosActuales.serie === 'confirmado' ? 'Confirmado' : 'Probable',
+      `${etiquetaSemana(filtrosActuales.semanaDesde)}–${etiquetaSemana(filtrosActuales.semanaHasta)}`,
+      `Vista ${layoutActual.vista}`,
+    ].join(' · ');
+  }
+
+  selectorVista?.addEventListener('change', () => {
+    aplicarVistaAnalisis(selectorVista.value as VistaAnalisis);
+  });
+  botonRestablecer?.addEventListener('click', () => {
+    restablecerLayoutAnalisis();
+  });
+
+  suscribirFiltrosAnalisis((filtros) => {
+    filtrosActuales = filtros;
+    actualizarResumen();
+  });
+  suscribirLayoutAnalisis((layout) => {
+    layoutActual = layout;
+    if (selectorVista) selectorVista.value = layout.vista;
+    actualizarResumen();
+  });
+</script>

@@ -120,6 +120,37 @@ test('restaura la URL, limita la comparación y exporta el filtro actual', async
   await expect(page.locator('#analisis-modo-minsal')).toHaveValue('ytd');
 });
 
+test('aplica vistas del workspace sin alterar los filtros epidemiológicos', async ({
+  page,
+}) => {
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+
+  await expect(page.locator('[data-panel-workspace="mapa"]')).toBeVisible();
+  await expect(
+    page.locator('[data-panel-workspace="calendario"]'),
+  ).toBeHidden();
+
+  await page.locator('#analisis-vista').selectOption('temporal');
+  await expect(page.locator('[data-panel-workspace="mapa"]')).toBeHidden();
+  await expect(
+    page.locator('[data-panel-workspace="temporadas"]'),
+  ).toBeVisible();
+  await expect(
+    page.locator('[data-panel-workspace="calendario"]'),
+  ).toBeVisible();
+
+  await page.locator('#analisis-semana').fill('31');
+  await expect(page).toHaveURL(/week=31/);
+  await page.locator('#analisis-restablecer-vista').click();
+  await expect(page.locator('#analisis-vista')).toHaveValue('general');
+  await expect(page.locator('[data-panel-workspace="mapa"]')).toBeVisible();
+  await expect(
+    page.locator('[data-panel-workspace="calendario"]'),
+  ).toBeHidden();
+  await expect(page.locator('#analisis-semana')).toHaveValue('31');
+});
+
 test('la vista dengue no presenta violaciones automáticas WCAG A o AA', async ({
   page,
 }) => {

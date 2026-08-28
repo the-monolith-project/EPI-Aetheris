@@ -1054,6 +1054,9 @@
       maxBounds: LIMITES_SV,
       maxBoundsViscosity: 1.0,
     }).setView([13.79, -88.9], 8);
+    new ResizeObserver(() => {
+      mapa.invalidateSize({ animate: false, pan: false });
+    }).observe(contenedorMapa);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
