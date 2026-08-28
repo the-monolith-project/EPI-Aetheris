@@ -27,6 +27,29 @@
       </select>
     </label>
     <slot name="selector-paneles" />
+    <div
+      class="flex items-center gap-1 rounded-lg border border-border bg-bg px-1 py-1"
+    >
+      <span class="px-1 font-sans text-xs font-semibold text-ink-muted"
+        >Zoom</span
+      >
+      <button
+        id="analisis-zoom-menos"
+        type="button"
+        class="rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30"
+        aria-label="Reducir zoom temporal">−</button
+      >
+      <output
+        id="analisis-zoom-valor"
+        class="min-w-9 text-center font-mono text-xs text-ink">100%</output
+      >
+      <button
+        id="analisis-zoom-mas"
+        type="button"
+        class="rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30"
+        aria-label="Aumentar zoom temporal">+</button
+      >
+    </div>
     <button
       id="analisis-abrir-filtros"
       type="button"
@@ -49,6 +72,7 @@
 <script>
   import {
     aplicarVistaAnalisis,
+    actualizarLayoutAnalisis,
     restablecerLayoutAnalisis,
     suscribirLayoutAnalisis,
   } from '../../lib/analisis-layout-state';
@@ -72,6 +96,15 @@
   const drawerFiltros = document.getElementById('analisis-filtros-drawer');
   const botonCerrarFiltros = document.getElementById('analisis-cerrar-filtros');
   const fondoFiltros = document.getElementById('analisis-filtros-fondo');
+  const zoomValor = document.getElementById(
+    'analisis-zoom-valor',
+  ) as HTMLOutputElement | null;
+  const zoomMenos = document.getElementById(
+    'analisis-zoom-menos',
+  ) as HTMLButtonElement | null;
+  const zoomMas = document.getElementById(
+    'analisis-zoom-mas',
+  ) as HTMLButtonElement | null;
 
   let filtrosActuales: FiltrosAnalisis | null = null;
   let layoutActual: EstadoLayoutAnalisis | null = null;
@@ -119,6 +152,17 @@
       cerrarFiltros(true);
     }
   });
+  function cambiarZoom(direccion: -1 | 1): void {
+    const niveles = [100, 150, 200] as const;
+    const actual = layoutActual?.zoomTemporal ?? 100;
+    const indice = Math.max(
+      0,
+      Math.min(niveles.length - 1, niveles.indexOf(actual) + direccion),
+    );
+    actualizarLayoutAnalisis({ zoomTemporal: niveles[indice] });
+  }
+  zoomMenos?.addEventListener('click', () => cambiarZoom(-1));
+  zoomMas?.addEventListener('click', () => cambiarZoom(1));
 
   suscribirFiltrosAnalisis((filtros) => {
     filtrosActuales = filtros;
@@ -127,6 +171,9 @@
   suscribirLayoutAnalisis((layout) => {
     layoutActual = layout;
     if (selectorVista) selectorVista.value = layout.vista;
+    if (zoomValor) zoomValor.value = `${layout.zoomTemporal}%`;
+    if (zoomMenos) zoomMenos.disabled = layout.zoomTemporal === 100;
+    if (zoomMas) zoomMas.disabled = layout.zoomTemporal === 200;
     actualizarResumen();
   });
 </script>

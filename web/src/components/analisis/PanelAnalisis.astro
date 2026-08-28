@@ -178,5 +178,16 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
           layout.panelEnFoco === id ? 'Salir de foco' : 'Abrir en foco';
       }
     });
+    const anchosBase: Record<string, number> = {
+      'heatmap-departamentos': 760,
+      'calendario-epidemico': 760,
+      'comparacion-temporadas': 720,
+      'comparacion-departamentos': 720,
+    };
+    Object.entries(anchosBase).forEach(([id, ancho]) => {
+      const grafica = document.getElementById(id);
+      if (grafica)
+        grafica.style.minWidth = `${(ancho * layout.zoomTemporal) / 100}px`;
+    });
   });
 </script>

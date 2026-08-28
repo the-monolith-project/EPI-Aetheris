@@ -13,6 +13,7 @@ export const PANELES_ANALITICOS = [
 
 export type PanelAnalitico = (typeof PANELES_ANALITICOS)[number]['id'];
 export type TamanoPanel = 'pequeno' | 'mediano' | 'grande';
+export type ZoomTemporal = 100 | 150 | 200;
 export type VistaAnalisis =
   'general' | 'territorial' | 'temporal' | 'clima' | 'calidad';
 
@@ -21,6 +22,7 @@ export interface EstadoLayoutAnalisis {
   panelesVisibles: PanelAnalitico[];
   tamanos: Record<PanelAnalitico, TamanoPanel>;
   panelEnFoco: PanelAnalitico | null;
+  zoomTemporal: ZoomTemporal;
 }
 
 export interface CambiosLayoutAnalisis extends Omit<
@@ -79,6 +81,7 @@ export const LAYOUT_ANALISIS_PREDETERMINADO: EstadoLayoutAnalisis = {
   panelesVisibles: [...PRESETS.general.panelesVisibles],
   tamanos: { ...TAMANOS_PREDETERMINADOS, ...PRESETS.general.tamanos },
   panelEnFoco: null,
+  zoomTemporal: 100,
 };
 
 let estado = clonarEstado(LAYOUT_ANALISIS_PREDETERMINADO);
@@ -93,6 +96,10 @@ function esVistaAnalisis(valor: string): valor is VistaAnalisis {
 
 function esTamanoPanel(valor: string): valor is TamanoPanel {
   return valor === 'pequeno' || valor === 'mediano' || valor === 'grande';
+}
+
+function esZoomTemporal(valor: number): valor is ZoomTemporal {
+  return valor === 100 || valor === 150 || valor === 200;
 }
 
 function clonarEstado(valor: EstadoLayoutAnalisis): EstadoLayoutAnalisis {
@@ -135,6 +142,9 @@ function normalizarEstado(
     candidato.panelesVisibles.includes(candidato.panelEnFoco)
       ? candidato.panelEnFoco
       : null;
+  candidato.zoomTemporal = esZoomTemporal(candidato.zoomTemporal)
+    ? candidato.zoomTemporal
+    : 100;
   return candidato;
 }
 
@@ -145,6 +155,7 @@ function estadosIguales(
   return (
     a.vista === b.vista &&
     a.panelEnFoco === b.panelEnFoco &&
+    a.zoomTemporal === b.zoomTemporal &&
     a.panelesVisibles.length === b.panelesVisibles.length &&
     a.panelesVisibles.every(
       (panel, indice) => panel === b.panelesVisibles[indice],
