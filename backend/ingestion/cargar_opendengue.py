@@ -33,7 +33,7 @@ ANIO_INICIO_DEFAULT = 2018
 ANIO_FIN_DEFAULT = 2024
 
 
-def leer_serie_nacional_semanal() -> list[tuple[str, int]]:
+def leer_serie_nacional_semanal(ruta: Path = CSV_PATH) -> list[tuple[str, int]]:
     """Devuelve [(fecha_inicio_iso, conteo), ...] para S_res=Admin0, T_res=Week.
 
     No filtra por el campo Year del CSV: ese año es el del calendario, no
@@ -43,7 +43,7 @@ def leer_serie_nacional_semanal() -> list[tuple[str, int]]:
     ya resuelto contra semanas_epidemiologicas.
     """
     filas = []
-    with open(CSV_PATH, newline="", encoding="utf-8") as f:
+    with open(ruta, newline="", encoding="utf-8") as f:
         r = csv.DictReader(f)
         for row in r:
             if row["S_res"] != "Admin0" or row["T_res"] != "Week":

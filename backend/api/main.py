@@ -6,6 +6,7 @@ from pathlib import Path
 import joblib
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 import psycopg2
 
@@ -79,6 +80,11 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+# Las respuestas grandes de esta API son series históricas completas en JSON
+# sin paginar (p.ej. /api/casos-departamentales) -- muy compresibles. FastAPI
+# no comprime nada por defecto.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 def _conectar():
