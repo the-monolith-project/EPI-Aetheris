@@ -215,6 +215,29 @@ test('limpia los filtros desde el drawer sin restablecer la vista', async ({
   );
 });
 
+test('amplía paneles en foco y cambia la densidad temporal', async ({
+  page,
+}) => {
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+
+  const temporadas = page.locator('[data-panel-workspace="temporadas"]');
+  await page.locator('[data-boton-menu-panel="temporadas"]').click();
+  await temporadas.locator('[data-accion-panel="foco"]').click();
+  await expect(temporadas).toHaveClass(/xl:col-span-12/);
+
+  await page.locator('#analisis-zoom-mas').click();
+  await expect(page.locator('#analisis-zoom-valor')).toHaveText('150%');
+  await expect(page.locator('#heatmap-departamentos')).toHaveCSS(
+    'min-width',
+    '1140px',
+  );
+
+  await page.locator('[data-boton-menu-panel="temporadas"]').click();
+  await temporadas.locator('[data-accion-panel="foco"]').click();
+  await expect(temporadas).not.toHaveClass(/xl:col-span-12/);
+});
+
 test('la vista dengue no presenta violaciones automáticas WCAG A o AA', async ({
   page,
 }) => {
