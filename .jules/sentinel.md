@@ -7,3 +7,8 @@
 **Vulnerability:** Dynamically loading CORS origins from an environment variable and splitting by a delimiter without validating the contents allowed a wildcard `*` to be unintentionally permitted. This could expose internal APIs to Cross-Origin Resource Sharing attacks from malicious external domains, defeating the purpose of CORS.
 **Learning:** Input validation must occur on environment configuration inputs just as with user input, especially when it concerns security boundaries like CORS origins. Trusting that environment configurations are always secure and specific is a pitfall.
 **Prevention:** Validate explicit CORS origins at application startup. Explicitly check for and reject dangerous wildcard characters like `*` before passing dynamically constructed lists to the application's CORS middleware.
+
+## 2026-08-27 - XSS via `innerHTML` con datos de API sin escapar
+**Vulnerability:** `web/src/components/MetricasModelo.astro` construía HTML con `innerHTML` a partir de campos de la API (`aviso`, `nota`, `corte_percentil`, claves de `probabilidades`) sin escaparlos. Una respuesta de API manipulada podría inyectar `<script>` (XSS almacenado/reflejado).
+**Learning:** Asignar strings con datos externos a `innerHTML` es inseguro por defecto aunque la API sea de confianza hoy.
+**Prevention:** Escapar `<`, `>`, `&`, `"`, `'` con una utilidad `escapeHtml` en toda interpolación dinámica dentro de `innerHTML`, o usar `document.createElement()` + `textContent`.
