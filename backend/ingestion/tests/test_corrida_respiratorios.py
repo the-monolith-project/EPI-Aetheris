@@ -270,6 +270,19 @@ def test_virus_2023_dos_columnas_con_covid():
     assert vsr.anio_actual == 15
 
 
+def test_virus_asterisco_de_dato_corregido_no_bloquea():
+    r = _vir(
+        "SE472018.pagina_vigilancia_virus.txt",
+        2018,
+        "Boletin_epidemiologico_SE472018.pdf",
+    )
+    assert r.estado == "ok"
+    muestras = _metrica(r, "muestras_analizadas")
+    assert muestras.valores == [2428, 1577, 39]
+    pos = _metrica(r, "muestras_positivas")
+    assert pos.anio_actual == 242
+
+
 def test_virus_covid_sin_valor_no_se_fabrica():
     r = _vir(
         "SE522023.pagina_vigilancia_virus.txt",

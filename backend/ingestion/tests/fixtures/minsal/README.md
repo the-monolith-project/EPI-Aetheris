@@ -77,6 +77,7 @@ casos clínicos. Granularidad: nacional.
 | Fixture | Boletín | Por qué está aquí |
 |---|---|---|
 | `SE01-02-2018.pagina_vigilancia_virus.txt` | `…SE01-02-2018.pdf` | Tabla de 3 columnas (año previo / año actual / semana); VSR e influenza B; **sin** SARS-CoV-2 |
+| `SE472018.pagina_vigilancia_virus.txt` | `…SE472018.pdf` | Número con asterisco (`2428*`, nota “Dato corregido”) que no debe impedir leer las tres columnas |
 | `SE032018.pagina_vigilancia_virus.txt` | `…SE032018.pdf` | Mismo layout 2018, corte SE03 |
 | `SE012023.pagina_vigilancia_virus.txt` | `…SE012023.pdf` | Layout 2023 temprano; encabezado de años de plantilla dudoso (imprime 2021/2022 en un boletín 2023) |
 | `SE252023.pagina_vigilancia_virus.txt` | `…SE252023.pdf` | Dos columnas (2022/2023 acumulado); aparece `COVID 19(SE25)` con un valor |

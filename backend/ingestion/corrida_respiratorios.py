@@ -74,7 +74,7 @@ def parsear_numero(token: str) -> float:
 
 
 def parsear_numero_lab(token: str) -> float:
-    return parsear_numero(token.strip().rstrip("%"))
+    return parsear_numero(token.strip().rstrip("%").rstrip("*"))
 
 
 def parsear_nombre(path: Path) -> tuple[int, str | None, int]:
@@ -545,7 +545,7 @@ def extraer_metricas_lab(bloque: str) -> list[MetricaVirus]:
         for tok in resto.strip().split():
             if tok.startswith("(") or re.fullmatch(r"\(SE\d+\)", tok, re.I):
                 continue
-            if re.fullmatch(r"\d+(?:[.,]\d+)?%?", tok):
+            if re.fullmatch(r"\d+(?:[.,]\d+)?%?\*?", tok):
                 vals.append(parsear_numero_lab(tok))
                 if len(vals) == 3:
                     break
