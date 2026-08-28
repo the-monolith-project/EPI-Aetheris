@@ -1,7 +1,7 @@
 <section
   id="toolbar-analisis"
   aria-label="Controles del workspace analítico"
-  class="sticky top-3 z-20 mt-5 rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur sm:flex sm:items-center sm:justify-between sm:gap-4"
+  class="sticky top-20 z-30 mt-5 rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur sm:flex sm:items-center sm:justify-between sm:gap-4"
 >
   <p
     id="toolbar-analisis-resumen"
@@ -94,6 +94,7 @@
     'analisis-abrir-filtros',
   ) as HTMLButtonElement | null;
   const drawerFiltros = document.getElementById('analisis-filtros-drawer');
+  const dialogoFiltros = document.getElementById('analisis-filtros-dialogo');
   const botonCerrarFiltros = document.getElementById('analisis-cerrar-filtros');
   const fondoFiltros = document.getElementById('analisis-filtros-fondo');
   const zoomValor = document.getElementById(
@@ -108,6 +109,7 @@
 
   let filtrosActuales: FiltrosAnalisis | null = null;
   let layoutActual: EstadoLayoutAnalisis | null = null;
+  let elementosInertes: HTMLElement[] = [];
 
   function etiquetaSemana(semana: number): string {
     return `SE${String(semana).padStart(2, '0')}`;
@@ -136,11 +138,27 @@
   function cerrarFiltros(devolverFoco = false): void {
     if (!drawerFiltros || !botonAbrirFiltros) return;
     drawerFiltros.hidden = true;
+    elementosInertes.forEach((elemento) => {
+      elemento.inert = false;
+    });
+    elementosInertes = [];
     botonAbrirFiltros.setAttribute('aria-expanded', 'false');
     if (devolverFoco) botonAbrirFiltros.focus();
   }
   botonAbrirFiltros?.addEventListener('click', () => {
     if (!drawerFiltros) return;
+    if (drawerFiltros.parentElement !== document.body) {
+      document.body.append(drawerFiltros);
+    }
+    elementosInertes = [...document.body.children].filter(
+      (elemento): elemento is HTMLElement =>
+        elemento instanceof HTMLElement &&
+        elemento !== drawerFiltros &&
+        !elemento.inert,
+    );
+    elementosInertes.forEach((elemento) => {
+      elemento.inert = true;
+    });
     drawerFiltros.hidden = false;
     botonAbrirFiltros.setAttribute('aria-expanded', 'true');
     (botonCerrarFiltros as HTMLElement | null)?.focus();
@@ -150,6 +168,27 @@
   document.addEventListener('keydown', (evento) => {
     if (evento.key === 'Escape' && drawerFiltros?.hidden === false) {
       cerrarFiltros(true);
+    }
+    if (
+      evento.key === 'Tab' &&
+      drawerFiltros?.hidden === false &&
+      dialogoFiltros
+    ) {
+      const enfocables = [
+        ...dialogoFiltros.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ];
+      if (enfocables.length === 0) return;
+      const primero = enfocables[0];
+      const ultimo = enfocables[enfocables.length - 1];
+      if (evento.shiftKey && document.activeElement === primero) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault();
+        primero.focus();
+      }
     }
   });
   function cambiarZoom(direccion: -1 | 1): void {

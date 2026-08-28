@@ -74,13 +74,18 @@
   const ANCHO = 720;
   const ALTO = 240;
   const MARGEN = { arriba: 20, abajo: 28, izquierda: 40, derecha: 8 };
+  const NIVELES_ZOOM = [100, 150, 200] as const;
+  type ZoomCurva = (typeof NIVELES_ZOOM)[number];
 
-  let zoom = 100;
+  let zoom: ZoomCurva = 100;
   let datosActuales: CasoNacionalSemanal[] = [];
 
   function dibujar(contenedor: HTMLElement, datos: CasoNacionalSemanal[]) {
     const estado = contenedor.querySelector('[data-estado]');
     estado?.remove();
+    contenedor.querySelectorAll(':scope > svg').forEach((grafica) => {
+      grafica.remove();
+    });
 
     if (datos.length === 0) {
       contenedor.innerHTML =
@@ -256,20 +261,29 @@
 
   const contenedorCurva = document.getElementById('curva-epidemica');
   const zoomValor = document.getElementById('curva-zoom-valor');
+  const botonZoomMenos = document.getElementById(
+    'curva-zoom-menos',
+  ) as HTMLButtonElement | null;
+  const botonZoomMas = document.getElementById(
+    'curva-zoom-mas',
+  ) as HTMLButtonElement | null;
   function cambiarZoom(direccion: -1 | 1) {
-    const niveles = [100, 150, 200];
-    const indice = Math.max(0, Math.min(2, niveles.indexOf(zoom) + direccion));
-    zoom = niveles[indice];
+    const indice = Math.max(
+      0,
+      Math.min(NIVELES_ZOOM.length - 1, NIVELES_ZOOM.indexOf(zoom) + direccion),
+    );
+    const siguiente = NIVELES_ZOOM[indice];
+    if (siguiente === zoom) return;
+    zoom = siguiente;
     if (zoomValor) zoomValor.textContent = `${zoom}%`;
+    if (botonZoomMenos) botonZoomMenos.disabled = zoom === 100;
+    if (botonZoomMas) botonZoomMas.disabled = zoom === 200;
     if (contenedorCurva && datosActuales.length)
       dibujar(contenedorCurva, datosActuales);
   }
-  document
-    .getElementById('curva-zoom-menos')
-    ?.addEventListener('click', () => cambiarZoom(-1));
-  document
-    .getElementById('curva-zoom-mas')
-    ?.addEventListener('click', () => cambiarZoom(1));
+  botonZoomMenos?.addEventListener('click', () => cambiarZoom(-1));
+  botonZoomMas?.addEventListener('click', () => cambiarZoom(1));
+  if (botonZoomMenos) botonZoomMenos.disabled = true;
 
   iniciar();
 </script>

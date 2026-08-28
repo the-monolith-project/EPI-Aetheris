@@ -83,10 +83,11 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
     '[data-panel-workspace]',
   );
   const columnas: Record<TamanoPanel, string> = {
-    pequeno: 'xl:col-span-4',
-    mediano: 'xl:col-span-6',
+    pequeno: 'xl:col-span-3',
+    mediano: 'xl:col-span-4',
     grande: 'xl:col-span-6',
   };
+  const clasesColumnas = [...Object.values(columnas), 'xl:col-span-12'];
 
   function cerrarMenus(): void {
     document
@@ -174,7 +175,7 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
     paneles.forEach((panel) => {
       const id = panel.dataset.panelWorkspace as PanelAnalitico;
       panel.hidden = !layout.panelesVisibles.includes(id);
-      Object.values(columnas).forEach((clase) => panel.classList.remove(clase));
+      clasesColumnas.forEach((clase) => panel.classList.remove(clase));
       panel.classList.add(
         layout.panelEnFoco === id
           ? 'xl:col-span-12'
@@ -188,6 +189,10 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
           layout.panelEnFoco === id ? 'Salir de foco' : 'Abrir en foco';
       }
     });
+    aplicarZoomTemporal(layout.zoomTemporal);
+  });
+
+  function aplicarZoomTemporal(zoom: number): void {
     const anchosBase: Record<string, number> = {
       'heatmap-departamentos': 760,
       'calendario-epidemico': 760,
@@ -196,8 +201,14 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
     };
     Object.entries(anchosBase).forEach(([id, ancho]) => {
       const grafica = document.getElementById(id);
-      if (grafica)
-        grafica.style.minWidth = `${(ancho * layout.zoomTemporal) / 100}px`;
+      const anchoDisponible = grafica?.parentElement?.clientWidth ?? 0;
+      if (grafica) {
+        grafica.style.minWidth = `${(Math.max(ancho, anchoDisponible) * zoom) / 100}px`;
+      }
     });
+  }
+
+  window.addEventListener('resize', () => {
+    aplicarZoomTemporal(obtenerLayoutAnalisis().zoomTemporal);
   });
 </script>
