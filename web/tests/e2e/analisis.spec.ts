@@ -151,6 +151,32 @@ test('aplica vistas del workspace sin alterar los filtros epidemiológicos', asy
   await expect(page.locator('#analisis-semana')).toHaveValue('31');
 });
 
+test('muestra y oculta paneles sin modificar el filtro activo', async ({
+  page,
+}) => {
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+
+  await page.locator('#analisis-semana').fill('27');
+  await page.locator('#analisis-paneles-boton').click();
+  await expect(page.locator('#analisis-paneles-boton')).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+  const mapa = page.locator('input[data-selector-panel][value="mapa"]');
+  await expect(mapa).toBeChecked();
+  await mapa.uncheck();
+  await expect(page.locator('[data-panel-workspace="mapa"]')).toBeHidden();
+  await expect(page.locator('[data-panel-workspace="presion"]')).toBeVisible();
+  await expect(page.locator('#analisis-semana')).toHaveValue('27');
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#analisis-paneles-boton')).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+});
+
 test('la vista dengue no presenta violaciones automáticas WCAG A o AA', async ({
   page,
 }) => {

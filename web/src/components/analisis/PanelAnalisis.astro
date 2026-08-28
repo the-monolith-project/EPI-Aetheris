@@ -7,6 +7,7 @@ import HeatmapDepartamentos from './HeatmapDepartamentos.astro';
 import MapaDepartamentos from '../MapaDepartamentos.astro';
 import PerfilCalidadDatos from './PerfilCalidadDatos.astro';
 import ScatterClimaPresion from './ScatterClimaPresion.astro';
+import SelectorPaneles from './SelectorPaneles.astro';
 import ToolbarAnalisis from './ToolbarAnalisis.astro';
 ---
 
@@ -34,7 +35,9 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
     </p>
   </header>
 
-  <ToolbarAnalisis />
+  <ToolbarAnalisis>
+    <SelectorPaneles slot="selector-paneles" />
+  </ToolbarAnalisis>
 
   <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-12">
     <div id="mapa" data-panel-workspace="mapa" class="min-w-0 xl:col-span-5">

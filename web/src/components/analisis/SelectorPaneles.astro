@@ -1,0 +1,144 @@
+<div class="relative">
+  <button
+    id="analisis-paneles-boton"
+    type="button"
+    aria-expanded="false"
+    aria-controls="analisis-paneles-menu"
+    class="rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+  >
+    Paneles
+  </button>
+  <div
+    id="analisis-paneles-menu"
+    role="group"
+    aria-labelledby="analisis-paneles-titulo"
+    class="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-border bg-surface p-3 shadow-lg"
+    hidden
+  >
+    <p
+      id="analisis-paneles-titulo"
+      class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+    >
+      Paneles visibles
+    </p>
+    <div class="mt-2 grid gap-1">
+      <label
+        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
+      >
+        <input data-selector-panel value="mapa" type="checkbox" /> Mapa departamental
+      </label>
+      <label
+        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
+      >
+        <input data-selector-panel value="presion" type="checkbox" /> Presión por
+        semana
+      </label>
+      <label
+        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
+      >
+        <input data-selector-panel value="temporadas" type="checkbox" /> Comparación
+        de temporadas
+      </label>
+      <label
+        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
+      >
+        <input data-selector-panel value="departamentos" type="checkbox" /> Comparación
+        de departamentos
+      </label>
+      <label
+        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
+      >
+        <input data-selector-panel value="calendario" type="checkbox" /> Calendario
+        epidémico
+      </label>
+      <label
+        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
+      >
+        <input data-selector-panel value="clima" type="checkbox" /> Clima × presión
+      </label>
+      <label
+        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
+      >
+        <input data-selector-panel value="disponibilidad" type="checkbox" /> Disponibilidad
+        de datos
+      </label>
+      <label
+        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
+      >
+        <input data-selector-panel value="calidad" type="checkbox" /> Perfil de calidad
+      </label>
+    </div>
+  </div>
+</div>
+
+<script>
+  import {
+    PANELES_ANALITICOS,
+    actualizarLayoutAnalisis,
+    suscribirLayoutAnalisis,
+  } from '../../lib/analisis-layout-state';
+  import type { PanelAnalitico } from '../../lib/analisis-layout-state';
+
+  const boton = document.getElementById(
+    'analisis-paneles-boton',
+  ) as HTMLButtonElement | null;
+  const menu = document.getElementById('analisis-paneles-menu');
+  const casillas = document.querySelectorAll<HTMLInputElement>(
+    '[data-selector-panel]',
+  );
+  const panelesValidos = new Set<PanelAnalitico>(
+    PANELES_ANALITICOS.map(({ id }) => id),
+  );
+
+  function estaAbierto(): boolean {
+    return menu?.hidden === false;
+  }
+
+  function cerrarMenu(devolverFoco = false): void {
+    if (!menu || !boton) return;
+    menu.hidden = true;
+    boton.setAttribute('aria-expanded', 'false');
+    if (devolverFoco) boton.focus();
+  }
+
+  function alternarMenu(): void {
+    if (!menu || !boton) return;
+    const abierto = !estaAbierto();
+    menu.hidden = !abierto;
+    boton.setAttribute('aria-expanded', String(abierto));
+  }
+
+  boton?.addEventListener('click', alternarMenu);
+  document.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Escape' && estaAbierto()) cerrarMenu(true);
+  });
+  document.addEventListener('click', (evento) => {
+    if (
+      estaAbierto() &&
+      !menu?.contains(evento.target as Node) &&
+      !boton?.contains(evento.target as Node)
+    ) {
+      cerrarMenu();
+    }
+  });
+
+  casillas.forEach((casilla) => {
+    casilla.addEventListener('change', () => {
+      const panelesVisibles = [...casillas]
+        .filter(
+          (input) =>
+            input.checked && panelesValidos.has(input.value as PanelAnalitico),
+        )
+        .map((input) => input.value as PanelAnalitico);
+      actualizarLayoutAnalisis({ panelesVisibles });
+    });
+  });
+
+  suscribirLayoutAnalisis((layout) => {
+    casillas.forEach((casilla) => {
+      casilla.checked = layout.panelesVisibles.includes(
+        casilla.value as PanelAnalitico,
+      );
+    });
+  });
+</script>
