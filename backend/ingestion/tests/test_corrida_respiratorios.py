@@ -17,6 +17,7 @@ from corrida_respiratorios import (  # noqa: E402
     analizar_texto_pagina_neumonias,
     analizar_texto_pagina_virus,
     desacumular_neumonias,
+    detectar_reimpresiones_neumonias,
     extraer_metricas_lab,
     parsear_nombre,
     parsear_numero,
@@ -173,6 +174,43 @@ def test_desacumulacion_neumonias_diff_y_primer_corte():
     assert p2.valor == 172
     assert "acumulado SE1-SE2" in p2.nota
     assert p3.valor == 259 - 172
+
+
+def test_neumonias_reimpresion_2019_se34_igual_se33():
+    r33 = _neu(
+        "SE332019.pagina_tabla_neumonias.txt",
+        2019,
+        "Boletin_epidemiologico_SE332019.pdf",
+    )
+    r34 = _neu(
+        "SE342019_v2.pagina_tabla_neumonias.txt",
+        2019,
+        "Boletin_epidemiologico_SE342019_v2.pdf",
+    )
+    assert r33.estado == "ok"
+    assert r34.estado == "ok"
+    ss33 = next(f for f in r33.filas if f.departamento == "San Salvador")
+    ss34 = next(f for f in r34.filas if f.departamento == "San Salvador")
+    assert ss33.total_acum == ss34.total_acum == 5871
+    n = detectar_reimpresiones_neumonias([r33, r34])
+    assert n == 1
+    assert r33.estado == "ok"
+    assert r34.estado == "revision_manual"
+    assert "reimpresa" in r34.nota
+
+
+def test_neumonias_2023_tabla_departamental_con_titulo():
+    r = _neu(
+        "SE252023.pagina_tabla_neumonias.txt",
+        2023,
+        "Boletin_epidemiologico_SE252023.pdf",
+    )
+    assert r.estado == "ok"
+    assert r.layout == "pagina_propia"
+    assert r.semana_corte == 25
+    ss = next(f for f in r.filas if f.departamento == "San Salvador")
+    assert ss.total_acum == 2733
+    assert r.total_impreso == 10618
 
 
 def test_desacumulacion_hueco_sin_interpolar():

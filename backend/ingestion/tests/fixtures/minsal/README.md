@@ -62,6 +62,7 @@ y `backend/ingestion/corrida_respiratorios.py`. Extraídos 2026-08-28.
 | `SE01-02-2018.pagina_tabla_neumonias.txt` | `…SE01-02-2018.pdf` | Layout lado-a-lado 2018 (sin tildes); corte SE2 de un boletín combinado; San Salvador 172, total 701 |
 | `SE032018.pagina_tabla_neumonias.txt` | `…SE032018.pdf` | Narrativa rezagada ("SE 2-2018"); el título de la tabla dice SE-03; San Salvador 259, total 1,142 |
 | `SE092018.pagina_tabla_neumonias.txt` / `SE102018.pagina_tabla_neumonias.txt` | `…SE092018.pdf` / `…SE102018.pdf` | Cortes consecutivos distintos (no reimpresión: SS 1,001 → 1,130) para desacumulación y huecos |
+| `SE332019.pagina_tabla_neumonias.txt` / `SE342019_v2.pagina_tabla_neumonias.txt` | `…SE332019.pdf` / `…SE342019_v2.pdf` | Reimpresión: los 14 valores de SE34 son idénticos a SE33 (San Salvador 5,871) |
 | `SE012019.pagina_tabla_neumonias.txt` | `…SE012019.pdf` | Título de tabla presente, 0 filas extraíbles — tabla-imagen |
 | `SE012023.pagina_tabla_neumonias.txt` | `…SE012023.pdf` | Layout 2023 página propia sin título de tabla; semana en el pie de estratificación (SE 1); SS 101, total 488 |
 | `SE252023.pagina_tabla_neumonias.txt` | `…SE252023.pdf` | Tabla departamental 2023 con título propio; SS 2,733, total 10,618 |
