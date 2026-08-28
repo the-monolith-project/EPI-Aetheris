@@ -24,6 +24,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 def _db_disponible() -> bool:
     try:
+        import psycopg2
         conn = psycopg2.connect(
             host=os.getenv("POSTGRES_HOST", "localhost"),
             database=os.getenv("POSTGRES_DB"),
