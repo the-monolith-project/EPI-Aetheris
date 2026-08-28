@@ -151,8 +151,10 @@ test('aplica vistas del workspace sin alterar los filtros epidemiológicos', asy
     page.locator('[data-panel-workspace="calendario"]'),
   ).toBeVisible();
 
+  await abrirFiltros(page);
   await page.locator('#analisis-semana').fill('31');
   await expect(page).toHaveURL(/week=31/);
+  await page.locator('#analisis-cerrar-filtros').click();
   await page.locator('#analisis-restablecer-vista').click();
   await expect(page.locator('#analisis-vista')).toHaveValue('general');
   await expect(page.locator('[data-panel-workspace="mapa"]')).toBeVisible();
@@ -213,6 +215,40 @@ test('limpia los filtros desde el drawer sin restablecer la vista', async ({
     'aria-expanded',
     'false',
   );
+  await expect(page.locator('#analisis-abrir-filtros')).toBeFocused();
+});
+
+test('mantiene el foco dentro del drawer y aísla el contenido de fondo', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+  await abrirFiltros(page);
+
+  const contenido = page.locator('main');
+  const dialogo = page.locator('#analisis-filtros-dialogo');
+  await expect(contenido).toHaveJSProperty('inert', true);
+  await expect(dialogo).toHaveAttribute('aria-modal', 'true');
+  await expect(dialogo).toHaveCSS('width', '390px');
+  await expect(page.locator('#analisis-cerrar-filtros')).toBeFocused();
+
+  await page.keyboard.press('Shift+Tab');
+  const focoEnUltimoControl = await page.evaluate(() => {
+    const dialogoActual = document.getElementById('analisis-filtros-dialogo');
+    const controles = [
+      ...(dialogoActual?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? []),
+    ];
+    return controles[controles.length - 1] === document.activeElement;
+  });
+  expect(focoEnUltimoControl).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#analisis-filtros-drawer')).toBeHidden();
+  await expect(contenido).toHaveJSProperty('inert', false);
+  await expect(page.locator('#analisis-abrir-filtros')).toBeFocused();
 });
 
 test('amplía paneles en foco y cambia la densidad temporal', async ({
@@ -226,16 +262,46 @@ test('amplía paneles en foco y cambia la densidad temporal', async ({
   await temporadas.locator('[data-accion-panel="foco"]').click();
   await expect(temporadas).toHaveClass(/xl:col-span-12/);
 
+  const heatmap = page.locator('#heatmap-departamentos');
+  const anchoInicial = await heatmap.evaluate((elemento) =>
+    Number.parseFloat(getComputedStyle(elemento).minWidth),
+  );
   await page.locator('#analisis-zoom-mas').click();
   await expect(page.locator('#analisis-zoom-valor')).toHaveText('150%');
-  await expect(page.locator('#heatmap-departamentos')).toHaveCSS(
-    'min-width',
-    '1140px',
-  );
+  await expect
+    .poll(() =>
+      heatmap.evaluate((elemento) =>
+        Number.parseFloat(getComputedStyle(elemento).minWidth),
+      ),
+    )
+    .toBeGreaterThan(anchoInicial);
 
   await page.locator('[data-boton-menu-panel="temporadas"]').click();
   await temporadas.locator('[data-accion-panel="foco"]').click();
   await expect(temporadas).not.toHaveClass(/xl:col-span-12/);
+
+  await page.locator('[data-boton-menu-panel="temporadas"]').click();
+  await temporadas
+    .locator('[data-accion-panel="tamano"][data-valor="pequeno"]')
+    .click();
+  await expect(temporadas).toHaveClass(/xl:col-span-3/);
+  await page.locator('[data-boton-menu-panel="temporadas"]').click();
+  await temporadas
+    .locator('[data-accion-panel="tamano"][data-valor="mediano"]')
+    .click();
+  await expect(temporadas).toHaveClass(/xl:col-span-4/);
+});
+
+test('mantiene una sola curva nacional al cambiar su detalle', async ({
+  page,
+}) => {
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+  await expect(page.locator('#curva-epidemica > svg')).toHaveCount(1);
+  await page.locator('#curva-zoom-mas').click();
+  await page.locator('#curva-zoom-mas').click();
+  await expect(page.locator('#curva-zoom-valor')).toHaveText('200%');
+  await expect(page.locator('#curva-epidemica > svg')).toHaveCount(1);
 });
 
 test('la vista dengue no presenta violaciones automáticas WCAG A o AA', async ({
