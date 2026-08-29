@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "./tokens.css";
+@import 'tailwindcss';
+@import './tokens.css';
 
 /* Expone los tokens de ./tokens.css como utilidades de Tailwind (bg-bg,
    text-ink, font-mono, etc.) sin duplicar valores -- cuando tokens.css

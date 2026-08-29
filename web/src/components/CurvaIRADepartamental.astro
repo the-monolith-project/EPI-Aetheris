@@ -12,18 +12,25 @@
 // interpola.
 ---
 
-<section class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
+<section
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+>
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="flex items-start gap-3">
-      <span class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+      <span
+        class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+        aria-hidden="true"></span>
       <div>
         <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
           Casos semanales de IRA por departamento
         </h2>
-        <p class="mt-1 max-w-2xl font-sans text-sm leading-relaxed text-ink-muted">
-          Serie desacumulada de los boletines MINSAL (la fuente publica acumulados desde SE1;
-          aquí se diferencia entre cortes consecutivos). Un año por línea; los huecos son semanas
-          sin dato publicado o correcciones retroactivas de MINSAL -- se dejan vacíos, no se
+        <p
+          class="mt-1 max-w-2xl font-sans text-sm leading-relaxed text-ink-muted"
+        >
+          Serie desacumulada de los boletines MINSAL (la fuente publica
+          acumulados desde SE1; aquí se diferencia entre cortes consecutivos).
+          Un año por línea; los huecos son semanas sin dato publicado o
+          correcciones retroactivas de MINSAL -- se dejan vacíos, no se
           interpolan.
         </p>
       </div>
@@ -37,7 +44,10 @@
     </label>
   </div>
 
-  <div id="curva-ira" class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4">
+  <div
+    id="curva-ira"
+    class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4"
+  >
     <div data-estado aria-hidden="true">
       <div class="skeleton h-40 w-full sm:h-52"></div>
       <div class="skeleton mt-2 h-3 w-1/3"></div>
@@ -85,11 +95,17 @@
     '2023': 1,
   };
 
-  function dibujar(contenedor: HTMLElement, series: Record<string, Punto[]>, depto: string) {
+  function dibujar(
+    contenedor: HTMLElement,
+    series: Record<string, Punto[]>,
+    depto: string,
+  ) {
     contenedor.innerHTML = '';
 
     const anios = Object.keys(series).sort();
-    const valores = anios.flatMap((a) => series[a].map((p) => p[1]).filter((v) => v !== null));
+    const valores = anios.flatMap((a) =>
+      series[a].map((p) => p[1]).filter((v) => v !== null),
+    );
     if (valores.length === 0) {
       contenedor.innerHTML =
         '<p class="font-sans text-sm text-ink-muted">Sin puntos con dato para este departamento.</p>';
@@ -97,9 +113,11 @@
     }
     const maxValor = Math.max(...(valores as number[]));
     const areaGrafica = ALTO - MARGEN.arriba - MARGEN.abajo;
-    const escalaY = (v: number) => ALTO - MARGEN.abajo - (v / (maxValor || 1)) * areaGrafica;
+    const escalaY = (v: number) =>
+      ALTO - MARGEN.abajo - (v / (maxValor || 1)) * areaGrafica;
     const escalaX = (semana: number) =>
-      MARGEN.izquierda + ((semana - 1) / 51) * (ANCHO - MARGEN.izquierda - MARGEN.derecha);
+      MARGEN.izquierda +
+      ((semana - 1) / 51) * (ANCHO - MARGEN.izquierda - MARGEN.derecha);
 
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
@@ -107,7 +125,7 @@
     svg.setAttribute('role', 'img');
     svg.setAttribute(
       'aria-label',
-      `Casos semanales de IRA en ${depto}, por año (2018-2023, sin 2020)`
+      `Casos semanales de IRA en ${depto}, por año (2018-2023, sin 2020)`,
     );
 
     for (const nivel of [0, maxValor / 2, maxValor]) {
@@ -162,7 +180,10 @@
       trazo.setAttribute('fill', 'none');
       trazo.setAttribute('stroke', 'var(--color-accent)');
       trazo.setAttribute('stroke-opacity', String(OPACIDAD_ANIO[anio] ?? 0.5));
-      trazo.setAttribute('stroke-width', anio === anios[anios.length - 1] ? '2' : '1.5');
+      trazo.setAttribute(
+        'stroke-width',
+        anio === anios[anios.length - 1] ? '2' : '1.5',
+      );
       trazo.setAttribute('stroke-linejoin', 'round');
       trazo.setAttribute('stroke-linecap', 'round');
       svg.appendChild(trazo);
@@ -177,7 +198,10 @@
       muestra.setAttribute('y1', String(ALTO - 8));
       muestra.setAttribute('y2', String(ALTO - 8));
       muestra.setAttribute('stroke', 'var(--color-accent)');
-      muestra.setAttribute('stroke-opacity', String(OPACIDAD_ANIO[anio] ?? 0.5));
+      muestra.setAttribute(
+        'stroke-opacity',
+        String(OPACIDAD_ANIO[anio] ?? 0.5),
+      );
       muestra.setAttribute('stroke-width', '2');
       svg.appendChild(muestra);
       const texto = document.createElementNS(SVG_NS, 'text');
@@ -212,7 +236,9 @@
 
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 
-  async function cargarTemporal(codigo: string): Promise<Record<string, Punto[]>> {
+  async function cargarTemporal(
+    codigo: string,
+  ): Promise<Record<string, Punto[]>> {
     const resp = await fetch(`${API_BASE}/api/ira/temporal/${codigo}`);
     if (!resp.ok) throw new Error('respuesta no OK');
     const datos: RespuestaTemporal = await resp.json();
@@ -225,7 +251,9 @@
 
   async function iniciar() {
     const contenedor = document.getElementById('curva-ira');
-    const selector = document.getElementById('ira-depto') as HTMLSelectElement | null;
+    const selector = document.getElementById(
+      'ira-depto',
+    ) as HTMLSelectElement | null;
     if (!contenedor || !selector) return;
 
     let departamentos: DepartamentoIRA[];
