@@ -66,7 +66,7 @@ VARIABLES_ERA5_LAND = [
 VARIABLES_ERA5 = ["precipitation_sum", "precipitation_hours"]
 
 # Nombre de columna Open-Meteo -> nombre de variable en variables_ambientales
-# (catalogo cerrado, ver CLAUDE.md -- usar exactamente estas cadenas).
+# (catalogo cerrado, ver AGENTS.md -- usar exactamente estas cadenas).
 MAPA_VARIABLE = {
     "temperature_2m_max": "temp_max",
     "temperature_2m_min": "temp_min",

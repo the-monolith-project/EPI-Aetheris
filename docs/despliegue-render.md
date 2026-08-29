@@ -23,7 +23,7 @@ problema técnico.
 
 Esto es un despliegue para demo, no para producción con usuarios reales
 -- no cambia el statuto del proyecto sobre APIs de datos de pago (ver
-CLAUDE.md), que sigue aplicando a las fuentes (MINSAL/OpenDengue/Open-Meteo),
+AGENTS.md), que sigue aplicando a las fuentes (MINSAL/OpenDengue/Open-Meteo),
 no a la infraestructura de hosting.
 
 ## Qué declara `render.yaml`
@@ -87,7 +87,7 @@ aplicarlas a mano:
 
 ## Cambios de esquema después del primer despliegue
 
-Igual que en local (ver CLAUDE.md, sección de comandos): agregar un archivo
+Igual que en local (ver AGENTS.md, sección de comandos): agregar un archivo
 nuevo en `db/migrations/`, luego correr `python aplicar_migraciones.py`
 (sin `--bootstrap`) contra la base de Render usando las mismas variables de
 entorno del paso 3. Sigue aplicando la regla del proyecto: ADR aceptado en

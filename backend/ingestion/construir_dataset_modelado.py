@@ -21,7 +21,7 @@ diferencia de la linea base de percentiles de la etiqueta, que nunca debe
 ver el anio que esta etiquetando).
 
 No escribe a Postgres: no existe tabla para un dataset de modelado en el
-esquema (agregarla exigiria un ADR previo, ver CLAUDE.md). Salida a
+esquema (agregarla exigiria un ADR previo, ver AGENTS.md). Salida a
 data/interim/dataset_modelado/ (gitignoreada), igual que las corridas
 exploratorias previas.
 

@@ -116,7 +116,7 @@ def cargar(dry_run: bool = False) -> dict[str, int]:
                 )
                 # page_size=len(valores): sin esto cur.rowcount solo refleja la
                 # ultima pagina interna de execute_values (bug documentado en
-                # CLAUDE.md, confirmado en vivo al cargar OpenDengue).
+                # AGENTS.md, confirmado en vivo al cargar OpenDengue).
                 contadores["insertadas"] = len(valores)
         conn.commit()
     finally:
