@@ -25,6 +25,10 @@ services:
     runtime: docker
     plan: starter
     region: oregon
+    # main es la rama de release: el deploy se dispara solo al mergear en
+    # main (dev es integración y la rama por defecto del repo). Ver AGENTS.md
+    # §15. Explícito aquí para que no dependa de la rama por defecto de GitHub.
+    branch: main
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     # El Dockerfile trae --reload para el hot-reload de docker-compose en
@@ -66,6 +70,7 @@ services:
     name: epi-aetheris-web
     runtime: static
     rootDir: ./web
+    branch: main
     buildCommand: pnpm install --frozen-lockfile && pnpm build
     staticPublishPath: ./dist
     envVars:
