@@ -8,15 +8,22 @@
 // punto A).
 ---
 
-<section class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
+<section
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+>
   <div class="flex items-start justify-between gap-3">
     <div class="flex items-start gap-3">
-      <span class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+      <span
+        class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+        aria-hidden="true"></span>
       <div>
-        <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">Curva epidémica nacional</h2>
+        <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+          Curva epidémica nacional
+        </h2>
         <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
-          Serie semanal de casos de dengue, OpenDengue (nivel nacional, 2018-2024). No representa una
-          clasificación de riesgo -- eso todavía no está definido.
+          Serie semanal de casos de dengue, OpenDengue (nivel nacional,
+          2018-2024). No representa una clasificación de riesgo -- eso todavía
+          no está definido.
         </p>
       </div>
     </div>
@@ -30,7 +37,10 @@
       Descargar CSV
     </button>
   </div>
-  <div id="curva-epidemica" class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4">
+  <div
+    id="curva-epidemica"
+    class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4"
+  >
     <!-- Skeleton con la misma altura aproximada del SVG final (viewBox 720x240,
          w-full) para que la página no salte al llegar los datos. -->
     <div data-estado aria-hidden="true">
@@ -65,16 +75,21 @@
 
     const maxConteo = Math.max(...datos.map((d) => d.conteo));
     const areaGrafica = ALTO - MARGEN.arriba - MARGEN.abajo;
-    const escalaY = (valor: number) => ALTO - MARGEN.abajo - (valor / (maxConteo || 1)) * areaGrafica;
+    const escalaY = (valor: number) =>
+      ALTO - MARGEN.abajo - (valor / (maxConteo || 1)) * areaGrafica;
     const escalaX = (indice: number) =>
       MARGEN.izquierda +
-      (indice / Math.max(datos.length - 1, 1)) * (ANCHO - MARGEN.izquierda - MARGEN.derecha);
+      (indice / Math.max(datos.length - 1, 1)) *
+        (ANCHO - MARGEN.izquierda - MARGEN.derecha);
 
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
     svg.setAttribute('class', 'w-full');
     svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', 'Curva epidémica nacional de dengue por semana, 2018-2024');
+    svg.setAttribute(
+      'aria-label',
+      'Curva epidémica nacional de dengue por semana, 2018-2024',
+    );
 
     const defs = document.createElementNS(SVG_NS, 'defs');
     const gradiente = document.createElementNS(SVG_NS, 'linearGradient');
@@ -123,13 +138,15 @@
       svg.appendChild(etiquetaY);
     }
 
-    const puntos = datos.map((d, i) => `${escalaX(i)},${escalaY(d.conteo)}`).join(' ');
+    const puntos = datos
+      .map((d, i) => `${escalaX(i)},${escalaY(d.conteo)}`)
+      .join(' ');
 
     const area = document.createElementNS(SVG_NS, 'polygon');
     const base = ALTO - MARGEN.abajo;
     area.setAttribute(
       'points',
-      `${escalaX(0)},${base} ${puntos} ${escalaX(datos.length - 1)},${base}`
+      `${escalaX(0)},${base} ${puntos} ${escalaX(datos.length - 1)},${base}`,
     );
     area.setAttribute('fill', 'url(#curva-gradiente)');
     area.setAttribute('stroke', 'none');
@@ -201,7 +218,9 @@
 
   async function iniciar() {
     const contenedor = document.getElementById('curva-epidemica');
-    const botonDescarga = document.getElementById('curva-descargar-csv') as HTMLButtonElement | null;
+    const botonDescarga = document.getElementById(
+      'curva-descargar-csv',
+    ) as HTMLButtonElement | null;
     if (!contenedor) return;
 
     try {

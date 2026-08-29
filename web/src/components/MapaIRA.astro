@@ -9,35 +9,58 @@
 // que el mapa de dengue para que ambos se lean como el mismo sistema.
 ---
 
-<section class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
+<section
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+>
   <div class="flex items-start gap-3">
-    <span class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+    <span
+      class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+      aria-hidden="true"></span>
     <div>
-      <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">Mapa departamental -- IRA</h2>
+      <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+        Mapa departamental -- IRA
+      </h2>
       <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
-        Capa descriptiva: volumen acumulado de casos "notificado" por departamento (MINSAL,
-        2018-2023, sin 2020). No es una clasificación de riesgo ni alimenta ningún modelo -- IRA
-        no tiene idoneidad, anomalía ni presión relativa calculados (esas fórmulas están cerradas
-        solo para dengue).
+        Capa descriptiva: volumen acumulado de casos "notificado" por
+        departamento (MINSAL, 2018-2023, sin 2020). No es una clasificación de
+        riesgo ni alimenta ningún modelo -- IRA no tiene idoneidad, anomalía ni
+        presión relativa calculados (esas fórmulas están cerradas solo para
+        dengue).
       </p>
     </div>
   </div>
 
-  <div class="mt-4 flex gap-2 rounded-lg border border-dashed border-border bg-bg p-3">
-    <svg class="mt-0.5 h-4 w-4 shrink-0 text-accent" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+  <div
+    class="mt-4 flex gap-2 rounded-lg border border-dashed border-border bg-bg p-3"
+  >
+    <svg
+      class="mt-0.5 h-4 w-4 shrink-0 text-accent"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M4 6h12M4 10h12M4 14h8"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"></path>
     </svg>
     <p class="font-sans text-xs leading-relaxed text-ink-muted">
-      <strong class="font-semibold text-ink">Cómo leer el color:</strong> más oscuro = más casos
-      "notificado" acumulados en la ventana cargada. No es una lectura semana a semana -- los
-      huecos reales de la fuente (boletines de vacaciones, tablas en imagen, correcciones
-      retroactivas excluidas) hacen que una sola semana no sea representativa.
+      <strong class="font-semibold text-ink">Cómo leer el color:</strong> más oscuro
+      = más casos "notificado" acumulados en la ventana cargada. No es una lectura
+      semana a semana -- los huecos reales de la fuente (boletines de vacaciones,
+      tablas en imagen, correcciones retroactivas excluidas) hacen que una sola semana
+      no sea representativa.
     </p>
   </div>
 
-  <div id="mapa-ira-no-disponible" class="mt-3 hidden rounded-lg border border-secondary bg-secondary/25 p-3">
+  <div
+    id="mapa-ira-no-disponible"
+    class="mt-3 hidden rounded-lg border border-secondary bg-secondary/25 p-3"
+  >
     <p class="font-sans text-sm text-ink">
-      Mapa no disponible en este momento -- el endpoint del backend no respondió como se esperaba.
+      Mapa no disponible en este momento -- el endpoint del backend no respondió
+      como se esperaba.
     </p>
   </div>
 
@@ -111,7 +134,10 @@
   function cortesPorCuantiles(valores: number[]): number[] {
     const ordenados = [...valores].sort((a, b) => a - b);
     if (ordenados.length === 0) return [1, 2, 3, 4];
-    const corte = (p: number) => ordenados[Math.min(ordenados.length - 1, Math.floor(p * (ordenados.length - 1)))];
+    const corte = (p: number) =>
+      ordenados[
+        Math.min(ordenados.length - 1, Math.floor(p * (ordenados.length - 1)))
+      ];
     return [corte(0.2), corte(0.4), corte(0.6), corte(0.8)];
   }
 
@@ -163,9 +189,14 @@
   function construirMascara(geojson: any): [number, number][][] {
     const agujeros: [number, number][][] = [];
     for (const f of geojson.features) {
-      const partes = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+      const partes =
+        f.geometry.type === 'Polygon'
+          ? [f.geometry.coordinates]
+          : f.geometry.coordinates;
       for (const poligono of partes) {
-        agujeros.push(poligono[0].map(([lon, lat]: [number, number]) => [lat, lon]));
+        agujeros.push(
+          poligono[0].map(([lon, lat]: [number, number]) => [lat, lon]),
+        );
       }
     }
     return [ANILLO_MUNDO, ...agujeros];
@@ -174,8 +205,11 @@
   async function iniciar() {
     const contenedorMapa = document.getElementById('mapa-ira-departamentos');
     const contenedorLeyenda = document.getElementById('mapa-ira-leyenda');
-    const contenedorNoDisponible = document.getElementById('mapa-ira-no-disponible');
-    if (!contenedorMapa || !contenedorLeyenda || !contenedorNoDisponible) return;
+    const contenedorNoDisponible = document.getElementById(
+      'mapa-ira-no-disponible',
+    );
+    if (!contenedorMapa || !contenedorLeyenda || !contenedorNoDisponible)
+      return;
 
     // Límites duros a El Salvador (mismo bbox que MapaDepartamentos.astro) --
     // sin esto, un scroll de más con la rueda del mouse manda a ver
@@ -187,7 +221,8 @@
       maxBoundsViscosity: 1.0,
     }).setView([13.79, -88.9], 8);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 12,
     }).addTo(mapa);
 
@@ -210,7 +245,10 @@
       const datos: { departamentos: DatoDepartamentoIra[] } = await resp.json();
       detalles = new Map(datos.departamentos.map((d) => [d.codigo, d]));
       valores = new Map(
-        datos.departamentos.map((d) => [d.codigo, d.notificado_total > 0 ? d.notificado_total : undefined])
+        datos.departamentos.map((d) => [
+          d.codigo,
+          d.notificado_total > 0 ? d.notificado_total : undefined,
+        ]),
       );
     } catch {
       valores = null;
@@ -219,18 +257,27 @@
     if (!valores) {
       contenedorNoDisponible.classList.remove('hidden');
       L.geoJSON(geojson, {
-        style: () => ({ color: '#8a8a90', weight: 1, fillColor: SIN_DATO, fillOpacity: 0.5 }),
+        style: () => ({
+          color: '#8a8a90',
+          weight: 1,
+          fillColor: SIN_DATO,
+          fillOpacity: 0.5,
+        }),
         onEachFeature: (feature, layer) => {
           const nombre = feature.properties?.shapeName
             ? normalizarNombreDepto(feature.properties.shapeName)
             : (feature.properties?.codigo ?? '');
-          layer.bindTooltip(`<strong>${nombre}</strong><br>mapa no disponible todavía`);
+          layer.bindTooltip(
+            `<strong>${nombre}</strong><br>mapa no disponible todavía`,
+          );
         },
       }).addTo(mapa);
       return;
     }
 
-    const numericos = [...valores.values()].filter((v): v is number => v !== undefined);
+    const numericos = [...valores.values()].filter(
+      (v): v is number => v !== undefined,
+    );
     const cortes = cortesPorCuantiles(numericos);
     dibujarLeyenda(contenedorLeyenda, cortes);
 
@@ -246,19 +293,23 @@
       },
       onEachFeature: (feature, layer) => {
         const codigo = feature.properties?.codigo ?? '';
-        const nombre = feature.properties?.shapeName ? normalizarNombreDepto(feature.properties.shapeName) : codigo;
+        const nombre = feature.properties?.shapeName
+          ? normalizarNombreDepto(feature.properties.shapeName)
+          : codigo;
         const dato = detalles.get(codigo);
         if (!dato) {
           layer.bindTooltip(nombre);
           return;
         }
         const ventana =
-          dato.primer_anio && dato.ultimo_anio ? `${dato.primer_anio}-${dato.ultimo_anio}` : 'sin dato';
+          dato.primer_anio && dato.ultimo_anio
+            ? `${dato.primer_anio}-${dato.ultimo_anio}`
+            : 'sin dato';
         layer.bindTooltip(
           `<strong>${nombre}</strong><br>` +
             `Notificado (acum.): ${dato.notificado_total}<br>` +
             `Semanas con dato: ${dato.semanas_con_dato}<br>` +
-            `Ventana: ${ventana}`
+            `Ventana: ${ventana}`,
         );
       },
     }).addTo(mapa);
