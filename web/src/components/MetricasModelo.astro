@@ -1,0 +1,215 @@
+---
+// Clasificador nacional HISTÓRICO (retirado) -- referencia, no predicción
+// en vivo. El pivote "Camino Ancho" (docs/informe-cierre-rescate-
+// prediccion.md, cerrado 2026-08-18) retiró este clasificador tras cinco
+// líneas de validación sin capacidad predictiva utilizable; el AGENTS.md
+// prohíbe re-presentar su salida como predicción en vivo. Decisión del
+// coordinador (2026-08-21): deja de ser la pieza central del dashboard y
+// pasa a esta sección secundaria colapsable, claramente etiquetada de
+// histórica. Se eligió la variante colapsable (no una página aparte) para
+// que las métricas y errores del modelo sigan siendo consultables desde el
+// dashboard, como exige el estatuto del proyecto -- reversible si el
+// coordinador prefiere la página aparte.
+//
+// El endpoint GET /api/riesgo-nacional y el modelo entrenado NO se tocan:
+// siguen en el repo como referencia histórica válida.
+---
+
+<section
+  class="rounded-2xl border border-dashed border-border bg-surface p-5 sm:p-6"
+>
+  <details>
+    <summary
+      class="flex cursor-pointer list-none items-center justify-between gap-3 font-sans text-base font-semibold text-ink [&::-webkit-details-marker]:hidden"
+    >
+      <span class="flex items-center gap-3">
+        <span
+          class="rounded-full bg-ink-muted/10 px-2.5 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-ink-muted"
+        >
+          Archivado
+        </span>
+        Clasificador histórico (retirado) -- referencia, no predicción en vivo
+      </span>
+      <svg
+        class="chevron h-4 w-4 shrink-0 text-ink-muted transition-transform duration-200"
+        viewBox="0 0 20 20"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M6 8l4 4 4-4"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"></path>
+      </svg>
+    </summary>
+    <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+      Salida del clasificador predictivo nacional <strong class="text-ink"
+        >retirado el 2026-08-18</strong
+      >
+      tras su validación empírica: en los únicos años externos con brote real, no
+      mostró capacidad predictiva utilizable (recall de la clase "alto" = 0). Se conserva
+      aquí como referencia histórica con sus métricas y errores a la vista -- <strong
+        class="text-ink">no es una predicción en vivo</strong
+      > y no debe usarse para decidir nada. Ver el
+      <a
+        class="underline decoration-border underline-offset-2 hover:text-accent"
+        href="https://github.com/the-monolith-project/EPI-Aetheris/blob/main/docs/informe-cierre-rescate-prediccion.md"
+        >informe de cierre</a
+      >.
+    </p>
+
+    <div id="riesgo-nacional" class="mt-3">
+      <div data-estado aria-hidden="true">
+        <div class="skeleton h-16 w-full"></div>
+        <div class="skeleton mt-3 h-24 w-full"></div>
+        <div class="skeleton mt-3 h-3 w-1/2"></div>
+      </div>
+    </div>
+  </details>
+</section>
+
+<style>
+  details[open] .chevron {
+    transform: rotate(180deg);
+  }
+</style>
+
+<script>
+  import { escapeHtml } from '../utils/security';
+
+  interface RiesgoNacional {
+    anio: number;
+    semana_epi: number;
+    etiqueta_predicha: string;
+    etiqueta_real: string;
+    probabilidades: Record<string, number>;
+    casos_observados: number;
+    metricas_modelo: {
+      anio_prueba: number;
+      anios_entrenamiento: number[];
+      corte_percentil: string;
+      f1_macro_modelo: number;
+      recall_alto_modelo: number | null;
+      n_alto_real_prueba: number;
+      f1_macro_baseline_climatologica: number;
+      recall_alto_baseline_climatologica: number | null;
+      supera_baseline_climatologica: boolean;
+      nota: string;
+    } | null;
+    aviso: string;
+  }
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+
+  const COLOR_CLASE: Record<string, string> = {
+    bajo: '#2e7d32',
+    medio: '#b8860b',
+    alto: '#c62828',
+  };
+
+  function badge(clase: string): string {
+    const color = COLOR_CLASE[clase] ?? 'var(--color-accent)';
+    return `<span style="background:${color}" class="inline-block rounded-full px-2.5 py-0.5 font-sans text-xs font-semibold uppercase tracking-wide text-white">${escapeHtml(clase)}</span>`;
+  }
+
+  function formatearRecall(valor: number | null, nAltoReal: number): string {
+    if (valor === null) {
+      return `N/D (0 semanas reales de "alto" en el año de prueba, ${nAltoReal} de soporte)`;
+    }
+    return valor.toFixed(3);
+  }
+
+  function render(contenedor: HTMLElement, datos: RiesgoNacional) {
+    const estado = contenedor.querySelector('[data-estado]');
+    estado?.remove();
+
+    const m = datos.metricas_modelo;
+    const probas = Object.entries(datos.probabilidades)
+      .map(
+        ([clase, p]) =>
+          `<li>${escapeHtml(clase)}: ${(p * 100).toFixed(1)}%</li>`,
+      )
+      .join('');
+
+    contenedor.innerHTML = `
+      <div class="rounded-xl border border-border bg-bg p-3">
+        <p class="font-sans text-sm text-ink">
+          Semana ${datos.semana_epi} / ${datos.anio} -- salida retrospectiva del clasificador retirado: ${badge(datos.etiqueta_predicha)}
+          &nbsp;·&nbsp; clase real observada (retrospectiva, no en vivo): ${badge(datos.etiqueta_real)}
+        </p>
+        <ul class="mt-2 font-mono text-xs text-ink-muted">${probas}</ul>
+        <p class="mt-2 font-sans text-xs text-ink-muted">
+          Casos observados esa semana (OpenDengue, clasificación='total'): ${datos.casos_observados}
+        </p>
+      </div>
+
+      <div class="mt-3 rounded-xl border border-border bg-bg p-3">
+        <p class="font-sans text-xs font-semibold uppercase text-ink-muted">Aviso</p>
+        <p class="mt-1 font-sans text-sm text-ink">${escapeHtml(datos.aviso)}</p>
+      </div>
+
+      ${
+        m
+          ? `
+      <div class="mt-3 rounded-xl border border-border bg-bg p-3">
+        <p class="font-sans text-xs font-semibold uppercase text-ink-muted">
+          Métricas del modelo (entrenado ${m.anios_entrenamiento.join(', ')} · probado ${m.anio_prueba} · corte ${escapeHtml(m.corte_percentil)})
+        </p>
+        <div class="overflow-x-auto">
+        <table class="mt-2 w-full border-collapse font-mono text-xs text-ink">
+          <thead>
+            <tr class="text-left text-ink-muted">
+              <th class="border-b border-border py-1.5 pr-4">&nbsp;</th>
+              <th class="border-b border-border py-1.5 pr-4">F1 macro</th>
+              <th class="border-b border-border py-1.5">Recall "alto"</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border-b border-border py-1.5 pr-4">Modelo</td>
+              <td class="border-b border-border py-1.5 pr-4">${m.f1_macro_modelo.toFixed(3)}</td>
+              <td class="border-b border-border py-1.5">${formatearRecall(m.recall_alto_modelo, m.n_alto_real_prueba)}</td>
+            </tr>
+            <tr>
+              <td class="py-1.5 pr-4">Línea base climatológica</td>
+              <td class="py-1.5 pr-4">${m.f1_macro_baseline_climatologica.toFixed(3)}</td>
+              <td class="py-1.5">${formatearRecall(m.recall_alto_baseline_climatologica, m.n_alto_real_prueba)}</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="mt-2 font-sans text-sm text-ink">
+          ¿Supera a la línea base climatológica (criterio decisivo)?
+          <strong>${m.supera_baseline_climatologica ? 'Sí' : 'No, esta pasada'}</strong>
+        </p>
+        <p class="mt-1 font-sans text-xs text-ink-muted">${escapeHtml(m.nota)}</p>
+      </div>
+      `
+          : `
+      <div class="mt-3 rounded-xl border border-border bg-bg p-3">
+        <p class="font-sans text-sm text-ink-muted">Métricas del modelo no disponibles todavía.</p>
+      </div>
+      `
+      }
+    `;
+  }
+
+  async function iniciar() {
+    const contenedor = document.getElementById('riesgo-nacional');
+    if (!contenedor) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/riesgo-nacional`);
+      if (!resp.ok) throw new Error('respuesta no OK');
+      const datos: RiesgoNacional = await resp.json();
+      render(contenedor, datos);
+    } catch {
+      contenedor.innerHTML =
+        '<p class="font-sans text-sm text-ink-muted">No se pudo cargar el riesgo nacional en este momento -- revisar que el modelo esté entrenado (tarjeta 24).</p>';
+    }
+  }
+
+  iniciar();
+</script>

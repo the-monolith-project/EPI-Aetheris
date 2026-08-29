@@ -1,0 +1,409 @@
+---
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import Layout from '../layouts/Layout.astro';
+
+// Landing de presentación (antes de entrar al panel en /panel). No repite el
+// dashboard: explica qué es el proyecto, qué pregunta responde y qué
+// explícitamente NO hace, antes de que alguien vea un mapa sin contexto.
+// Mismo lenguaje de estatuto que el resto del sitio: descriptivo, no
+// predictivo, ayuda de priorización -- nunca diagnóstico ni pronóstico.
+//
+// Contenedor a max-w-[1600px] (mismo ancho que el header/footer del Layout):
+// en pantallas anchas una versión angosta dejaba la mitad de la pantalla en
+// blanco.
+//
+// Firma visual (revisión de diseño 2026-08-22): el hero ya NO usa el patrón
+// genérico "número grande + etiqueta + stats" -- ese patrón describía el
+// proyecto desde afuera. En su lugar, la mitad derecha es el propio mapa
+// departamental (14 siluetas reales, del mismo geojson que consume
+// MapaDepartamentos.astro en /panel), proyectado a SVG en build time. Es el
+// objeto central del proyecto mostrándose a sí mismo, no una cifra sobre él.
+// Las 4 cifras que antes eran una grilla de tarjetas ahora son una sola
+// línea de texto (ver <CIFRAS>) -- información de pie, no la pieza visual.
+
+interface DepartamentoGeo {
+  codigo: string;
+  nombre: string;
+  d: string;
+}
+
+function construirSiluetaDepartamentos(): {
+  paths: DepartamentoGeo[];
+  viewBox: string;
+} {
+  // No usar new URL('../../public/...', import.meta.url): en dev resuelve
+  // contra la ruta fuente real, pero astro build empaqueta este codigo en
+  // dist/.prerender/chunks/, asi que la misma ruta relativa termina
+  // apuntando a dist/public/geo/... -- ese directorio no existe, Astro copia
+  // public/ a la raiz de dist/ (dist/geo/...). process.cwd() es estable en
+  // ambos casos: astro build y astro dev corren con cwd en la raiz de web/.
+  const ruta = join(process.cwd(), 'public/geo/slv-adm1.geojson');
+  const geojson = JSON.parse(readFileSync(ruta, 'utf-8'));
+
+  const ANCHO = 480;
+  const ALTO = 340;
+  const MARGEN = 10;
+
+  let minLon = Infinity;
+  let minLat = Infinity;
+  let maxLon = -Infinity;
+  let maxLat = -Infinity;
+  for (const f of geojson.features) {
+    const anillos =
+      f.geometry.type === 'Polygon'
+        ? [f.geometry.coordinates]
+        : f.geometry.coordinates;
+    for (const poligono of anillos) {
+      for (const anillo of poligono) {
+        for (const [lon, lat] of anillo) {
+          if (lon < minLon) minLon = lon;
+          if (lon > maxLon) maxLon = lon;
+          if (lat < minLat) minLat = lat;
+          if (lat > maxLat) maxLat = lat;
+        }
+      }
+    }
+  }
+
+  // Corrección de aspecto: 1° de longitud cubre menos distancia real que 1°
+  // de latitud a esta latitud (~14°N) -- sin esto, El Salvador se ve
+  // artificialmente ancho.
+  const corrOAspecto = Math.cos(((minLat + maxLat) / 2) * (Math.PI / 180));
+  const anchoGeo = (maxLon - minLon) * corrOAspecto;
+  const altoGeo = maxLat - minLat;
+  const escala = Math.min(
+    (ANCHO - MARGEN * 2) / anchoGeo,
+    (ALTO - MARGEN * 2) / altoGeo,
+  );
+  const offsetX = (ANCHO - anchoGeo * escala) / 2;
+  const offsetY = (ALTO - altoGeo * escala) / 2;
+
+  const proyectar = ([lon, lat]: [number, number]): [number, number] => {
+    const x = (lon - minLon) * corrOAspecto * escala + offsetX;
+    const y = ALTO - ((lat - minLat) * escala + offsetY);
+    return [x, y];
+  };
+
+  const paths: DepartamentoGeo[] = geojson.features.map((f: any) => {
+    const anillos =
+      f.geometry.type === 'Polygon'
+        ? [f.geometry.coordinates]
+        : f.geometry.coordinates;
+    const d = anillos
+      .map((poligono: number[][][]) =>
+        poligono
+          .map((anillo: [number, number][]) => {
+            const puntos = anillo.map(proyectar);
+            return `M${puntos.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join('L')}Z`;
+          })
+          .join(' '),
+      )
+      .join(' ');
+    return {
+      codigo: f.properties.codigo,
+      nombre: f.properties.shapeName.replace(/^Departamento de /, ''),
+      d,
+    };
+  });
+
+  return { paths, viewBox: `0 0 ${ANCHO} ${ALTO}` };
+}
+
+const { paths: DEPARTAMENTOS_SVG, viewBox: MAPA_VIEWBOX } =
+  construirSiluetaDepartamentos();
+
+const MODULOS = [
+  {
+    id: 'M1',
+    nombre: 'Idoneidad biofísica',
+    estado: 'Activo',
+    texto:
+      'Índice continuo de qué tan favorables son la temperatura, precipitación y humedad de cada departamento para el vector del dengue, semana a semana.',
+  },
+  {
+    id: 'M2',
+    nombre: 'Anomalía climática',
+    estado: 'Activo',
+    texto:
+      'Compara la idoneidad biofísica actual contra la historia 2014-2024 del propio departamento. Serie continua, sin alerta binaria ni lenguaje de "cruce de umbral".',
+  },
+  {
+    id: 'M3',
+    nombre: 'Presión epidemiológica relativa',
+    estado: 'Activo',
+    texto:
+      'Ubica los casos observados (probable y confirmado, por separado) contra la propia historia del departamento -- un percentil, no una alerta de riesgo.',
+  },
+  {
+    id: 'M4',
+    nombre: 'Confianza de vigilancia',
+    estado: 'Próximamente',
+    texto:
+      'Va a mostrar qué tan completa es la cobertura de reporte detrás de cada lectura, en vez de un puntaje de confianza opaco. Sin fórmula aprobada todavía.',
+  },
+];
+
+const CIFRAS = [
+  '14 departamentos cubiertos',
+  '3 fuentes públicas -- MINSAL, OpenDengue, Open-Meteo',
+  'ventana de datos 2018-2024',
+  '$0 de costo de replicar el sistema',
+];
+
+const STACK = [
+  {
+    capa: 'Backend',
+    tecnologia: 'Python · FastAPI',
+    texto:
+      'API REST sobre PostgreSQL directo (sin ORM, psycopg2) -- todas las capas del mapa se calculan on-request, nada queda precomputado ni oculto.',
+  },
+  {
+    capa: 'Base de datos',
+    tecnologia: 'PostgreSQL 15',
+    texto:
+      'Esquema deliberadamente agnóstico a enfermedad y región (catálogos, no columnas fijas) -- dengue e IRA comparten la misma tabla de casos.',
+  },
+  {
+    capa: 'Frontend',
+    tecnologia: 'Astro · TypeScript · Leaflet',
+    texto:
+      'Sitio estático con mapa interactivo departamental; consume la misma API pública que cualquiera puede llamar directamente.',
+  },
+  {
+    capa: 'Infraestructura',
+    tecnologia: 'Docker Compose',
+    texto:
+      '3 servicios (base de datos, backend, frontend) orquestados con un solo comando -- sin API de pago, sin suscripción obligatoria.',
+  },
+];
+---
+
+<Layout title="EPI-Aetheris">
+  <main class="mx-auto max-w-[1600px] px-4 py-12 sm:px-8 sm:py-16 lg:px-12">
+    <section
+      class="grid grid-cols-1 gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center"
+    >
+      <div class="max-w-xl">
+        <p
+          class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+        >
+          Vigilancia epidemiológica &middot; dengue en El Salvador
+        </p>
+        <h1
+          class="mt-2 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl"
+        >
+          Qué está pasando con el dengue, departamento por departamento
+        </h1>
+        <p class="mt-4 font-sans text-base leading-relaxed text-ink-muted">
+          EPI-Aetheris cruza casos reportados por MINSAL con clima (Open-Meteo)
+          para describir, semana a semana, qué tan inusual es lo que está
+          pasando en cada departamento contra su propia historia -- y qué tan
+          confiable es el dato detrás de esa lectura.
+        </p>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a
+            href="/panel"
+            class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-sans text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-deep"
+          >
+            Ver el panel
+            <svg
+              class="h-4 w-4"
+              viewBox="0 0 20 20"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 10h12M11 5l5 5-5 5"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"></path>
+            </svg>
+          </a>
+          <a
+            href="https://github.com/the-monolith-project/EPI-Aetheris"
+            class="inline-flex items-center rounded-full border border-border bg-surface px-5 py-2.5 font-sans text-sm font-medium text-ink transition-colors hover:border-accent/40 hover:bg-secondary/30"
+          >
+            Ver el código
+          </a>
+        </div>
+      </div>
+
+      <a
+        href="/panel"
+        class="group block"
+        aria-label="Ver el mapa departamental completo en el panel"
+      >
+        <div class="rounded-[28px] bg-deep p-4 sm:p-6">
+          <svg
+            viewBox={MAPA_VIEWBOX}
+            role="img"
+            aria-label="Silueta de los 14 departamentos de El Salvador que cubre el sistema"
+            class="h-auto w-full"
+          >
+            {
+              DEPARTAMENTOS_SVG.map((d, i) => (
+                <path
+                  d={d.d}
+                  class="hero-depto origin-center fill-secondary/90 stroke-deep transition-colors duration-200 group-hover:fill-secondary/70 hover:!fill-accent"
+                  style={`stroke-width:1.5; animation-delay:${i * 45}ms`}
+                >
+                  <title>{d.nombre}</title>
+                </path>
+              ))
+            }
+          </svg>
+          <p class="mt-3 font-sans text-xs leading-snug text-deep-ink-muted">
+            Los 14 departamentos, tal como se ven en el mapa del panel -- cada
+            uno comparado contra su propia historia, nunca entre sí.
+          </p>
+        </div>
+      </a>
+    </section>
+
+    <p class="mt-6 font-sans text-xs leading-relaxed text-ink-muted">
+      {CIFRAS.join('  ·  ')}
+    </p>
+
+    <section
+      class="mt-12 rounded-2xl border border-dashed border-border bg-surface p-5 sm:p-6 lg:p-8"
+    >
+      <p class="font-sans text-sm font-semibold text-ink">
+        Qué NO es este proyecto
+      </p>
+      <p
+        class="mt-2 max-w-3xl font-sans text-sm leading-relaxed text-ink-muted"
+      >
+        No predice brotes ni asigna un nivel de riesgo por departamento. Un
+        clasificador predictivo piloto fue evaluado y <strong class="text-ink"
+          >retirado</strong
+        > tras su validación empírica: en los únicos años con un brote real, no mostró
+        capacidad predictiva utilizable. Queda en el panel como referencia histórica,
+        no como predicción en vivo. Este es un aporte de <strong
+          class="text-ink">ingeniería de software</strong
+        > -- reproducible, con datos públicos y contenedores -- no un modelo epidemiológico
+        novedoso ni un oráculo médico. Es una ayuda de priorización, nunca un diagnóstico.
+      </p>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="font-display text-xl font-semibold text-ink">
+        Cuatro preguntas, cuatro módulos
+      </h2>
+      <p class="mt-1 max-w-2xl font-sans text-sm text-ink-muted">
+        "Camino Ancho": en vez de "¿va a haber un brote?", cada módulo responde
+        una pregunta más chica y verificable contra la propia historia del
+        departamento.
+      </p>
+      <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {
+          MODULOS.map((m) => (
+            <div class="card-elevated rounded-2xl border border-border bg-surface p-4">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-mono text-xs font-semibold text-accent">
+                  {m.id}
+                </span>
+                <span
+                  class:list={[
+                    'rounded-full px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide',
+                    m.estado === 'Activo'
+                      ? 'bg-secondary text-secondary-ink'
+                      : 'bg-ink-muted/10 text-ink-muted',
+                  ]}
+                >
+                  {m.estado}
+                </span>
+              </div>
+              <p class="mt-2 font-sans text-sm font-semibold text-ink">
+                {m.nombre}
+              </p>
+              <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
+                {m.texto}
+              </p>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="font-display text-xl font-semibold text-ink">
+        Con qué está construido
+      </h2>
+      <p class="mt-1 max-w-2xl font-sans text-sm text-ink-muted">
+        El aporte de este proyecto es de ingeniería de software, no de novedad
+        epidemiológica -- por eso el stack importa tanto como los módulos.
+      </p>
+      <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {
+          STACK.map((s) => (
+            <div class="card-elevated rounded-2xl border border-border bg-surface p-4">
+              <p class="font-sans text-xs font-semibold uppercase tracking-wide text-accent">
+                {s.capa}
+              </p>
+              <p class="mt-1 font-sans text-sm font-semibold text-ink">
+                {s.tecnologia}
+              </p>
+              <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
+                {s.texto}
+              </p>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section
+      class="mt-12 flex flex-col items-start gap-4 rounded-2xl bg-deep p-6 sm:flex-row sm:items-center sm:justify-between lg:p-8"
+    >
+      <div class="max-w-2xl">
+        <p class="font-sans text-sm font-semibold text-deep-ink">
+          Datos públicos, sin costo de replicar
+        </p>
+        <p class="mt-1 font-sans text-sm leading-relaxed text-deep-ink-muted">
+          MINSAL, OpenDengue y Open-Meteo -- ninguna API de pago, ningún dato
+          personal, todo agregado. `docker compose up` levanta el sistema
+          completo con datos reales incluidos. ¿Querés el porqué de cada
+          decisión, no solo el resultado? Está en la
+          <a
+            href="/biblioteca"
+            class="font-semibold text-deep-ink underline underline-offset-2"
+            >Biblioteca</a
+          >.
+        </p>
+      </div>
+      <a
+        href="/panel"
+        class="shrink-0 rounded-full bg-secondary px-5 py-2.5 font-sans text-sm font-semibold text-secondary-ink transition-colors hover:brightness-95"
+      >
+        Entrar al panel
+      </a>
+    </section>
+  </main>
+</Layout>
+
+<style>
+  /* Entrada escalonada de los 14 departamentos -- una sola vez al cargar,
+     nunca en loop. prefers-reduced-motion la desactiva por completo (los
+     departamentos aparecen ya visibles, sin animación). */
+  @keyframes hero-depto-entra {
+    from {
+      opacity: 0;
+      transform: scale(0.94);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .hero-depto {
+    animation: hero-depto-entra 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-depto {
+      animation: none;
+    }
+  }
+</style>

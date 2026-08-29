@@ -1,0 +1,319 @@
+---
+// Mapa departamental de IRA -- capa única (volumen "notificado" acumulado
+// 2018-2023, sin 2020), consumiendo /api/ira/departamental (backend/api/ira.py).
+// Deliberadamente NO comparte layers/selector con MapaDepartamentos.astro: IRA
+// no tiene Iv/anomalía/presión calculados (esas fórmulas están cerradas solo
+// para dengue, ver AGENTS.md), así que no hay nada que seleccionar todavía --
+// un selector de una sola opción sería ruido de UI. Mismo geojson
+// (public/geo/slv-adm1.geojson), mismo motor Leaflet, mismos tokens visuales
+// que el mapa de dengue para que ambos se lean como el mismo sistema.
+---
+
+<section
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+>
+  <div class="flex items-start gap-3">
+    <span
+      class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+      aria-hidden="true"></span>
+    <div>
+      <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+        Mapa departamental -- IRA
+      </h2>
+      <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
+        Capa descriptiva: volumen acumulado de casos "notificado" por
+        departamento (MINSAL, 2018-2023, sin 2020). No es una clasificación de
+        riesgo ni alimenta ningún modelo -- IRA no tiene idoneidad, anomalía ni
+        presión relativa calculados (esas fórmulas están cerradas solo para
+        dengue).
+      </p>
+    </div>
+  </div>
+
+  <div
+    class="mt-4 flex gap-2 rounded-lg border border-dashed border-border bg-bg p-3"
+  >
+    <svg
+      class="mt-0.5 h-4 w-4 shrink-0 text-accent"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M4 6h12M4 10h12M4 14h8"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"></path>
+    </svg>
+    <p class="font-sans text-xs leading-relaxed text-ink-muted">
+      <strong class="font-semibold text-ink">Cómo leer el color:</strong> más oscuro
+      = más casos "notificado" acumulados en la ventana cargada. No es una lectura
+      semana a semana -- los huecos reales de la fuente (boletines de vacaciones,
+      tablas en imagen, correcciones retroactivas excluidas) hacen que una sola semana
+      no sea representativa.
+    </p>
+  </div>
+
+  <div
+    id="mapa-ira-no-disponible"
+    class="mt-3 hidden rounded-lg border border-secondary bg-secondary/25 p-3"
+  >
+    <p class="font-sans text-sm text-ink">
+      Mapa no disponible en este momento -- el endpoint del backend no respondió
+      como se esperaba.
+    </p>
+  </div>
+
+  <div
+    id="mapa-ira-departamentos"
+    class="mt-4 h-[300px] w-full overflow-hidden rounded-xl border border-border shadow-inner sm:h-[420px] lg:h-[540px]"
+  >
+  </div>
+  <div id="mapa-ira-leyenda" class="mt-3"></div>
+</section>
+
+<style>
+  :global(.leaflet-container) {
+    font-family: var(--font-sans);
+    background: var(--color-bg);
+    /* Ver MapaDepartamentos.astro: confina el z-index:1000 de los controles
+       de Leaflet dentro de su propio contexto de apilamiento, para que no
+       compita contra el z-40 del header sticky de Layout.astro. */
+    isolation: isolate;
+  }
+  :global(.leaflet-control-zoom) {
+    border: 1px solid var(--color-border) !important;
+    box-shadow: var(--shadow-card) !important;
+  }
+  :global(.leaflet-control-zoom a) {
+    color: var(--color-accent) !important;
+    background-color: var(--color-surface) !important;
+  }
+  :global(.leaflet-control-zoom a:hover) {
+    background-color: var(--color-secondary) !important;
+  }
+  :global(.leaflet-tooltip) {
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-ink);
+    padding: 6px 10px;
+  }
+</style>
+
+<script>
+  import L from 'leaflet';
+  import 'leaflet/dist/leaflet.css';
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const SIN_DATO = '#e4e4e7';
+  // Mismo family de la marca que la capa de volumen MINSAL de dengue, para
+  // que "más oscuro = más casos" se lea igual en ambos mapas.
+  const RAMPA = ['#cde2fb', '#9ec5f4', '#5598e7', '#256abf', '#0d366b'];
+
+  // El shapeName del geojson (geoBoundaries) es inconsistente: 12 de los 14
+  // departamentos traen el prefijo "Departamento de ..." pero La Libertad y
+  // San Vicente no -- se normaliza en un solo lugar (mismo criterio que
+  // MapaDepartamentos.astro e index.astro).
+  function normalizarNombreDepto(shapeName: string): string {
+    return shapeName.replace(/^Departamento de /, '');
+  }
+
+  interface DatoDepartamentoIra {
+    nombre: string;
+    codigo: string;
+    notificado_total: number;
+    semanas_con_dato: number;
+    primer_anio: number | null;
+    ultimo_anio: number | null;
+  }
+
+  function cortesPorCuantiles(valores: number[]): number[] {
+    const ordenados = [...valores].sort((a, b) => a - b);
+    if (ordenados.length === 0) return [1, 2, 3, 4];
+    const corte = (p: number) =>
+      ordenados[
+        Math.min(ordenados.length - 1, Math.floor(p * (ordenados.length - 1)))
+      ];
+    return [corte(0.2), corte(0.4), corte(0.6), corte(0.8)];
+  }
+
+  function colorPorValor(valor: number | undefined, cortes: number[]): string {
+    if (valor === undefined) return SIN_DATO;
+    for (let i = 0; i < cortes.length; i++) {
+      if (valor <= cortes[i]) return RAMPA[i];
+    }
+    return RAMPA[RAMPA.length - 1];
+  }
+
+  function dibujarLeyenda(contenedor: HTMLElement, cortes: number[]) {
+    const rangos = [
+      `1–${cortes[0]}`,
+      `${cortes[0] + 1}–${cortes[1]}`,
+      `${cortes[1] + 1}–${cortes[2]}`,
+      `${cortes[2] + 1}–${cortes[3]}`,
+      `> ${cortes[3]}`,
+    ];
+    const item = (color: string, etiqueta: string) =>
+      `<span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-1">` +
+      `<span style="background:${color}" class="inline-block h-2.5 w-2.5 rounded-full ring-1 ring-black/5"></span>` +
+      `<span class="font-mono text-[11px] text-ink-muted">${etiqueta}</span></span>`;
+    const items = RAMPA.map((color, i) => item(color, rangos[i])).join('');
+    contenedor.innerHTML = `
+      <div class="flex flex-wrap items-center gap-1.5 font-sans text-xs text-ink-muted">
+        <span class="mr-1 font-medium text-ink">Casos "notificado" acumulados 2018-2023:</span>
+        ${items}
+        ${item(SIN_DATO, 'sin dato')}
+      </div>
+    `;
+  }
+
+  // Máscara visual: un rectángulo enorme con un "agujero" recortado por
+  // cada departamento (SVG fill-rule evenodd, soportado nativamente por
+  // L.Polygon con múltiples anillos). No evita las peticiones de tiles de
+  // países vecinos -- son ráster de OpenStreetMap, no hay forma de pedir
+  // "sin Guatemala/Honduras" a ese proveedor -- pero atenúa visualmente
+  // todo lo que no sea El Salvador, incluyendo los nombres de lugar que
+  // trae el tile, para que la atención quede en el país que sí cubre el
+  // proyecto.
+  const ANILLO_MUNDO: [number, number][] = [
+    [-85, -170],
+    [-85, 10],
+    [85, 10],
+    [85, -170],
+  ];
+
+  function construirMascara(geojson: any): [number, number][][] {
+    const agujeros: [number, number][][] = [];
+    for (const f of geojson.features) {
+      const partes =
+        f.geometry.type === 'Polygon'
+          ? [f.geometry.coordinates]
+          : f.geometry.coordinates;
+      for (const poligono of partes) {
+        agujeros.push(
+          poligono[0].map(([lon, lat]: [number, number]) => [lat, lon]),
+        );
+      }
+    }
+    return [ANILLO_MUNDO, ...agujeros];
+  }
+
+  async function iniciar() {
+    const contenedorMapa = document.getElementById('mapa-ira-departamentos');
+    const contenedorLeyenda = document.getElementById('mapa-ira-leyenda');
+    const contenedorNoDisponible = document.getElementById(
+      'mapa-ira-no-disponible',
+    );
+    if (!contenedorMapa || !contenedorLeyenda || !contenedorNoDisponible)
+      return;
+
+    // Límites duros a El Salvador (mismo bbox que MapaDepartamentos.astro) --
+    // sin esto, un scroll de más con la rueda del mouse manda a ver
+    // Guatemala u Honduras, que el proyecto todavía no cubre.
+    const LIMITES_SV = L.latLngBounds([12.95, -90.35], [14.65, -87.45]);
+    const mapa = L.map(contenedorMapa, {
+      minZoom: 8,
+      maxBounds: LIMITES_SV,
+      maxBoundsViscosity: 1.0,
+    }).setView([13.79, -88.9], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 12,
+    }).addTo(mapa);
+
+    const respGeo = await fetch('/geo/slv-adm1.geojson');
+    const geojson = await respGeo.json();
+
+    L.polygon(construirMascara(geojson), {
+      stroke: false,
+      fillColor: '#f0f0f0',
+      fillOpacity: 0.85,
+      interactive: false,
+    }).addTo(mapa);
+
+    let detalles = new Map<string, DatoDepartamentoIra>();
+    let valores: Map<string, number | undefined> | null = null;
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/ira/departamental`);
+      if (!resp.ok) throw new Error('respuesta no OK');
+      const datos: { departamentos: DatoDepartamentoIra[] } = await resp.json();
+      detalles = new Map(datos.departamentos.map((d) => [d.codigo, d]));
+      valores = new Map(
+        datos.departamentos.map((d) => [
+          d.codigo,
+          d.notificado_total > 0 ? d.notificado_total : undefined,
+        ]),
+      );
+    } catch {
+      valores = null;
+    }
+
+    if (!valores) {
+      contenedorNoDisponible.classList.remove('hidden');
+      L.geoJSON(geojson, {
+        style: () => ({
+          color: '#8a8a90',
+          weight: 1,
+          fillColor: SIN_DATO,
+          fillOpacity: 0.5,
+        }),
+        onEachFeature: (feature, layer) => {
+          const nombre = feature.properties?.shapeName
+            ? normalizarNombreDepto(feature.properties.shapeName)
+            : (feature.properties?.codigo ?? '');
+          layer.bindTooltip(
+            `<strong>${nombre}</strong><br>mapa no disponible todavía`,
+          );
+        },
+      }).addTo(mapa);
+      return;
+    }
+
+    const numericos = [...valores.values()].filter(
+      (v): v is number => v !== undefined,
+    );
+    const cortes = cortesPorCuantiles(numericos);
+    dibujarLeyenda(contenedorLeyenda, cortes);
+
+    L.geoJSON(geojson, {
+      style: (feature) => {
+        const codigo = feature?.properties?.codigo ?? '';
+        return {
+          color: '#8a8a90',
+          weight: 1,
+          fillColor: colorPorValor(valores!.get(codigo), cortes),
+          fillOpacity: 0.75,
+        };
+      },
+      onEachFeature: (feature, layer) => {
+        const codigo = feature.properties?.codigo ?? '';
+        const nombre = feature.properties?.shapeName
+          ? normalizarNombreDepto(feature.properties.shapeName)
+          : codigo;
+        const dato = detalles.get(codigo);
+        if (!dato) {
+          layer.bindTooltip(nombre);
+          return;
+        }
+        const ventana =
+          dato.primer_anio && dato.ultimo_anio
+            ? `${dato.primer_anio}-${dato.ultimo_anio}`
+            : 'sin dato';
+        layer.bindTooltip(
+          `<strong>${nombre}</strong><br>` +
+            `Notificado (acum.): ${dato.notificado_total}<br>` +
+            `Semanas con dato: ${dato.semanas_con_dato}<br>` +
+            `Ventana: ${ventana}`,
+        );
+      },
+    }).addTo(mapa);
+  }
+
+  iniciar();
+</script>

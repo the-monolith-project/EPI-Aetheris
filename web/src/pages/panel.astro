@@ -1,0 +1,116 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CurvaEpidemicaNacional from '../components/CurvaEpidemicaNacional.astro';
+import MapaDepartamentos from '../components/MapaDepartamentos.astro';
+import MetricasModelo from '../components/MetricasModelo.astro';
+import ResumenNacional from '../components/ResumenNacional.astro';
+import AuditoriaDatos from '../components/AuditoriaDatos.astro';
+import FiltrosAnalisis from '../components/FiltrosAnalisis.astro';
+import PanelAnalisis from '../components/analisis/PanelAnalisis.astro';
+
+// Nav lateral + fila de resumen + panel de auditoría: patrón de layout
+// reciclado de referencias_no_trakear/boceto_dashboard_pre-camino-ancho_DESACTUALIZADO.png
+// (el boceto es de antes del pivote y su CONTENIDO de riesgo en vivo no se
+// usa -- ver LEEME.md en esa carpeta). El nav son anclas a las secciones de
+// esta misma página, no rutas nuevas.
+const SECCIONES = [
+  { href: '#resumen', etiqueta: 'Resumen' },
+  { href: '#mapa', etiqueta: 'Mapa departamental' },
+  { href: '#analisis', etiqueta: 'Análisis' },
+  { href: '#curva', etiqueta: 'Serie nacional' },
+  { href: '#historico', etiqueta: 'Clasificador histórico' },
+];
+
+// Jerarquía del dashboard (decisión del coordinador, 2026-08-21): Camino
+// Ancho -- descriptivo, no predictivo -- es la narrativa principal. El mapa
+// departamental va primero, la curva nacional (OpenDengue crudo, también
+// descriptiva) después, y el clasificador nacional RETIRADO queda al final
+// como sección colapsable claramente etiquetada de histórico (ver
+// MetricasModelo.astro y docs/informe-cierre-rescate-prediccion.md). No se
+// eliminó del dashboard: el estatuto del proyecto exige que las métricas y
+// errores del modelo sigan siendo consultables, solo que ya no como pieza
+// central ni como predicción en vivo.
+---
+
+<Layout title="EPI-Aetheris — Panel">
+  <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+    <div class="lg:flex lg:items-start lg:gap-8">
+      <nav
+        aria-label="Secciones del panel"
+        class="mb-6 lg:sticky lg:top-20 lg:mb-0 lg:w-48 lg:shrink-0"
+      >
+        <p
+          class="font-sans text-[11px] font-semibold uppercase tracking-wider text-ink-muted"
+        >
+          En esta página
+        </p>
+        <ul class="mt-2 flex flex-wrap gap-1.5 lg:mt-3 lg:flex-col">
+          {
+            SECCIONES.map((s) => (
+              <li>
+                <a
+                  href={s.href}
+                  class="block rounded-full px-3 py-1.5 font-sans text-sm text-ink-muted transition-colors hover:bg-secondary/30 hover:text-ink lg:rounded-lg"
+                >
+                  {s.etiqueta}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <div class="min-w-0 flex-1">
+        <header id="resumen" class="max-w-3xl scroll-mt-24">
+          <p
+            class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+          >
+            Panel descriptivo
+          </p>
+          <h1
+            class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
+          >
+            Qué está pasando con el dengue en El Salvador
+          </h1>
+          <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+            Análisis descriptivo espaciotemporal ("Camino Ancho"): qué está
+            pasando epidemiológica y ambientalmente en cada departamento, qué
+            tan inusual es contra su propia historia, y qué tan confiable es el
+            dato detrás de esa lectura. No predice brotes ni asigna niveles de
+            riesgo -- es una ayuda de priorización, no un diagnóstico.
+          </p>
+          <p class="mt-2 font-sans text-xs text-ink-muted">
+            El clasificador predictivo piloto fue retirado tras su validación
+            empírica; queda al final de esta página como referencia histórica,
+            con sus métricas y errores a la vista.
+          </p>
+        </header>
+
+        <div class="mt-6 flex flex-col gap-4">
+          <ResumenNacional />
+          <AuditoriaDatos />
+        </div>
+
+        <div class="mt-6">
+          <FiltrosAnalisis />
+        </div>
+
+        <div
+          id="mapa"
+          class="mt-8 scroll-mt-24 rounded-[28px] bg-deep p-2 sm:p-3"
+        >
+          <MapaDepartamentos />
+        </div>
+        <div class="mt-6">
+          <PanelAnalisis />
+        </div>
+        <div id="curva" class="mt-6 scroll-mt-24">
+          <CurvaEpidemicaNacional />
+        </div>
+        <div id="historico" class="mt-6 scroll-mt-24">
+          <MetricasModelo />
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>

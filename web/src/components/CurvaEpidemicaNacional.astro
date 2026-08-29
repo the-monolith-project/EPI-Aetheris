@@ -1,0 +1,243 @@
+---
+// Curva epidémica nacional. Fetch del lado del cliente (el navegador siempre
+// resuelve la API en localhost:8000, tanto corriendo con docker-compose como
+// con `pnpm dev` local -- evita depender de resolución de hostname interna
+// de la red de Docker) contra GET /api/casos-nacional: serie de OpenDengue,
+// clasificacion='total', nivel nacional. No es clasificación de riesgo: el
+// corte de percentil sigue abierto (docs/contexto/02-decisiones-abiertas.md,
+// punto A).
+---
+
+<section
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+>
+  <div class="flex items-start justify-between gap-3">
+    <div class="flex items-start gap-3">
+      <span
+        class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+        aria-hidden="true"></span>
+      <div>
+        <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+          Curva epidémica nacional
+        </h2>
+        <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
+          Serie semanal de casos de dengue, OpenDengue (nivel nacional,
+          2018-2024). No representa una clasificación de riesgo -- eso todavía
+          no está definido.
+        </p>
+      </div>
+    </div>
+    <button
+      type="button"
+      id="curva-descargar-csv"
+      disabled
+      title="Cargando datos para descargar..."
+      class="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 font-sans text-xs font-medium text-ink transition-colors hover:border-accent/40 hover:bg-secondary/30 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      Descargar CSV
+    </button>
+  </div>
+  <div
+    id="curva-epidemica"
+    class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4"
+  >
+    <!-- Skeleton con la misma altura aproximada del SVG final (viewBox 720x240,
+         w-full) para que la página no salte al llegar los datos. -->
+    <div data-estado aria-hidden="true">
+      <div class="skeleton h-40 w-full sm:h-52"></div>
+      <div class="skeleton mt-2 h-3 w-1/3"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+  interface CasoSemanal {
+    semana_inicio: string;
+    anio: number;
+    conteo: number;
+  }
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const ANCHO = 720;
+  const ALTO = 240;
+  const MARGEN = { arriba: 20, abajo: 28, izquierda: 40, derecha: 8 };
+
+  function dibujar(contenedor: HTMLElement, datos: CasoSemanal[]) {
+    const estado = contenedor.querySelector('[data-estado]');
+    estado?.remove();
+
+    if (datos.length === 0) {
+      contenedor.innerHTML =
+        '<p class="font-sans text-sm text-ink-muted">Sin datos cargados todavía.</p>';
+      return;
+    }
+
+    const maxConteo = Math.max(...datos.map((d) => d.conteo));
+    const areaGrafica = ALTO - MARGEN.arriba - MARGEN.abajo;
+    const escalaY = (valor: number) =>
+      ALTO - MARGEN.abajo - (valor / (maxConteo || 1)) * areaGrafica;
+    const escalaX = (indice: number) =>
+      MARGEN.izquierda +
+      (indice / Math.max(datos.length - 1, 1)) *
+        (ANCHO - MARGEN.izquierda - MARGEN.derecha);
+
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
+    svg.setAttribute('class', 'w-full');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute(
+      'aria-label',
+      'Curva epidémica nacional de dengue por semana, 2018-2024',
+    );
+
+    const defs = document.createElementNS(SVG_NS, 'defs');
+    const gradiente = document.createElementNS(SVG_NS, 'linearGradient');
+    gradiente.setAttribute('id', 'curva-gradiente');
+    gradiente.setAttribute('x1', '0');
+    gradiente.setAttribute('y1', '0');
+    gradiente.setAttribute('x2', '0');
+    gradiente.setAttribute('y2', '1');
+    const paradas = [
+      { offset: '0%', opacidad: '0.28' },
+      { offset: '100%', opacidad: '0' },
+    ];
+    for (const p of paradas) {
+      const parada = document.createElementNS(SVG_NS, 'stop');
+      parada.setAttribute('offset', p.offset);
+      parada.setAttribute('stop-color', 'var(--color-accent)');
+      parada.setAttribute('stop-opacity', p.opacidad);
+      gradiente.appendChild(parada);
+    }
+    defs.appendChild(gradiente);
+    svg.appendChild(defs);
+
+    // Líneas de referencia horizontales (0, mitad, máximo) para dar escala
+    // sin sumar un eje completo -- el objetivo es lectura rápida, no un
+    // gráfico analítico detallado.
+    const nivelesY = [0, maxConteo / 2, maxConteo];
+    for (const nivel of nivelesY) {
+      const y = escalaY(nivel);
+      const linea = document.createElementNS(SVG_NS, 'line');
+      linea.setAttribute('x1', String(MARGEN.izquierda));
+      linea.setAttribute('x2', String(ANCHO - MARGEN.derecha));
+      linea.setAttribute('y1', String(y));
+      linea.setAttribute('y2', String(y));
+      linea.setAttribute('stroke', 'var(--color-border)');
+      linea.setAttribute('stroke-width', '1');
+      svg.appendChild(linea);
+
+      const etiquetaY = document.createElementNS(SVG_NS, 'text');
+      etiquetaY.setAttribute('x', String(MARGEN.izquierda - 8));
+      etiquetaY.setAttribute('y', String(y + 3));
+      etiquetaY.setAttribute('text-anchor', 'end');
+      etiquetaY.setAttribute('font-family', 'var(--font-mono)');
+      etiquetaY.setAttribute('font-size', '9');
+      etiquetaY.setAttribute('fill', 'var(--color-ink-muted)');
+      etiquetaY.textContent = Math.round(nivel).toLocaleString('es-SV');
+      svg.appendChild(etiquetaY);
+    }
+
+    const puntos = datos
+      .map((d, i) => `${escalaX(i)},${escalaY(d.conteo)}`)
+      .join(' ');
+
+    const area = document.createElementNS(SVG_NS, 'polygon');
+    const base = ALTO - MARGEN.abajo;
+    area.setAttribute(
+      'points',
+      `${escalaX(0)},${base} ${puntos} ${escalaX(datos.length - 1)},${base}`,
+    );
+    area.setAttribute('fill', 'url(#curva-gradiente)');
+    area.setAttribute('stroke', 'none');
+    svg.appendChild(area);
+
+    const polilinea = document.createElementNS(SVG_NS, 'polyline');
+    polilinea.setAttribute('points', puntos);
+    polilinea.setAttribute('fill', 'none');
+    polilinea.setAttribute('stroke', 'var(--color-accent)');
+    polilinea.setAttribute('stroke-width', '1.75');
+    polilinea.setAttribute('stroke-linejoin', 'round');
+    polilinea.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(polilinea);
+
+    const ultimo = datos[datos.length - 1];
+    const puntoFinal = document.createElementNS(SVG_NS, 'circle');
+    puntoFinal.setAttribute('cx', String(escalaX(datos.length - 1)));
+    puntoFinal.setAttribute('cy', String(escalaY(ultimo.conteo)));
+    puntoFinal.setAttribute('r', '3');
+    puntoFinal.setAttribute('fill', 'var(--color-accent)');
+    puntoFinal.setAttribute('stroke', 'var(--color-surface)');
+    puntoFinal.setAttribute('stroke-width', '1.5');
+    svg.appendChild(puntoFinal);
+
+    const aniosVistos = new Set<number>();
+    datos.forEach((d, i) => {
+      if (aniosVistos.has(d.anio)) return;
+      aniosVistos.add(d.anio);
+      const linea = document.createElementNS(SVG_NS, 'line');
+      linea.setAttribute('x1', String(escalaX(i)));
+      linea.setAttribute('x2', String(escalaX(i)));
+      linea.setAttribute('y1', String(MARGEN.arriba));
+      linea.setAttribute('y2', String(ALTO - MARGEN.abajo));
+      linea.setAttribute('stroke', 'var(--color-border)');
+      linea.setAttribute('stroke-width', '1');
+      linea.setAttribute('stroke-dasharray', '2 3');
+      svg.appendChild(linea);
+
+      const etiqueta = document.createElementNS(SVG_NS, 'text');
+      etiqueta.setAttribute('x', String(escalaX(i)));
+      etiqueta.setAttribute('y', String(ALTO - 8));
+      etiqueta.setAttribute('font-family', 'var(--font-mono)');
+      etiqueta.setAttribute('font-size', '10');
+      etiqueta.setAttribute('fill', 'var(--color-ink-muted)');
+      etiqueta.textContent = String(d.anio);
+      svg.appendChild(etiqueta);
+    });
+
+    contenedor.appendChild(svg);
+  }
+
+  // Exporta exactamente lo mismo que dibuja el SVG -- mismo endpoint, sin
+  // transformación adicional. Generado 100% en el cliente (Blob + URL de
+  // objeto), no hay endpoint de exportación nuevo en el backend.
+  function descargarCsv(datos: CasoSemanal[]) {
+    const encabezado = 'semana_inicio,anio,conteo';
+    const filas = datos.map((d) => `${d.semana_inicio},${d.anio},${d.conteo}`);
+    const csv = [encabezado, ...filas].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = 'epi-aetheris-dengue-nacional-2018-2024.csv';
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function iniciar() {
+    const contenedor = document.getElementById('curva-epidemica');
+    const botonDescarga = document.getElementById(
+      'curva-descargar-csv',
+    ) as HTMLButtonElement | null;
+    if (!contenedor) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/casos-nacional`);
+      if (!resp.ok) throw new Error('respuesta no OK');
+      const datos: CasoSemanal[] = await resp.json();
+      dibujar(contenedor, datos);
+      if (botonDescarga && datos.length > 0) {
+        botonDescarga.disabled = false;
+        botonDescarga.removeAttribute('title');
+        botonDescarga.addEventListener('click', () => descargarCsv(datos));
+      }
+    } catch {
+      contenedor.innerHTML =
+        '<p class="font-sans text-sm text-ink-muted">No se pudo cargar la serie en este momento.</p>';
+    }
+  }
+
+  iniciar();
+</script>

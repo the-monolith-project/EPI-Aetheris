@@ -1,0 +1,43 @@
+/*
+ * Tokens de diseño -- paleta del coordinador (2026-08-21):
+ * texto #040316, fondo #f0f0f0, primario #183e39, secundario #dddbff,
+ * acento #011e1e. Los nombres de variable NO cambian (global.css y los
+ * componentes ya dependen de ellos); solo se agregan tokens nuevos
+ * (secondary/deep) para dar más rango cromático sin tocar los existentes.
+ */
+
+:root {
+  --color-bg: #f0f0f0;
+  --color-surface: #ffffff;
+  --color-ink: #040316;
+  --color-ink-muted: #4c5a56;
+  --color-border: #e0e0e6;
+
+  /* "primario" hace de acento operativo (botones activos, enlaces, header). */
+  --color-accent: #183e39;
+  --color-accent-ink: #ffffff;
+
+  /* "secundario" -- lavanda clara, para chips/estados suaves. */
+  --color-secondary: #dddbff;
+  --color-secondary-ink: #183e39;
+
+  /* "acento" del brief -- verde casi negro, para paneles de mayor contraste
+     (footer, secciones archivadas) donde el primario se queda corto. */
+  --color-deep: #011e1e;
+  --color-deep-ink: #dddbff;
+  --color-deep-ink-muted: rgba(221, 219, 255, 0.65);
+
+  --shadow-card:
+    0 1px 2px rgba(4, 3, 22, 0.04), 0 16px 32px -20px rgba(4, 3, 22, 0.35);
+  --shadow-card-hover:
+    0 1px 2px rgba(4, 3, 22, 0.05), 0 20px 40px -18px rgba(4, 3, 22, 0.4);
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+  /* Voz de titular, aparte del cuerpo -- Inter hacía tanto los H1 como el
+     texto de párrafo, sin ninguna diferenciación tipográfica real. Fraunces
+     con optical sizing alto (~144) da un serif editorial con carácter, con
+     restricción: solo en H1 de página y los 2 H2 de sección de la landing,
+     nunca en subtítulos de tarjeta ni en UI funcional. */
+  --font-display: 'Fraunces', Georgia, serif;
+}

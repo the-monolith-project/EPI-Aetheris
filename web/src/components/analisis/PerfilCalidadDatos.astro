@@ -1,0 +1,264 @@
+<article
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+  aria-labelledby="perfil-calidad-titulo"
+>
+  <header>
+    <h3
+      id="perfil-calidad-titulo"
+      class="font-sans text-base font-semibold text-ink"
+    >
+      Perfil de calidad y procedencia
+    </h3>
+    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+      Componentes auditables de cobertura, baseline y extracción. No se combinan
+      en una puntuación ni se interpretan como riesgo.
+    </p>
+  </header>
+
+  <div id="perfil-calidad-contenido" class="mt-4"></div>
+  <p
+    id="perfil-calidad-estado"
+    class="mt-3 font-sans text-xs text-ink-muted"
+    role="status"
+  >
+    Seleccione un departamento para revisar una observación.
+  </p>
+</article>
+
+<script>
+  import {
+    obtenerDatasetAnalitico,
+    obtenerProcedenciaAnalitica,
+  } from '../../lib/analisis-api';
+  import { suscribirFiltrosAnalisis } from '../../lib/analisis-state';
+  import type {
+    FiltrosAnalisis,
+    ProcedenciaAnalitica,
+    RegistroProcedencia,
+  } from '../../lib/tipos-analisis';
+
+  const contenedor = document.getElementById('perfil-calidad-contenido');
+  const estado = document.getElementById('perfil-calidad-estado');
+  let revision = 0;
+
+  function elemento<K extends keyof HTMLElementTagNameMap>(
+    etiqueta: K,
+    clases?: string,
+    texto?: string,
+  ): HTMLElementTagNameMap[K] {
+    const nodo = document.createElement(etiqueta);
+    if (clases) nodo.className = clases;
+    if (texto !== undefined) nodo.textContent = texto;
+    return nodo;
+  }
+
+  function tarjeta(titulo: string, valor: string, detalle: string) {
+    const bloque = elemento('div', 'rounded-xl border border-border bg-bg p-4');
+    bloque.append(
+      elemento(
+        'p',
+        'font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted',
+        titulo,
+      ),
+      elemento('p', 'mt-1 font-mono text-lg font-semibold text-ink', valor),
+      elemento(
+        'p',
+        'mt-1 font-sans text-xs leading-relaxed text-ink-muted',
+        detalle,
+      ),
+    );
+    return bloque;
+  }
+
+  function enlaceSeguro(url: string | null, texto: string): HTMLElement {
+    if (!url) return elemento('span', undefined, texto);
+    try {
+      const destino = new URL(url);
+      if (destino.protocol !== 'http:' && destino.protocol !== 'https:') {
+        return elemento('span', undefined, texto);
+      }
+      const enlace = elemento('a', 'text-accent underline', texto);
+      enlace.href = destino.href;
+      enlace.target = '_blank';
+      enlace.rel = 'noopener noreferrer';
+      return enlace;
+    } catch {
+      return elemento('span', undefined, texto);
+    }
+  }
+
+  function etiquetaEstadoExtraccion(valor: string): string {
+    const etiquetas: Record<string, string> = {
+      ok: 'Disponible',
+      revision_manual: 'Revisión manual',
+      error: 'No disponible',
+      ausencia_esperada: 'Ausencia esperada',
+      sin_texto_extraible: 'Incompleto',
+      pendiente: 'Pendiente',
+    };
+    return etiquetas[valor] ?? valor;
+  }
+
+  function detalleProcedencia(procedencia: ProcedenciaAnalitica): HTMLElement {
+    const seccion = elemento(
+      'section',
+      'mt-4 rounded-xl border border-border bg-bg p-4',
+    );
+    seccion.append(
+      elemento(
+        'h4',
+        'font-sans text-sm font-semibold text-ink',
+        'Detalle de la observación',
+      ),
+    );
+    if (!procedencia.disponible) {
+      seccion.append(
+        elemento(
+          'p',
+          'mt-2 font-sans text-xs leading-relaxed text-ink-muted',
+          'No existe una fila epidemiológica para esta selección; por eso no se atribuye una fuente, un boletín ni un estado de extracción.',
+        ),
+      );
+      return seccion;
+    }
+
+    const lista = elemento('ul', 'mt-3 grid gap-3');
+    for (const registro of procedencia.registros) {
+      const item = elemento(
+        'li',
+        'font-sans text-xs leading-relaxed text-ink-muted',
+      );
+      const fuente = elemento('p');
+      fuente.append(
+        'Fuente: ',
+        enlaceSeguro(registro.fuente.url_referencia, registro.fuente.nombre),
+        ` · ${registro.conteo} casos`,
+      );
+      item.append(fuente);
+      if (registro.boletin) {
+        const boletin = elemento('p', 'mt-1');
+        boletin.append(
+          'Boletín: ',
+          enlaceSeguro(
+            registro.boletin.url_origen,
+            registro.boletin.nombre_archivo,
+          ),
+          ` · extracción ${etiquetaEstadoExtraccion(registro.boletin.estado_extraccion)}`,
+        );
+        item.append(boletin);
+      } else {
+        item.append(
+          elemento(
+            'p',
+            'mt-1',
+            'Esta fila no tiene un boletín asociado almacenado.',
+          ),
+        );
+      }
+      if (registro.fecha_ingesta) {
+        item.append(
+          elemento(
+            'p',
+            'mt-1 font-mono text-[11px]',
+            `Ingesta registrada: ${registro.fecha_ingesta}`,
+          ),
+        );
+      }
+      lista.append(item);
+    }
+    seccion.append(lista);
+    return seccion;
+  }
+
+  function resumenFuente(registro: RegistroProcedencia | undefined): {
+    valor: string;
+    detalle: string;
+  } {
+    if (!registro) {
+      return {
+        valor: 'Sin observación',
+        detalle: 'No hay procedencia que atribuir a la celda ausente.',
+      };
+    }
+    if (!registro.boletin) {
+      return {
+        valor: registro.fuente.codigo,
+        detalle: 'Fuente almacenada; sin boletín asociado a esta fila.',
+      };
+    }
+    const cuadre =
+      registro.boletin.validacion_cuadra === true
+        ? 'cuadre validado'
+        : registro.boletin.validacion_cuadra === false
+          ? 'cuadre no validado'
+          : 'cuadre no registrado';
+    return {
+      valor: etiquetaEstadoExtraccion(registro.boletin.estado_extraccion),
+      detalle: `${registro.fuente.nombre} · ${cuadre} · estado almacenado: ${registro.boletin.estado_extraccion}.`,
+    };
+  }
+
+  async function renderizar(filtros: FiltrosAnalisis) {
+    if (!contenedor || !estado) return;
+    const idRevision = ++revision;
+    if (!filtros.departamento) {
+      contenedor.replaceChildren();
+      estado.textContent =
+        'Seleccione un departamento en los filtros, el mapa o una gráfica.';
+      return;
+    }
+    estado.textContent = 'Cargando perfil y procedencia…';
+    try {
+      const [dataset, procedencia] = await Promise.all([
+        obtenerDatasetAnalitico(filtros.anio),
+        obtenerProcedenciaAnalitica(filtros),
+      ]);
+      if (idRevision !== revision) return;
+      const departamento = dataset.departamentos.find(
+        (fila) => fila.codigo === filtros.departamento,
+      );
+      const semana = departamento?.semanas.find(
+        (fila) => fila.semana_epi === filtros.semana,
+      );
+      if (!departamento || !semana) throw new Error('Selección no encontrada');
+      const semanasDisponibles = departamento.semanas.filter(
+        (fila) => fila[filtros.serie] !== null,
+      ).length;
+      const casos = semana[filtros.serie];
+      const presion = semana[`presion_${filtros.serie}`];
+      const fuente = resumenFuente(procedencia.registros[0]);
+      const cuadricula = elemento(
+        'div',
+        'grid gap-3 sm:grid-cols-2 xl:grid-cols-4',
+      );
+      cuadricula.append(
+        tarjeta(
+          'Cobertura temporal',
+          `${semanasDisponibles} / 53`,
+          `Semanas con observación ${filtros.serie} en ${filtros.anio}.`,
+        ),
+        tarjeta(
+          'Semana seleccionada',
+          casos === null ? 'Ausente' : 'Disponible',
+          casos === null
+            ? 'No se interpreta como cero.'
+            : `${casos === 0 ? '0 observado' : `${casos} casos observados`} en SE${String(filtros.semana).padStart(2, '0')}.`,
+        ),
+        tarjeta(
+          'Baseline M3',
+          `${presion.anios_baseline} años`,
+          `${presion.n_obs_baseline} observaciones en la ventana histórica; P50 ${presion.p50_baseline ?? 'sin dato'} y P75 ${presion.p75_baseline ?? 'sin dato'}.`,
+        ),
+        tarjeta('Fuente y extracción', fuente.valor, fuente.detalle),
+      );
+      contenedor.replaceChildren(cuadricula, detalleProcedencia(procedencia));
+      estado.textContent = `${departamento.nombre} · ${filtros.anio} · SE${String(filtros.semana).padStart(2, '0')} · serie ${filtros.serie}.`;
+    } catch {
+      if (idRevision !== revision) return;
+      contenedor.replaceChildren();
+      estado.textContent = 'No fue posible cargar el perfil de calidad.';
+    }
+  }
+
+  suscribirFiltrosAnalisis((filtros) => void renderizar(filtros));
+</script>

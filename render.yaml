@@ -1,0 +1,78 @@
+# Blueprint de despliegue en Render (backend + Postgres + frontend estático,
+# una sola cuenta). Ver docs/despliegue-render.md para el procedimiento
+# completo de primer despliegue -- este archivo declara los servicios, no
+# reemplaza los pasos manuales (aplicar migraciones + cargar el seed contra
+# la base gestionada, algo que docker-compose hace solo via
+# docker-entrypoint-initdb.d y Render no replica automáticamente).
+#
+# El backend y la base quedan en la misma región para hablarse por red
+# privada. El sitio estático no acepta región (se sirve por CDN global).
+# Plan "starter"/"basic-256mb" en backend y DB -- elegido por costo-beneficio
+# (~$14/mes backend+DB), no por ser el más barato posible: ver
+# docs/despliegue-render.md para la comparación frente a Railway/Fly.io/Vercel.
+
+databases:
+  - name: epi-aetheris-db
+    databaseName: epi_aetheris
+    user: aetheris_user
+    plan: basic-256mb
+    region: oregon
+    postgresMajorVersion: "15"
+
+services:
+  - type: web
+    name: epi-aetheris-backend
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    # El Dockerfile trae --reload para el hot-reload de docker-compose en
+    # desarrollo local (bind mount de ./backend:/app) -- en Render no hay
+    # bind mount y --reload no debería correr contra un proceso de
+    # producción, así que se sobreescribe el CMD del Dockerfile aquí.
+    dockerCommand: uvicorn api.main:app --host 0.0.0.0 --port 8000
+    healthCheckPath: /health
+    envVars:
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: epi-aetheris-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: epi-aetheris-db
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: epi-aetheris-db
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: epi-aetheris-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: epi-aetheris-db
+          property: password
+      # Predicho como https://<name del static site>.onrender.com -- Render
+      # asigna ese subdominio exacto salvo colisión de nombre (namespace
+      # global de .onrender.com), en cuyo caso agrega un sufijo. Verificar
+      # la URL real del servicio "epi-aetheris-web" en el dashboard tras el
+      # primer deploy y corregir aquí si no coincide.
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://epi-aetheris-web.onrender.com
+
+  - type: web
+    name: epi-aetheris-web
+    runtime: static
+    rootDir: ./web
+    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    staticPublishPath: ./dist
+    envVars:
+      # Se embebe en el bundle del cliente en build-time (variable PUBLIC_*
+      # de Astro) -- por eso va como valor fijo, no como fromService: Astro
+      # ya generó el HTML/JS antes de que ese lookup pudiera resolverse.
+      # Mismo aviso que arriba: verificar contra la URL real de
+      # "epi-aetheris-backend" tras el primer deploy.
+      - key: PUBLIC_API_URL
+        value: https://epi-aetheris-backend.onrender.com

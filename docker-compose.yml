@@ -4,14 +4,15 @@ services:
     container_name: aetheris_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?Definí POSTGRES_USER en tu archivo .env (ver .env.example)}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en tu archivo .env (ver .env.example)}
-      POSTGRES_DB: ${POSTGRES_DB:?Definí POSTGRES_DB en tu archivo .env (ver .env.example)}
+      POSTGRES_USER: ${POSTGRES_USER:?Debe definirse POSTGRES_USER en el archivo .env (ver .env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Debe definirse POSTGRES_PASSWORD en el archivo .env (ver .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:?Debe definirse POSTGRES_DB en el archivo .env (ver .env.example)}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/migrations:/docker-entrypoint-initdb.d
+      - ./db/seed/seed_datos_reales.sql:/docker-entrypoint-initdb.d/seed_datos_reales.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -30,9 +31,9 @@ services:
       - "8000:8000"
     environment:
       POSTGRES_HOST: db
-      POSTGRES_USER: ${POSTGRES_USER:?Definí POSTGRES_USER en tu archivo .env (ver .env.example)}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en tu archivo .env (ver .env.example)}
-      POSTGRES_DB: ${POSTGRES_DB:?Definí POSTGRES_DB en tu archivo .env (ver .env.example)}
+      POSTGRES_USER: ${POSTGRES_USER:?Debe definirse POSTGRES_USER en el archivo .env (ver .env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Debe definirse POSTGRES_PASSWORD en el archivo .env (ver .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:?Debe definirse POSTGRES_DB en el archivo .env (ver .env.example)}
       POSTGRES_PORT: 5432
     volumes:
       - ./backend:/app
@@ -53,10 +54,29 @@ services:
     volumes:
       - ./web:/app
       - /app/node_modules
+      # Solo lectura -- la pestaña Biblioteca (web/src/content.config.ts) lee
+      # una selección curada de estos .md en build. Montado en /docs (raíz
+      # del contenedor) a propósito: coincide con la ruta relativa
+      # '../../docs' que ese archivo usa también fuera de Docker, donde
+      # docs/ es hermano de web/ en el checkout del host.
+      - ./docs:/docs:ro
     depends_on:
       - backend
     networks:
       - aetheris_network
+
+  e2e:
+    profiles: ["test"]
+    build:
+      context: ./web
+      dockerfile: Dockerfile.e2e
+    ipc: host
+    network_mode: host
+    environment:
+      PLAYWRIGHT_BASE_URL: http://localhost:4321
+    depends_on:
+      - backend
+      - web
 
 volumes:
   pgdata:

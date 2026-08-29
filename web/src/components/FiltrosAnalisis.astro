@@ -1,0 +1,397 @@
+---
+import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
+---
+
+<section
+  aria-labelledby="filtros-analisis-titulo"
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+>
+  <div
+    class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+  >
+    <div>
+      <h2
+        id="filtros-analisis-titulo"
+        class="font-sans text-base font-semibold text-ink"
+      >
+        Filtros globales de análisis
+      </h2>
+      <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+        La semana activa controla el mapa y el detalle; el rango controla las
+        comparaciones temporales. Probable y confirmado se mantienen como series
+        separadas.
+      </p>
+    </div>
+    <div class="flex shrink-0 flex-wrap gap-2">
+      <button
+        id="analisis-exportar"
+        type="button"
+        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Descargar vista actual
+      </button>
+      <button
+        id="analisis-copiar-enlace"
+        type="button"
+        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Copiar enlace
+      </button>
+    </div>
+  </div>
+
+  <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <label
+      class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+    >
+      Año
+      <select
+        id="analisis-anio"
+        class="rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm font-normal text-ink"
+      >
+        {
+          ANIOS_ANALISIS_DENGUE.map((anio) => (
+            <option value={anio} selected={anio === 2023}>
+              {anio}
+            </option>
+          ))
+        }
+      </select>
+    </label>
+
+    <label
+      class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+    >
+      Periodo del mapa MINSAL
+      <select
+        id="analisis-modo-minsal"
+        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
+      >
+        <option value="semana">Semana seleccionada</option>
+        <option value="ytd">Acumulado del año (YTD)</option>
+        <option value="historico">Histórico completo</option>
+      </select>
+    </label>
+
+    <label
+      class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+    >
+      Departamento activo
+      <select
+        id="analisis-departamento"
+        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
+      >
+        <option value="">Todos</option>
+      </select>
+    </label>
+
+    <fieldset class="flex flex-col gap-1">
+      <legend
+        class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+      >
+        Serie MINSAL
+      </legend>
+      <div
+        class="flex min-h-10 items-center gap-4 rounded-lg border border-border bg-bg px-3 py-2"
+      >
+        <label class="flex items-center gap-2 font-sans text-sm text-ink">
+          <input type="radio" name="analisis-serie" value="probable" checked /> Probable
+        </label>
+        <label class="flex items-center gap-2 font-sans text-sm text-ink">
+          <input type="radio" name="analisis-serie" value="confirmado" /> Confirmado
+        </label>
+      </div>
+    </fieldset>
+
+    <label
+      class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted sm:col-span-2"
+    >
+      Semana activa: <output
+        id="analisis-semana-valor"
+        class="font-mono text-ink">SE01</output
+      >
+      <input
+        id="analisis-semana"
+        type="range"
+        min="1"
+        max="53"
+        value="1"
+        class="w-full accent-accent"
+      />
+    </label>
+
+    <div class="grid grid-cols-2 gap-3">
+      <label
+        class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+      >
+        Desde: <output id="analisis-desde-valor" class="font-mono text-ink"
+          >SE01</output
+        >
+        <input
+          id="analisis-desde"
+          type="range"
+          min="1"
+          max="53"
+          value="1"
+          class="w-full accent-accent"
+        />
+      </label>
+      <label
+        class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+      >
+        Hasta: <output id="analisis-hasta-valor" class="font-mono text-ink"
+          >SE53</output
+        >
+        <input
+          id="analisis-hasta"
+          type="range"
+          min="1"
+          max="53"
+          value="53"
+          class="w-full accent-accent"
+        />
+      </label>
+    </div>
+
+    <label
+      class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted sm:col-span-2 xl:col-span-1"
+    >
+      Comparar departamentos (máximo 4)
+      <select
+        id="analisis-comparar"
+        multiple
+        size="4"
+        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
+        aria-describedby="analisis-comparar-ayuda"></select>
+      <span
+        id="analisis-comparar-ayuda"
+        class="font-sans text-[11px] font-normal normal-case text-ink-muted"
+      >
+        Use Ctrl o Cmd para seleccionar varios. 0 de 4 seleccionados.
+      </span>
+    </label>
+  </div>
+
+  <p
+    id="analisis-filtros-estado"
+    class="mt-3 font-sans text-xs text-ink-muted"
+    role="status"
+  >
+    Cargando departamentos disponibles…
+  </p>
+  <p
+    id="analisis-acciones-estado"
+    class="mt-1 min-h-4 font-sans text-xs text-ink-muted"
+    role="status"
+  >
+  </p>
+</section>
+
+<script>
+  import { obtenerDatasetAnalitico } from '../lib/analisis-api';
+  import { exportarAnalisisCsv } from '../lib/analisis-export';
+  import {
+    actualizarFiltrosAnalisis,
+    obtenerFiltrosAnalisis,
+    suscribirFiltrosAnalisis,
+  } from '../lib/analisis-state';
+  import type {
+    AnioAnalisisDengue,
+    ModoMinsal,
+    SerieEpidemiologica,
+  } from '../lib/tipos-analisis';
+
+  const selectAnio = document.getElementById(
+    'analisis-anio',
+  ) as HTMLSelectElement | null;
+  const selectDepartamento = document.getElementById(
+    'analisis-departamento',
+  ) as HTMLSelectElement | null;
+  const selectComparar = document.getElementById(
+    'analisis-comparar',
+  ) as HTMLSelectElement | null;
+  const selectModoMinsal = document.getElementById(
+    'analisis-modo-minsal',
+  ) as HTMLSelectElement | null;
+  const semana = document.getElementById(
+    'analisis-semana',
+  ) as HTMLInputElement | null;
+  const desde = document.getElementById(
+    'analisis-desde',
+  ) as HTMLInputElement | null;
+  const hasta = document.getElementById(
+    'analisis-hasta',
+  ) as HTMLInputElement | null;
+  const semanaValor = document.getElementById(
+    'analisis-semana-valor',
+  ) as HTMLOutputElement | null;
+  const desdeValor = document.getElementById(
+    'analisis-desde-valor',
+  ) as HTMLOutputElement | null;
+  const hastaValor = document.getElementById(
+    'analisis-hasta-valor',
+  ) as HTMLOutputElement | null;
+  const ayudaComparar = document.getElementById('analisis-comparar-ayuda');
+  const estadoCarga = document.getElementById('analisis-filtros-estado');
+  const estadoAcciones = document.getElementById('analisis-acciones-estado');
+  const botonExportar = document.getElementById(
+    'analisis-exportar',
+  ) as HTMLButtonElement | null;
+  const botonCopiar = document.getElementById(
+    'analisis-copiar-enlace',
+  ) as HTMLButtonElement | null;
+
+  const etiquetaSemana = (valor: number) =>
+    `SE${String(valor).padStart(2, '0')}`;
+  let cargaActual = 0;
+  let timerCopiado: ReturnType<typeof setTimeout> | null = null;
+
+  function crearOpcion(valor: string, etiqueta: string): HTMLOptionElement {
+    const opcion = document.createElement('option');
+    opcion.value = valor;
+    opcion.textContent = etiqueta;
+    return opcion;
+  }
+
+  function sincronizarControles() {
+    const filtros = obtenerFiltrosAnalisis();
+    if (selectAnio) selectAnio.value = String(filtros.anio);
+    if (selectDepartamento)
+      selectDepartamento.value = filtros.departamento ?? '';
+    if (selectModoMinsal) selectModoMinsal.value = filtros.modoMinsal;
+    if (semana) semana.value = String(filtros.semana);
+    if (desde) desde.value = String(filtros.semanaDesde);
+    if (hasta) hasta.value = String(filtros.semanaHasta);
+    if (semanaValor) semanaValor.value = etiquetaSemana(filtros.semana);
+    if (desdeValor) desdeValor.value = etiquetaSemana(filtros.semanaDesde);
+    if (hastaValor) hastaValor.value = etiquetaSemana(filtros.semanaHasta);
+    document
+      .querySelectorAll<HTMLInputElement>('input[name="analisis-serie"]')
+      .forEach((radio) => {
+        radio.checked = radio.value === filtros.serie;
+      });
+    if (selectComparar) {
+      for (const opcion of selectComparar.options) {
+        opcion.selected = filtros.comparar.includes(opcion.value);
+      }
+    }
+    if (ayudaComparar) {
+      ayudaComparar.textContent = `Use Ctrl o Cmd para seleccionar varios. ${filtros.comparar.length} de 4 seleccionados.`;
+    }
+  }
+
+  async function cargarDepartamentos(anio: AnioAnalisisDengue) {
+    const idCarga = ++cargaActual;
+    if (estadoCarga)
+      estadoCarga.textContent = `Cargando departamentos para ${anio}…`;
+    try {
+      const datos = await obtenerDatasetAnalitico(anio);
+      if (idCarga !== cargaActual) return;
+      if (selectDepartamento) {
+        selectDepartamento.replaceChildren(
+          crearOpcion('', 'Todos'),
+          ...datos.departamentos.map((departamento) =>
+            crearOpcion(departamento.codigo, departamento.nombre),
+          ),
+        );
+      }
+      if (selectComparar) {
+        selectComparar.replaceChildren(
+          ...datos.departamentos.map((departamento) =>
+            crearOpcion(departamento.codigo, departamento.nombre),
+          ),
+        );
+      }
+      sincronizarControles();
+      if (estadoCarga)
+        estadoCarga.textContent = `${datos.departamentos.length} departamentos disponibles para ${anio}.`;
+    } catch {
+      if (idCarga !== cargaActual) return;
+      if (estadoCarga)
+        estadoCarga.textContent =
+          'No fue posible cargar la lista de departamentos.';
+    }
+  }
+
+  selectAnio?.addEventListener('change', () => {
+    const anio = Number(selectAnio.value) as AnioAnalisisDengue;
+    actualizarFiltrosAnalisis({ anio });
+    cargarDepartamentos(anio);
+  });
+  selectDepartamento?.addEventListener('change', () => {
+    actualizarFiltrosAnalisis({
+      departamento: selectDepartamento.value || null,
+    });
+  });
+  selectModoMinsal?.addEventListener('change', () => {
+    actualizarFiltrosAnalisis({
+      modoMinsal: selectModoMinsal.value as ModoMinsal,
+    });
+  });
+  semana?.addEventListener('input', () =>
+    actualizarFiltrosAnalisis({ semana: Number(semana.value) }),
+  );
+  desde?.addEventListener('input', () =>
+    actualizarFiltrosAnalisis({ semanaDesde: Number(desde.value) }),
+  );
+  hasta?.addEventListener('input', () =>
+    actualizarFiltrosAnalisis({ semanaHasta: Number(hasta.value) }),
+  );
+  document
+    .querySelectorAll<HTMLInputElement>('input[name="analisis-serie"]')
+    .forEach((radio) => {
+      radio.addEventListener('change', () => {
+        if (radio.checked)
+          actualizarFiltrosAnalisis({
+            serie: radio.value as SerieEpidemiologica,
+          });
+      });
+    });
+  selectComparar?.addEventListener('change', () => {
+    const seleccionados = [...selectComparar.selectedOptions]
+      .map((opcion) => opcion.value)
+      .slice(0, 4);
+    actualizarFiltrosAnalisis({ comparar: seleccionados });
+    sincronizarControles();
+  });
+  botonExportar?.addEventListener('click', async () => {
+    if (!botonExportar) return;
+    const textoOriginal = botonExportar.textContent || 'Descargar vista actual';
+    botonExportar.disabled = true;
+    botonExportar.textContent = 'Preparando...';
+    if (estadoAcciones) estadoAcciones.textContent = 'Preparando CSV…';
+    try {
+      const filas = await exportarAnalisisCsv(obtenerFiltrosAnalisis());
+      if (estadoAcciones)
+        estadoAcciones.textContent = `CSV generado con ${filas} filas filtradas.`;
+    } catch {
+      if (estadoAcciones)
+        estadoAcciones.textContent = 'No fue posible generar el CSV.';
+    } finally {
+      botonExportar.disabled = false;
+      botonExportar.textContent = textoOriginal;
+    }
+  });
+  botonCopiar?.addEventListener('click', async () => {
+    if (!botonCopiar) return;
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      if (estadoAcciones)
+        estadoAcciones.textContent = 'Enlace reproducible copiado.';
+      botonCopiar.textContent = '¡Copiado!';
+      botonCopiar.classList.add('text-accent', 'border-accent/50');
+      if (timerCopiado) clearTimeout(timerCopiado);
+      timerCopiado = setTimeout(() => {
+        botonCopiar.textContent = 'Copiar enlace';
+        botonCopiar.classList.remove('text-accent', 'border-accent/50');
+      }, 2000);
+    } catch {
+      if (estadoAcciones)
+        estadoAcciones.textContent =
+          'No se pudo copiar automáticamente; use la dirección del navegador.';
+    }
+  });
+
+  suscribirFiltrosAnalisis(sincronizarControles);
+  cargarDepartamentos(obtenerFiltrosAnalisis().anio);
+</script>
