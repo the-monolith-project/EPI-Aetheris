@@ -1,6 +1,8 @@
 node_modules/
 .astro/
 dist/
+test-results/
+playwright-report/
 .git
 .env
 *.md

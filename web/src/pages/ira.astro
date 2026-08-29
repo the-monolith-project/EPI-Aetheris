@@ -18,26 +18,35 @@ import MapaIRA from '../components/MapaIRA.astro';
 <Layout title="EPI-Aetheris — IRA">
   <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
     <header class="mb-8 max-w-3xl">
-      <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">
+      <p
+        class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+      >
         Capa descriptiva · sin clasificación de riesgo
       </p>
-      <h1 class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">
+      <h1
+        class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
+      >
         Infección Respiratoria Aguda (IRA) en los boletines MINSAL
       </h1>
       <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
-        Los mismos boletines PDF usados para dengue publican una tabla departamental de IRA:
-        dato real, público y ya cargado en el sistema. Es lectura descriptiva de lo que MINSAL
-        publicó (2018-2023, sin 2020) -- no predice nada y no asigna niveles de riesgo.
+        Los mismos boletines PDF usados para dengue publican una tabla
+        departamental de IRA: dato real, público y ya cargado en el sistema. Es
+        lectura descriptiva de lo que MINSAL publicó (2018-2023, sin 2020) -- no
+        predice nada y no asigna niveles de riesgo.
       </p>
       <div
         class="mt-4 rounded-xl border border-border bg-secondary px-4 py-3 font-sans text-sm leading-relaxed text-secondary-ink"
       >
-        <strong>Estado del dato:</strong> cargado. IRA vive en <code class="font-mono text-xs">casos_epidemiologicos</code>
-        con <code class="font-mono text-xs">clasificacion='notificado'</code> (ADR 0011) -- un solo
-        conteo clínico por departamento, sin split probable/confirmado ni confirmación de
-        laboratorio declarada. Esta página se alimenta de <code class="font-mono text-xs">/api/ira/departamental</code>
-        y <code class="font-mono text-xs">/api/ira/temporal/{'{codigo}'}</code>, la misma API que
-        sirve el panel de dengue.
+        <strong>Estado del dato:</strong> cargado. IRA vive en <code
+          class="font-mono text-xs">casos_epidemiologicos</code
+        >
+        con <code class="font-mono text-xs">clasificacion='notificado'</code> (ADR
+        0011) -- un solo conteo clínico por departamento, sin split probable/confirmado
+        ni confirmación de laboratorio declarada. Esta página se alimenta de <code
+          class="font-mono text-xs">/api/ira/departamental</code
+        >
+        y <code class="font-mono text-xs">/api/ira/temporal/{'{codigo}'}</code>,
+        la misma API que sirve el panel de dengue.
       </div>
     </header>
 
@@ -47,33 +56,44 @@ import MapaIRA from '../components/MapaIRA.astro';
       </div>
       <CurvaIRADepartamental />
 
-      <section class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
+      <section
+        class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+      >
         <div class="flex items-start gap-3">
-          <span class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+          <span
+            class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+            aria-hidden="true"></span>
           <div>
-            <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">Cómo leer esta serie</h2>
-            <ul class="mt-2 max-w-3xl list-disc space-y-2 pl-5 font-sans text-sm leading-relaxed text-ink-muted">
+            <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+              Cómo leer esta serie
+            </h2>
+            <ul
+              class="mt-2 max-w-3xl list-disc space-y-2 pl-5 font-sans text-sm leading-relaxed text-ink-muted"
+            >
               <li>
-                <strong class="text-ink">Es un conteo clínico único.</strong> La tabla departamental
-                de IRA no separa probable/confirmado; el encabezado "Probable/Confirmado" de la
-                tabla nacional por edad es un error de plantilla de MINSAL (su segunda columna es
-                la tasa x100mil).
+                <strong class="text-ink">Es un conteo clínico único.</strong> La tabla
+                departamental de IRA no separa probable/confirmado; el encabezado
+                "Probable/Confirmado" de la tabla nacional por edad es un error de
+                plantilla de MINSAL (su segunda columna es la tasa x100mil).
               </li>
               <li>
-                <strong class="text-ink">La fuente publica acumulados desde la SE1.</strong> La
-                serie semanal se obtiene por diferencia entre boletines consecutivos, igual que la
-                trampa ya documentada en dengue. El primer corte de cada año abarca desde SE1.
+                <strong class="text-ink"
+                  >La fuente publica acumulados desde la SE1.</strong
+                > La serie semanal se obtiene por diferencia entre boletines consecutivos,
+                igual que la trampa ya documentada en dengue. El primer corte de cada
+                año abarca desde SE1.
               </li>
               <li>
-                <strong class="text-ink">Los huecos son reales y se dejan vacíos.</strong> Semanas
-                sin boletín utilizable (vacaciones, tabla renderizada como imagen -- casi todo
-                2019 --, totales que no cuadran) y correcciones retroactivas de MINSAL no se
-                interpolan ni se rellenan.
+                <strong class="text-ink"
+                  >Los huecos son reales y se dejan vacíos.</strong
+                > Semanas sin boletín utilizable (vacaciones, tabla renderizada como
+                imagen -- casi todo 2019 --, totales que no cuadran) y correcciones
+                retroactivas de MINSAL no se interpolan ni se rellenan.
               </li>
               <li>
-                <strong class="text-ink">2020 no está en el corpus</strong>, por las mismas razones
-                documentadas para dengue: colapso de notificación durante la pandemia, no baja
-                transmisión.
+                <strong class="text-ink">2020 no está en el corpus</strong>, por
+                las mismas razones documentadas para dengue: colapso de
+                notificación durante la pandemia, no baja transmisión.
               </li>
             </ul>
           </div>
