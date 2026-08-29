@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import CurvaIRADepartamental from '../components/CurvaIRADepartamental.astro';
 import MapaIRA from '../components/MapaIRA.astro';
 
-// Sección aparte del panel de dengue, a propósito: IRA es otro evento
+// Sección aparte de la vista dengue, a propósito: IRA es otro evento
 // (tipos_evento es catálogo justamente para esto) con otra definición de
 // caso (conteo clínico único "notificado", sin split probable/confirmado --
 // ADR 0011, aceptado 2026-08-22). Ya está cargada en Postgres
@@ -46,7 +46,7 @@ import MapaIRA from '../components/MapaIRA.astro';
           class="font-mono text-xs">/api/ira/departamental</code
         >
         y <code class="font-mono text-xs">/api/ira/temporal/{'{codigo}'}</code>,
-        la misma API que sirve el panel de dengue.
+        la misma API que sirve la vista dengue.
       </div>
     </header>
 

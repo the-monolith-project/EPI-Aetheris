@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
 const URL_INICIAL =
-  '/panel?year=2023&week=1&fromWeek=1&toWeek=53&serie=probable&minsal=semana';
+  '/dengue?year=2023&week=1&fromWeek=1&toWeek=53&serie=probable&minsal=semana';
 
 async function esperarPanel(page: import('@playwright/test').Page) {
   await expect(page.locator('#analisis-filtros-estado')).toContainText(
@@ -69,7 +69,7 @@ test('restaura la URL, limita la comparación y exporta el filtro actual', async
   page,
 }) => {
   await page.goto(
-    '/panel?year=2019&week=24&fromWeek=10&toWeek=30&dept=SV-LI&serie=confirmado&compare=SV-LI%2CSV-SS&minsal=ytd',
+    '/dengue?year=2019&week=24&fromWeek=10&toWeek=30&dept=SV-LI&serie=confirmado&compare=SV-LI%2CSV-SS&minsal=ytd',
   );
   await esperarPanel(page);
 
@@ -120,11 +120,11 @@ test('restaura la URL, limita la comparación y exporta el filtro actual', async
   await expect(page.locator('#analisis-modo-minsal')).toHaveValue('ytd');
 });
 
-test('el panel no presenta violaciones automáticas WCAG A o AA', async ({
+test('la vista dengue no presenta violaciones automáticas WCAG A o AA', async ({
   page,
 }) => {
   await page.goto(
-    '/panel?year=2023&week=1&fromWeek=1&toWeek=20&dept=SV-SS&serie=probable&minsal=semana',
+    '/dengue?year=2023&week=1&fromWeek=1&toWeek=20&dept=SV-SS&serie=probable&minsal=semana',
   );
   await esperarPanel(page);
   await expect(page.locator('#perfil-calidad-estado')).toContainText(
