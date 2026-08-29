@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-ANIOS_IRA = [2018, 2019, 2021, 2022, 2023]  # 2020 ausente del corpus, ver CLAUDE.md
+ANIOS_IRA = [2018, 2019, 2021, 2022, 2023]  # 2020 ausente del corpus, ver AGENTS.md
 
 AVISO_HONESTIDAD_IRA = (
     "Infección Respiratoria Aguda (IRA), boletines MINSAL 2018-2023 (sin 2020, mismo "

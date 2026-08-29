@@ -4,7 +4,7 @@
 
 ## Contexto
 
-El proyecto promete que cualquiera clone el repositorio, levante con un comando (`docker compose up`) y obtenga el sistema funcionando, con costo de replicación cercano a cero (ver `CLAUDE.md`, invariantes de infraestructura). Pero `backend/ingestion/data/raw/` (264 boletines MINSAL) y `backend/ingestion/data/interim/` no se versionan por regla explícita — así que hoy quien clona obtiene una base vacía: sin datos hasta correr manualmente el pipeline completo de ingesta (parser MINSAL + Open-Meteo, con rate-limits ya confirmados) o el runner de migraciones no alcanza a llenarla, porque las migraciones son esquema, no datos.
+El proyecto promete que cualquiera clone el repositorio, levante con un comando (`docker compose up`) y obtenga el sistema funcionando, con costo de replicación cercano a cero (ver `AGENTS.md`, invariantes de infraestructura). Pero `backend/ingestion/data/raw/` (264 boletines MINSAL) y `backend/ingestion/data/interim/` no se versionan por regla explícita — así que hoy quien clona obtiene una base vacía: sin datos hasta correr manualmente el pipeline completo de ingesta (parser MINSAL + Open-Meteo, con rate-limits ya confirmados) o el runner de migraciones no alcanza a llenarla, porque las migraciones son esquema, no datos.
 
 Se evaluaron tres salidas (`docs/contexto/02-decisiones-abiertas.md`, punto C original antes de dividirse):
 
