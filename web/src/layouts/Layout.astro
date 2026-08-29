@@ -28,6 +28,10 @@ const NAV = [
   // Selección curada de docs/ y docs/adr/ del repo, renderizada a HTML --
   // ver web/src/content.config.ts para qué documentos entran y por qué.
   { href: '/biblioteca', etiqueta: 'Biblioteca' },
+  // Sin backend: la página solo enruta a GitHub Issues del repo. Recibir
+  // sugerencias con formulario propio exigiría tabla nueva + ADR y guardar
+  // texto de terceros (choca con "sin datos personales").
+  { href: '/sugerencias', etiqueta: 'Sugerencias' },
 ];
 ---
 
