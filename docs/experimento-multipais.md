@@ -23,7 +23,7 @@ verificar aquí: entrenar con varios países de las Américas eleva el número d
 año-con-brote de 2 a ~97, lo que podría hacer aprendible la relación clima → brote.
 
 **Esto toca el estatuto cerrado de alcance geográfico** (nacional El Salvador para el MVP; lo
-multinacional era argumento de escalabilidad, explícitamente no un entregable -- ver `CLAUDE.md`).
+multinacional era argumento de escalabilidad, explícitamente no un entregable -- ver `AGENTS.md`).
 Este documento cierra en números; adoptar cualquier vía multipaís en producción es decisión del
 coordinador.
 

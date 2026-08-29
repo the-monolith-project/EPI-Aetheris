@@ -8,7 +8,7 @@ Salvador correlaciona +0.280 con la señal regional -- último de los 18).
 
 ADVERTENCIA DE ALCANCE: esto toca el estatuto cerrado de alcance geográfico
 (nacional El Salvador para el MVP; lo multinacional era argumento de
-escalabilidad, no entregable -- ver CLAUDE.md). Este script es un
+escalabilidad, no entregable -- ver AGENTS.md). Este script es un
 experimento, no cambia producción: no escribe a Postgres, no toca
 dataset_modelado.csv / clasificador_riesgo_nacional_v1.joblib /
 metricas_modelo.json, no modifica construir_dataset_modelado.py,
@@ -30,7 +30,7 @@ el experimento deja de hablar del modelo que se entrega.
 Datos de entrada:
   Temporal_extract_PAHO_V1_3.csv, del repositorio oficial de OpenDengue
   (https://github.com/OpenDengue/master-repo -> assets/Temporal_extract_
-  PAHO_V1_3.zip). NO se versiona (regla de datos crudos, CLAUDE.md) --
+  PAHO_V1_3.zip). NO se versiona (regla de datos crudos, AGENTS.md) --
   descomprimir a backend/ingestion/data/raw/opendengue/, ya gitignoreado.
 
 Tres corridas, tres preguntas distintas -- no se mezclan en la conclusión:

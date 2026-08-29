@@ -2,7 +2,7 @@
 
 Este archivo define cómo deben trabajar los agentes de programación dentro de este repositorio.
 
-Su propósito no es duplicar la documentación del proyecto, sino indicar **qué fuentes consultar, qué reglas respetar y cómo proceder antes de modificar código**.
+Su propósito es indicar **qué fuentes consultar, qué reglas respetar y cómo proceder antes de modificar código**. No duplica la documentación de `docs/`, salvo el contexto técnico consolidado en la sección 17 (antes en un `CLAUDE.md` aparte).
 
 ---
 
@@ -458,25 +458,85 @@ Cuando surja conocimiento nuevo:
 * cambio histórico relevante → `docs/contexto/CHANGELOG.md`;
 * resultado reproducible de una corrida → documentación específica de la corrida cuando corresponda.
 
-No dupliques información extensa entre `AGENTS.md`, `CLAUDE.md` y `docs/`.
+No dupliques información extensa entre `AGENTS.md` y `docs/`.
 
-Este archivo debe mantenerse principalmente como **guía de operación para agentes**.
+La sección 17 de este archivo recoge el contexto técnico acumulado; el resto debe mantenerse principalmente como **guía de operación para agentes**. Cuando una información sea parte del conocimiento permanente del proyecto, debe registrarse en `docs/` según la estructura existente, no solo aquí.
 
 ---
 
-## 17. CLAUDE.md
+## 17. Contexto técnico del proyecto
 
-El repositorio contiene también:
+Referencia rápida. El detalle vive en `docs/`; aquí solo lo que conviene tener a mano antes de tocar código. Si `docs/contexto/` contradice algo, aplica la precedencia de la sección 4.
 
-`CLAUDE.md`
+### Qué es y qué no es
 
-Puede contener contexto técnico adicional útil acumulado durante el desarrollo.
+EPI-Aetheris es un sistema de vigilancia epidemiológica **descriptiva** (piloto: dengue e IRA en El Salvador). Ingesta casos históricos y predictores ambientales, los alinea por semana epidemiológica y los expone vía FastAPI + mapa Leaflet.
 
-Puedes consultarlo cuando la tarea lo requiera, especialmente si describe una restricción o comportamiento que todavía no ha sido trasladado a documentación neutral.
+- **El clasificador predictivo está retirado** (pivote "Camino Ancho", cerrado 2026-08-18 — `docs/informe-cierre-rescate-prediccion.md`). El código entrenado (`entrenar_clasificador.py` y afines) se conserva como referencia histórica: **no lo extiendas ni presentes su salida como predicción en vivo.**
+- El proyecto es descriptivo, no predictivo: "qué está pasando y qué tan inusual es contra su propia historia", nunca "qué va a pasar".
+- El aporte es de **ingeniería de software** (sistema libre, contenedorizado, reproducible), no de novedad epidemiológica ni un oráculo médico.
+- Modelo de dominio **agnóstico a enfermedad y región**: `tipos_evento` y `regiones` son catálogos, no columnas fijas.
 
-Sin embargo, evita mantener nuevas decisiones únicamente en archivos específicos de un agente.
+### Módulos Camino Ancho
 
-Cuando una información sea parte del conocimiento permanente del proyecto, debe registrarse en `docs/` según la estructura existente.
+- **M1 — Idoneidad biofísica (`Iv`)** y **M2 — Anomalía climática continua (Z-score leave-one-out)** — implementados en `backend/api/idoneidad.py`, servidos vía `GET /api/v1/spatial/current` y `/api/v1/temporal/{codigo}`. M2 es serie continua: sin alerta binaria, sin lenguaje de lead-time.
+- **M3 — Presión epidemiológica relativa** — implementado en `backend/api/presion.py` (fórmula **cerrada** por la coordinación 2026-08-21, `docs/modulo-3-presion-epidemiologica.md`): percentil histórico leave-one-out por departamento, `probable` y `confirmado` como series **separadas** (nunca `total`), años base 2018/2019/2021/2022/2023, ventana ±1 semana, piso de ≥3 años, cortes P50/P75. Salida = percentil + lectura cualitativa (baja/media/alta), **nunca alerta binaria**; celdas insuficientes → `null` + nota. Vía `GET /api/v1/presion/current` y `/api/v1/presion/temporal/{codigo}`. No ajustes estos parámetros sin nueva decisión de la coordinación.
+- **M4 — Confianza de vigilancia** — no implementado, sin fórmula aprobada. No la inventes.
+
+Nada de M1–M3 se persiste (se calcula on-request, sin cambios de esquema). El selector de capas del mapa (`web/src/components/MapaDepartamentos.astro`) tiene botones para M1/M2 y para las dos series de M3, y un placeholder deshabilitado para M4. IRA se sirve aparte (`backend/api/ira.py`, UI en `/ira`) y **no** computa módulos Camino Ancho.
+
+### Arquitectura
+
+Tres servicios Docker (`docker-compose.yml`, red `aetheris_network`):
+
+- **`db`** — PostgreSQL 15. El esquema se carga desde `db/migrations/*.sql` **solo una vez, sobre volumen vacío**. Para una base ya inicializada usa el runner de ADR 0009: `python db/aplicar_migraciones.py --bootstrap` una vez, luego `python db/aplicar_migraciones.py` tras añadir cada migración (corre desde el host contra `localhost:5432`, sin rollback — una migración mala se corrige con otra migración).
+- **`backend`** (`./backend`) — FastAPI + `psycopg2` directo, sin ORM. Entrada: `backend/api/main.py`.
+- **`web`** (`./web`) — Astro + TypeScript + Leaflet.
+
+### Valores controlados del esquema — reutiliza verbatim, nunca inventes
+
+`variables_ambientales.variable` es texto libre **sin `CHECK`**: un typo crea una segunda serie separada en silencio. Usa exactamente estas cadenas:
+
+`temp_max`, `temp_min`, `temp_media`, `precipitation_sum`, `precipitation_hours`, `humedad_relativa_media`, `punto_rocio`, `oni_anom`
+
+(`et0_fao` está deprecado, nunca se carga. `oni_anom` = anomalía ONI de NOAA, ADR 0008, bajo región `SV` nacional. Añadir un predictor = añadir su string a esta lista en la misma sesión, no en el call site.)
+
+- `casos_epidemiologicos.clasificacion`: `probable`, `confirmado`, `total` (agregado de OpenDengue, solo `fuente_id=opendengue_v1_3` nacional — **NO** equivale a `confirmado`), `notificado` (departamental sin split probable/confirmado, p.ej. IRA — ADR 0011). Nunca sumes `conteo` entre valores de `clasificacion` sin filtrar primero.
+- `boletines_procesados.estado`: `pendiente`, `ok`, `revision_manual`, `error`, `ausencia_esperada` (ADR 0004), `sin_texto_extraible` (ADR 0007).
+- `boletines_procesados.familia_esquema`: `A` o `B`.
+- `fuentes_datos.codigo`: `opendengue_v1_3`, `minsal_pdf`, `open_meteo_era5_land`, `open_meteo_era5` (ADR 0006 — `era5` es exclusivo para `precipitation_sum`/`precipitation_hours`), `noaa_oni`.
+- `regiones.codigo`: ISO 3166-2:SV (**sin verificar aún** contra el GeoJSON de Leaflet — confírmalo antes de usarlo como clave de join).
+- Semanas epidemiológicas: **PAHO/CDC (MMWR), no ISO 8601** — usa la librería `epiweeks`, no recalcules límites a mano.
+
+### Fuentes de datos
+
+Las trampas empíricas —MINSAL (el año impreso en el PDF no es fiable; dos familias de tabla detectadas **por documento**, nunca por rango de año; celdas vacías = `0`; fila "Otros países"; Probable/Confirmado son **acumulados desde SE1** que hay que desacumular por diferencias; boletines de vacaciones sin tabla; ~49/52 semanas reales), OpenDengue (`case_definition_standardised` siempre `Total`; resolver la semana por coincidencia exacta de `calendar_start_date`), Open-Meteo (`era5_land` para temp/humedad/rocío + `era5` para precipitación, nunca `best_match`; ceros falsos de precipitación; rate-limit `429` por minuto)— están documentadas con evidencia en **`docs/contexto/03-fuentes-de-datos.md`**. Léela antes de tocar cualquier pipeline de ingesta. No reimplementes la desacumulación MINSAL desde cero: existe validada en `backend/ingestion/corrida_distribucion.py` y en producción en `backend/ingestion/minsal/parser.py`.
+
+**2020 está deliberadamente ausente** de la ventana departamental (subregistro real por covid + riesgo de extracción) — no lo "arregles". Es una exclusión de ventana de entrenamiento: no filtres 2020 durante la ingesta. La serie nacional de OpenDengue sí muestra 2020 con nota explicativa.
+
+### Convenciones del repo
+
+- Contenido de dominio (tablas, columnas, comentarios, docstrings) en **español**.
+- Extiende los catálogos (`tipos_evento` / `regiones` / `fuentes_datos`) en vez de añadir columnas por enfermedad o país.
+- Datos crudos e intermedios **no se versionan** (`backend/ingestion/data/raw/` y `.../interim/` gitignoreados). Excepción deliberada: `db/seed/seed_datos_reales.sql` (ADR 0010, volcado `pg_dump --data-only` de las tablas de hechos, montado en `/docker-entrypoint-initdb.d/` para que `git clone` + `docker compose up` dé un sistema con datos reales).
+- Valida PDFs descargados por firma de bytes (`%PDF`), no por `Content-Type` (el servidor devuelve `application/octet-stream`).
+
+### Decisiones abiertas
+
+`docs/contexto/02-decisiones-abiertas.md` es la fuente. No resuelvas unilateralmente: la fórmula de M4 y dónde vive su salida, las coordenadas departamentales para Open-Meteo, si la exclusión de 2020 gobierna la ingesta, y si algún clasificador se reactiva (la línea predictiva está cerrada — no la resucites sin instrucción explícita).
+
+### Comandos
+
+```bash
+docker-compose up --build          # todo: API :8000 (/health), web :4321, Postgres :5432
+```
+
+Variables de entorno desde `.env` (copiar de `.env.example`; nunca commitear `.env`).
+
+- **Backend fuera de Docker:** `cd backend && pip install -r requirements.txt && uvicorn api.main:app --reload` (entorno Arch — prefiere virtualenv).
+- **Web fuera de Docker:** `cd web && pnpm install && pnpm dev|build|preview` (pnpm vía Corepack, fijado a v9 — **no `npm`**).
+- **Tests:** pytest **desde `backend/`** (`pip install -r requirements.txt -r requirements-dev.txt`, luego `python -m pytest ingestion/tests/ api/tests/`). Los tests con BD se **saltan** (no fallan) si no hay Postgres en `localhost:5432`. No hay linter ni CI en el repo.
+- **Multi-worktree (Orca ADE):** `docker-compose.yml` usa `container_name` y puertos fijos compartidos a nivel del daemon Docker — **solo un worktree corre `docker-compose up` a la vez**. No lo "arregles" namespaceando puertos/nombres por worktree sin preguntar.
 
 ---
 
