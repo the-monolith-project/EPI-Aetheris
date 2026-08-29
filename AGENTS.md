@@ -415,6 +415,13 @@ Solo implementa cambios cuando la solicitud incluya explícitamente corregir, mo
 
 ## 15. Git
 
+### Flujo de ramas
+
+* `main` es la rama de **release**: es lo que Render despliega (ver `render.yaml`). Solo recibe PRs desde `dev`.
+* `dev` es la rama de **integración** y la rama por defecto del repo. Todas las PRs de features y fixes van contra `dev`.
+* Cuando `dev` está estable se abre una PR `dev → main`; ese merge dispara el despliegue.
+* Ramas de trabajo: `feat/*`, `fix/*`, `chore/*`, `docs/*`, partiendo de `dev`.
+
 Respeta el estado actual del repositorio.
 
 Antes de modificar:
