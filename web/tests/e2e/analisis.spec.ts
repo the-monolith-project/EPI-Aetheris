@@ -50,6 +50,7 @@ test('sincroniza filtros, mapa, scatter, departamento, heatmap y serie', async (
   await expect(page.locator('#comparacion-resumen')).toContainText(
     'San Salvador',
   );
+  await expect(page.locator('#comparacion-temporadas-grafica')).toBeVisible();
 
   const celdaHeatmap = page
     .locator(
@@ -104,6 +105,9 @@ test('restaura la URL, limita la comparación y exporta el filtro actual', async
   await expect(
     page.locator('#comparacion-departamentos-resumen'),
   ).toContainText('Ahuachapán');
+  await expect(
+    page.locator('#comparacion-departamentos-grafica'),
+  ).toBeVisible();
 
   const descargaPendiente = page.waitForEvent('download');
   await page.locator('#analisis-exportar').click();
@@ -162,6 +166,63 @@ test('aplica vistas del workspace sin alterar los filtros epidemiológicos', asy
     page.locator('[data-panel-workspace="calendario"]'),
   ).toBeHidden();
   await expect(page.locator('#analisis-semana')).toHaveValue('31');
+});
+
+test('optimiza la vista general y conserva el layout responsive', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+
+  const workspace = page.locator('#analisis');
+  const columnaMapa = page.locator('[data-columna-workspace="mapa"]');
+  const columnaAnalisis = page.locator('[data-columna-workspace="analisis"]');
+  const mapa = page.locator('[data-panel-workspace="mapa"]');
+  const presion = page.locator('[data-panel-workspace="presion"]');
+  const temporadas = page.locator('[data-panel-workspace="temporadas"]');
+
+  await expect(columnaMapa).toHaveClass(/xl:col-span-4/);
+  await expect(columnaAnalisis).toHaveClass(/xl:col-span-8/);
+  await expect(page.locator('#comparacion-temporadas-grafica')).toBeHidden();
+  await expect(page.locator('#comparacion-departamentos-grafica')).toBeHidden();
+
+  const cajas = await Promise.all([
+    workspace.boundingBox(),
+    mapa.boundingBox(),
+    presion.boundingBox(),
+    temporadas.boundingBox(),
+  ]);
+  const [cajaWorkspace, cajaMapa, cajaPresion, cajaTemporadas] = cajas;
+  expect(cajaWorkspace).not.toBeNull();
+  expect(cajaMapa).not.toBeNull();
+  expect(cajaPresion).not.toBeNull();
+  expect(cajaTemporadas).not.toBeNull();
+  expect(cajaWorkspace!.width).toBeGreaterThan(1750);
+  expect(cajaMapa!.width / cajaWorkspace!.width).toBeGreaterThan(0.3);
+  expect(cajaMapa!.width / cajaWorkspace!.width).toBeLessThan(0.35);
+  expect(cajaPresion!.x).toBeGreaterThan(cajaMapa!.x + cajaMapa!.width);
+  expect(cajaTemporadas!.y).toBeGreaterThan(cajaPresion!.y);
+  expect(cajaTemporadas!.y).toBeLessThan(cajaMapa!.y + cajaMapa!.height);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const cajasMoviles = await Promise.all([
+    workspace.boundingBox(),
+    mapa.boundingBox(),
+    presion.boundingBox(),
+  ]);
+  expect(cajasMoviles[0]).not.toBeNull();
+  expect(cajasMoviles[1]).not.toBeNull();
+  expect(cajasMoviles[2]).not.toBeNull();
+  expect(cajasMoviles[0]!.x).toBeGreaterThanOrEqual(0);
+  expect(cajasMoviles[0]!.x + cajasMoviles[0]!.width).toBeLessThanOrEqual(390);
+  expect(cajasMoviles[2]!.y).toBeGreaterThan(
+    cajasMoviles[1]!.y + cajasMoviles[1]!.height,
+  );
+  await expect(page.locator('#heatmap-departamentos').locator('..')).toHaveCSS(
+    'overflow-x',
+    'auto',
+  );
 });
 
 test('muestra y oculta paneles sin modificar el filtro activo', async ({

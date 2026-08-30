@@ -12,7 +12,7 @@
     </p>
   </header>
 
-  <div class="mt-4 overflow-x-auto">
+  <div id="comparacion-temporadas-grafica" class="mt-4 overflow-x-auto" hidden>
     <div
       id="comparacion-temporadas"
       class="min-h-[340px] min-w-[720px]"
@@ -52,6 +52,9 @@
   }
 
   const contenedor = document.getElementById('comparacion-temporadas');
+  const marcoGrafica = document.getElementById(
+    'comparacion-temporadas-grafica',
+  );
   const resumen = document.getElementById('comparacion-resumen');
   let revision = 0;
   let filtrosActuales = obtenerFiltrosAnalisis();
@@ -61,11 +64,13 @@
     const idRevision = ++revision;
     if (!filtros.departamento) {
       contenedor.replaceChildren();
+      if (marcoGrafica) marcoGrafica.hidden = true;
       if (resumen)
         resumen.textContent =
           'Seleccione un departamento en los filtros o en el mapa.';
       return;
     }
+    if (marcoGrafica) marcoGrafica.hidden = false;
     if (resumen) resumen.textContent = 'Cargando temporadas históricas…';
 
     try {
@@ -174,6 +179,7 @@
     } catch {
       if (idRevision !== revision) return;
       contenedor.replaceChildren();
+      if (marcoGrafica) marcoGrafica.hidden = true;
       if (resumen)
         resumen.textContent =
           'No fue posible cargar la comparación de temporadas.';
