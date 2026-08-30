@@ -5,3 +5,7 @@
 ## 2026-08-28 - FastAPI file IO overhead in route handlers
 **Learning:** FastAPI route handlers run synchronously by default unless declared with `async def`. Performing synchronous disk I/O (like reading a CSV file via `csv.DictReader` inside the `/api/riesgo-nacional` endpoint) on every request without caching blocks the thread and significantly increases the endpoint latency when dealing with static artifact files.
 **Action:** Implemented an in-memory global cache (`_dataset_riesgo_cache`) to parse the CSV file only once upon the first request, avoiding unnecessary disk access and reducing overhead for subsequent requests.
+
+## 2026-08-29 - ResizeObserver Plotly re-rendering bottleneck
+**Learning:** ResizeObservers calling render functions containing heavy chart plotting (e.g. `@observablehq/plot`) can severely degrade client-side performance. On a window resize event, the observer fires repeatedly, causing redundant synchronous recalculations and DOM manipulations which block the main thread.
+**Action:** Debounce the ResizeObserver callback to throttle rendering until the resize event has concluded (e.g. 100ms debounce).
