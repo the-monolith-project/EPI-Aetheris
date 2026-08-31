@@ -20,8 +20,8 @@ const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 const ruta = Astro.url.pathname;
 const NAV = [
   { href: '/', etiqueta: 'Inicio' },
-  { href: '/panel', etiqueta: 'Dengue' },
-  // Sección aparte del panel de dengue: otro evento (ADR 0011, aceptado
+  { href: '/dengue', etiqueta: 'Dengue' },
+  // Sección aparte de la vista dengue: otro evento (ADR 0011, aceptado
   // 2026-08-22), ya cargado, pero sin capas Camino Ancho (Iv/anomalía/
   // presión) -- esas fórmulas siguen cerradas solo para dengue.
   { href: '/ira', etiqueta: 'IRA' },
@@ -120,7 +120,7 @@ const NAV = [
       <div class="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 lg:px-12">
         <p class="font-sans text-xs leading-relaxed text-deep-ink-muted">
           Datos públicos agregados (MINSAL, OpenDengue, Open-Meteo) &middot;
-          software libre y reproducible. Este panel es una ayuda de
+          software libre y reproducible. Esta herramienta es una ayuda de
           priorización, no un diagnóstico ni un pronóstico -- ninguna capa
           asigna un nivel de riesgo departamental.
         </p>
