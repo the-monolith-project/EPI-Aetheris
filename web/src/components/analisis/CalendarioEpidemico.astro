@@ -180,7 +180,7 @@
     filtrosActuales = filtros;
     void renderizar(filtros);
   });
-  new ResizeObserver(debounce(() => void renderizar(filtrosActuales), 100)).observe(
-    contenedor!,
-  );
+  new ResizeObserver(
+    debounce(() => void renderizar(filtrosActuales), 100),
+  ).observe(contenedor!);
 </script>
