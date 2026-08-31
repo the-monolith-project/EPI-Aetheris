@@ -79,3 +79,25 @@ def test_endpoint_pesado_tiene_umbral_propio(client_con_limite):
     assert 429 not in codigos[:2]
     respuesta_429 = next(r for r in respuestas if r.status_code == 429)
     assert respuesta_429.headers.get("access-control-allow-origin") == origin
+
+
+def test_ira_departamental_tiene_umbral_pesado(client_con_limite):
+    # /api/ira/departamental sumo RATE_LIMIT_HEAVY en la tarea de rendimiento
+    # (antes solo tenia el limite global): agrega con GROUP BY + JOIN sobre
+    # toda la ventana cargada, igual de pesado que /api/v1/spatial/current.
+    codigos = [
+        client_con_limite.get("/api/ira/departamental").status_code
+        for _ in range(4)
+    ]
+    assert codigos.count(429) >= 2
+    assert 429 not in codigos[:2]
+
+
+def test_casos_departamentales_tiene_umbral_pesado(client_con_limite):
+    # Mismo caso que /api/ira/departamental -- ver comentario arriba.
+    codigos = [
+        client_con_limite.get("/api/casos-departamentales").status_code
+        for _ in range(4)
+    ]
+    assert codigos.count(429) >= 2
+    assert 429 not in codigos[:2]
