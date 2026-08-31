@@ -1,14 +1,14 @@
-export function debounce<T extends (...args: any[]) => void>(
-  func: T,
+/** Trailing debounce: runs `func` once after calls stop for `wait` ms. */
+export function debounce<Args extends unknown[]>(
+  func: (...args: Args) => void,
   wait: number,
-): (...args: Parameters<T>) => void {
+): (...args: Args) => void {
   let timeout: ReturnType<typeof setTimeout> | null = null;
-  return function (...args: Parameters<T>) {
-    const later = () => {
+  return (...args: Args) => {
+    if (timeout !== null) clearTimeout(timeout);
+    timeout = setTimeout(() => {
       timeout = null;
       func(...args);
-    };
-    if (timeout !== null) clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
+    }, wait);
   };
 }
