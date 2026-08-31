@@ -4,10 +4,14 @@ import os
 from pathlib import Path
 
 import joblib
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 import psycopg2
 
 from .analisis import (
@@ -63,6 +67,45 @@ app = FastAPI(
     version="0.1.0"
 )
 
+# --- Rate limiting (issue #61) -------------------------------------------------
+# slowapi en memoria: el proceso es un solo worker de Uvicorn tanto en
+# docker-compose (--reload) como en Render (dockerCommand sin --workers), asi
+# que un contador por proceso ES el contador global. Si algun dia se pasa a
+# --workers N el limite efectivo seria N veces el configurado -- ahi tocaria
+# un backend compartido (Redis), no ahora.
+#
+# key_func: Uvicorn NO corre con --proxy-headers, y en Render el peer TCP es
+# el balanceador de la plataforma (una sola IP para todo el trafico). Sin
+# esto, todos los clientes compartirian un unico bucket y el limite global
+# estrangularia a todos los usuarios a la vez. Tomamos el primer salto de
+# X-Forwarded-For (el cliente real segun Render) y caemos a la IP del socket
+# solo en local/tests donde esa cabecera no existe.
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() != "false"
+RATE_LIMIT_DEFAULT = os.getenv("RATE_LIMIT_DEFAULT", "120/minute")
+# Umbral mas estricto para los endpoints que recalculan on-demand desde CSV +
+# modelo joblib y abren una conexion nueva a Postgres por request.
+RATE_LIMIT_HEAVY = os.getenv("RATE_LIMIT_HEAVY", "30/minute")
+
+limiter = Limiter(
+    key_func=_client_ip,
+    default_limits=[RATE_LIMIT_DEFAULT],
+    enabled=RATE_LIMIT_ENABLED,
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# Se anade ANTES del bloque CORS de abajo para que quede por DENTRO de
+# CORSMiddleware: asi la respuesta 429 tambien lleva las cabeceras
+# Access-Control-Allow-Origin y el frontend Astro ve un 429 legible en vez de
+# un error de red opaco.
+app.add_middleware(SlowAPIMiddleware)
+
 # El frontend Astro corre en un origen distinto (puerto 4321) al de esta API
 # (puerto 8000) tanto en desarrollo local como dentro de docker-compose.
 cors_origins = [
@@ -110,6 +153,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 
 @app.get("/health")
+@limiter.exempt
 def health_check():
     """Endpoint de comprobación de salud que valida la conexión directa a PostgreSQL."""
     try:
@@ -190,7 +234,8 @@ def _cargar_modelo():
 
 
 @app.get("/api/riesgo-nacional")
-def riesgo_nacional(anio: int | None = None, semana: int | None = None):
+@limiter.limit(RATE_LIMIT_HEAVY)
+def riesgo_nacional(request: Request, anio: int | None = None, semana: int | None = None):
     """Clasificación de riesgo NACIONAL para una semana epidemiológica dada
     (tarjetas 23/24/25, primera versión: semana fija, colores planos --
     selector de semanas viene después). Recalcula on-demand desde el dataset
@@ -345,7 +390,8 @@ AVISO_HONESTIDAD_IDONEIDAD = (
 
 
 @app.get("/api/v1/spatial/current")
-def idoneidad_espacial_actual(week: int, year: int):
+@limiter.limit(RATE_LIMIT_HEAVY)
+def idoneidad_espacial_actual(request: Request, week: int, year: int):
     """Índice de idoneidad biofísica (Iv) y anomalía climática continua
     (anomaly_sigma), por departamento, para la semana epidemiológica y año
     pedidos. Capa DESCRIPTIVA -- no hay campo de lead time ni de alerta
@@ -431,7 +477,8 @@ AVISO_HONESTIDAD_PRESION = (
 
 
 @app.get("/api/v1/analisis/dengue")
-def dataset_analitico_dengue(year: int):
+@limiter.limit(RATE_LIMIT_HEAVY)
+def dataset_analitico_dengue(request: Request, year: int):
     """Dataset anual compartido para exploracion descriptiva de dengue.
 
     Agrega casos MINSAL, M1, M2 y M3 por departamento/semana reutilizando
@@ -461,7 +508,8 @@ def dataset_analitico_dengue(year: int):
 
 
 @app.get("/api/v1/analisis/dengue/procedencia")
-def procedencia_analitica_dengue(year: int, week: int, dept: str, serie: str):
+@limiter.limit(RATE_LIMIT_HEAVY)
+def procedencia_analitica_dengue(request: Request, year: int, week: int, dept: str, serie: str):
     """Trazabilidad almacenada de una observacion departamental de dengue."""
     if year not in ANIOS_ANALISIS_DENGUE:
         disponibles = ", ".join(str(anio) for anio in ANIOS_ANALISIS_DENGUE)
@@ -504,7 +552,8 @@ def procedencia_analitica_dengue(year: int, week: int, dept: str, serie: str):
 
 
 @app.get("/api/v1/presion/current")
-def presion_espacial_actual(week: int, year: int):
+@limiter.limit(RATE_LIMIT_HEAVY)
+def presion_espacial_actual(request: Request, week: int, year: int):
     """Presión epidemiológica relativa (Módulo 3) por departamento, para la
     semana epidemiológica y año pedidos, en dos series separadas
     ('probable' y 'confirmado', nunca fusionadas). Estructura espejo de
