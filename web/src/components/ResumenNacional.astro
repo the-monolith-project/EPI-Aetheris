@@ -28,13 +28,7 @@
 </section>
 
 <script>
-  interface CasoSemanal {
-    semana_inicio: string;
-    anio: number;
-    conteo: number;
-  }
-
-  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  import { obtenerCasosNacionales } from '../lib/analisis-api';
 
   function formatearSemana(fecha: string): string {
     const d = new Date(`${fecha}T00:00:00`);
@@ -50,9 +44,7 @@
     if (!contenedor) return;
 
     try {
-      const resp = await fetch(`${API_BASE}/api/casos-nacional`);
-      if (!resp.ok) throw new Error('respuesta no OK');
-      const datos: CasoSemanal[] = await resp.json();
+      const datos = await obtenerCasosNacionales();
       if (datos.length === 0) throw new Error('sin datos');
 
       const total = datos.reduce((acc, d) => acc + d.conteo, 0);
