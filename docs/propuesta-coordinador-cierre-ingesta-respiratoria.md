@@ -43,8 +43,12 @@ No se reabre ni queda “pendiente de confirmación”.
 `web/package.json` ya declara `check`, `lint`, `format:check` y las
 dependencias `@astrojs/check`, ESLint, Prettier y Playwright. La nota
 anterior de que `@astrojs/check` no estaba instalado quedó obsoleta
-(adopción ya presente en `web/package.json`). La validación de cierre de esta rama
-ejecuta esos scripts; no se instala nada nuevo aquí.
+(adopción ya presente en `web/package.json`). Corrida real 2026-09-01:
+`pnpm check`, `lint`, `format:check` y `build` pasaron. Playwright del
+observatorio (`respiratorio.spec.ts`, 1 worker) 5 passed. El comando
+completo `pnpm test:e2e` (16 tests) no pasa: fallan dos casos de la vista
+dengue y el mapa respiratorio cuando Vite sirve Leaflet en paralelo. No se
+instaló nada nuevo aquí.
 
 ---
 
