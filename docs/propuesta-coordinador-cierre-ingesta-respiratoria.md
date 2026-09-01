@@ -1,53 +1,64 @@
-# Propuesta al coordinador — cierre de la ingesta respiratoria
+# Cierre documental — ingesta respiratoria
 
-**De:** implementación en `feature/ingesta-respiratoria`  
-**Fecha:** 2026-08-28  
-**Qué se pide:** decisiones que esta rama **no** tomó, para no saltarse al coordinador.
+**Rama:** `feature/ingesta-respiratoria`  
+**Fecha original de la propuesta:** 2026-08-28  
+**Cierre documental:** 2026-09-01
 
-El resto (heatmap de Neumonías, panel de cobertura descriptivo, unificar `/ira` en `/respiratorio`, selector de año, cargar IRA con el loader ya aprobado) se implementó en la rama sin esperar estas respuestas.
-
----
-
-## 1. Regenerar `db/seed/seed_datos_reales.sql` (ADR 0010)
-
-**Hecho hoy:** Neumonías (2,749 filas) y vigilancia de virus (3,028) están en el volumen de desarrollo. El seed versionado **no** las incluye.
-
-**Qué pasa si no se regenera:** `git clone` + `docker compose down -v` + `up` aplica la migración `0008` (tabla vacía y catálogo `neumonia`) y no trae las filas. Hay que volver a correr `corrida_respiratorios.py` + loaders (y `corrida_ira.py` + `cargar_ira.py`).
-
-**Propuesta:** regenerar el volcado `pg_dump --data-only` según ADR 0010 (hechos sí, catálogos no) cuando el equipo decida que vale una foto más reciente.
-
-**No se hizo aquí:** el ADR dice que actualizar el seed es decisión explícita, no un efecto colateral de otra tarea.
+Las preguntas que esta rama no tomó por su cuenta quedan con una sola
+verdad. No hay confirmación pendiente para merge por ADR 0012, seed ni
+tooling de Astro.
 
 ---
 
-## 2. Confirmar ADR 0012 (estado escrito como Aceptado)
+## 1. Seed `db/seed/seed_datos_reales.sql` (ADR 0010) — hecho
 
-La tabla `vigilancia_virus_respiratorios` se creó **después** del ADR, con evidencia de 264 PDF. El estado del archivo está en **Aceptado** para poder migrar, siguiendo el brief de la rama.
+Foto regenerada 2026-09-01 con los mismos flags del ADR (`pg_dump --data-only
+--disable-triggers`, catálogos fuera). Incluye `vigilancia_virus_respiratorios`
+y las filas de Neumonías/IRA en `casos_epidemiologicos`.
 
-**Propuesta:** que el coordinador confirme o corrija ese estado. Si se rechaza el diseño EAV, hace falta una migración nueva que lo reemplace (sin rollback automático, ADR 0009).
+Recuentos de la foto:
 
----
+```text
+Neumonías: 2.749
+Vigilancia viral: 3.028
+IRA: 2.742
+```
 
-## 3. `astro check` / ESLint
-
-El checklist de la rama pide `astro check`/lint **si están disponibles**. `@astrojs/check` no está en `web/package.json`. La aprobación técnica de esas herramientas (2026-08-13) dice que **instalar ≠ adoptar**.
-
-**Qué se hizo:** `pnpm build` (cuando se pudo) y revisión HTTP de `/respiratorio`. No se instaló `@astrojs/check`.
-
-**Propuesta:** si el coordinador quiere typecheck en CI, instalarlo en un cambio aparte (`docs/levantamiento-gaps-stack-web.md`).
-
----
-
-## 4. 2020 para SARS-CoV-2
-
-La exploración no encontró fila `COVID 19` en 2018–2022; aparece en 2023. **No se descargó 2020.**
-
-**Propuesta:** solo bajar 2020 si se quiere contexto de pandemia como serie aparte, con `descargar_2020.py`, sin meter esos PDF en dengue/IRA.
+Los `tipo_evento_id` del volcado siguen el orden de un volumen limpio
+(`0001` dengue=1, `0007` ira=2, `0008` neumonia=3), no el orden accidental
+de la base de desarrollo.
 
 ---
 
-## 5. Fuera de esta propuesta (ya resuelto en código)
+## 2. ADR 0012 — Aceptado
 
-- Neumonías reutiliza `'notificado'` (ADR 0011 lo anticipaba para este formato).
+Estado inequívoco: **Aceptado** (2026-08-28). `vigilancia_virus_respiratorios`
+es la tabla correcta para muestras, detecciones y positividad nacionales.
+No se reabre ni queda “pendiente de confirmación”.
+
+---
+
+## 3. `astro check` / ESLint / Prettier — disponibles
+
+`web/package.json` ya declara `check`, `lint`, `format:check` y las
+dependencias `@astrojs/check`, ESLint, Prettier y Playwright. La nota
+anterior de que `@astrojs/check` no estaba instalado quedó obsoleta
+(adopción ya presente en `web/package.json`). La validación de cierre de esta rama
+ejecuta esos scripts; no se instala nada nuevo aquí.
+
+---
+
+## 4. 2020 para SARS-CoV-2 — fuera de alcance
+
+Sigue sin descargarse. COVID-19 como fila de la tabla laboratorial aparece
+en 2023. Bajar 2020 exigiría decisión explícita aparte, no forma parte
+del cierre de esta rama.
+
+---
+
+## 5. Ya resuelto en código (sin cambio)
+
+- Neumonías reutiliza `'notificado'` (ADR 0011).
 - Virus no van a `casos_epidemiologicos`.
-- M4 sigue sin fórmula: el panel de cobertura **cuenta** huecos y cita la exploración; no calcula un score.
+- M4 sigue sin fórmula: el panel de cobertura cuenta huecos y cita la
+  exploración; no calcula un score.
