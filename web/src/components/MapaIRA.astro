@@ -227,6 +227,9 @@ const endpoint =
       maxBounds: LIMITES_SV,
       maxBoundsViscosity: 1.0,
     }).setView([13.79, -88.9], 8);
+    mapa.whenReady(() => {
+      mapa.invalidateSize();
+    });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -325,6 +328,8 @@ const endpoint =
   document
     .querySelectorAll<HTMLElement>('section[data-mapa-evento]')
     .forEach((seccion) => {
-      void iniciarSeccion(seccion);
+      void iniciarSeccion(seccion).catch(() => {
+        seccion.querySelector('[data-mapa-vacio]')?.classList.remove('hidden');
+      });
     });
 </script>

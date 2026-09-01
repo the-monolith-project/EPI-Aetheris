@@ -22,6 +22,26 @@ test.describe('observatorio respiratorio', () => {
     await expect(
       page.locator('#neumonias [data-mapa-evento="neumonias"]'),
     ).toBeVisible();
+    await expect(
+      page.locator('#ira [data-mapa-evento="ira"] .leaflet-container'),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.locator(
+        '#neumonias [data-mapa-evento="neumonias"] .leaflet-container',
+      ),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page
+        .locator('#ira [data-mapa-evento="ira"] path.leaflet-interactive')
+        .first(),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(
+          '#neumonias [data-mapa-evento="neumonias"] path.leaflet-interactive',
+        )
+        .first(),
+    ).toBeVisible();
 
     const heatmap = page.locator('[data-heatmap-neu]');
     await expect(heatmap.locator('table')).toBeVisible({ timeout: 20_000 });
