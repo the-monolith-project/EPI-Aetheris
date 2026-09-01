@@ -74,7 +74,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
 </section>
 
 <script>
-  import type { DepartamentoIRA } from '../lib/tipos-analisis';
+  import type { DepartamentoIRA, RespuestaIraDepartamental } from '../lib/tipos-analisis';
 
   // [semana, valor|null]
   type Punto = [number, number | null];
@@ -277,7 +277,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     try {
       const resp = await fetch(`${API_BASE}${apiBase}/departamental`);
       if (!resp.ok) throw new Error('respuesta no OK');
-      const datos: RespuestaDepartamental = await resp.json();
+      const datos: RespuestaIraDepartamental = await resp.json();
       departamentos = datos.departamentos;
     } catch {
       contenedor.innerHTML =
