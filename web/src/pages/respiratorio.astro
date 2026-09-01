@@ -10,25 +10,48 @@ import PanelVirus from '../components/PanelVirus.astro';
 <Layout title="EPI-Aetheris — Observatorio respiratorio">
   <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
     <header class="mb-8 max-w-3xl">
-      <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">
+      <p
+        class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+      >
         Capa descriptiva · sin predicción · sin causalidad
       </p>
-      <h1 class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">
+      <h1
+        class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
+      >
         Observatorio respiratorio (MINSAL)
       </h1>
       <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
-        IRA y Neumonías son conteos clínicos departamentales notificados. Influenza, VSR y
-        SARS-CoV-2 son vigilancia laboratorial nacional (muestras, detecciones, positividad).
-        Cada serie conserva su unidad. Coexistencia temporal no demuestra que un virus cause
-        el aumento de IRA o Neumonías.
+        IRA y Neumonías son conteos clínicos departamentales notificados.
+        Influenza, VSR y SARS-CoV-2 son vigilancia laboratorial nacional
+        (muestras, detecciones, positividad). Cada serie conserva su unidad.
+        Coexistencia temporal no demuestra que un virus cause el aumento de IRA
+        o Neumonías.
       </p>
     </header>
 
-    <nav class="mb-6 flex flex-wrap gap-2 font-sans text-sm" aria-label="Serie respiratoria">
-      <a href="#cobertura" class="rounded-full border border-border bg-surface px-3 py-1.5">Cobertura</a>
-      <a href="#ira" class="rounded-full border border-border bg-surface px-3 py-1.5">IRA</a>
-      <a href="#neumonias" class="rounded-full border border-border bg-surface px-3 py-1.5">Neumonías</a>
-      <a href="#virus" class="rounded-full border border-border bg-surface px-3 py-1.5">Virus (nacional)</a>
+    <nav
+      class="mb-6 flex flex-wrap gap-2 font-sans text-sm"
+      aria-label="Serie respiratoria"
+    >
+      <a
+        href="#cobertura"
+        class="rounded-full border border-border bg-surface px-3 py-1.5"
+        >Cobertura</a
+      >
+      <a
+        href="#ira"
+        class="rounded-full border border-border bg-surface px-3 py-1.5">IRA</a
+      >
+      <a
+        href="#neumonias"
+        class="rounded-full border border-border bg-surface px-3 py-1.5"
+        >Neumonías</a
+      >
+      <a
+        href="#virus"
+        class="rounded-full border border-border bg-surface px-3 py-1.5"
+        >Virus (nacional)</a
+      >
     </nav>
 
     <section id="cobertura" class="mb-10">
@@ -36,7 +59,9 @@ import PanelVirus from '../components/PanelVirus.astro';
     </section>
 
     <section id="ira" class="mb-10 grid grid-cols-1 gap-6">
-      <h2 class="font-display text-xl font-semibold text-ink">IRA — conteo notificado departamental</h2>
+      <h2 class="font-display text-xl font-semibold text-ink">
+        IRA — conteo notificado departamental
+      </h2>
       <div class="rounded-[28px] bg-deep p-2 sm:p-3">
         <MapaIRA evento="ira" />
       </div>
@@ -44,7 +69,9 @@ import PanelVirus from '../components/PanelVirus.astro';
     </section>
 
     <section id="neumonias" class="mb-10 grid grid-cols-1 gap-6">
-      <h2 class="font-display text-xl font-semibold text-ink">Neumonías — conteo notificado departamental</h2>
+      <h2 class="font-display text-xl font-semibold text-ink">
+        Neumonías — conteo notificado departamental
+      </h2>
       <div class="rounded-[28px] bg-deep p-2 sm:p-3">
         <MapaIRA evento="neumonias" />
       </div>
@@ -53,7 +80,9 @@ import PanelVirus from '../components/PanelVirus.astro';
     </section>
 
     <section id="virus" class="mb-10 grid grid-cols-1 gap-6">
-      <h2 class="font-display text-xl font-semibold text-ink">Influenza, VSR y SARS-CoV-2 — laboratorio nacional</h2>
+      <h2 class="font-display text-xl font-semibold text-ink">
+        Influenza, VSR y SARS-CoV-2 — laboratorio nacional
+      </h2>
       <PanelVirus />
     </section>
   </main>

@@ -14,26 +14,35 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
 >
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="flex items-start gap-3">
-      <span class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+      <span
+        class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+        aria-hidden="true"></span>
       <div>
         <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
           Casos semanales de {etiqueta} por departamento
         </h2>
-        <p class="mt-1 max-w-2xl font-sans text-sm leading-relaxed text-ink-muted">
-          Serie desacumulada de los boletines MINSAL (la fuente publica acumulados desde SE1).
-          Unidad: conteo notificado. Un año por línea; los huecos se dejan vacíos, no se interpolan.
-          Más casos no equivale a mayor riesgo.
+        <p
+          class="mt-1 max-w-2xl font-sans text-sm leading-relaxed text-ink-muted"
+        >
+          Serie desacumulada de los boletines MINSAL (la fuente publica
+          acumulados desde SE1). Unidad: conteo notificado. Un año por línea;
+          los huecos se dejan vacíos, no se interpolan. Más casos no equivale a
+          mayor riesgo.
         </p>
       </div>
     </div>
-    <div class="flex flex-wrap items-center gap-2 font-sans text-sm text-ink-muted">
-      <label class="flex items-center gap-2">Departamento
+    <div
+      class="flex flex-wrap items-center gap-2 font-sans text-sm text-ink-muted"
+    >
+      <label class="flex items-center gap-2"
+        >Departamento
         <select
           data-curva-depto
           class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
         ></select>
       </label>
-      <label class="flex items-center gap-2">Año
+      <label class="flex items-center gap-2"
+        >Año
         <select
           data-curva-anio
           class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
@@ -46,7 +55,8 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
           <option value="2018">2018</option>
         </select>
       </label>
-      <label class="flex items-center gap-2">Comparar con
+      <label class="flex items-center gap-2"
+        >Comparar con
         <select
           data-curva-compare
           class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
@@ -54,18 +64,26 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
           <option value="">(ningún otro departamento)</option>
         </select>
       </label>
-      <label class="flex items-center gap-2">SE
+      <label class="flex items-center gap-2"
+        >SE
         <input data-curva-desde type="range" min="1" max="52" value="1" />
         <input data-curva-hasta type="range" min="1" max="52" value="52" />
         <span data-curva-rango class="font-mono text-xs">SE1–SE52</span>
       </label>
-      <button type="button" data-curva-export class="rounded-lg border border-border bg-bg px-3 py-1.5 text-ink">
+      <button
+        type="button"
+        data-curva-export
+        class="rounded-lg border border-border bg-bg px-3 py-1.5 text-ink"
+      >
         Exportar CSV
       </button>
     </div>
   </div>
 
-  <div data-curva-canvas class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4">
+  <div
+    data-curva-canvas
+    class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4"
+  >
     <div data-estado aria-hidden="true">
       <div class="skeleton h-40 w-full sm:h-52"></div>
       <div class="skeleton mt-2 h-3 w-1/3"></div>
@@ -74,7 +92,10 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
 </section>
 
 <script>
-  import type { DepartamentoIRA, RespuestaIraDepartamental } from '../lib/tipos-analisis';
+  import type {
+    DepartamentoIRA,
+    RespuestaIraDepartamental,
+  } from '../lib/tipos-analisis';
 
   // [semana, valor|null]
   type Punto = [number, number | null];
@@ -101,17 +122,27 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     '2023': 1,
   };
 
-  function recortar(series: Record<string, Punto[]>, desde: number, hasta: number): Record<string, Punto[]> {
+  function recortar(
+    series: Record<string, Punto[]>,
+    desde: number,
+    hasta: number,
+  ): Record<string, Punto[]> {
     const out: Record<string, Punto[]> = {};
     for (const anio of Object.keys(series)) {
-      out[anio] = (series[anio] ?? []).filter(([s]) => s >= desde && s <= hasta);
+      out[anio] = (series[anio] ?? []).filter(
+        ([s]) => s >= desde && s <= hasta,
+      );
     }
     return out;
   }
 
   function dibujar(
     contenedor: HTMLElement,
-    capas: { nombre: string; series: Record<string, Punto[]>; dashed?: boolean }[],
+    capas: {
+      nombre: string;
+      series: Record<string, Punto[]>;
+      dashed?: boolean;
+    }[],
     desde: number,
     hasta: number,
   ) {
@@ -120,7 +151,9 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     const series = capas[0]?.series ?? {};
     const anios = Object.keys(series).sort();
     const valores = capas.flatMap((c) =>
-      Object.values(c.series).flatMap((pts) => pts.map((p) => p[1]).filter((v) => v !== null)),
+      Object.values(c.series).flatMap((pts) =>
+        pts.map((p) => p[1]).filter((v) => v !== null),
+      ),
     );
     if (valores.length === 0) {
       contenedor.innerHTML =
@@ -129,10 +162,13 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     }
     const maxValor = Math.max(...(valores as number[]));
     const areaGrafica = ALTO - MARGEN.arriba - MARGEN.abajo;
-    const escalaY = (v: number) => ALTO - MARGEN.abajo - (v / (maxValor || 1)) * areaGrafica;
+    const escalaY = (v: number) =>
+      ALTO - MARGEN.abajo - (v / (maxValor || 1)) * areaGrafica;
     const anchoSe = Math.max(1, hasta - desde);
     const escalaX = (semana: number) =>
-      MARGEN.izquierda + ((semana - desde) / anchoSe) * (ANCHO - MARGEN.izquierda - MARGEN.derecha);
+      MARGEN.izquierda +
+      ((semana - desde) / anchoSe) *
+        (ANCHO - MARGEN.izquierda - MARGEN.derecha);
 
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
@@ -140,7 +176,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     svg.setAttribute('role', 'img');
     svg.setAttribute(
       'aria-label',
-      `Casos semanales notificados ${capas.map((c) => c.nombre).join(' y ')}, SE${desde}–SE${hasta}`
+      `Casos semanales notificados ${capas.map((c) => c.nombre).join(' y ')}, SE${desde}–SE${hasta}`,
     );
 
     for (const nivel of [0, maxValor / 2, maxValor]) {
@@ -195,9 +231,18 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
         const trazo = document.createElementNS(SVG_NS, 'path');
         trazo.setAttribute('d', d.trim());
         trazo.setAttribute('fill', 'none');
-        trazo.setAttribute('stroke', capa.dashed ? 'var(--color-ink)' : 'var(--color-accent)');
-        trazo.setAttribute('stroke-opacity', String(OPACIDAD_ANIO[anio] ?? 0.5));
-        trazo.setAttribute('stroke-width', anio === aniosCapa[aniosCapa.length - 1] ? '2' : '1.5');
+        trazo.setAttribute(
+          'stroke',
+          capa.dashed ? 'var(--color-ink)' : 'var(--color-accent)',
+        );
+        trazo.setAttribute(
+          'stroke-opacity',
+          String(OPACIDAD_ANIO[anio] ?? 0.5),
+        );
+        trazo.setAttribute(
+          'stroke-width',
+          anio === aniosCapa[aniosCapa.length - 1] ? '2' : '1.5',
+        );
         if (capa.dashed) trazo.setAttribute('stroke-dasharray', '4 3');
         trazo.setAttribute('stroke-linejoin', 'round');
         trazo.setAttribute('stroke-linecap', 'round');
@@ -214,7 +259,10 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       muestra.setAttribute('y1', String(ALTO - 8));
       muestra.setAttribute('y2', String(ALTO - 8));
       muestra.setAttribute('stroke', 'var(--color-accent)');
-      muestra.setAttribute('stroke-opacity', String(OPACIDAD_ANIO[anio] ?? 0.5));
+      muestra.setAttribute(
+        'stroke-opacity',
+        String(OPACIDAD_ANIO[anio] ?? 0.5),
+      );
       muestra.setAttribute('stroke-width', '2');
       svg.appendChild(muestra);
       const texto = document.createElementNS(SVG_NS, 'text');
@@ -249,7 +297,10 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
 
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 
-  async function cargarTemporal(apiBase: string, codigo: string): Promise<Record<string, Punto[]>> {
+  async function cargarTemporal(
+    apiBase: string,
+    codigo: string,
+  ): Promise<Record<string, Punto[]>> {
     const resp = await fetch(`${API_BASE}${apiBase}/temporal/${codigo}`);
     if (!resp.ok) throw new Error('respuesta no OK');
     const datos: RespuestaTemporal = await resp.json();
@@ -262,15 +313,40 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
 
   async function iniciarSeccion(seccion: HTMLElement) {
     const apiBase = seccion.dataset.curvaApi ?? '/api/ira';
-    const contenedor = seccion.querySelector('[data-curva-canvas]') as HTMLElement | null;
-    const selector = seccion.querySelector('[data-curva-depto]') as HTMLSelectElement | null;
-    const selAnio = seccion.querySelector('[data-curva-anio]') as HTMLSelectElement | null;
-    const selCompare = seccion.querySelector('[data-curva-compare]') as HTMLSelectElement | null;
-    const inpDesde = seccion.querySelector('[data-curva-desde]') as HTMLInputElement | null;
-    const inpHasta = seccion.querySelector('[data-curva-hasta]') as HTMLInputElement | null;
-    const txtRango = seccion.querySelector('[data-curva-rango]') as HTMLElement | null;
-    const btnExport = seccion.querySelector('[data-curva-export]') as HTMLButtonElement | null;
-    if (!contenedor || !selector || !selAnio || !selCompare || !inpDesde || !inpHasta || !txtRango) return;
+    const contenedor = seccion.querySelector(
+      '[data-curva-canvas]',
+    ) as HTMLElement | null;
+    const selector = seccion.querySelector(
+      '[data-curva-depto]',
+    ) as HTMLSelectElement | null;
+    const selAnio = seccion.querySelector(
+      '[data-curva-anio]',
+    ) as HTMLSelectElement | null;
+    const selCompare = seccion.querySelector(
+      '[data-curva-compare]',
+    ) as HTMLSelectElement | null;
+    const inpDesde = seccion.querySelector(
+      '[data-curva-desde]',
+    ) as HTMLInputElement | null;
+    const inpHasta = seccion.querySelector(
+      '[data-curva-hasta]',
+    ) as HTMLInputElement | null;
+    const txtRango = seccion.querySelector(
+      '[data-curva-rango]',
+    ) as HTMLElement | null;
+    const btnExport = seccion.querySelector(
+      '[data-curva-export]',
+    ) as HTMLButtonElement | null;
+    if (
+      !contenedor ||
+      !selector ||
+      !selAnio ||
+      !selCompare ||
+      !inpDesde ||
+      !inpHasta ||
+      !txtRango
+    )
+      return;
     let ultimoCsv = '';
 
     let departamentos: DepartamentoIRA[];
@@ -315,10 +391,16 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       try {
         const series = await cargarTemporal(apiBase, codigo);
         const filtro = selAnio.value;
-        const base = recortar(filtro === 'todos' ? series : { [filtro]: series[filtro] ?? [] }, desde, hasta);
-        const capas: { nombre: string; series: Record<string, Punto[]>; dashed?: boolean }[] = [
-          { nombre, series: base },
-        ];
+        const base = recortar(
+          filtro === 'todos' ? series : { [filtro]: series[filtro] ?? [] },
+          desde,
+          hasta,
+        );
+        const capas: {
+          nombre: string;
+          series: Record<string, Punto[]>;
+          dashed?: boolean;
+        }[] = [{ nombre, series: base }];
         const cmp = selCompare.value;
         if (cmp && cmp !== codigo) {
           const series2 = await cargarTemporal(apiBase, cmp);
@@ -326,7 +408,13 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
           capas.push({
             nombre: nombre2,
             dashed: true,
-            series: recortar(filtro === 'todos' ? series2 : { [filtro]: series2[filtro] ?? [] }, desde, hasta),
+            series: recortar(
+              filtro === 'todos'
+                ? series2
+                : { [filtro]: series2[filtro] ?? [] },
+              desde,
+              hasta,
+            ),
           });
         }
         dibujar(contenedor, capas, desde, hasta);
@@ -353,14 +441,18 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     btnExport?.addEventListener('click', () => {
       if (!ultimoCsv) return;
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([ultimoCsv], { type: 'text/csv;charset=utf-8' }));
+      a.href = URL.createObjectURL(
+        new Blob([ultimoCsv], { type: 'text/csv;charset=utf-8' }),
+      );
       a.download = 'serie-respiratoria.csv';
       a.click();
     });
     void refrescar();
   }
 
-  document.querySelectorAll<HTMLElement>('section[data-curva-evento]').forEach((seccion) => {
-    void iniciarSeccion(seccion);
-  });
+  document
+    .querySelectorAll<HTMLElement>('section[data-curva-evento]')
+    .forEach((seccion) => {
+      void iniciarSeccion(seccion);
+    });
 </script>

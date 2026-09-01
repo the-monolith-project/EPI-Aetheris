@@ -7,7 +7,9 @@ test.describe('observatorio respiratorio', () => {
     page,
   }) => {
     await page.goto('/respiratorio');
-    await expect(page.getByRole('heading', { name: /Observatorio respiratorio/i })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Observatorio respiratorio/i }),
+    ).toBeVisible();
     await expect(page.locator('body')).not.toContainText('La Influenza causó');
     await expect(page.locator('main')).toContainText('sin predicción');
 
@@ -17,7 +19,9 @@ test.describe('observatorio respiratorio', () => {
     await expect(cobertura).not.toContainText('score de riesgo');
 
     await expect(page.locator('#ira [data-mapa-evento="ira"]')).toBeVisible();
-    await expect(page.locator('#neumonias [data-mapa-evento="neumonias"]')).toBeVisible();
+    await expect(
+      page.locator('#neumonias [data-mapa-evento="neumonias"]'),
+    ).toBeVisible();
 
     const heatmap = page.locator('[data-heatmap-neu]');
     await expect(heatmap.locator('table')).toBeVisible({ timeout: 20_000 });
@@ -32,7 +36,9 @@ test.describe('observatorio respiratorio', () => {
     await expect(virus.locator('table')).toBeVisible({ timeout: 20_000 });
   });
 
-  test('/ira redirige al observatorio y la curva admite año y rango SE', async ({ page }) => {
+  test('/ira redirige al observatorio y la curva admite año y rango SE', async ({
+    page,
+  }) => {
     await page.goto('/ira');
     await expect(page).toHaveURL(/\/respiratorio/);
     const curva = page.locator('#neumonias [data-curva-evento="neumonias"]');
@@ -45,7 +51,9 @@ test.describe('observatorio respiratorio', () => {
     await expect(curva.locator('[data-curva-rango]')).toHaveText(/SE10–SE20/);
   });
 
-  test('el CSV del heatmap respeta el rango SE seleccionado', async ({ page }) => {
+  test('el CSV del heatmap respeta el rango SE seleccionado', async ({
+    page,
+  }) => {
     await page.goto('/respiratorio');
     const heatmap = page.locator('[data-heatmap-neu]');
     await expect(heatmap.locator('table')).toBeVisible({ timeout: 20_000 });
@@ -79,22 +87,32 @@ test.describe('observatorio respiratorio', () => {
     await page.goto('/respiratorio');
     const virus = page.locator('[data-panel-virus]');
     await expect(virus.locator('table')).toBeVisible({ timeout: 20_000 });
-    await virus.locator('[data-virus-metrica]').selectOption('muestras_analizadas');
+    await virus
+      .locator('[data-virus-metrica]')
+      .selectOption('muestras_analizadas');
     await expect(virus.locator('[data-virus-global]')).toBeVisible();
     await expect(virus.locator('[data-virus-global]')).toContainText(
       'Todos los virus / vigilancia total',
     );
     await expect(virus.locator('[data-virus-toggles]')).toBeHidden();
     await expect(virus.locator('table')).toBeVisible();
-    await expect(virus.locator('table')).toContainText('Todos los virus / vigilancia total');
+    await expect(virus.locator('table')).toContainText(
+      'Todos los virus / vigilancia total',
+    );
   });
 
-  test('si la API de cobertura falla, el panel no inventa cifras', async ({ page }) => {
+  test('si la API de cobertura falla, el panel no inventa cifras', async ({
+    page,
+  }) => {
     await page.route('**/api/respiratorios/cobertura', (route) =>
       route.fulfill({ status: 500, body: 'error' }),
     );
     await page.goto('/respiratorio');
-    await expect(page.locator('[data-cob-error]')).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator('[data-cob-error]')).toContainText('No se pudo cargar');
+    await expect(page.locator('[data-cob-error]')).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator('[data-cob-error]')).toContainText(
+      'No se pudo cargar',
+    );
   });
 });

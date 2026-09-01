@@ -3,23 +3,34 @@
 // Celda sin dato = hueco, nunca cero.
 ---
 
-<section class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6" data-heatmap-neu>
+<section
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+  data-heatmap-neu
+>
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="flex items-start gap-3">
-      <span class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+      <span
+        class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+        aria-hidden="true"></span>
       <div>
         <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
           Heatmap Neumonías — departamento × semana
         </h2>
-        <p class="mt-1 max-w-3xl font-sans text-sm leading-relaxed text-ink-muted">
-          Unidad: conteo notificado (desacumulado). Celdas claras = hueco de la fuente MINSAL,
-          no un cero. Más oscuro no significa mayor riesgo.
+        <p
+          class="mt-1 max-w-3xl font-sans text-sm leading-relaxed text-ink-muted"
+        >
+          Unidad: conteo notificado (desacumulado). Celdas claras = hueco de la
+          fuente MINSAL, no un cero. Más oscuro no significa mayor riesgo.
         </p>
       </div>
     </div>
     <div class="flex flex-wrap items-center gap-2 font-sans text-sm">
-      <label class="flex items-center gap-2">Año
-        <select data-hm-anio class="rounded-lg border border-border bg-bg px-3 py-1.5">
+      <label class="flex items-center gap-2"
+        >Año
+        <select
+          data-hm-anio
+          class="rounded-lg border border-border bg-bg px-3 py-1.5"
+        >
           <option value="2023">2023</option>
           <option value="2022">2022</option>
           <option value="2021">2021</option>
@@ -27,7 +38,8 @@
           <option value="2018">2018</option>
         </select>
       </label>
-      <label class="flex items-center gap-2">SE
+      <label class="flex items-center gap-2"
+        >SE
         <input data-hm-desde type="range" min="1" max="52" value="1" />
         <input data-hm-hasta type="range" min="1" max="52" value="52" />
         <span data-hm-rango class="font-mono text-xs">SE1–SE52</span>
@@ -41,7 +53,10 @@
       </button>
     </div>
   </div>
-  <div data-hm-error class="mt-3 hidden rounded-lg border border-secondary bg-secondary/25 p-3 font-sans text-sm">
+  <div
+    data-hm-error
+    class="mt-3 hidden rounded-lg border border-secondary bg-secondary/25 p-3 font-sans text-sm"
+  >
     No se pudo cargar el heatmap. No se muestra ningún dato sustituto.
   </div>
   <div data-hm-grid class="mt-4 overflow-x-auto"></div>
@@ -112,7 +127,8 @@
       const thead = document.createElement('thead');
       const trh = document.createElement('tr');
       const th0 = document.createElement('th');
-      th0.className = 'pr-2 text-left font-sans text-xs text-ink sticky left-0 bg-surface';
+      th0.className =
+        'pr-2 text-left font-sans text-xs text-ink sticky left-0 bg-surface';
       th0.textContent = 'Departamento';
       trh.appendChild(th0);
       for (let s = desde; s <= hasta; s++) {
@@ -127,7 +143,8 @@
       for (const d of departamentos) {
         const tr = document.createElement('tr');
         const name = document.createElement('td');
-        name.className = 'pr-2 font-sans text-xs text-ink sticky left-0 bg-surface';
+        name.className =
+          'pr-2 font-sans text-xs text-ink sticky left-0 bg-surface';
         name.textContent = d.nombre;
         tr.appendChild(name);
         for (let s = desde; s <= hasta; s++) {
@@ -149,8 +166,7 @@
       table.appendChild(tbody);
       const nota = document.createElement('p');
       nota.className = 'mt-2 font-sans text-xs text-ink-muted';
-      nota.textContent =
-        `Conteo notificado · ${anio} · SE${desde}–SE${hasta} · MINSAL. Claro = hueco. Escala única de conteo, no positividad.`;
+      nota.textContent = `Conteo notificado · ${anio} · SE${desde}–SE${hasta} · MINSAL. Claro = hueco. Escala única de conteo, no positividad.`;
       grid.replaceChildren(table, nota);
     } catch {
       error.classList.remove('hidden');
@@ -168,11 +184,13 @@
       for (let s = desde; s <= hasta; s++) {
         const v = d.semanas[String(s)];
         lineas.push(
-          `${ultimo.anio},${d.nombre},${d.codigo},${s},${v == null ? '' : v}`
+          `${ultimo.anio},${d.nombre},${d.codigo},${s},${v == null ? '' : v}`,
         );
       }
     }
-    const blob = new Blob([lineas.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob([lineas.join('\n')], {
+      type: 'text/csv;charset=utf-8',
+    });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `neumonias-heatmap-${ultimo.anio}-SE${desde}-${hasta}.csv`;
@@ -182,9 +200,15 @@
 
   const root = document.querySelector<HTMLElement>('[data-heatmap-neu]');
   if (root) {
-    root.querySelector('[data-hm-anio]')?.addEventListener('change', () => void pintar());
-    root.querySelector('[data-hm-desde]')?.addEventListener('input', () => void pintar());
-    root.querySelector('[data-hm-hasta]')?.addEventListener('input', () => void pintar());
+    root
+      .querySelector('[data-hm-anio]')
+      ?.addEventListener('change', () => void pintar());
+    root
+      .querySelector('[data-hm-desde]')
+      ?.addEventListener('input', () => void pintar());
+    root
+      .querySelector('[data-hm-hasta]')
+      ?.addEventListener('input', () => void pintar());
     root.querySelector('[data-hm-export]')?.addEventListener('click', exportar);
     void pintar();
   }
