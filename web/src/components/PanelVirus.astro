@@ -81,6 +81,13 @@
     'adenovirus',
     'parainfluenza',
   ];
+  // Subtipos de influenza: siguen en la base (ADR 0012), no en este panel.
+  const VIRUS_OCULTOS_EN_PANEL = new Set([
+    'influenza_a_h1n1',
+    'influenza_a_h3n2',
+    'influenza_a_no_subtipificado',
+    'influenza_b',
+  ]);
 
   interface CatalogoItem {
     virus: string;
@@ -151,7 +158,7 @@
       );
       toggles.replaceChildren();
       const disponibles = virusParaMetrica(metrica).filter(
-        (v) => v !== 'todos',
+        (v) => v !== 'todos' && !VIRUS_OCULTOS_EN_PANEL.has(v),
       );
       for (const v of disponibles) {
         const lab = document.createElement('label');

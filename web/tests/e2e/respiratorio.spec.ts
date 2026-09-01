@@ -54,6 +54,12 @@ test.describe('observatorio respiratorio', () => {
     const virus = page.locator('[data-panel-virus]');
     await expect(virus).toContainText('nacional');
     await expect(virus.locator('table')).toBeVisible({ timeout: 20_000 });
+    const toggles = virus.locator('[data-virus-toggles]');
+    await expect(toggles).toContainText('influenza');
+    await expect(toggles).not.toContainText('influenza_a_h1n1');
+    await expect(toggles).not.toContainText('influenza_a_h3n2');
+    await expect(toggles).not.toContainText('influenza_a_no_subtipificado');
+    await expect(toggles).not.toContainText('influenza_b');
   });
 
   test('/ira redirige al observatorio y la curva admite año y rango SE', async ({
