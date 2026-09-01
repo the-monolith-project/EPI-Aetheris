@@ -90,6 +90,21 @@ class VirusApiTest(unittest.TestCase):
         self.assertEqual(cuerpo["metrica"], "detecciones")
         self.assertIn("causalidad", cuerpo["aviso"])
 
+    def test_temporal_serie_inexistente_404(self):
+        r = self.client.get(
+            "/api/respiratorios/temporal",
+            params={"virus": "influenza", "metrica": "muestras_analizadas"},
+        )
+        self.assertEqual(r.status_code, 404)
+        self.assertIn("No hay serie disponible", r.json()["detail"])
+
+    def test_temporal_virus_desconocido_404(self):
+        r = self.client.get(
+            "/api/respiratorios/temporal",
+            params={"virus": "no_existe", "metrica": "detecciones"},
+        )
+        self.assertEqual(r.status_code, 404)
+
     def test_semana_nacional(self):
         r = self.client.get("/api/respiratorios/semana/2023/25")
         self.assertEqual(r.status_code, 200)
