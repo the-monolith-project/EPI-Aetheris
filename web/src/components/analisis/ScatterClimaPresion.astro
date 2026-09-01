@@ -168,7 +168,7 @@
       if (resumen) {
         resumen.textContent = activo
           ? tooltip(activo, filtros).replaceAll('\n', ' · ')
-          : `${puntos.length} departamentos con ambas variables; ${omitidos} omitidos por huecos reales · ${filtros.anio} · SE${String(filtros.semana).padStart(2, '0')} · serie ${filtros.serie}.`;
+          : `${puntos.length} departamentos con ambas variables; ${omitidos} omitidos por falta de datos · ${filtros.anio} · SE${String(filtros.semana).padStart(2, '0')} · serie ${filtros.serie}.`;
       }
     } catch {
       if (idRevision !== revision) return;

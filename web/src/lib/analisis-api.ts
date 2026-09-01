@@ -4,6 +4,7 @@ import type {
   DatasetAnaliticoDengue,
   FiltrosAnalisis,
   ProcedenciaAnalitica,
+  RespuestaIraDepartamental,
 } from './tipos-analisis';
 
 const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -12,6 +13,7 @@ const cachePorAnio = new Map<
   Promise<DatasetAnaliticoDengue>
 >();
 let cacheCasosNacionales: Promise<CasoNacionalSemanal[]> | null = null;
+let cacheIraDepartamental: Promise<RespuestaIraDepartamental> | null = null;
 const cacheProcedencia = new Map<string, Promise<ProcedenciaAnalitica>>();
 
 function cargarDataset(
@@ -72,6 +74,37 @@ export function obtenerCasosNacionales(): Promise<CasoNacionalSemanal[]> {
       });
   }
   return cacheCasosNacionales;
+}
+
+// Mismo patrón que obtenerCasosNacionales: MapaIRA y CurvaIRADepartamental
+// piden ambos /api/ira/departamental por su cuenta al montarse -- este
+// helper deduplica esa petición (es uno de los endpoints más lentos del
+// backend, ver informe de rendimiento) en una sola promesa compartida.
+export function obtenerIraDepartamental(): Promise<RespuestaIraDepartamental> {
+  if (!cacheIraDepartamental) {
+    cacheIraDepartamental = fetch(`${API_BASE}/api/ira/departamental`)
+      .then(async (respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error(
+            `No se pudo cargar la serie de IRA (${respuesta.status}).`,
+          );
+        }
+        const datos: unknown = await respuesta.json();
+        if (
+          !datos ||
+          typeof datos !== 'object' ||
+          !Array.isArray((datos as { departamentos?: unknown }).departamentos)
+        ) {
+          throw new Error('La serie de IRA no tiene el contrato esperado.');
+        }
+        return datos as RespuestaIraDepartamental;
+      })
+      .catch((error) => {
+        cacheIraDepartamental = null;
+        throw error;
+      });
+  }
+  return cacheIraDepartamental;
 }
 
 export function obtenerProcedenciaAnalitica(

@@ -1,0 +1,204 @@
+<div
+  id="toolbar-analisis-contenedor"
+  class="sticky top-[6.5rem] z-30 mt-5 sm:top-20"
+>
+  <section
+    id="toolbar-analisis"
+    aria-label="Controles del workspace analítico"
+    class="relative rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur sm:flex sm:items-center sm:justify-between sm:gap-4"
+  >
+    <p
+      id="toolbar-analisis-resumen"
+      class="min-w-0 font-sans text-xs leading-relaxed text-ink-muted"
+      aria-live="polite"
+    >
+      Cargando estado del análisis…
+    </p>
+    <div class="mt-3 flex flex-wrap items-center gap-2 sm:mt-0 sm:shrink-0">
+      <label
+        class="flex items-center gap-2 font-sans text-xs font-semibold text-ink"
+      >
+        Vista
+        <select
+          id="analisis-vista"
+          class="rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-normal text-ink"
+        >
+          <option value="general">General</option>
+          <option value="territorial">Territorial</option>
+          <option value="temporal">Temporal</option>
+          <option value="clima">Clima</option>
+          <option value="calidad">Calidad de datos</option>
+        </select>
+      </label>
+      <slot name="selector-paneles" />
+      <div
+        class="flex items-center gap-1 rounded-lg border border-border bg-bg px-1 py-1"
+      >
+        <span class="px-1 font-sans text-xs font-semibold text-ink-muted"
+          >Zoom</span
+        >
+        <button
+          id="analisis-zoom-menos"
+          type="button"
+          class="rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30"
+          aria-label="Reducir zoom temporal">−</button
+        >
+        <output
+          id="analisis-zoom-valor"
+          class="min-w-9 text-center font-mono text-xs text-ink">100%</output
+        >
+        <button
+          id="analisis-zoom-mas"
+          type="button"
+          class="rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30"
+          aria-label="Aumentar zoom temporal">+</button
+        >
+      </div>
+      <button
+        id="analisis-abrir-filtros"
+        type="button"
+        aria-expanded="false"
+        aria-controls="analisis-filtros-popover"
+        class="rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+      >
+        Filtros
+      </button>
+      <button
+        id="analisis-restablecer-vista"
+        type="button"
+        class="rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+      >
+        Restablecer vista
+      </button>
+    </div>
+  </section>
+  <slot name="filtros" />
+</div>
+
+<script>
+  import {
+    aplicarVistaAnalisis,
+    actualizarLayoutAnalisis,
+    restablecerLayoutAnalisis,
+    suscribirLayoutAnalisis,
+  } from '../../lib/analisis-layout-state';
+  import { suscribirFiltrosAnalisis } from '../../lib/analisis-state';
+  import type {
+    EstadoLayoutAnalisis,
+    VistaAnalisis,
+  } from '../../lib/analisis-layout-state';
+  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+
+  const selectorVista = document.getElementById(
+    'analisis-vista',
+  ) as HTMLSelectElement | null;
+  const resumen = document.getElementById('toolbar-analisis-resumen');
+  const botonRestablecer = document.getElementById(
+    'analisis-restablecer-vista',
+  ) as HTMLButtonElement | null;
+  const botonAbrirFiltros = document.getElementById(
+    'analisis-abrir-filtros',
+  ) as HTMLButtonElement | null;
+  const contenedorToolbar = document.getElementById(
+    'toolbar-analisis-contenedor',
+  );
+  const popoverFiltros = document.getElementById('analisis-filtros-popover');
+  const dialogoFiltros = document.getElementById('analisis-filtros-dialogo');
+  const botonCerrarFiltros = document.getElementById('analisis-cerrar-filtros');
+  const fondoFiltros = document.getElementById('analisis-filtros-fondo');
+  const zoomValor = document.getElementById(
+    'analisis-zoom-valor',
+  ) as HTMLOutputElement | null;
+  const zoomMenos = document.getElementById(
+    'analisis-zoom-menos',
+  ) as HTMLButtonElement | null;
+  const zoomMas = document.getElementById(
+    'analisis-zoom-mas',
+  ) as HTMLButtonElement | null;
+
+  let filtrosActuales: FiltrosAnalisis | null = null;
+  let layoutActual: EstadoLayoutAnalisis | null = null;
+
+  function etiquetaSemana(semana: number): string {
+    return `SE${String(semana).padStart(2, '0')}`;
+  }
+
+  function actualizarResumen(): void {
+    if (!resumen || !filtrosActuales || !layoutActual) return;
+    const departamento =
+      filtrosActuales.departamento ?? 'Todos los departamentos';
+    resumen.textContent = [
+      `Dengue · ${departamento}`,
+      String(filtrosActuales.anio),
+      etiquetaSemana(filtrosActuales.semana),
+      filtrosActuales.serie === 'confirmado' ? 'Confirmado' : 'Probable',
+      `${etiquetaSemana(filtrosActuales.semanaDesde)}–${etiquetaSemana(filtrosActuales.semanaHasta)}`,
+      `Vista ${layoutActual.vista}`,
+    ].join(' · ');
+  }
+
+  selectorVista?.addEventListener('change', () => {
+    aplicarVistaAnalisis(selectorVista.value as VistaAnalisis);
+  });
+  botonRestablecer?.addEventListener('click', () => {
+    restablecerLayoutAnalisis();
+  });
+  function cerrarFiltros(devolverFoco = false): void {
+    if (!popoverFiltros || !botonAbrirFiltros) return;
+    popoverFiltros.hidden = true;
+    botonAbrirFiltros.setAttribute('aria-expanded', 'false');
+    contenedorToolbar?.style.removeProperty('z-index');
+    if (devolverFoco) botonAbrirFiltros.focus();
+  }
+  botonAbrirFiltros?.addEventListener('click', () => {
+    if (!popoverFiltros) return;
+    if (popoverFiltros.hidden) {
+      popoverFiltros.hidden = false;
+      botonAbrirFiltros.setAttribute('aria-expanded', 'true');
+      if (contenedorToolbar) contenedorToolbar.style.zIndex = '50';
+    } else {
+      cerrarFiltros();
+    }
+  });
+  botonCerrarFiltros?.addEventListener('click', () => cerrarFiltros(true));
+  fondoFiltros?.addEventListener('click', () => cerrarFiltros(true));
+  document.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Escape' && popoverFiltros?.hidden === false) {
+      cerrarFiltros(true);
+    }
+  });
+  document.addEventListener('click', (evento) => {
+    if (
+      popoverFiltros?.hidden !== false ||
+      dialogoFiltros?.contains(evento.target as Node) ||
+      botonAbrirFiltros?.contains(evento.target as Node)
+    ) {
+      return;
+    }
+    cerrarFiltros();
+  });
+  function cambiarZoom(direccion: -1 | 1): void {
+    const niveles = [100, 150, 200] as const;
+    const actual = layoutActual?.zoomTemporal ?? 100;
+    const indice = Math.max(
+      0,
+      Math.min(niveles.length - 1, niveles.indexOf(actual) + direccion),
+    );
+    actualizarLayoutAnalisis({ zoomTemporal: niveles[indice] });
+  }
+  zoomMenos?.addEventListener('click', () => cambiarZoom(-1));
+  zoomMas?.addEventListener('click', () => cambiarZoom(1));
+
+  suscribirFiltrosAnalisis((filtros) => {
+    filtrosActuales = filtros;
+    actualizarResumen();
+  });
+  suscribirLayoutAnalisis((layout) => {
+    layoutActual = layout;
+    if (selectorVista) selectorVista.value = layout.vista;
+    if (zoomValor) zoomValor.value = `${layout.zoomTemporal}%`;
+    if (zoomMenos) zoomMenos.disabled = layout.zoomTemporal === 100;
+    if (zoomMas) zoomMas.disabled = layout.zoomTemporal === 200;
+    actualizarResumen();
+  });
+</script>

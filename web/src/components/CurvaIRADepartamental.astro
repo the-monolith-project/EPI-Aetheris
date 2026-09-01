@@ -74,22 +74,10 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
 </section>
 
 <script>
+  import type { DepartamentoIRA } from '../lib/tipos-analisis';
+
   // [semana, valor|null]
   type Punto = [number, number | null];
-
-  interface DepartamentoIRA {
-    nombre: string;
-    codigo: string;
-    notificado_total: number;
-    semanas_con_dato: number;
-    primer_anio: number | null;
-    ultimo_anio: number | null;
-  }
-
-  interface RespuestaDepartamental {
-    departamentos: DepartamentoIRA[];
-    aviso: string;
-  }
 
   interface RespuestaTemporal {
     departamento_codigo: string;

@@ -6,13 +6,16 @@
       Comparación de departamentos
     </h3>
     <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
-      Series semanales alineadas para un máximo de cuatro departamentos. Todos
-      los paneles comparten escala; los huecos corresponden a observaciones
-      ausentes y no se interpolan.
+      Compara hasta cuatro departamentos con la misma escala. Los huecos
+      corresponden a semanas sin observación.
     </p>
   </header>
 
-  <div class="mt-4 overflow-x-auto">
+  <div
+    id="comparacion-departamentos-grafica"
+    class="mt-4 max-h-[560px] overflow-auto"
+    hidden
+  >
     <div
       id="comparacion-departamentos"
       class="min-h-[240px] min-w-[720px]"
@@ -49,6 +52,9 @@
   }
 
   const contenedor = document.getElementById('comparacion-departamentos');
+  const marcoGrafica = document.getElementById(
+    'comparacion-departamentos-grafica',
+  );
   const resumen = document.getElementById('comparacion-departamentos-resumen');
   let revision = 0;
   let filtrosActuales = obtenerFiltrosAnalisis();
@@ -58,11 +64,13 @@
     const idRevision = ++revision;
     if (filtros.comparar.length === 0) {
       contenedor.replaceChildren();
+      if (marcoGrafica) marcoGrafica.hidden = true;
       if (resumen)
         resumen.textContent =
           'Seleccione entre uno y cuatro departamentos en los filtros globales.';
       return;
     }
+    if (marcoGrafica) marcoGrafica.hidden = false;
     if (resumen) resumen.textContent = 'Cargando comparación departamental…';
 
     try {
@@ -161,6 +169,7 @@
     } catch {
       if (idRevision !== revision) return;
       contenedor.replaceChildren();
+      if (marcoGrafica) marcoGrafica.hidden = true;
       if (resumen)
         resumen.textContent =
           'No fue posible cargar la comparación departamental.';

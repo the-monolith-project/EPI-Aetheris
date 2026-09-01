@@ -2,190 +2,236 @@
 import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
 ---
 
-<section
-  aria-labelledby="filtros-analisis-titulo"
-  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
->
-  <div
-    class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+<div id="analisis-filtros-popover" hidden>
+  <button
+    id="analisis-filtros-fondo"
+    type="button"
+    class="fixed inset-0 z-40 cursor-default bg-ink/30 lg:hidden"
+    aria-label="Cerrar filtros"></button>
+  <aside
+    id="analisis-filtros-dialogo"
+    role="dialog"
+    aria-labelledby="filtros-analisis-titulo"
+    class="fixed inset-x-0 bottom-0 z-50 max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-t-2xl border border-border bg-surface/95 p-5 shadow-2xl backdrop-blur sm:p-6 lg:absolute lg:inset-auto lg:right-0 lg:top-[calc(100%+0.5rem)] lg:max-h-[calc(100vh-7rem)] lg:w-[min(1180px,calc(100vw-3rem))] lg:rounded-2xl"
   >
-    <div>
-      <h2
-        id="filtros-analisis-titulo"
-        class="font-sans text-base font-semibold text-ink"
-      >
-        Filtros globales de análisis
-      </h2>
-      <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
-        La semana activa controla el mapa y el detalle; el rango controla las
-        comparaciones temporales. Probable y confirmado se mantienen como series
-        separadas.
-      </p>
-    </div>
-    <div class="flex shrink-0 flex-wrap gap-2">
-      <button
-        id="analisis-exportar"
-        type="button"
-        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Descargar vista actual
-      </button>
-      <button
-        id="analisis-copiar-enlace"
-        type="button"
-        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Copiar enlace
-      </button>
-    </div>
-  </div>
-
-  <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-    <label
-      class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
-    >
-      Año
-      <select
-        id="analisis-anio"
-        class="rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm font-normal text-ink"
-      >
-        {
-          ANIOS_ANALISIS_DENGUE.map((anio) => (
-            <option value={anio} selected={anio === 2023}>
-              {anio}
-            </option>
-          ))
-        }
-      </select>
-    </label>
-
-    <label
-      class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
-    >
-      Periodo del mapa MINSAL
-      <select
-        id="analisis-modo-minsal"
-        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
-      >
-        <option value="semana">Semana seleccionada</option>
-        <option value="ytd">Acumulado del año (YTD)</option>
-        <option value="historico">Histórico completo</option>
-      </select>
-    </label>
-
-    <label
-      class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
-    >
-      Departamento activo
-      <select
-        id="analisis-departamento"
-        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
-      >
-        <option value="">Todos</option>
-      </select>
-    </label>
-
-    <fieldset class="flex flex-col gap-1">
-      <legend
-        class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
-      >
-        Serie MINSAL
-      </legend>
-      <div
-        class="flex min-h-10 items-center gap-4 rounded-lg border border-border bg-bg px-3 py-2"
-      >
-        <label class="flex items-center gap-2 font-sans text-sm text-ink">
-          <input type="radio" name="analisis-serie" value="probable" checked /> Probable
-        </label>
-        <label class="flex items-center gap-2 font-sans text-sm text-ink">
-          <input type="radio" name="analisis-serie" value="confirmado" /> Confirmado
-        </label>
+    <section aria-labelledby="filtros-analisis-titulo">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2
+            id="filtros-analisis-titulo"
+            class="font-sans text-base font-semibold text-ink"
+          >
+            Filtros de análisis
+          </h2>
+          <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+            Ajusta el periodo, el departamento y la serie utilizados por las
+            vistas del workspace.
+          </p>
+        </div>
+        <button
+          id="analisis-cerrar-filtros"
+          type="button"
+          class="shrink-0 rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-lg leading-none text-ink transition-colors hover:border-accent/50 hover:text-accent"
+          aria-label="Cerrar filtros"
+        >
+          ×
+        </button>
       </div>
-    </fieldset>
 
-    <label
-      class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted sm:col-span-2"
-    >
-      Semana activa: <output
-        id="analisis-semana-valor"
-        class="font-mono text-ink">SE01</output
-      >
-      <input
-        id="analisis-semana"
-        type="range"
-        min="1"
-        max="53"
-        value="1"
-        class="w-full accent-accent"
-      />
-    </label>
-
-    <div class="grid grid-cols-2 gap-3">
-      <label
-        class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
-      >
-        Desde: <output id="analisis-desde-valor" class="font-mono text-ink"
-          >SE01</output
+      <div class="mt-5 grid gap-4 md:grid-cols-12">
+        <label
+          class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted md:col-span-2"
         >
-        <input
-          id="analisis-desde"
-          type="range"
-          min="1"
-          max="53"
-          value="1"
-          class="w-full accent-accent"
-        />
-      </label>
-      <label
-        class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
-      >
-        Hasta: <output id="analisis-hasta-valor" class="font-mono text-ink"
-          >SE53</output
+          Año
+          <select
+            id="analisis-anio"
+            class="rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm font-normal text-ink"
+          >
+            {
+              ANIOS_ANALISIS_DENGUE.map((anio) => (
+                <option value={anio} selected={anio === 2023}>
+                  {anio}
+                </option>
+              ))
+            }
+          </select>
+        </label>
+
+        <label
+          class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted md:col-span-3"
         >
-        <input
-          id="analisis-hasta"
-          type="range"
-          min="1"
-          max="53"
-          value="53"
-          class="w-full accent-accent"
-        />
-      </label>
-    </div>
+          Periodo MINSAL
+          <select
+            id="analisis-modo-minsal"
+            class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
+          >
+            <option value="semana">Semana seleccionada</option>
+            <option value="ytd">Acumulado del año (YTD)</option>
+            <option value="historico">Histórico completo</option>
+          </select>
+        </label>
 
-    <label
-      class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted sm:col-span-2 xl:col-span-1"
-    >
-      Comparar departamentos (máximo 4)
-      <select
-        id="analisis-comparar"
-        multiple
-        size="4"
-        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
-        aria-describedby="analisis-comparar-ayuda"></select>
-      <span
-        id="analisis-comparar-ayuda"
-        class="font-sans text-[11px] font-normal normal-case text-ink-muted"
+        <label
+          class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted md:col-span-3"
+        >
+          Departamento
+          <select
+            id="analisis-departamento"
+            class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
+          >
+            <option value="">Todos</option>
+          </select>
+        </label>
+
+        <fieldset class="flex flex-col gap-1 md:col-span-4">
+          <legend
+            class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+          >
+            Serie MINSAL
+          </legend>
+          <div
+            class="flex min-h-10 items-center gap-4 rounded-lg border border-border bg-bg px-3 py-2"
+          >
+            <label class="flex items-center gap-2 font-sans text-sm text-ink">
+              <input
+                type="radio"
+                name="analisis-serie"
+                value="probable"
+                checked
+              /> Probable
+            </label>
+            <label class="flex items-center gap-2 font-sans text-sm text-ink">
+              <input type="radio" name="analisis-serie" value="confirmado" /> Confirmado
+            </label>
+          </div>
+        </fieldset>
+
+        <label
+          class="flex flex-col gap-2 rounded-xl border border-border bg-bg p-3 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted md:col-span-6"
+        >
+          Semana activa: <output
+            id="analisis-semana-valor"
+            class="font-mono text-ink">SE01</output
+          >
+          <input
+            id="analisis-semana"
+            type="range"
+            min="1"
+            max="53"
+            value="1"
+            class="w-full accent-accent"
+          />
+        </label>
+
+        <fieldset
+          class="grid grid-cols-2 gap-3 rounded-xl border border-border bg-bg p-3 md:col-span-6"
+        >
+          <legend
+            class="px-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+          >
+            Rango de comparación
+          </legend>
+          <label
+            class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+          >
+            Desde: <output id="analisis-desde-valor" class="font-mono text-ink"
+              >SE01</output
+            >
+            <input
+              id="analisis-desde"
+              type="range"
+              min="1"
+              max="53"
+              value="1"
+              class="w-full accent-accent"
+            />
+          </label>
+          <label
+            class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+          >
+            Hasta: <output id="analisis-hasta-valor" class="font-mono text-ink"
+              >SE53</output
+            >
+            <input
+              id="analisis-hasta"
+              type="range"
+              min="1"
+              max="53"
+              value="53"
+              class="w-full accent-accent"
+            />
+          </label>
+        </fieldset>
+
+        <fieldset
+          class="rounded-xl border border-border bg-bg p-3 md:col-span-12"
+          aria-describedby="analisis-comparar-ayuda"
+        >
+          <legend
+            class="px-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+          >
+            Comparar departamentos
+          </legend>
+          <div
+            id="analisis-comparar"
+            class="grid gap-x-5 gap-y-2 sm:grid-cols-2 lg:grid-cols-4"
+          >
+          </div>
+          <span
+            id="analisis-comparar-ayuda"
+            class="mt-2 block font-sans text-[11px] font-normal normal-case text-ink-muted"
+          >
+            Selecciona hasta cuatro departamentos. 0 de 4 seleccionados.
+          </span>
+        </fieldset>
+      </div>
+
+      <div
+        class="mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between"
       >
-        Use Ctrl o Cmd para seleccionar varios. 0 de 4 seleccionados.
-      </span>
-    </label>
-  </div>
+        <button
+          id="analisis-limpiar-filtros"
+          type="button"
+          class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+        >
+          Limpiar filtros
+        </button>
+        <div class="flex flex-wrap gap-2">
+          <button
+            id="analisis-exportar"
+            type="button"
+            class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Descargar vista
+          </button>
+          <button
+            id="analisis-copiar-enlace"
+            type="button"
+            class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Copiar enlace
+          </button>
+        </div>
+      </div>
 
-  <p
-    id="analisis-filtros-estado"
-    class="mt-3 font-sans text-xs text-ink-muted"
-    role="status"
-  >
-    Cargando departamentos disponibles…
-  </p>
-  <p
-    id="analisis-acciones-estado"
-    class="mt-1 min-h-4 font-sans text-xs text-ink-muted"
-    role="status"
-  >
-  </p>
-</section>
+      <div class="mt-3 flex flex-col gap-1 sm:flex-row sm:justify-between">
+        <p
+          id="analisis-filtros-estado"
+          class="font-sans text-xs text-ink-muted"
+          role="status"
+        >
+          Cargando departamentos disponibles…
+        </p>
+        <p
+          id="analisis-acciones-estado"
+          class="min-h-4 font-sans text-xs text-ink-muted"
+          role="status"
+        >
+        </p>
+      </div>
+    </section>
+  </aside>
+</div>
 
 <script>
   import { obtenerDatasetAnalitico } from '../lib/analisis-api';
@@ -193,6 +239,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
   import {
     actualizarFiltrosAnalisis,
     obtenerFiltrosAnalisis,
+    restablecerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../lib/analisis-state';
   import type {
@@ -207,9 +254,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
   const selectDepartamento = document.getElementById(
     'analisis-departamento',
   ) as HTMLSelectElement | null;
-  const selectComparar = document.getElementById(
-    'analisis-comparar',
-  ) as HTMLSelectElement | null;
+  const contenedorComparar = document.getElementById('analisis-comparar');
   const selectModoMinsal = document.getElementById(
     'analisis-modo-minsal',
   ) as HTMLSelectElement | null;
@@ -240,6 +285,9 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
   const botonCopiar = document.getElementById(
     'analisis-copiar-enlace',
   ) as HTMLButtonElement | null;
+  const botonLimpiar = document.getElementById(
+    'analisis-limpiar-filtros',
+  ) as HTMLButtonElement | null;
 
   const etiquetaSemana = (valor: number) =>
     `SE${String(valor).padStart(2, '0')}`;
@@ -252,6 +300,30 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
     opcion.value = valor;
     opcion.textContent = etiqueta;
     return opcion;
+  }
+
+  function crearControlComparacion(
+    codigo: string,
+    nombre: string,
+  ): HTMLLabelElement {
+    const etiqueta = document.createElement('label');
+    etiqueta.className =
+      'flex items-center gap-2 rounded-lg px-2 py-1.5 font-sans text-sm text-ink transition-colors hover:bg-secondary/30';
+    const casilla = document.createElement('input');
+    casilla.type = 'checkbox';
+    casilla.name = 'analisis-comparar';
+    casilla.value = codigo;
+    casilla.className = 'accent-accent';
+    casilla.addEventListener('change', () => {
+      const actuales = obtenerFiltrosAnalisis().comparar;
+      const comparar = casilla.checked
+        ? [...actuales, casilla.value].slice(0, 4)
+        : actuales.filter((codigoActual) => codigoActual !== casilla.value);
+      actualizarFiltrosAnalisis({ comparar });
+      sincronizarControles();
+    });
+    etiqueta.append(casilla, nombre);
+    return etiqueta;
   }
 
   function sincronizarControles() {
@@ -271,13 +343,15 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
       .forEach((radio) => {
         radio.checked = radio.value === filtros.serie;
       });
-    if (selectComparar) {
-      for (const opcion of selectComparar.options) {
-        opcion.selected = filtros.comparar.includes(opcion.value);
-      }
-    }
+    const limiteComparacionAlcanzado = filtros.comparar.length >= 4;
+    document
+      .querySelectorAll<HTMLInputElement>('input[name="analisis-comparar"]')
+      .forEach((casilla) => {
+        casilla.checked = filtros.comparar.includes(casilla.value);
+        casilla.disabled = limiteComparacionAlcanzado && !casilla.checked;
+      });
     if (ayudaComparar) {
-      ayudaComparar.textContent = `Use Ctrl o Cmd para seleccionar varios. ${filtros.comparar.length} de 4 seleccionados.`;
+      ayudaComparar.textContent = `Selecciona hasta cuatro departamentos. ${filtros.comparar.length} de 4 seleccionados.`;
     }
   }
 
@@ -296,10 +370,10 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
           ),
         );
       }
-      if (selectComparar) {
-        selectComparar.replaceChildren(
+      if (contenedorComparar) {
+        contenedorComparar.replaceChildren(
           ...datos.departamentos.map((departamento) =>
-            crearOpcion(departamento.codigo, departamento.nombre),
+            crearControlComparacion(departamento.codigo, departamento.nombre),
           ),
         );
       }
@@ -348,16 +422,9 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
           });
       });
     });
-  selectComparar?.addEventListener('change', () => {
-    const seleccionados = [...selectComparar.selectedOptions]
-      .map((opcion) => opcion.value)
-      .slice(0, 4);
-    actualizarFiltrosAnalisis({ comparar: seleccionados });
-    sincronizarControles();
-  });
   botonExportar?.addEventListener('click', async () => {
     if (!botonExportar) return;
-    const textoOriginal = 'Descargar vista actual';
+    const textoOriginal = botonExportar.textContent || 'Descargar vista';
     botonExportar.disabled = true;
     botonExportar.textContent = 'Preparando...';
     if (estadoAcciones) estadoAcciones.textContent = 'Preparando CSV…';
@@ -398,6 +465,12 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
         estadoAcciones.textContent =
           'No se pudo copiar automáticamente; use la dirección del navegador.';
     }
+  });
+  botonLimpiar?.addEventListener('click', () => {
+    restablecerFiltrosAnalisis();
+    if (estadoAcciones)
+      estadoAcciones.textContent =
+        'Filtros restablecidos a los valores predeterminados.';
   });
 
   suscribirFiltrosAnalisis(sincronizarControles);

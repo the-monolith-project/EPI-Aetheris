@@ -22,8 +22,8 @@
         </h2>
         <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
           Serie semanal de casos de dengue, OpenDengue (nivel nacional,
-          2018-2024). No representa una clasificación de riesgo -- eso todavía
-          no está definido.
+          2018-2024). Presenta conteos observados, no una clasificación de
+          riesgo.
         </p>
       </div>
     </div>
@@ -37,9 +37,25 @@
       Descargar CSV
     </button>
   </div>
+  <div class="mt-4 flex items-center gap-2 font-sans text-xs text-ink-muted">
+    <span>Detalle</span>
+    <button
+      id="curva-zoom-menos"
+      type="button"
+      class="rounded border border-border px-2 py-1 text-ink"
+      aria-label="Reducir detalle de la curva">−</button
+    >
+    <output id="curva-zoom-valor" class="font-mono text-ink">100%</output>
+    <button
+      id="curva-zoom-mas"
+      type="button"
+      class="rounded border border-border px-2 py-1 text-ink"
+      aria-label="Aumentar detalle de la curva">+</button
+    >
+  </div>
   <div
     id="curva-epidemica"
-    class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4"
+    class="mt-3 overflow-x-auto rounded-xl border border-border bg-bg p-3 sm:p-4"
   >
     <!-- Skeleton con la misma altura aproximada del SVG final (viewBox 720x240,
          w-full) para que la página no salte al llegar los datos. -->
@@ -51,21 +67,25 @@
 </section>
 
 <script>
-  interface CasoSemanal {
-    semana_inicio: string;
-    anio: number;
-    conteo: number;
-  }
+  import { obtenerCasosNacionales } from '../lib/analisis-api';
+  import type { CasoNacionalSemanal } from '../lib/tipos-analisis';
 
-  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const ANCHO = 720;
   const ALTO = 240;
   const MARGEN = { arriba: 20, abajo: 28, izquierda: 40, derecha: 8 };
+  const NIVELES_ZOOM = [100, 150, 200] as const;
+  type ZoomCurva = (typeof NIVELES_ZOOM)[number];
 
-  function dibujar(contenedor: HTMLElement, datos: CasoSemanal[]) {
+  let zoom: ZoomCurva = 100;
+  let datosActuales: CasoNacionalSemanal[] = [];
+
+  function dibujar(contenedor: HTMLElement, datos: CasoNacionalSemanal[]) {
     const estado = contenedor.querySelector('[data-estado]');
     estado?.remove();
+    contenedor.querySelectorAll(':scope > svg').forEach((grafica) => {
+      grafica.remove();
+    });
 
     if (datos.length === 0) {
       contenedor.innerHTML =
@@ -84,7 +104,8 @@
 
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
-    svg.setAttribute('class', 'w-full');
+    svg.setAttribute('class', 'min-w-[720px]');
+    svg.style.width = `${zoom}%`;
     svg.setAttribute('role', 'img');
     svg.setAttribute(
       'aria-label',
@@ -201,7 +222,7 @@
   // Exporta exactamente lo mismo que dibuja el SVG -- mismo endpoint, sin
   // transformación adicional. Generado 100% en el cliente (Blob + URL de
   // objeto), no hay endpoint de exportación nuevo en el backend.
-  function descargarCsv(datos: CasoSemanal[]) {
+  function descargarCsv(datos: CasoNacionalSemanal[]) {
     const encabezado = 'semana_inicio,anio,conteo';
     const filas = datos.map((d) => `${d.semana_inicio},${d.anio},${d.conteo}`);
     const csv = [encabezado, ...filas].join('\n');
@@ -226,9 +247,8 @@
     if (!contenedor) return;
 
     try {
-      const resp = await fetch(`${API_BASE}/api/casos-nacional`);
-      if (!resp.ok) throw new Error('respuesta no OK');
-      const datos: CasoSemanal[] = await resp.json();
+      const datos = await obtenerCasosNacionales();
+      datosActuales = datos;
       dibujar(contenedor, datos);
       if (botonDescarga && datos.length > 0) {
         botonDescarga.disabled = false;
@@ -250,6 +270,32 @@
         '<p class="font-sans text-sm text-ink-muted">No se pudo cargar la serie en este momento.</p>';
     }
   }
+
+  const contenedorCurva = document.getElementById('curva-epidemica');
+  const zoomValor = document.getElementById('curva-zoom-valor');
+  const botonZoomMenos = document.getElementById(
+    'curva-zoom-menos',
+  ) as HTMLButtonElement | null;
+  const botonZoomMas = document.getElementById(
+    'curva-zoom-mas',
+  ) as HTMLButtonElement | null;
+  function cambiarZoom(direccion: -1 | 1) {
+    const indice = Math.max(
+      0,
+      Math.min(NIVELES_ZOOM.length - 1, NIVELES_ZOOM.indexOf(zoom) + direccion),
+    );
+    const siguiente = NIVELES_ZOOM[indice];
+    if (siguiente === zoom) return;
+    zoom = siguiente;
+    if (zoomValor) zoomValor.textContent = `${zoom}%`;
+    if (botonZoomMenos) botonZoomMenos.disabled = zoom === 100;
+    if (botonZoomMas) botonZoomMas.disabled = zoom === 200;
+    if (contenedorCurva && datosActuales.length)
+      dibujar(contenedorCurva, datosActuales);
+  }
+  botonZoomMenos?.addEventListener('click', () => cambiarZoom(-1));
+  botonZoomMas?.addEventListener('click', () => cambiarZoom(1));
+  if (botonZoomMenos) botonZoomMenos.disabled = true;
 
   iniciar();
 </script>

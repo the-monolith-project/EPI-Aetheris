@@ -3,9 +3,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Layout from '../layouts/Layout.astro';
 
-// Landing de presentación (antes de entrar al panel en /panel). No repite el
-// dashboard: explica qué es el proyecto, qué pregunta responde y qué
-// explícitamente NO hace, antes de que alguien vea un mapa sin contexto.
+// Landing de presentación (antes de entrar a la vista dengue en /dengue). No
+// repite el dashboard: explica qué es el proyecto, qué pregunta responde y
+// qué explícitamente NO hace, antes de que alguien vea un mapa sin contexto.
 // Mismo lenguaje de estatuto que el resto del sitio: descriptivo, no
 // predictivo, ayuda de priorización -- nunca diagnóstico ni pronóstico.
 //
@@ -17,7 +17,7 @@ import Layout from '../layouts/Layout.astro';
 // genérico "número grande + etiqueta + stats" -- ese patrón describía el
 // proyecto desde afuera. En su lugar, la mitad derecha es el propio mapa
 // departamental (14 siluetas reales, del mismo geojson que consume
-// MapaDepartamentos.astro en /panel), proyectado a SVG en build time. Es el
+// MapaDepartamentos.astro en /dengue), proyectado a SVG en build time. Es el
 // objeto central del proyecto mostrándose a sí mismo, no una cifra sobre él.
 // Las 4 cifras que antes eran una grilla de tarjetas ahora son una sola
 // línea de texto (ver <CIFRAS>) -- información de pie, no la pieza visual.
@@ -204,10 +204,10 @@ const STACK = [
 
         <div class="mt-6 flex flex-wrap gap-3">
           <a
-            href="/panel"
+            href="/dengue"
             class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-sans text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-deep"
           >
-            Ver el panel
+            Ver dengue
             <svg
               class="h-4 w-4"
               viewBox="0 0 20 20"
@@ -232,9 +232,9 @@ const STACK = [
       </div>
 
       <a
-        href="/panel"
+        href="/dengue"
         class="group block"
-        aria-label="Ver el mapa departamental completo en el panel"
+        aria-label="Ver el mapa departamental completo en la vista dengue"
       >
         <div class="rounded-[28px] bg-deep p-4 sm:p-6">
           <svg
@@ -256,7 +256,7 @@ const STACK = [
             }
           </svg>
           <p class="mt-3 font-sans text-xs leading-snug text-deep-ink-muted">
-            Los 14 departamentos, tal como se ven en el mapa del panel -- cada
+            Los 14 departamentos, tal como se ven en el mapa de dengue -- cada
             uno comparado contra su propia historia, nunca entre sí.
           </p>
         </div>
@@ -280,7 +280,7 @@ const STACK = [
         clasificador predictivo piloto fue evaluado y <strong class="text-ink"
           >retirado</strong
         > tras su validación empírica: en los únicos años con un brote real, no mostró
-        capacidad predictiva utilizable. Queda en el panel como referencia histórica,
+        capacidad predictiva utilizable. Queda en la vista dengue como referencia histórica,
         no como predicción en vivo. Este es un aporte de <strong
           class="text-ink">ingeniería de software</strong
         > -- reproducible, con datos públicos y contenedores -- no un modelo epidemiológico
@@ -375,10 +375,10 @@ const STACK = [
         </p>
       </div>
       <a
-        href="/panel"
+        href="/dengue"
         class="shrink-0 rounded-full bg-secondary px-5 py-2.5 font-sans text-sm font-semibold text-secondary-ink transition-colors hover:brightness-95"
       >
-        Entrar al panel
+        Entrar a dengue
       </a>
     </section>
   </main>
