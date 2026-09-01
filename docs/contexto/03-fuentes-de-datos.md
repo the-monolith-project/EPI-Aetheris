@@ -120,7 +120,7 @@ El hueco 2024–presente a nivel departamental es riesgo real, no resuelto.
 
 El parser vuelca la tabla cruda extraída de cada boletín (incluida la columna de tasa de Familia A, siempre conservada aunque no se use downstream) en `backend/ingestion/data/interim/` antes de normalizar — así los 264 PDF se leen una sola vez y todo lo demás trabaja sobre esa capa. `data/interim/` debe estar gitignoreada igual que `data/raw/` — verificar que siga así antes de commitear código de ingesta.
 
-**Regla de datos en el repositorio:** los PDF descargados y cualquier artefacto derivado de la ingesta son datos, no código, y no se versionan (excepción deliberada: `backend/ingestion/geo/slv-adm1-source.geojson`, documentada en el `CLAUDE.md` de la raíz — no la "corrija" quitándola del control de versiones).
+**Regla de datos en el repositorio:** los PDF descargados y cualquier artefacto derivado de la ingesta son datos, no código, y no se versionan (excepción deliberada: `backend/ingestion/geo/slv-adm1-source.geojson`, documentada en el `AGENTS.md` de la raíz — no la "corrija" quitándola del control de versiones).
 
 ## Pendiente, sin avance registrado
 

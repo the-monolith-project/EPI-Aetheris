@@ -188,6 +188,7 @@ def casos_nacional():
 
 
 _modelo_cache = None
+_dataset_riesgo_cache = None
 
 
 def _cargar_modelo():
@@ -215,14 +216,19 @@ def riesgo_nacional(anio: int | None = None, semana: int | None = None):
     de verificar en vivo lo que predice, no hay fuente departamental
     automatizable después de 2023 (ver docs/contexto, punto F).
     """
-    if not DATASET_RIESGO_PATH.exists():
-        raise HTTPException(
-            status_code=503,
-            detail="Dataset de modelado no disponible -- correr construir_dataset_modelado.py (tarjeta 23) primero.",
-        )
+    global _dataset_riesgo_cache
+    if _dataset_riesgo_cache is None:
+        if not DATASET_RIESGO_PATH.exists():
+            raise HTTPException(
+                status_code=503,
+                detail="Dataset de modelado no disponible -- correr construir_dataset_modelado.py (tarjeta 23) primero.",
+            )
 
-    with open(DATASET_RIESGO_PATH, newline="", encoding="utf-8") as f:
-        filas = list(csv.DictReader(f))
+        # ⚡ Bolt: Cache dataset to prevent unnecessary disk I/O on every request
+        with open(DATASET_RIESGO_PATH, newline="", encoding="utf-8") as f:
+            _dataset_riesgo_cache = list(csv.DictReader(f))
+
+    filas = _dataset_riesgo_cache
 
     if anio is None or semana is None:
         fila = max(filas, key=lambda r: (int(r["anio"]), int(r["semana_epi"])))

@@ -1,0 +1,90 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+// Sin backend a propósito: recibir sugerencias con un formulario propio
+// obligaría a una tabla nueva (y un ADR antes de tocar el esquema) y a
+// guardar texto libre de terceros, que choca con "sin datos personales".
+// GitHub Issues ya es público, gratuito y deja la conversación trazable
+// para cualquiera que quiera replicar o auditar el proyecto -- el mismo
+// criterio de "aporte de ingeniería reproducible" del resto del sitio.
+const REPO = 'https://github.com/the-monolith-project/EPI-Aetheris';
+
+const CANALES = [
+  {
+    titulo: 'Proponer una mejora o reportar un problema',
+    descripcion:
+      'Abre un issue en GitHub. Sirve para señalar un dato que no cuadra, una capa del mapa que confunde, un error de la API o una función que echas en falta. No hace falta cuenta técnica: cualquiera con cuenta de GitHub puede escribir.',
+    enlace: `${REPO}/issues/new`,
+    cta: 'Abrir un issue nuevo',
+  },
+  {
+    titulo: 'Ver lo que ya está propuesto',
+    descripcion:
+      'Antes de escribir, revisa los issues abiertos: puede que tu idea ya esté en discusión y prefieras sumarte a ese hilo en vez de abrir uno nuevo.',
+    enlace: `${REPO}/issues`,
+    cta: 'Ver issues abiertos',
+  },
+  {
+    titulo: 'Leer o modificar el código',
+    descripcion:
+      'Todo el sistema es software libre y reproducible. El repositorio tiene las instrucciones para levantarlo con Docker, los datos reales versionados y la documentación de cada decisión. Los pull requests son bienvenidos.',
+    enlace: REPO,
+    cta: 'Ir al repositorio',
+  },
+];
+---
+
+<Layout title="EPI-Aetheris — Sugerencias">
+  <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+    <header class="mb-8 max-w-3xl">
+      <p
+        class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+      >
+        Participar en el proyecto
+      </p>
+      <h1
+        class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
+      >
+        Sugerencias
+      </h1>
+      <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+        EPI-Aetheris se construye a la vista de todos. Si algo del panel te
+        parece mejorable, confuso o incorrecto, cuéntalo: las sugerencias se
+        gestionan en GitHub, de forma pública, para que la discusión quede
+        registrada y cualquier persona pueda seguirla o replicar el proyecto. No
+        recogemos formularios ni datos personales en este sitio.
+      </p>
+    </header>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {
+        CANALES.map((canal) => (
+          <a
+            href={canal.enlace}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="card-elevated flex flex-col gap-2 rounded-2xl border border-border bg-surface p-5 transition-transform hover:-translate-y-0.5"
+          >
+            <h2 class="font-sans text-base font-semibold leading-snug text-ink">
+              {canal.titulo}
+            </h2>
+            <p class="font-sans text-sm leading-relaxed text-ink-muted">
+              {canal.descripcion}
+            </p>
+            <span class="mt-1 font-sans text-sm font-medium text-accent">
+              {canal.cta} &rarr;
+            </span>
+          </a>
+        ))
+      }
+    </div>
+
+    <p class="mt-8 max-w-3xl font-sans text-xs leading-relaxed text-ink-muted">
+      Este panel es una ayuda de priorización descriptiva, no un diagnóstico ni
+      un pronóstico. Las sugerencias sobre metodología epidemiológica se
+      valoran, pero las decisiones de fórmula (módulos de Camino Ancho) las
+      cierra la coordinación del proyecto y quedan documentadas en la
+      Biblioteca.
+    </p>
+  </main>
+</Layout>

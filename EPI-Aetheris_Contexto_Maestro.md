@@ -8,4 +8,4 @@
 - [`docs/contexto/03-fuentes-de-datos.md`](docs/contexto/03-fuentes-de-datos.md) — evidencia empírica y trampas de ingesta de OpenDengue, MINSAL y Open-Meteo. Referencia profunda, no lectura por defecto.
 - [`docs/contexto/CHANGELOG.md`](docs/contexto/CHANGELOG.md) — historial completo sesión a sesión. Consultar solo para el "por qué y cuándo", no para el estado actual.
 
-Ver también `docs/adr/` para las decisiones de esquema de base de datos (formato ADR estándar, independiente de este contexto) y `CLAUDE.md` en la raíz para convenciones de código.
+Ver también `docs/adr/` para las decisiones de esquema de base de datos (formato ADR estándar, independiente de este contexto) y `AGENTS.md` en la raíz para convenciones de código.

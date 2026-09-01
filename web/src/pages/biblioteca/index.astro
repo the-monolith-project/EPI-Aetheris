@@ -44,7 +44,10 @@ const ORDEN_BIBLIOTECA: Array<{ id: string; descripcion: string }> = [
 
 const entradas = await getCollection('biblioteca');
 const porId = new Map<string, CollectionEntry<'biblioteca'>>(
-  entradas.map((entrada: CollectionEntry<'biblioteca'>) => [entrada.id, entrada]),
+  entradas.map((entrada: CollectionEntry<'biblioteca'>) => [
+    entrada.id,
+    entrada,
+  ]),
 );
 
 const items = await Promise.all(
@@ -52,9 +55,12 @@ const items = await Promise.all(
     const entrada = porId.get(id);
     if (!entrada) return null;
     const { headings } = await render(entrada);
-    const titulo = headings.find((heading: { depth: number; text: string }) => heading.depth === 1)?.text ?? entrada.id;
+    const titulo =
+      headings.find(
+        (heading: { depth: number; text: string }) => heading.depth === 1,
+      )?.text ?? entrada.id;
     return { id: entrada.id, titulo, descripcion };
-  })
+  }),
 );
 const disponibles = items.filter((i): i is NonNullable<typeof i> => i !== null);
 ---
@@ -62,19 +68,24 @@ const disponibles = items.filter((i): i is NonNullable<typeof i> => i !== null);
 <Layout title="EPI-Aetheris — Biblioteca">
   <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
     <header class="mb-8 max-w-3xl">
-      <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">
+      <p
+        class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+      >
         Documentación del proyecto
       </p>
-      <h1 class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">
+      <h1
+        class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
+      >
         Biblioteca
       </h1>
       <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
-        EPI-Aetheris documenta sus decisiones a medida que se toman: qué se probó, qué falló, qué
-        se cerró y por qué. Esta es una selección curada de esa documentación -- pensada para
-        quien llega de afuera (estudiando, investigando, evaluando el proyecto) y quiere entender
-        el razonamiento real detrás del sistema, no solo su resultado final. El repositorio
-        completo tiene más documentos técnicos internos; estos son los que mejor cuentan la
-        historia.
+        EPI-Aetheris documenta sus decisiones a medida que se toman: qué se
+        probó, qué falló, qué se cerró y por qué. Esta es una selección curada
+        de esa documentación -- pensada para quien llega de afuera (estudiando,
+        investigando, evaluando el proyecto) y quiere entender el razonamiento
+        real detrás del sistema, no solo su resultado final. El repositorio
+        completo tiene más documentos técnicos internos; estos son los que mejor
+        cuentan la historia.
       </p>
     </header>
 
@@ -85,8 +96,12 @@ const disponibles = items.filter((i): i is NonNullable<typeof i> => i !== null);
             href={`/biblioteca/${item.id}`}
             class="card-elevated flex flex-col gap-2 rounded-2xl border border-border bg-surface p-5 transition-transform hover:-translate-y-0.5"
           >
-            <h2 class="font-sans text-base font-semibold leading-snug text-ink">{item.titulo}</h2>
-            <p class="font-sans text-sm leading-relaxed text-ink-muted">{item.descripcion}</p>
+            <h2 class="font-sans text-base font-semibold leading-snug text-ink">
+              {item.titulo}
+            </h2>
+            <p class="font-sans text-sm leading-relaxed text-ink-muted">
+              {item.descripcion}
+            </p>
           </a>
         ))
       }

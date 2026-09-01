@@ -26,14 +26,14 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
       <button
         id="analisis-exportar"
         type="button"
-        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
       >
         Descargar vista actual
       </button>
       <button
         id="analisis-copiar-enlace"
         type="button"
-        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+        class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
       >
         Copiar enlace
       </button>
@@ -244,6 +244,8 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
   const etiquetaSemana = (valor: number) =>
     `SE${String(valor).padStart(2, '0')}`;
   let cargaActual = 0;
+  let timerCopiado: ReturnType<typeof setTimeout> | null = null;
+  let timerExportar: ReturnType<typeof setTimeout> | null = null;
 
   function crearOpcion(valor: string, etiqueta: string): HTMLOptionElement {
     const opcion = document.createElement('option');
@@ -354,24 +356,43 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
     sincronizarControles();
   });
   botonExportar?.addEventListener('click', async () => {
+    if (!botonExportar) return;
+    const textoOriginal = 'Descargar vista actual';
     botonExportar.disabled = true;
+    botonExportar.textContent = 'Preparando...';
     if (estadoAcciones) estadoAcciones.textContent = 'Preparando CSV…';
     try {
       const filas = await exportarAnalisisCsv(obtenerFiltrosAnalisis());
       if (estadoAcciones)
         estadoAcciones.textContent = `CSV generado con ${filas} filas filtradas.`;
+      botonExportar.textContent = '¡Descargado!';
+      botonExportar.classList.add('text-accent', 'border-accent/50');
+      if (timerExportar) clearTimeout(timerExportar);
+      timerExportar = setTimeout(() => {
+        botonExportar.textContent = textoOriginal;
+        botonExportar.classList.remove('text-accent', 'border-accent/50');
+      }, 2000);
     } catch {
       if (estadoAcciones)
         estadoAcciones.textContent = 'No fue posible generar el CSV.';
+      botonExportar.textContent = textoOriginal;
     } finally {
       botonExportar.disabled = false;
     }
   });
   botonCopiar?.addEventListener('click', async () => {
+    if (!botonCopiar) return;
     try {
       await navigator.clipboard.writeText(window.location.href);
       if (estadoAcciones)
         estadoAcciones.textContent = 'Enlace reproducible copiado.';
+      botonCopiar.textContent = '¡Copiado!';
+      botonCopiar.classList.add('text-accent', 'border-accent/50');
+      if (timerCopiado) clearTimeout(timerCopiado);
+      timerCopiado = setTimeout(() => {
+        botonCopiar.textContent = 'Copiar enlace';
+        botonCopiar.classList.remove('text-accent', 'border-accent/50');
+      }, 2000);
     } catch {
       if (estadoAcciones)
         estadoAcciones.textContent =

@@ -25,7 +25,7 @@ la tarea M3, 2026-08-21; ver tambien docs/modulo-3-presion-epidemiologica.md):
     del de ingestion.
   - Anios base: 2018, 2019, 2021, 2022, 2023. 2020 excluido del baseline
     (colapso real de vigilancia durante covid, no baja transmision -- ver
-    CLAUDE.md "Why 2020 is excluded"; exclusion de ventana de comparacion,
+    AGENTS.md "Why 2020 is excluded"; exclusion de ventana de comparacion,
     NO de ingesta).
   - Anti-fuga: leave-one-out estricto -- el anio descrito nunca aparece en
     su propio baseline.

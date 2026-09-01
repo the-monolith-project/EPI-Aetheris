@@ -51,7 +51,7 @@ coordinador (no inventada aqui):
   - Anios evaluados: 2018, 2019, 2021, 2022, 2023 (mismos que el canal
     endemico nacional y la unica ventana con datos MINSAL departamentales
     cargados). 2020 no esta en la tabla de casos departamentales en
-    absoluto (nunca se descargo, ver CLAUDE.md) -- no aplica exclusion
+    absoluto (nunca se descargo, ver AGENTS.md) -- no aplica exclusion
     especial aqui, simplemente no hay datos que comparar ese anio.
   - Baseline de Iv (mediana/desviacion por semana-del-anio): leave-one-
     out sobre el corpus climatico completo 2014-2024 (excluyendo el anio
