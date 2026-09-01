@@ -908,11 +908,8 @@ def ira_temporal_departamento(departamento_id: str, response: Response):
 def neumonias_departamental():
     """Resumen departamental de Neumonías notificadas. Capa descriptiva."""
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             departamentos = cargar_neumonias_departamental(conn)
-        finally:
-            conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
     return {"departamentos": departamentos, "aviso": AVISO_HONESTIDAD_NEUMONIAS}
@@ -921,8 +918,7 @@ def neumonias_departamental():
 @app.get("/api/neumonias/temporal/{departamento_id}")
 def neumonias_temporal_departamento(departamento_id: str):
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             serie = cargar_neumonias_departamento_temporal(conn, codigo=departamento_id)
             if serie is None:
                 raise HTTPException(
@@ -936,8 +932,6 @@ def neumonias_temporal_departamento(departamento_id: str):
             )
             (nombre,) = cur.fetchone()
             cur.close()
-        finally:
-            conn.close()
     except HTTPException:
         raise
     except Exception:
@@ -964,11 +958,8 @@ def neumonias_heatmap(anio: int):
             detail=f"año {anio} fuera de la ventana cargada {ANIOS_NEUMONIAS}",
         )
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             departamentos = cargar_heatmap_neumonias(conn, anio)
-        finally:
-            conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
     return {
@@ -983,11 +974,8 @@ def neumonias_heatmap(anio: int):
 def respiratorios_virus():
     """Catálogo de series disponibles (virus × métrica × unidad). Nacional."""
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             series = listar_virus(conn)
-        finally:
-            conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
     return {"series": series, "aviso": AVISO_HONESTIDAD_VIRUS, "granularidad": "nacional"}
@@ -1000,11 +988,8 @@ def respiratorios_temporal(virus: str, metrica: str = "detecciones"):
     if metrica not in permitidas:
         raise HTTPException(status_code=400, detail=f"metrica debe ser una de {sorted(permitidas)}")
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             serie, unidad = serie_virus(conn, virus=virus, metrica=metrica)
-        finally:
-            conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
     if not serie:
@@ -1034,11 +1019,8 @@ def respiratorios_semana(anio: int, semana: int):
     if semana < 1 or semana > 53:
         raise HTTPException(status_code=400, detail="semana epidemiológica fuera de 1-53")
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             filas = semana_virus(conn, anio=anio, semana=semana)
-        finally:
-            conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
     return {
@@ -1054,10 +1036,7 @@ def respiratorios_semana(anio: int, semana: int):
 def respiratorios_cobertura():
     """Semanas con dato en Postgres + notas de la exploración. No es M4."""
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             return cargar_cobertura(conn)
-        finally:
-            conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
