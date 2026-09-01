@@ -3,21 +3,25 @@ import CalendarioEpidemico from './CalendarioEpidemico.astro';
 import ComparacionDepartamentos from './ComparacionDepartamentos.astro';
 import ComparacionTemporadas from './ComparacionTemporadas.astro';
 import DisponibilidadDatos from './DisponibilidadDatos.astro';
+import FiltrosAnalisis from '../FiltrosAnalisis.astro';
 import HeatmapDepartamentos from './HeatmapDepartamentos.astro';
+import MapaDepartamentos from '../MapaDepartamentos.astro';
 import PerfilCalidadDatos from './PerfilCalidadDatos.astro';
 import ScatterClimaPresion from './ScatterClimaPresion.astro';
+import SelectorPaneles from './SelectorPaneles.astro';
+import ToolbarAnalisis from './ToolbarAnalisis.astro';
 ---
 
 <section
   id="analisis"
-  class="scroll-mt-24"
+  class="workspace-analitico scroll-mt-24"
   aria-labelledby="panel-analisis-titulo"
 >
   <header class="mb-4 max-w-3xl">
     <p
       class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
     >
-      Análisis
+      Workspace analítico
     </p>
     <h2
       id="panel-analisis-titulo"
@@ -26,19 +30,260 @@ import ScatterClimaPresion from './ScatterClimaPresion.astro';
       Exploración espacial y temporal
     </h2>
     <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
-      Estas vistas organizan observaciones históricas para comparar dónde y
-      cuándo ocurrieron; no asignan riesgo, no anticipan eventos y no establecen
-      causalidad.
+      Explora el comportamiento del dengue por departamento y semana. Selecciona
+      un departamento, ajusta el periodo y compara sus patrones con otras
+      temporadas y territorios.
+    </p>
+    <p class="mt-2 font-sans text-xs text-ink-muted">
+      Las visualizaciones son descriptivas y no representan un pronóstico.
     </p>
   </header>
 
-  <div class="grid gap-4">
-    <HeatmapDepartamentos />
-    <CalendarioEpidemico />
-    <ComparacionTemporadas />
-    <ComparacionDepartamentos />
-    <ScatterClimaPresion />
-    <DisponibilidadDatos />
-    <PerfilCalidadDatos />
+  <ToolbarAnalisis>
+    <SelectorPaneles slot="selector-paneles" />
+    <FiltrosAnalisis slot="filtros" />
+  </ToolbarAnalisis>
+
+  <div
+    id="workspace-analitico-grid"
+    class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-12"
+  >
+    <div data-columna-workspace="mapa" class="contents">
+      <div id="mapa" data-panel-workspace="mapa" class="relative min-w-0">
+        <MapaDepartamentos />
+      </div>
+    </div>
+    <div data-columna-workspace="analisis" class="contents">
+      <div data-panel-workspace="presion" class="relative min-w-0">
+        <HeatmapDepartamentos />
+      </div>
+      <div data-grupo-workspace="comparaciones" class="contents">
+        <div data-panel-workspace="temporadas" class="relative min-w-0">
+          <ComparacionTemporadas />
+        </div>
+        <div data-panel-workspace="departamentos" class="relative min-w-0">
+          <ComparacionDepartamentos />
+        </div>
+      </div>
+    </div>
+    <div data-panel-workspace="calendario" class="relative min-w-0" hidden>
+      <CalendarioEpidemico />
+    </div>
+    <div data-panel-workspace="clima" class="relative min-w-0" hidden>
+      <ScatterClimaPresion />
+    </div>
+    <div data-panel-workspace="disponibilidad" class="relative min-w-0" hidden>
+      <DisponibilidadDatos />
+    </div>
+    <div data-panel-workspace="calidad" class="relative min-w-0" hidden>
+      <PerfilCalidadDatos />
+    </div>
   </div>
 </section>
+
+<style>
+  .workspace-analitico {
+    width: min(calc(100vw - 2rem), 1840px);
+    margin-inline-start: calc((100% - min(calc(100vw - 2rem), 1840px)) / 2);
+  }
+
+  @media (min-width: 640px) {
+    .workspace-analitico {
+      width: min(calc(100vw - 3rem), 1840px);
+      margin-inline-start: calc((100% - min(calc(100vw - 3rem), 1840px)) / 2);
+    }
+  }
+</style>
+
+<script>
+  import {
+    PANELES_ANALITICOS,
+    actualizarLayoutAnalisis,
+    obtenerLayoutAnalisis,
+    suscribirLayoutAnalisis,
+  } from '../../lib/analisis-layout-state';
+  import type {
+    PanelAnalitico,
+    TamanoPanel,
+  } from '../../lib/analisis-layout-state';
+
+  const paneles = document.querySelectorAll<HTMLElement>(
+    '[data-panel-workspace]',
+  );
+  const columnaMapa = document.querySelector<HTMLElement>(
+    '[data-columna-workspace="mapa"]',
+  );
+  const columnaAnalisis = document.querySelector<HTMLElement>(
+    '[data-columna-workspace="analisis"]',
+  );
+  const grupoComparaciones = document.querySelector<HTMLElement>(
+    '[data-grupo-workspace="comparaciones"]',
+  );
+  const columnas: Record<TamanoPanel, string> = {
+    pequeno: 'xl:col-span-3',
+    mediano: 'xl:col-span-4',
+    grande: 'xl:col-span-6',
+  };
+  const clasesColumnas = [...Object.values(columnas), 'xl:col-span-12'];
+
+  function esVistaGeneralOptimizada(
+    layout: ReturnType<typeof obtenerLayoutAnalisis>,
+  ): boolean {
+    const panelesGenerales: PanelAnalitico[] = [
+      'mapa',
+      'presion',
+      'temporadas',
+      'departamentos',
+    ];
+    return (
+      layout.vista === 'general' &&
+      layout.panelEnFoco === null &&
+      layout.panelesVisibles.length === panelesGenerales.length &&
+      panelesGenerales.every((panel) =>
+        layout.panelesVisibles.includes(panel),
+      ) &&
+      layout.tamanos.mapa === 'mediano' &&
+      layout.tamanos.presion === 'grande' &&
+      layout.tamanos.temporadas === 'grande' &&
+      layout.tamanos.departamentos === 'grande'
+    );
+  }
+
+  function aplicarComposicionGeneral(optimizada: boolean): void {
+    if (!columnaMapa || !columnaAnalisis || !grupoComparaciones) return;
+    columnaMapa.className = optimizada ? 'min-w-0 xl:col-span-4' : 'contents';
+    columnaAnalisis.className = optimizada
+      ? 'flex min-w-0 flex-col gap-4 xl:col-span-8'
+      : 'contents';
+    grupoComparaciones.className = optimizada
+      ? 'grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2'
+      : 'contents';
+  }
+
+  function cerrarMenus(): void {
+    document
+      .querySelectorAll<HTMLElement>('[data-menu-panel]')
+      .forEach((menu) => {
+        menu.hidden = true;
+      });
+    document
+      .querySelectorAll<HTMLButtonElement>('[data-boton-menu-panel]')
+      .forEach((boton) => {
+        boton.setAttribute('aria-expanded', 'false');
+      });
+  }
+
+  paneles.forEach((panel) => {
+    const id = panel.dataset.panelWorkspace as PanelAnalitico;
+    const etiqueta =
+      PANELES_ANALITICOS.find((item) => item.id === id)?.etiqueta ?? id;
+    const boton = document.createElement('button');
+    const menu = document.createElement('div');
+    const menuId = `menu-panel-${id}`;
+    boton.type = 'button';
+    boton.dataset.botonMenuPanel = id;
+    boton.setAttribute('aria-label', `Opciones de ${etiqueta}`);
+    boton.setAttribute('aria-expanded', 'false');
+    boton.setAttribute('aria-controls', menuId);
+    boton.className =
+      'absolute right-3 top-3 z-10 rounded-md border border-border bg-surface px-2 py-1 font-sans text-xs font-semibold text-ink shadow-sm hover:border-accent/50';
+    boton.textContent = '⋯';
+    menu.id = menuId;
+    menu.dataset.menuPanel = id;
+    menu.setAttribute('role', 'menu');
+    menu.hidden = true;
+    menu.className =
+      'absolute right-3 top-11 z-20 w-44 rounded-lg border border-border bg-surface p-2 shadow-lg';
+    menu.innerHTML = `<p class="px-2 py-1 font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Tamaño</p><div class="grid gap-1"><button type="button" role="menuitem" data-accion-panel="tamano" data-valor="pequeno" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Pequeño</button><button type="button" role="menuitem" data-accion-panel="tamano" data-valor="mediano" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Mediano</button><button type="button" role="menuitem" data-accion-panel="tamano" data-valor="grande" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Grande</button><button type="button" role="menuitem" data-accion-panel="foco" class="mt-1 rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Abrir en foco</button><button type="button" role="menuitem" data-accion-panel="ocultar" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Ocultar panel</button></div>`;
+    boton.addEventListener('click', () => {
+      const abierto = menu.hidden;
+      cerrarMenus();
+      menu.hidden = !abierto;
+      boton.setAttribute('aria-expanded', String(abierto));
+    });
+    menu.addEventListener('click', (evento) => {
+      const objetivo = (
+        evento.target as HTMLElement
+      ).closest<HTMLButtonElement>('[data-accion-panel]');
+      if (!objetivo) return;
+      const accion = objetivo.dataset.accionPanel;
+      if (accion === 'tamano')
+        actualizarLayoutAnalisis({
+          tamanos: { [id]: objetivo.dataset.valor as TamanoPanel },
+        });
+      if (accion === 'foco') {
+        const { panelEnFoco } = obtenerLayoutAnalisis();
+        actualizarLayoutAnalisis({
+          panelEnFoco: panelEnFoco === id ? null : id,
+        });
+      }
+      if (accion === 'ocultar') {
+        actualizarLayoutAnalisis({
+          panelesVisibles: obtenerLayoutAnalisis().panelesVisibles.filter(
+            (panelId) => panelId !== id,
+          ),
+        });
+      }
+      cerrarMenus();
+    });
+    panel.append(boton, menu);
+  });
+
+  document.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Escape') cerrarMenus();
+  });
+  document.addEventListener('click', (evento) => {
+    if (
+      !(evento.target as HTMLElement).closest(
+        '[data-menu-panel], [data-boton-menu-panel]',
+      )
+    ) {
+      cerrarMenus();
+    }
+  });
+
+  suscribirLayoutAnalisis((layout) => {
+    const vistaGeneralOptimizada = esVistaGeneralOptimizada(layout);
+    aplicarComposicionGeneral(vistaGeneralOptimizada);
+    paneles.forEach((panel) => {
+      const id = panel.dataset.panelWorkspace as PanelAnalitico;
+      panel.hidden = !layout.panelesVisibles.includes(id);
+      clasesColumnas.forEach((clase) => panel.classList.remove(clase));
+      if (!vistaGeneralOptimizada) {
+        panel.classList.add(
+          layout.panelEnFoco === id
+            ? 'xl:col-span-12'
+            : columnas[layout.tamanos[id]],
+        );
+      }
+      const botonFoco = panel.querySelector<HTMLButtonElement>(
+        '[data-accion-panel="foco"]',
+      );
+      if (botonFoco) {
+        botonFoco.textContent =
+          layout.panelEnFoco === id ? 'Salir de foco' : 'Abrir en foco';
+      }
+    });
+    aplicarZoomTemporal(layout.zoomTemporal);
+  });
+
+  function aplicarZoomTemporal(zoom: number): void {
+    const anchosBase: Record<string, number> = {
+      'heatmap-departamentos': 760,
+      'calendario-epidemico': 760,
+      'comparacion-temporadas': 720,
+      'comparacion-departamentos': 720,
+    };
+    Object.entries(anchosBase).forEach(([id, ancho]) => {
+      const grafica = document.getElementById(id);
+      const anchoDisponible = grafica?.parentElement?.clientWidth ?? 0;
+      if (grafica) {
+        grafica.style.minWidth = `${(Math.max(ancho, anchoDisponible) * zoom) / 100}px`;
+      }
+    });
+  }
+
+  window.addEventListener('resize', () => {
+    aplicarZoomTemporal(obtenerLayoutAnalisis().zoomTemporal);
+  });
+</script>

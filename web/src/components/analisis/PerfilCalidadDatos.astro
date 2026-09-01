@@ -10,8 +10,8 @@
       Perfil de calidad y procedencia
     </h3>
     <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
-      Componentes auditables de cobertura, baseline y extracción. No se combinan
-      en una puntuación ni se interpretan como riesgo.
+      Componentes auditables de cobertura, referencia histórica y extracción. No
+      se combinan en una puntuación ni se interpretan como riesgo.
     </p>
   </header>
 
@@ -245,7 +245,7 @@
             : `${casos === 0 ? '0 observado' : `${casos} casos observados`} en SE${String(filtros.semana).padStart(2, '0')}.`,
         ),
         tarjeta(
-          'Baseline M3',
+          'Referencia de presión',
           `${presion.anios_baseline} años`,
           `${presion.n_obs_baseline} observaciones en la ventana histórica; P50 ${presion.p50_baseline ?? 'sin dato'} y P75 ${presion.p75_baseline ?? 'sin dato'}.`,
         ),
