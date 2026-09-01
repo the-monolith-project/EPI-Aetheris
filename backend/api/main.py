@@ -1007,6 +1007,14 @@ def respiratorios_temporal(virus: str, metrica: str = "detecciones"):
             conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    if not serie:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"No hay serie disponible para virus='{virus}' y metrica='{metrica}'. "
+                "Consulte GET /api/respiratorios/virus para las combinaciones cargadas."
+            ),
+        )
     return {
         "virus": virus,
         "metrica": metrica,
