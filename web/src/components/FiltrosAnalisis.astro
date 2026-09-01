@@ -293,6 +293,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
     `SE${String(valor).padStart(2, '0')}`;
   let cargaActual = 0;
   let timerCopiado: ReturnType<typeof setTimeout> | null = null;
+  let timerExportar: ReturnType<typeof setTimeout> | null = null;
 
   function crearOpcion(valor: string, etiqueta: string): HTMLOptionElement {
     const opcion = document.createElement('option');
@@ -423,7 +424,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
     });
   botonExportar?.addEventListener('click', async () => {
     if (!botonExportar) return;
-    const textoOriginal = botonExportar.textContent || 'Descargar vista';
+    const textoOriginal = 'Descargar vista actual';
     botonExportar.disabled = true;
     botonExportar.textContent = 'Preparando...';
     if (estadoAcciones) estadoAcciones.textContent = 'Preparando CSV…';
@@ -431,12 +432,19 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
       const filas = await exportarAnalisisCsv(obtenerFiltrosAnalisis());
       if (estadoAcciones)
         estadoAcciones.textContent = `CSV generado con ${filas} filas filtradas.`;
+      botonExportar.textContent = '¡Descargado!';
+      botonExportar.classList.add('text-accent', 'border-accent/50');
+      if (timerExportar) clearTimeout(timerExportar);
+      timerExportar = setTimeout(() => {
+        botonExportar.textContent = textoOriginal;
+        botonExportar.classList.remove('text-accent', 'border-accent/50');
+      }, 2000);
     } catch {
       if (estadoAcciones)
         estadoAcciones.textContent = 'No fue posible generar el CSV.';
+      botonExportar.textContent = textoOriginal;
     } finally {
       botonExportar.disabled = false;
-      botonExportar.textContent = textoOriginal;
     }
   });
   botonCopiar?.addEventListener('click', async () => {

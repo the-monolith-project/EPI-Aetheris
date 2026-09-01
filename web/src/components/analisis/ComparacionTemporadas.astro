@@ -37,6 +37,7 @@
     obtenerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
+  import { debounce } from '../../lib/debounce';
   import { vincularMarcasPlot } from '../../lib/plot-interacciones';
   import { ANIOS_ANALISIS_DENGUE } from '../../lib/tipos-analisis';
   import type {
@@ -190,7 +191,7 @@
     filtrosActuales = filtros;
     void renderizar(filtros);
   });
-  new ResizeObserver(() => void renderizar(filtrosActuales)).observe(
-    contenedor!,
-  );
+  new ResizeObserver(
+    debounce(() => void renderizar(filtrosActuales), 100),
+  ).observe(contenedor!);
 </script>
