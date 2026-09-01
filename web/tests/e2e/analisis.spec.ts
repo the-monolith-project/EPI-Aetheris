@@ -15,7 +15,10 @@ async function esperarPanel(page: import('@playwright/test').Page) {
 
 async function abrirFiltros(page: import('@playwright/test').Page) {
   await page.locator('#analisis-abrir-filtros').click();
-  await expect(page.locator('#analisis-filtros-drawer')).toBeVisible();
+  await expect(page.locator('#analisis-filtros-popover')).not.toHaveAttribute(
+    'hidden',
+  );
+  await expect(page.locator('#analisis-filtros-dialogo')).toBeVisible();
 }
 
 test('sincroniza filtros, mapa, scatter, departamento, heatmap y serie', async ({
@@ -90,15 +93,30 @@ test('restaura la URL, limita la comparación y exporta el filtro actual', async
   await expect(page.locator('#analisis-departamento')).toHaveValue('SV-LI');
   await expect(page.locator('#analisis-modo-minsal')).toHaveValue('ytd');
   await expect(page.locator('#mapa-aviso')).toContainText(
-    'entre SE01 y la semana seleccionada',
+    'suma de las observaciones',
   );
 
-  const comparar = page.locator('#analisis-comparar');
-  await comparar.selectOption(['SV-AH', 'SV-CA', 'SV-CH', 'SV-CU', 'SV-LI']);
-  const seleccionados = await comparar.evaluate((select: HTMLSelectElement) =>
-    [...select.selectedOptions].map((opcion) => opcion.value),
+  const comparar = page.locator('input[name="analisis-comparar"]');
+  await page
+    .locator('input[name="analisis-comparar"][value="SV-LI"]')
+    .uncheck();
+  await page
+    .locator('input[name="analisis-comparar"][value="SV-SS"]')
+    .uncheck();
+  for (const codigo of ['SV-AH', 'SV-CA', 'SV-CH', 'SV-CU']) {
+    await page
+      .locator(`input[name="analisis-comparar"][value="${codigo}"]`)
+      .check();
+  }
+  const seleccionados = await comparar.evaluateAll((casillas) =>
+    casillas
+      .filter((casilla) => (casilla as HTMLInputElement).checked)
+      .map((casilla) => (casilla as HTMLInputElement).value),
   );
   expect(seleccionados).toEqual(['SV-AH', 'SV-CA', 'SV-CH', 'SV-CU']);
+  await expect(
+    page.locator('input[name="analisis-comparar"][value="SV-LI"]'),
+  ).toBeDisabled();
   await expect(page.locator('#analisis-comparar-ayuda')).toContainText(
     '4 de 4 seleccionados',
   );
@@ -123,6 +141,12 @@ test('restaura la URL, limita la comparación y exporta el filtro actual', async
   expect(filas[0]).toContain('casos_observados');
   expect(new Set(filas.slice(1).map((fila) => fila.split(',')[2]))).toEqual(
     new Set(['SV-AH', 'SV-CA', 'SV-CH', 'SV-CU']),
+  );
+
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.locator('#analisis-copiar-enlace').click();
+  await expect(page.locator('#analisis-acciones-estado')).toContainText(
+    'Enlace reproducible copiado',
   );
 
   await page.reload();
@@ -204,6 +228,11 @@ test('optimiza la vista general y conserva el layout responsive', async ({
   expect(cajaPresion!.x).toBeGreaterThan(cajaMapa!.x + cajaMapa!.width);
   expect(cajaTemporadas!.y).toBeGreaterThan(cajaPresion!.y);
   expect(cajaTemporadas!.y).toBeLessThan(cajaMapa!.y + cajaMapa!.height);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 
   await page.setViewportSize({ width: 390, height: 844 });
   const cajasMoviles = await Promise.all([
@@ -219,6 +248,11 @@ test('optimiza la vista general y conserva el layout responsive', async ({
   expect(cajasMoviles[2]!.y).toBeGreaterThan(
     cajasMoviles[1]!.y + cajasMoviles[1]!.height,
   );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
   await expect(page.locator('#heatmap-departamentos').locator('..')).toHaveCSS(
     'overflow-x',
     'auto',
@@ -253,7 +287,7 @@ test('muestra y oculta paneles sin modificar el filtro activo', async ({
   );
 });
 
-test('limpia los filtros desde el drawer sin restablecer la vista', async ({
+test('limpia los filtros desde el popover sin restablecer la vista', async ({
   page,
 }) => {
   await page.goto(URL_INICIAL);
@@ -271,7 +305,9 @@ test('limpia los filtros desde el drawer sin restablecer la vista', async ({
   await expect(page.locator('#analisis-vista')).toHaveValue('temporal');
 
   await page.keyboard.press('Escape');
-  await expect(page.locator('#analisis-filtros-drawer')).toBeHidden();
+  await expect(page.locator('#analisis-filtros-popover')).toHaveAttribute(
+    'hidden',
+  );
   await expect(page.locator('#analisis-abrir-filtros')).toHaveAttribute(
     'aria-expanded',
     'false',
@@ -279,7 +315,59 @@ test('limpia los filtros desde el drawer sin restablecer la vista', async ({
   await expect(page.locator('#analisis-abrir-filtros')).toBeFocused();
 });
 
-test('mantiene el foco dentro del drawer y aísla el contenido de fondo', async ({
+test('integra el popover con el toolbar y permite cerrarlo', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+  await abrirFiltros(page);
+
+  const popover = page.locator('#analisis-filtros-popover');
+  const dialogo = page.locator('#analisis-filtros-dialogo');
+  const toolbar = page.locator('#toolbar-analisis');
+  const mapa = page.locator('[data-panel-workspace="mapa"]');
+  await expect(mapa).toBeVisible();
+  await expect(page.locator('#analisis-filtros-fondo')).toBeHidden();
+  await expect(dialogo).not.toHaveAttribute('aria-modal', 'true');
+  await expect(page.locator('main')).toHaveJSProperty('inert', false);
+
+  const [cajaDialogo, cajaToolbar] = await Promise.all([
+    dialogo.boundingBox(),
+    toolbar.boundingBox(),
+  ]);
+  expect(cajaDialogo).not.toBeNull();
+  expect(cajaToolbar).not.toBeNull();
+  expect(cajaDialogo!.width).toBeGreaterThanOrEqual(1050);
+  expect(cajaDialogo!.width).toBeLessThanOrEqual(1200);
+  expect(cajaDialogo!.x).toBeGreaterThanOrEqual(0);
+  expect(cajaDialogo!.x + cajaDialogo!.width).toBeLessThanOrEqual(1440);
+  expect(cajaDialogo!.y).toBeGreaterThan(cajaToolbar!.y + cajaToolbar!.height);
+
+  await page.evaluate(() => window.scrollBy(0, 420));
+  const [cajaDialogoSticky, cajaToolbarSticky] = await Promise.all([
+    dialogo.boundingBox(),
+    toolbar.boundingBox(),
+  ]);
+  expect(cajaDialogoSticky).not.toBeNull();
+  expect(cajaToolbarSticky).not.toBeNull();
+  expect(Math.round(cajaToolbarSticky!.y)).toBe(80);
+  expect(cajaDialogoSticky!.y).toBeGreaterThan(
+    cajaToolbarSticky!.y + cajaToolbarSticky!.height,
+  );
+
+  await page.locator('#analisis-abrir-filtros').click();
+  await expect(popover).toHaveAttribute('hidden');
+  await abrirFiltros(page);
+  await page.locator('#panel-analisis-titulo').click();
+  await expect(popover).toHaveAttribute('hidden');
+  await abrirFiltros(page);
+  await page.locator('#analisis-cerrar-filtros').click();
+  await expect(popover).toHaveAttribute('hidden');
+  await expect(page.locator('#analisis-abrir-filtros')).toBeFocused();
+});
+
+test('mantiene los filtros usables como panel inferior en móvil', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -289,25 +377,27 @@ test('mantiene el foco dentro del drawer y aísla el contenido de fondo', async 
 
   const contenido = page.locator('main');
   const dialogo = page.locator('#analisis-filtros-dialogo');
-  await expect(contenido).toHaveJSProperty('inert', true);
-  await expect(dialogo).toHaveAttribute('aria-modal', 'true');
+  await expect(contenido).toHaveJSProperty('inert', false);
+  await expect(dialogo).not.toHaveAttribute('aria-modal', 'true');
   await expect(dialogo).toHaveCSS('width', '390px');
-  await expect(page.locator('#analisis-cerrar-filtros')).toBeFocused();
-
-  await page.keyboard.press('Shift+Tab');
-  const focoEnUltimoControl = await page.evaluate(() => {
-    const dialogoActual = document.getElementById('analisis-filtros-dialogo');
-    const controles = [
-      ...(dialogoActual?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? []),
-    ];
-    return controles[controles.length - 1] === document.activeElement;
-  });
-  expect(focoEnUltimoControl).toBe(true);
+  await expect(page.locator('#analisis-filtros-fondo')).toBeVisible();
+  const tituloVisible = await page
+    .locator('#filtros-analisis-titulo')
+    .evaluate((titulo) => {
+      const caja = titulo.getBoundingClientRect();
+      return (
+        document.elementFromPoint(
+          caja.left + caja.width / 2,
+          caja.top + caja.height / 2,
+        ) === titulo
+      );
+    });
+  expect(tituloVisible).toBe(true);
 
   await page.keyboard.press('Escape');
-  await expect(page.locator('#analisis-filtros-drawer')).toBeHidden();
+  await expect(page.locator('#analisis-filtros-popover')).toHaveAttribute(
+    'hidden',
+  );
   await expect(contenido).toHaveJSProperty('inert', false);
   await expect(page.locator('#analisis-abrir-filtros')).toBeFocused();
 });

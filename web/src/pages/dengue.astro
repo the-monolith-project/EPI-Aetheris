@@ -4,83 +4,33 @@ import CurvaEpidemicaNacional from '../components/CurvaEpidemicaNacional.astro';
 import MetricasModelo from '../components/MetricasModelo.astro';
 import ResumenNacional from '../components/ResumenNacional.astro';
 import AuditoriaDatos from '../components/AuditoriaDatos.astro';
-import FiltrosAnalisis from '../components/FiltrosAnalisis.astro';
 import PanelAnalisis from '../components/analisis/PanelAnalisis.astro';
-
-const SECCIONES = [
-  { href: '#resumen', etiqueta: 'Resumen' },
-  { href: '#mapa', etiqueta: 'Mapa departamental' },
-  { href: '#analisis', etiqueta: 'Análisis' },
-  { href: '#curva', etiqueta: 'Serie nacional' },
-  { href: '#historico', etiqueta: 'Clasificador histórico' },
-];
 ---
 
 <Layout title="EPI-Aetheris — Dengue">
   <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
-    <div class="lg:flex lg:items-start lg:gap-8">
-      <nav
-        aria-label="Secciones de dengue"
-        class="mb-6 lg:sticky lg:top-20 lg:mb-0 lg:w-48 lg:shrink-0"
+    <div id="resumen" class="scroll-mt-24">
+      <PanelAnalisis />
+    </div>
+
+    <section aria-labelledby="contexto-panel-titulo" class="mt-8 scroll-mt-24">
+      <h2
+        id="contexto-panel-titulo"
+        class="font-display text-xl font-semibold text-ink"
       >
-        <p
-          class="font-sans text-[11px] font-semibold uppercase tracking-wider text-ink-muted"
-        >
-          En esta página
-        </p>
-        <ul class="mt-2 flex flex-wrap gap-1.5 lg:mt-3 lg:flex-col">
-          {
-            SECCIONES.map((seccion) => (
-              <li>
-                <a
-                  href={seccion.href}
-                  class="block rounded-full px-3 py-1.5 font-sans text-sm text-ink-muted transition-colors hover:bg-secondary/30 hover:text-ink lg:rounded-lg"
-                >
-                  {seccion.etiqueta}
-                </a>
-              </li>
-            ))
-          }
-        </ul>
-      </nav>
-
-      <div class="min-w-0 flex-1">
-        <header id="resumen" class="max-w-3xl scroll-mt-24">
-          {/* El encabezado narrativo se simplificó; PanelAnalisis contiene el
-              contexto necesario para interpretar el workspace. */}
-        </header>
-
-        <div class="mt-6">
-          <FiltrosAnalisis />
-        </div>
-
-        <div class="mt-6">
-          <PanelAnalisis />
-        </div>
-
-        <section
-          aria-labelledby="contexto-panel-titulo"
-          class="mt-8 scroll-mt-24"
-        >
-          <h2
-            id="contexto-panel-titulo"
-            class="font-display text-xl font-semibold text-ink"
-          >
-            Contexto y cobertura
-          </h2>
-          <div class="mt-4 flex flex-col gap-4">
-            <ResumenNacional />
-            <AuditoriaDatos />
-          </div>
-        </section>
-
-        <div id="curva" class="mt-8 scroll-mt-24">
-          <CurvaEpidemicaNacional />
-        </div>
-        <div id="historico" class="mt-6 scroll-mt-24">
-          <MetricasModelo />
-        </div>
+        Contexto y cobertura
+      </h2>
+      <div class="mt-4 flex flex-col gap-4">
+        <ResumenNacional />
+        <AuditoriaDatos />
       </div>
+    </section>
+
+    <div id="curva" class="mt-8 scroll-mt-24">
+      <CurvaEpidemicaNacional />
+    </div>
+    <div id="historico" class="mt-6 scroll-mt-24">
+      <MetricasModelo />
     </div>
   </main>
 </Layout>

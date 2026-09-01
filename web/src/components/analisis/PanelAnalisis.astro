@@ -3,6 +3,7 @@ import CalendarioEpidemico from './CalendarioEpidemico.astro';
 import ComparacionDepartamentos from './ComparacionDepartamentos.astro';
 import ComparacionTemporadas from './ComparacionTemporadas.astro';
 import DisponibilidadDatos from './DisponibilidadDatos.astro';
+import FiltrosAnalisis from '../FiltrosAnalisis.astro';
 import HeatmapDepartamentos from './HeatmapDepartamentos.astro';
 import MapaDepartamentos from '../MapaDepartamentos.astro';
 import PerfilCalidadDatos from './PerfilCalidadDatos.astro';
@@ -13,7 +14,7 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
 
 <section
   id="analisis"
-  class="relative left-1/2 w-[calc(100vw-2rem)] max-w-[1840px] -translate-x-1/2 scroll-mt-24 sm:w-[calc(100vw-3rem)]"
+  class="workspace-analitico scroll-mt-24"
   aria-labelledby="panel-analisis-titulo"
 >
   <header class="mb-4 max-w-3xl">
@@ -26,22 +27,21 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
       id="panel-analisis-titulo"
       class="mt-1 font-display text-xl font-semibold text-ink"
     >
-      Exploración espacial y temporal configurable
+      Exploración espacial y temporal
     </h2>
     <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
-      Seleccione un departamento, compare sus observaciones históricas y cambie
-      los filtros sin salir de esta área. Estas vistas no asignan riesgo, no
-      anticipan eventos y no establecen causalidad.
+      Explora el comportamiento del dengue por departamento y semana. Selecciona
+      un departamento, ajusta el periodo y compara sus patrones con otras
+      temporadas y territorios.
     </p>
     <p class="mt-2 font-sans text-xs text-ink-muted">
-      El clasificador predictivo piloto fue retirado tras su validación
-      empírica; queda al final de esta página como referencia histórica, con sus
-      métricas y errores a la vista.
+      Las visualizaciones son descriptivas y no representan un pronóstico.
     </p>
   </header>
 
   <ToolbarAnalisis>
     <SelectorPaneles slot="selector-paneles" />
+    <FiltrosAnalisis slot="filtros" />
   </ToolbarAnalisis>
 
   <div
@@ -80,6 +80,20 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
     </div>
   </div>
 </section>
+
+<style>
+  .workspace-analitico {
+    width: min(calc(100vw - 2rem), 1840px);
+    margin-inline-start: calc((100% - min(calc(100vw - 2rem), 1840px)) / 2);
+  }
+
+  @media (min-width: 640px) {
+    .workspace-analitico {
+      width: min(calc(100vw - 3rem), 1840px);
+      margin-inline-start: calc((100% - min(calc(100vw - 3rem), 1840px)) / 2);
+    }
+  }
+</style>
 
 <script>
   import {
