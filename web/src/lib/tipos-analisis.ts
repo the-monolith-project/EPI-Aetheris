@@ -90,3 +90,17 @@ export interface ProcedenciaAnalitica {
   conteo_observado: number | null;
   registros: RegistroProcedencia[];
 }
+
+export interface DepartamentoIRA {
+  nombre: string;
+  codigo: string;
+  notificado_total: number;
+  semanas_con_dato: number;
+  primer_anio: number | null;
+  ultimo_anio: number | null;
+}
+
+export interface RespuestaIraDepartamental {
+  departamentos: DepartamentoIRA[];
+  aviso: string;
+}

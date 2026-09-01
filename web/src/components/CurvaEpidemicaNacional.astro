@@ -51,19 +51,15 @@
 </section>
 
 <script>
-  interface CasoSemanal {
-    semana_inicio: string;
-    anio: number;
-    conteo: number;
-  }
+  import { obtenerCasosNacionales } from '../lib/analisis-api';
+  import type { CasoNacionalSemanal } from '../lib/tipos-analisis';
 
-  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const ANCHO = 720;
   const ALTO = 240;
   const MARGEN = { arriba: 20, abajo: 28, izquierda: 40, derecha: 8 };
 
-  function dibujar(contenedor: HTMLElement, datos: CasoSemanal[]) {
+  function dibujar(contenedor: HTMLElement, datos: CasoNacionalSemanal[]) {
     const estado = contenedor.querySelector('[data-estado]');
     estado?.remove();
 
@@ -201,7 +197,7 @@
   // Exporta exactamente lo mismo que dibuja el SVG -- mismo endpoint, sin
   // transformación adicional. Generado 100% en el cliente (Blob + URL de
   // objeto), no hay endpoint de exportación nuevo en el backend.
-  function descargarCsv(datos: CasoSemanal[]) {
+  function descargarCsv(datos: CasoNacionalSemanal[]) {
     const encabezado = 'semana_inicio,anio,conteo';
     const filas = datos.map((d) => `${d.semana_inicio},${d.anio},${d.conteo}`);
     const csv = [encabezado, ...filas].join('\n');
@@ -224,9 +220,7 @@
     if (!contenedor) return;
 
     try {
-      const resp = await fetch(`${API_BASE}/api/casos-nacional`);
-      if (!resp.ok) throw new Error('respuesta no OK');
-      const datos: CasoSemanal[] = await resp.json();
+      const datos = await obtenerCasosNacionales();
       dibujar(contenedor, datos);
       if (botonDescarga && datos.length > 0) {
         botonDescarga.disabled = false;
