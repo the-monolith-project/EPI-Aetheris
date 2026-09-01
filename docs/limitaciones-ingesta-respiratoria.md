@@ -37,6 +37,8 @@ docker exec -w /app aetheris_backend python ingestion/cargar_neumonias.py
 docker exec -w /app aetheris_backend python ingestion/cargar_vigilancia_respiratoria.py
 ```
 
-El seed versionado (ADR 0010) **no** se regeneró: un `git clone` + compose
-nuevo aplicará 0008 (tabla vacía) pero no traerá las 2,749+3,028 filas hasta
-que alguien regenere el seed o corra los loaders.
+El seed versionado (ADR 0010) **sí** incluye esta foto (regenerado 2026-09-01):
+Neumonías 2.749 filas y vigilancia viral 3.028, más IRA 2.742. Un `git clone`
++ `docker compose up` sobre volumen nuevo aplica `0007`/`0008` y carga esas
+filas sin repetir los loaders. Si la base de desarrollo ya existía, el seed
+no se reejecuta: hace falta `docker compose down -v` o correr los loaders.

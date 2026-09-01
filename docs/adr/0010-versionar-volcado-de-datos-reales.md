@@ -28,7 +28,9 @@ Se evaluaron tres salidas (`docs/contexto/02-decisiones-abiertas.md`, punto C or
 
 **F. Verificado de punta a punta antes de aceptarse**, mismo criterio que toda migración nueva: contenedor Postgres 15 descartable, `0001`→`0006`→`seed_datos_reales.sql` en secuencia, conteos de fila comparados 1:1 contra la base de desarrollo real (264/6.379/56.924/679/15/1/5, exactos), sin conflicto de FK ni de secuencia. `SELECT pg_catalog.setval(...)` de las tablas de hechos confirmado correcto tras la carga.
 
-**G. No se automatiza la regeneración.** El volcado es una foto de un momento (2026-08-17); no se recalcula en cada commit ni hay hook que lo mantenga sincronizado con la base de desarrollo. Regenerarlo es una acción manual (`pg_dump ... > db/seed/seed_datos_reales.sql`, mismos flags que este ADR documenta) cuando el equipo decida que vale la pena una foto más reciente — no antes de cada PR.
+**G. No se automatiza la regeneración.** El volcado es una foto de un momento (original: 2026-08-17; regenerado 2026-09-01 para incluir la ingesta respiratoria); no se recalcula en cada commit ni hay hook que lo mantenga sincronizado con la base de desarrollo. Regenerarlo es una acción manual (`pg_dump ... > db/seed/seed_datos_reales.sql`, mismos flags que este ADR documenta) cuando el equipo decida que vale la pena una foto más reciente — no antes de cada PR.
+
+**H. Enmienda 2026-09-01 — hechos respiratorios.** El volcado incluye también `vigilancia_virus_respiratorios` (ADR 0012). Sigue excluyendo catálogos (`regiones`, `tipos_evento`, `fuentes_datos`) y `schema_migrations`. `tipos_evento` gana `ira` (migración `0007`) y `neumonia` (`0008`) antes de cargar el seed; los `tipo_evento_id` del volcado corresponden a ese orden de un volumen limpio (dengue=1, ira=2, neumonia=3), no al orden accidental de la base de desarrollo. Recuentos verificados en la foto: Neumonías 2.749, vigilancia viral 3.028, IRA 2.742.
 
 ## Consecuencias
 
