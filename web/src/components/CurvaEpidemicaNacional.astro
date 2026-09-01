@@ -237,8 +237,6 @@
     URL.revokeObjectURL(url);
   }
 
-  let timerDescarga: ReturnType<typeof setTimeout> | null = null;
-
   async function iniciar() {
     const contenedor = document.getElementById('curva-epidemica');
     const botonDescarga = document.getElementById(
@@ -253,17 +251,7 @@
       if (botonDescarga && datos.length > 0) {
         botonDescarga.disabled = false;
         botonDescarga.removeAttribute('title');
-        botonDescarga.addEventListener('click', () => {
-          descargarCsv(datos);
-          const textoOriginal = 'Descargar CSV';
-          botonDescarga.textContent = '¡Descargado!';
-          botonDescarga.classList.add('text-accent', 'border-accent/50');
-          if (timerDescarga) clearTimeout(timerDescarga);
-          timerDescarga = setTimeout(() => {
-            botonDescarga.textContent = textoOriginal;
-            botonDescarga.classList.remove('text-accent', 'border-accent/50');
-          }, 2000);
-        });
+        botonDescarga.addEventListener('click', () => descargarCsv(datos));
       }
     } catch {
       contenedor.innerHTML =
