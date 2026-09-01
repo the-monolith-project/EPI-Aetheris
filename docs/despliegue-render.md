@@ -81,7 +81,7 @@ aplicarlas a mano:
    en `render.yaml` y volver a sincronizar el Blueprint-- y forzar un
    redeploy del frontend (`PUBLIC_API_URL` se embebe en build-time, un
    cambio de env var sin rebuild no tiene efecto).
-5. Confirmar `GET /health` del backend y que `/panel` cargue el mapa con
+5. Confirmar `GET /health` del backend y que `/dengue` cargue el mapa con
    datos reales -- si el mapa muestra "sin dato" en todo, lo más probable
    es el paso 4 (frontend compilado apuntando al `PUBLIC_API_URL` viejo).
 

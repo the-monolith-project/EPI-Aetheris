@@ -56,22 +56,11 @@
 </section>
 
 <script>
+  import { obtenerIraDepartamental } from '../lib/analisis-api';
+  import type { DepartamentoIRA } from '../lib/tipos-analisis';
+
   // [semana, valor|null]
   type Punto = [number, number | null];
-
-  interface DepartamentoIRA {
-    nombre: string;
-    codigo: string;
-    notificado_total: number;
-    semanas_con_dato: number;
-    primer_anio: number | null;
-    ultimo_anio: number | null;
-  }
-
-  interface RespuestaDepartamental {
-    departamentos: DepartamentoIRA[];
-    aviso: string;
-  }
 
   interface RespuestaTemporal {
     departamento_codigo: string;
@@ -258,9 +247,7 @@
 
     let departamentos: DepartamentoIRA[];
     try {
-      const resp = await fetch(`${API_BASE}/api/ira/departamental`);
-      if (!resp.ok) throw new Error('respuesta no OK');
-      const datos: RespuestaDepartamental = await resp.json();
+      const datos = await obtenerIraDepartamental();
       departamentos = datos.departamentos;
     } catch {
       contenedor.innerHTML =

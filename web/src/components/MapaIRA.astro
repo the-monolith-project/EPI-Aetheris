@@ -107,8 +107,8 @@
 <script>
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
+  import { obtenerIraDepartamental } from '../lib/analisis-api';
 
-  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const SIN_DATO = '#e4e4e7';
   // Mismo family de la marca que la capa de volumen MINSAL de dengue, para
   // que "más oscuro = más casos" se lea igual en ambos mapas.
@@ -240,9 +240,7 @@
     let valores: Map<string, number | undefined> | null = null;
 
     try {
-      const resp = await fetch(`${API_BASE}/api/ira/departamental`);
-      if (!resp.ok) throw new Error('respuesta no OK');
-      const datos: { departamentos: DatoDepartamentoIra[] } = await resp.json();
+      const datos = await obtenerIraDepartamental();
       detalles = new Map(datos.departamentos.map((d) => [d.codigo, d]));
       valores = new Map(
         datos.departamentos.map((d) => [

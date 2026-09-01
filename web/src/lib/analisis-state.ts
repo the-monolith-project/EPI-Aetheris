@@ -6,7 +6,7 @@ import {
 
 export const EVENTO_FILTROS_ANALISIS = 'epi:filters-changed';
 
-const estadoInicial: FiltrosAnalisis = {
+export const FILTROS_ANALISIS_PREDETERMINADOS: FiltrosAnalisis = {
   anio: 2023,
   semana: 1,
   semanaDesde: 1,
@@ -38,7 +38,8 @@ function normalizarEstado(
   const semanaDesde = limitarSemana(candidato.semanaDesde);
   const semanaHasta = limitarSemana(candidato.semanaHasta);
 
-  if (!esAnioDisponible(candidato.anio)) candidato.anio = estadoInicial.anio;
+  if (!esAnioDisponible(candidato.anio))
+    candidato.anio = FILTROS_ANALISIS_PREDETERMINADOS.anio;
   candidato.semana = limitarSemana(candidato.semana);
   candidato.semanaDesde = Math.min(semanaDesde, semanaHasta);
   candidato.semanaHasta = Math.max(semanaDesde, semanaHasta);
@@ -108,7 +109,10 @@ function sincronizarUrl(filtros: FiltrosAnalisis): void {
   window.history.replaceState(null, '', url);
 }
 
-let estado = normalizarEstado(estadoInicial, leerEstadoDesdeUrl());
+let estado = normalizarEstado(
+  FILTROS_ANALISIS_PREDETERMINADOS,
+  leerEstadoDesdeUrl(),
+);
 sincronizarUrl(estado);
 
 function estadosIguales(a: FiltrosAnalisis, b: FiltrosAnalisis): boolean {
@@ -146,6 +150,12 @@ export function actualizarFiltrosAnalisis(
     );
   }
   return detalle;
+}
+
+export function restablecerFiltrosAnalisis(): FiltrosAnalisis {
+  return actualizarFiltrosAnalisis(
+    clonarEstado(FILTROS_ANALISIS_PREDETERMINADOS),
+  );
 }
 
 export function suscribirFiltrosAnalisis(

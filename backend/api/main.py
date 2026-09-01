@@ -1,14 +1,20 @@
 import csv
 import json
 import os
+import threading
+from contextlib import contextmanager
 from pathlib import Path
 
 import joblib
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-import psycopg2
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
+from psycopg2.pool import ThreadedConnectionPool
 
 from .analisis import (
     ANIOS_ANALISIS_DENGUE,
@@ -63,6 +69,45 @@ app = FastAPI(
     version="0.1.0"
 )
 
+# --- Rate limiting (issue #61) -------------------------------------------------
+# slowapi en memoria: el proceso es un solo worker de Uvicorn tanto en
+# docker-compose (--reload) como en Render (dockerCommand sin --workers), asi
+# que un contador por proceso ES el contador global. Si algun dia se pasa a
+# --workers N el limite efectivo seria N veces el configurado -- ahi tocaria
+# un backend compartido (Redis), no ahora.
+#
+# key_func: Uvicorn NO corre con --proxy-headers, y en Render el peer TCP es
+# el balanceador de la plataforma (una sola IP para todo el trafico). Sin
+# esto, todos los clientes compartirian un unico bucket y el limite global
+# estrangularia a todos los usuarios a la vez. Tomamos el primer salto de
+# X-Forwarded-For (el cliente real segun Render) y caemos a la IP del socket
+# solo en local/tests donde esa cabecera no existe.
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() != "false"
+RATE_LIMIT_DEFAULT = os.getenv("RATE_LIMIT_DEFAULT", "120/minute")
+# Umbral mas estricto para los endpoints que recalculan on-demand desde CSV +
+# modelo joblib y abren una conexion nueva a Postgres por request.
+RATE_LIMIT_HEAVY = os.getenv("RATE_LIMIT_HEAVY", "30/minute")
+
+limiter = Limiter(
+    key_func=_client_ip,
+    default_limits=[RATE_LIMIT_DEFAULT],
+    enabled=RATE_LIMIT_ENABLED,
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# Se anade ANTES del bloque CORS de abajo para que quede por DENTRO de
+# CORSMiddleware: asi la respuesta 429 tambien lleva las cabeceras
+# Access-Control-Allow-Origin y el frontend Astro ve un 429 legible en vez de
+# un error de red opaco.
+app.add_middleware(SlowAPIMiddleware)
+
 # El frontend Astro corre en un origen distinto (puerto 4321) al de esta API
 # (puerto 8000) tanto en desarrollo local como dentro de docker-compose.
 cors_origins = [
@@ -87,14 +132,102 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
-def _conectar():
-    return psycopg2.connect(
-        host=os.getenv("POSTGRES_HOST", "db"),
-        database=os.getenv("POSTGRES_DB"),
-        user=os.getenv("POSTGRES_USER"),
-        password=os.getenv("POSTGRES_PASSWORD"),
-        port=os.getenv("POSTGRES_PORT", "5432")
-    )
+# --- Pool de conexiones a Postgres (informe de rendimiento externo) --------
+# Antes: psycopg2.connect() nuevo por request, sin timeout. Las path
+# operations son `def` (síncronas) -> FastAPI las corre en su threadpool
+# (~40 hilos por defecto); bajo concurrencia modesta eso son hasta ~40
+# conexiones simultáneas abriéndose contra un plan de BD chico
+# (basic-256mb), suficiente para agotar el límite de conexiones del
+# servidor y salir como el 500 genérico de abajo.
+#
+# POSTGRES_POOL_MAX es el techo real de conexiones simultáneas hacia
+# Postgres ahora (antes no había techo salvo el límite del servidor mismo);
+# se deja configurable porque depende del plan de BD, no del código.
+POSTGRES_POOL_MIN = int(os.getenv("POSTGRES_POOL_MIN", "1"))
+POSTGRES_POOL_MAX = int(os.getenv("POSTGRES_POOL_MAX", "10"))
+POSTGRES_CONNECT_TIMEOUT = int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "5"))
+# ThreadedConnectionPool.getconn() NO espera cuando el pool esta al tope --
+# lanza PoolError de inmediato ("connection pool exhausted"), lo que
+# convertiria un pico de concurrencia corto (perfectamente atendible en
+# serie en unos ms) en un 500 seco. Este semaforo hace que el hilo de mas
+# espere su turno en vez de fallar; el timeout evita que se quede colgado
+# para siempre si la BD de verdad esta saturada.
+POSTGRES_POOL_ACQUIRE_TIMEOUT = int(os.getenv("POSTGRES_POOL_ACQUIRE_TIMEOUT", "10"))
+
+_pool: ThreadedConnectionPool | None = None
+_pool_lock = threading.Lock()
+_pool_semaforo = threading.Semaphore(POSTGRES_POOL_MAX)
+
+
+def _obtener_pool() -> ThreadedConnectionPool:
+    # Perezoso en vez de un handler `lifespan`: evita añadir el primer
+    # lifespan de la app solo para esto, y TestClient(app) -- como ya lo usa
+    # toda la suite existente -- no siempre dispara eventos de startup si no
+    # se usa como context manager. Doble-check con lock: varios requests del
+    # threadpool pueden llegar aquí antes de que exista el pool.
+    global _pool
+    if _pool is None:
+        with _pool_lock:
+            if _pool is None:
+                _pool = ThreadedConnectionPool(
+                    POSTGRES_POOL_MIN,
+                    POSTGRES_POOL_MAX,
+                    host=os.getenv("POSTGRES_HOST", "db"),
+                    database=os.getenv("POSTGRES_DB"),
+                    user=os.getenv("POSTGRES_USER"),
+                    password=os.getenv("POSTGRES_PASSWORD"),
+                    port=os.getenv("POSTGRES_PORT", "5432"),
+                    connect_timeout=POSTGRES_CONNECT_TIMEOUT,
+                )
+    return _pool
+
+
+@contextmanager
+def _conexion():
+    """Toma una conexión del pool y la repone al salir -- también en error,
+    para que un request que falla a mitad de camino no se quede con una
+    conexión fuera del pool para siempre (con maxconn chico eso agota el
+    pool rápido). rollback() antes de devolverla: todas las queries de esta
+    API son de solo lectura, pero psycopg2 abre una transacción implícita en
+    el primer SELECT -- sin esto la conexión volvería "idle in transaction",
+    reteniendo locks hasta el próximo uso."""
+    if not _pool_semaforo.acquire(timeout=POSTGRES_POOL_ACQUIRE_TIMEOUT):
+        raise TimeoutError(
+            "Tiempo de espera agotado para obtener una conexión del pool de Postgres."
+        )
+    try:
+        pool = _obtener_pool()
+        conn = pool.getconn()
+        try:
+            yield conn
+        finally:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            pool.putconn(conn)
+    finally:
+        _pool_semaforo.release()
+
+
+# --- Cache-Control (informe de rendimiento externo) -------------------------
+# Cabeceras HTTP estándar, nada server-side: el navegador reutiliza la
+# respuesta sin volver a pedirla. Dos TTL segun que tan seguido cambia el
+# dato real -- ninguno de los dos endpoints escribe en caliente, todo se
+# recalcula/relee on-request:
+#   - CACHE_TTL_HISTORICO: series ya cargadas en Postgres que solo cambian
+#     con una corrida nueva de ingesta (cargar_ira.py, etc.).
+#   - CACHE_TTL_COMPUTO: capas espaciales/de cómputo (idoneidad, presión,
+#     riesgo-nacional) recalculadas en cada request -- TTL más corto porque
+#     son las más caras y las que más se beneficiarían de un cambio de
+#     metodología sin esperar una hora completa de cache.
+CACHE_TTL_HISTORICO = 3600
+CACHE_TTL_COMPUTO = 900
+
+
+def _cache_control(response: Response, max_age: int) -> None:
+    response.headers["Cache-Control"] = f"public, max-age={max_age}"
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -110,13 +243,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 
 @app.get("/health")
-def health_check():
+@limiter.exempt
+def health_check(response: Response):
     """Endpoint de comprobación de salud que valida la conexión directa a PostgreSQL."""
+    # no-store: es un chequeo de salud, cachear una respuesta "ok" vieja
+    # derrotaria su proposito (Render lo sondea continuamente).
+    response.headers["Cache-Control"] = "no-store"
     try:
-        conn = _conectar()
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT 1;")
-        conn.close()
+        with _conexion() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT 1;")
         return {
             "status": "ok",
             "service": "backend",
@@ -132,30 +268,30 @@ def health_check():
 
 
 @app.get("/api/casos-nacional")
-def casos_nacional():
+def casos_nacional(response: Response):
     """Serie semanal nacional de OpenDengue ya cargada (clasificacion='total',
     fuente opendengue_v1_3). Es la única variable objetivo cargada hasta ahora
     -- ver docs/contexto/01-decisiones-cerradas.md, pivote "Opción C". No es
     clasificación de riesgo -- para eso ver /api/riesgo-nacional."""
+    _cache_control(response, CACHE_TTL_HISTORICO)
     try:
-        conn = _conectar()
-        with conn.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT s.fecha_inicio, c.anio, c.semana_epi, c.conteo
-                FROM casos_epidemiologicos c
-                JOIN regiones r ON r.id = c.region_id
-                JOIN fuentes_datos f ON f.id = c.fuente_id
-                JOIN semanas_epidemiologicas s
-                    ON s.anio = c.anio AND s.semana_epi = c.semana_epi
-                WHERE r.codigo = 'SV'
-                  AND c.clasificacion = 'total'
-                  AND f.codigo = 'opendengue_v1_3'
-                ORDER BY c.anio, c.semana_epi
-                """
-            )
-            filas = cursor.fetchall()
-        conn.close()
+        with _conexion() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT s.fecha_inicio, c.anio, c.semana_epi, c.conteo
+                    FROM casos_epidemiologicos c
+                    JOIN regiones r ON r.id = c.region_id
+                    JOIN fuentes_datos f ON f.id = c.fuente_id
+                    JOIN semanas_epidemiologicas s
+                        ON s.anio = c.anio AND s.semana_epi = c.semana_epi
+                    WHERE r.codigo = 'SV'
+                      AND c.clasificacion = 'total'
+                      AND f.codigo = 'opendengue_v1_3'
+                    ORDER BY c.anio, c.semana_epi
+                    """
+                )
+                filas = cursor.fetchall()
     except Exception:
         raise HTTPException(
             status_code=500,
@@ -190,7 +326,13 @@ def _cargar_modelo():
 
 
 @app.get("/api/riesgo-nacional")
-def riesgo_nacional(anio: int | None = None, semana: int | None = None):
+@limiter.limit(RATE_LIMIT_HEAVY)
+def riesgo_nacional(
+    request: Request,
+    response: Response,
+    anio: int | None = None,
+    semana: int | None = None,
+):
     """Clasificación de riesgo NACIONAL para una semana epidemiológica dada
     (tarjetas 23/24/25, primera versión: semana fija, colores planos --
     selector de semanas viene después). Recalcula on-demand desde el dataset
@@ -240,6 +382,7 @@ def riesgo_nacional(anio: int | None = None, semana: int | None = None):
     if METRICAS_MODELO_PATH.exists():
         metricas_modelo = json.loads(METRICAS_MODELO_PATH.read_text(encoding="utf-8"))
 
+    _cache_control(response, CACHE_TTL_COMPUTO)
     return {
         "anio": int(fila["anio"]),
         "semana_epi": int(fila["semana_epi"]),
@@ -262,7 +405,8 @@ AVISO_HONESTIDAD_CASOS_DEPARTAMENTALES = (
 
 
 @app.get("/api/casos-departamentales")
-def casos_departamentales():
+@limiter.limit(RATE_LIMIT_HEAVY)
+def casos_departamentales(request: Request, response: Response):
     """Capa descriptiva del mapa (tarjeta 25) -- casos MINSAL desacumulados
     (tarjeta 22) sumados por departamento en toda la ventana cargada
     (2018-2023, sin 2020 ni 2024+ porque no hay boletín automatizable desde
@@ -270,37 +414,41 @@ def casos_departamentales():
     87-93% de celdas departamento-semana en cero (ver
     docs/contexto/03-fuentes-de-datos.md), una sola semana suele salir casi
     vacía y no representa bien la distribución real -- esto es una elección
-    de presentación, no una decisión de equipo cerrada."""
+    de presentación, no una decisión de equipo cerrada.
+
+    RATE_LIMIT_HEAVY (no el limite global): agrega con GROUP BY + JOIN sobre
+    toda la ventana cargada en cada request, igual de pesado que los
+    endpoints /api/v1/* que ya tenian este umbral desde el PR #61."""
     try:
-        conn = _conectar()
-        with conn.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT
-                    r.nombre,
-                    r.codigo,
-                    sum(c.conteo) FILTER (WHERE c.clasificacion = 'probable') AS probable_total,
-                    sum(c.conteo) FILTER (WHERE c.clasificacion = 'confirmado') AS confirmado_total,
-                    count(DISTINCT c.anio || '-' || c.semana_epi) FILTER (WHERE c.clasificacion = 'probable') AS semanas_con_dato_probable,
-                    min(c.anio) AS primer_anio,
-                    max(c.anio) AS ultimo_anio
-                FROM regiones r
-                LEFT JOIN casos_epidemiologicos c
-                    ON c.region_id = r.id
-                    AND c.fuente_id = (SELECT id FROM fuentes_datos WHERE codigo = 'minsal_pdf')
-                WHERE r.nivel_admin = 1
-                GROUP BY r.nombre, r.codigo
-                ORDER BY r.nombre
-                """
-            )
-            filas = cursor.fetchall()
-        conn.close()
+        with _conexion() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        r.nombre,
+                        r.codigo,
+                        sum(c.conteo) FILTER (WHERE c.clasificacion = 'probable') AS probable_total,
+                        sum(c.conteo) FILTER (WHERE c.clasificacion = 'confirmado') AS confirmado_total,
+                        count(DISTINCT c.anio || '-' || c.semana_epi) FILTER (WHERE c.clasificacion = 'probable') AS semanas_con_dato_probable,
+                        min(c.anio) AS primer_anio,
+                        max(c.anio) AS ultimo_anio
+                    FROM regiones r
+                    LEFT JOIN casos_epidemiologicos c
+                        ON c.region_id = r.id
+                        AND c.fuente_id = (SELECT id FROM fuentes_datos WHERE codigo = 'minsal_pdf')
+                    WHERE r.nivel_admin = 1
+                    GROUP BY r.nombre, r.codigo
+                    ORDER BY r.nombre
+                    """
+                )
+                filas = cursor.fetchall()
     except Exception:
         raise HTTPException(
             status_code=500,
             detail="Error de conexión a la base de datos"
         )
 
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "departamentos": [
             {
@@ -345,7 +493,8 @@ AVISO_HONESTIDAD_IDONEIDAD = (
 
 
 @app.get("/api/v1/spatial/current")
-def idoneidad_espacial_actual(week: int, year: int):
+@limiter.limit(RATE_LIMIT_HEAVY)
+def idoneidad_espacial_actual(request: Request, response: Response, week: int, year: int):
     """Índice de idoneidad biofísica (Iv) y anomalía climática continua
     (anomaly_sigma), por departamento, para la semana epidemiológica y año
     pedidos. Capa DESCRIPTIVA -- no hay campo de lead time ni de alerta
@@ -364,14 +513,11 @@ def idoneidad_espacial_actual(week: int, year: int):
     semanas_necesarias = [week] if week == 1 else [week - 1, week]
 
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 ORDER BY nombre")
                 departamentos = cursor.fetchall()
             clima = cargar_clima_departamentos(conn, anios=ANIOS_CLIMA, semanas=semanas_necesarias)
-        finally:
-            conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
 
@@ -400,6 +546,7 @@ def idoneidad_espacial_actual(week: int, year: int):
             "anomaly_sigma": round(sigma, 4) if sigma is not None else None,
         })
 
+    _cache_control(response, CACHE_TTL_COMPUTO)
     return {
         "semana_epi": week,
         "anio": year,
@@ -431,7 +578,8 @@ AVISO_HONESTIDAD_PRESION = (
 
 
 @app.get("/api/v1/analisis/dengue")
-def dataset_analitico_dengue(year: int):
+@limiter.limit(RATE_LIMIT_HEAVY)
+def dataset_analitico_dengue(request: Request, response: Response, year: int):
     """Dataset anual compartido para exploracion descriptiva de dengue.
 
     Agrega casos MINSAL, M1, M2 y M3 por departamento/semana reutilizando
@@ -445,11 +593,8 @@ def dataset_analitico_dengue(year: int):
         )
 
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             respuesta = construir_dataset_dengue(conn, anio=year)
-        finally:
-            conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
 
@@ -457,11 +602,13 @@ def dataset_analitico_dengue(year: int):
         "idoneidad": AVISO_HONESTIDAD_IDONEIDAD,
         "presion": AVISO_HONESTIDAD_PRESION,
     }
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return respuesta
 
 
 @app.get("/api/v1/analisis/dengue/procedencia")
-def procedencia_analitica_dengue(year: int, week: int, dept: str, serie: str):
+@limiter.limit(RATE_LIMIT_HEAVY)
+def procedencia_analitica_dengue(request: Request, response: Response, year: int, week: int, dept: str, serie: str):
     """Trazabilidad almacenada de una observacion departamental de dengue."""
     if year not in ANIOS_ANALISIS_DENGUE:
         disponibles = ", ".join(str(anio) for anio in ANIOS_ANALISIS_DENGUE)
@@ -481,8 +628,7 @@ def procedencia_analitica_dengue(year: int, week: int, dept: str, serie: str):
         )
 
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             respuesta = cargar_procedencia_observacion(
                 conn,
                 anio=year,
@@ -490,8 +636,6 @@ def procedencia_analitica_dengue(year: int, week: int, dept: str, serie: str):
                 departamento_codigo=dept,
                 serie=serie,
             )
-        finally:
-            conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
 
@@ -500,11 +644,13 @@ def procedencia_analitica_dengue(year: int, week: int, dept: str, serie: str):
             status_code=404,
             detail=f"No existe un departamento con código '{dept}'.",
         )
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return respuesta
 
 
 @app.get("/api/v1/presion/current")
-def presion_espacial_actual(week: int, year: int):
+@limiter.limit(RATE_LIMIT_HEAVY)
+def presion_espacial_actual(request: Request, response: Response, week: int, year: int):
     """Presión epidemiológica relativa (Módulo 3) por departamento, para la
     semana epidemiológica y año pedidos, en dos series separadas
     ('probable' y 'confirmado', nunca fusionadas). Estructura espejo de
@@ -524,14 +670,11 @@ def presion_espacial_actual(week: int, year: int):
     anios_necesarios = sorted(set(ANIOS_BASE_PRESION) | {year})
 
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 ORDER BY nombre")
                 departamentos = cursor.fetchall()
             casos = cargar_casos_departamentales(conn, anios=anios_necesarios, semanas=semanas_necesarias)
-        finally:
-            conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
 
@@ -542,6 +685,7 @@ def presion_espacial_actual(week: int, year: int):
             fila[serie] = calcular_presion(casos.get(codigo, {}).get(serie, {}), anio=year, semana=week)
         resultado.append(fila)
 
+    _cache_control(response, CACHE_TTL_COMPUTO)
     return {
         "semana_epi": week,
         "anio": year,
@@ -551,7 +695,7 @@ def presion_espacial_actual(week: int, year: int):
 
 
 @app.get("/api/v1/presion/temporal/{departamento_id}")
-def presion_temporal_departamento(departamento_id: str, anio: int):
+def presion_temporal_departamento(departamento_id: str, anio: int, response: Response):
     """Serie temporal de presión epidemiológica relativa (Módulo 3) de un
     departamento para `anio`, en las dos series separadas. Espejo de
     /api/v1/temporal/{departamento_id}. `departamento_id` es el `codigo`
@@ -559,8 +703,7 @@ def presion_temporal_departamento(departamento_id: str, anio: int):
     anios_necesarios = sorted(set(ANIOS_BASE_PRESION) | {anio})
 
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     "SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 AND codigo = %s",
@@ -573,8 +716,6 @@ def presion_temporal_departamento(departamento_id: str, anio: int):
                     detail=f"No existe un departamento con código '{departamento_id}'.",
                 )
             casos_depto = cargar_casos_departamento(conn, codigo=departamento_id, anios=anios_necesarios)
-        finally:
-            conn.close()
     except HTTPException:
         raise
     except Exception:
@@ -598,6 +739,7 @@ def presion_temporal_departamento(departamento_id: str, anio: int):
             fila[serie] = calcular_presion(casos_depto.get(serie, {}), anio=anio, semana=semana)
         semanas_salida.append(fila)
 
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "departamento_codigo": codigo,
         "departamento_nombre": nombre,
@@ -608,7 +750,7 @@ def presion_temporal_departamento(departamento_id: str, anio: int):
 
 
 @app.get("/api/v1/temporal/{departamento_id}")
-def idoneidad_temporal_departamento(departamento_id: str, anio: int):
+def idoneidad_temporal_departamento(departamento_id: str, anio: int, response: Response):
     """Serie temporal de un departamento (Módulos 1 y 2): banda histórica
     (P25/mediana/P75 de Iv por semana-del-año, leave-one-out excluyendo
     `anio`) vs. la serie real de `anio`, con anomaly_sigma continuo por
@@ -619,8 +761,7 @@ def idoneidad_temporal_departamento(departamento_id: str, anio: int):
     Capa DESCRIPTIVA -- no hay `estimated_transmission_window_start` ni
     `season_shift_alert` (retirados, ver AVISO_HONESTIDAD_IDONEIDAD)."""
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     "SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 AND codigo = %s",
@@ -633,8 +774,6 @@ def idoneidad_temporal_departamento(departamento_id: str, anio: int):
                     detail=f"No existe un departamento con código '{departamento_id}'.",
                 )
             clima_depto = cargar_clima_departamento(conn, codigo=departamento_id, anios=ANIOS_CLIMA)
-        finally:
-            conn.close()
     except HTTPException:
         raise
     except Exception:
@@ -665,6 +804,7 @@ def idoneidad_temporal_departamento(departamento_id: str, anio: int):
             "anomaly_sigma": round(sigma, 4) if sigma is not None else None,
         })
 
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "departamento_codigo": codigo,
         "departamento_nombre": nombre,
@@ -684,20 +824,24 @@ def idoneidad_temporal_departamento(departamento_id: str, anio: int):
 
 
 @app.get("/api/ira/departamental")
-def ira_departamental():
+@limiter.limit(RATE_LIMIT_HEAVY)
+def ira_departamental(request: Request, response: Response):
     """Resumen por departamento del conteo notificado de IRA (total
     acumulado en la ventana cargada, semanas con dato, rango de años) --
     espejo de /api/casos-departamentales. Capa DESCRIPTIVA, ver
-    AVISO_HONESTIDAD_IRA."""
+    AVISO_HONESTIDAD_IRA.
+
+    RATE_LIMIT_HEAVY (no el limite global): LEFT JOIN + GROUP BY sobre toda
+    la ventana cargada en cada request, el endpoint mas lento reportado por
+    el informe de rendimiento externo -- mismo criterio que
+    /api/casos-departamentales."""
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             departamentos = cargar_ira_departamental(conn)
-        finally:
-            conn.close()
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
 
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "departamentos": departamentos,
         "aviso": AVISO_HONESTIDAD_IRA,
@@ -705,7 +849,7 @@ def ira_departamental():
 
 
 @app.get("/api/ira/temporal/{departamento_id}")
-def ira_temporal_departamento(departamento_id: str):
+def ira_temporal_departamento(departamento_id: str, response: Response):
     """Serie semanal de IRA notificada de un departamento, por año
     (2018-2023, sin 2020). `departamento_id` es el `codigo` de `regiones`
     (ISO 3166-2:SV, ej. 'SV-SS'). Las semanas sin fila son huecos reales de
@@ -713,8 +857,7 @@ def ira_temporal_departamento(departamento_id: str):
     retroactiva excluida) -- se devuelven como ausentes, nunca como cero ni
     valor interpolado."""
     try:
-        conn = _conectar()
-        try:
+        with _conexion() as conn:
             serie = cargar_ira_departamento_temporal(conn, codigo=departamento_id)
             if serie is None:
                 raise HTTPException(
@@ -728,14 +871,13 @@ def ira_temporal_departamento(departamento_id: str):
             )
             (nombre,) = cur.fetchone()
             cur.close()
-        finally:
-            conn.close()
     except HTTPException:
         raise
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
 
     anios = sorted(serie.keys())
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "departamento_codigo": departamento_id,
         "departamento_nombre": nombre,
