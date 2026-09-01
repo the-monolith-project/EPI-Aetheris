@@ -60,6 +60,15 @@
 
   let ultimo: { anio: string; departamentos: DeptoHeat[] } | null = null;
 
+  function rangoActivo(root: HTMLElement): { desde: number; hasta: number } {
+    const inpDesde = root.querySelector<HTMLInputElement>('[data-hm-desde]')!;
+    const inpHasta = root.querySelector<HTMLInputElement>('[data-hm-hasta]')!;
+    let desde = Number(inpDesde.value);
+    let hasta = Number(inpHasta.value);
+    if (desde > hasta) [desde, hasta] = [hasta, desde];
+    return { desde, hasta };
+  }
+
   function color(valor: number, max: number): string {
     if (max <= 0) return RAMPA[0];
     const t = valor / max;
@@ -151,10 +160,12 @@
   }
 
   function exportar() {
-    if (!ultimo) return;
+    const root = document.querySelector<HTMLElement>('[data-heatmap-neu]');
+    if (!ultimo || !root) return;
+    const { desde, hasta } = rangoActivo(root);
     const lineas = ['anio,departamento,codigo,semana,valor'];
     for (const d of ultimo.departamentos) {
-      for (let s = 1; s <= 52; s++) {
+      for (let s = desde; s <= hasta; s++) {
         const v = d.semanas[String(s)];
         lineas.push(
           `${ultimo.anio},${d.nombre},${d.codigo},${s},${v == null ? '' : v}`
@@ -164,7 +175,7 @@
     const blob = new Blob([lineas.join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `neumonias-heatmap-${ultimo.anio}.csv`;
+    a.download = `neumonias-heatmap-${ultimo.anio}-SE${desde}-${hasta}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   }

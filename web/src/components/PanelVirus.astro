@@ -31,6 +31,9 @@
       <select data-virus-anio class="rounded-lg border border-border bg-bg px-3 py-1.5"></select>
     </label>
   </div>
+  <p data-virus-global class="mt-3 hidden font-sans text-sm text-ink">
+    Todos los virus / vigilancia total
+  </p>
   <fieldset class="mt-3 flex flex-wrap gap-3 font-sans text-sm" data-virus-toggles>
     <legend class="sr-only">Virus visibles</legend>
   </fieldset>
@@ -74,7 +77,7 @@
     if (!root) return;
     const selMetrica = root.querySelector<HTMLSelectElement>('[data-virus-metrica]')!;
     const selAnio = root.querySelector<HTMLSelectElement>('[data-virus-anio]')!;
-    const toggles = root.querySelector<HTMLElement>('[data-virus-toggles]')!;
+    const toggles = root.querySelector<HTMLFieldSetElement>('[data-virus-toggles]')!;
     const aviso = root.querySelector<HTMLElement>('[data-virus-aviso]')!;
     const error = root.querySelector<HTMLElement>('[data-virus-error]')!;
     const heatmap = root.querySelector<HTMLElement>('[data-virus-heatmap]')!;
@@ -89,32 +92,58 @@
       return;
     }
 
-    const virusDisponibles = [...new Set(catalogo.map((s) => s.virus))].sort();
-    for (const v of virusDisponibles) {
-      const lab = document.createElement('label');
-      lab.className = 'flex items-center gap-1';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.value = v;
-      cb.checked = VIRUS_DEFAULT.includes(v);
-      lab.append(cb, document.createTextNode(v));
-      toggles.appendChild(lab);
+    const notaGlobal = root.querySelector<HTMLElement>('[data-virus-global]')!;
+    const METRICAS_GLOBALES = new Set(['muestras_analizadas', 'muestras_positivas']);
+
+    function virusParaMetrica(metrica: string): string[] {
+      return [...new Set(catalogo.filter((s) => s.metrica === metrica).map((s) => s.virus))].sort();
+    }
+
+    function pintarToggles(metrica: string) {
+      const prev = new Set(
+        [...toggles.querySelectorAll<HTMLInputElement>('input:checked')].map((c) => c.value),
+      );
+      toggles.replaceChildren();
+      const disponibles = virusParaMetrica(metrica).filter((v) => v !== 'todos');
+      for (const v of disponibles) {
+        const lab = document.createElement('label');
+        lab.className = 'flex items-center gap-1';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = v;
+        cb.checked = prev.has(v) || (prev.size === 0 && VIRUS_DEFAULT.includes(v));
+        lab.append(cb, document.createTextNode(v));
+        toggles.appendChild(lab);
+      }
+    }
+
+    function aplicarModoMetrica(metrica: string) {
+      const global = METRICAS_GLOBALES.has(metrica);
+      notaGlobal.classList.toggle('hidden', !global);
+      toggles.classList.toggle('hidden', global);
+      toggles.disabled = global;
+      if (!global) pintarToggles(metrica);
     }
 
     async function refrescar() {
       const metrica = selMetrica.value;
-      const virusActivos = [...toggles.querySelectorAll<HTMLInputElement>('input:checked')].map((c) => c.value);
+      aplicarModoMetrica(metrica);
+      const virusConsulta = METRICAS_GLOBALES.has(metrica)
+        ? ['todos']
+        : [...toggles.querySelectorAll<HTMLInputElement>('input:checked')].map((c) => c.value);
       heatmap.textContent = 'Cargando…';
       const seriesPorVirus: Record<string, Record<string, [number, number][]>> = {};
       const anios = new Set<number>();
       try {
-        for (const virus of virusActivos) {
-          const m = metrica.startsWith('muestras') && virus !== 'todos' ? metrica : metrica;
-          const virusParam = metrica.startsWith('muestras') ? 'todos' : virus;
+        const vistos = new Set<string>();
+        for (const virus of virusConsulta) {
+          if (vistos.has(virus)) continue;
+          vistos.add(virus);
           const datos = await jsonOk(
-            `${API_BASE}/api/respiratorios/temporal?virus=${encodeURIComponent(virusParam)}&metrica=${encodeURIComponent(m)}`
+            `${API_BASE}/api/respiratorios/temporal?virus=${encodeURIComponent(virus)}&metrica=${encodeURIComponent(metrica)}`
           );
-          seriesPorVirus[virusParam] = datos.series;
+          const etiqueta = virus === 'todos' ? 'Todos los virus / vigilancia total' : virus;
+          seriesPorVirus[etiqueta] = datos.series;
           for (const a of datos.anios) anios.add(a);
         }
       } catch {
