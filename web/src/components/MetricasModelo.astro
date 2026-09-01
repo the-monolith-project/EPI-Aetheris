@@ -198,8 +198,21 @@
     try {
       const resp = await fetch(`${API_BASE}/api/riesgo-nacional`);
       if (!resp.ok) throw new Error('respuesta no OK');
-      const datos: RiesgoNacional = await resp.json();
-      render(contenedor, datos);
+      const datos: RiesgoNacional | { disponible: false; motivo?: string } =
+        await resp.json();
+      // El backend responde 200 con disponible:false cuando los artefactos
+      // del modelo no están generados en el despliegue (#72) -- aviso
+      // explícito en vez de un fallo genérico.
+      if (datos && 'disponible' in datos && datos.disponible === false) {
+        const estado = contenedor.querySelector('[data-estado]');
+        estado?.remove();
+        contenedor.innerHTML = `<p class="font-sans text-sm text-ink-muted">${escapeHtml(
+          datos.motivo ??
+            'La evaluación histórica no está generada en este despliegue.',
+        )}</p>`;
+        return;
+      }
+      render(contenedor, datos as RiesgoNacional);
     } catch {
       contenedor.innerHTML =
         '<p class="font-sans text-sm text-ink-muted">No se pudo cargar la evaluación histórica en este momento.</p>';
