@@ -1,0 +1,116 @@
+---
+// Cobertura de la ingesta respiratoria. No es M4.
+---
+
+<section
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+  data-cobertura
+>
+  <div class="flex items-start gap-3">
+    <span
+      class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+      aria-hidden="true"></span>
+    <div>
+      <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+        Cobertura y calidad de la fuente
+      </h2>
+      <p
+        class="mt-1 max-w-3xl font-sans text-sm leading-relaxed text-ink-muted"
+      >
+        Semanas con dato en Postgres frente a 52 nominales, más lo que la
+        exploración de 264 PDF ya documentó. No es un índice de confianza de
+        vigilancia: esa fórmula no está aprobada.
+      </p>
+    </div>
+  </div>
+  <div
+    data-cob-error
+    class="mt-3 hidden rounded-lg border border-secondary bg-secondary/25 p-3 font-sans text-sm"
+  >
+    No se pudo cargar la cobertura.
+  </div>
+  <div data-cob-cuerpo class="mt-4 space-y-4 font-sans text-sm"></div>
+</section>
+
+<script>
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const ANIOS = ['2018', '2019', '2021', '2022', '2023'];
+
+  function filaAnios(
+    titulo: string,
+    porAnio: Record<string, number>,
+    filas: number,
+    extra: string[],
+  ) {
+    const wrap = document.createElement('div');
+    wrap.className = 'rounded-xl border border-border bg-bg p-4';
+    const h = document.createElement('h3');
+    h.className = 'font-semibold text-ink';
+    h.textContent = `${titulo} · ${filas.toLocaleString('es-SV')} filas cargadas`;
+    wrap.appendChild(h);
+    const ul = document.createElement('ul');
+    ul.className = 'mt-2 grid grid-cols-2 gap-1 sm:grid-cols-5';
+    for (const a of ANIOS) {
+      const li = document.createElement('li');
+      const n = porAnio[a] ?? 0;
+      li.textContent = `${a}: ${n}/52`;
+      ul.appendChild(li);
+    }
+    wrap.appendChild(ul);
+    const p = document.createElement('p');
+    p.className = 'mt-2 text-xs leading-relaxed text-ink-muted';
+    p.textContent = extra.join(' · ');
+    wrap.appendChild(p);
+    return wrap;
+  }
+
+  async function iniciar() {
+    const root = document.querySelector<HTMLElement>('[data-cobertura]');
+    if (!root) return;
+    const cuerpo = root.querySelector<HTMLElement>('[data-cob-cuerpo]')!;
+    const error = root.querySelector<HTMLElement>('[data-cob-error]')!;
+    try {
+      const resp = await fetch(`${API_BASE}/api/respiratorios/cobertura`);
+      if (!resp.ok) throw new Error('no ok');
+      const d = await resp.json();
+      const aviso = document.createElement('p');
+      aviso.className = 'text-xs leading-relaxed text-ink-muted';
+      aviso.textContent = `${d.aviso} Procedencia: ${d.procedencia}.`;
+      const neu = d.neumonias;
+      const ira = d.ira;
+      const vir = d.virus;
+      cuerpo.replaceChildren(
+        aviso,
+        filaAnios('IRA', ira.semanas_con_dato_por_anio, ira.filas_cargadas, [
+          ira.notas.nota,
+        ]),
+        filaAnios(
+          'Neumonías',
+          neu.semanas_con_dato_por_anio,
+          neu.filas_cargadas,
+          [
+            `${neu.notas.tablas_imagen} tablas-imagen`,
+            `${neu.notas.ausencia_vacacion} vacaciones`,
+            `${neu.notas.correcciones_negativas_excluidas} correcciones negativas excluidas`,
+            `reimpresión: ${neu.notas.reimpresiones[0]}`,
+          ],
+        ),
+        filaAnios(
+          'Virus (nacional)',
+          vir.semanas_con_dato_por_anio,
+          vir.filas_cargadas,
+          [
+            vir.notas.unidad,
+            `COVID-19 solo en ${vir.notas.covid_19_solo_en}`,
+            `2020 descargado: ${vir.notas.anio_2020_descargado ? 'sí' : 'no'}`,
+            `${vir.notas.tablas_imagen} tablas-imagen`,
+          ],
+        ),
+      );
+    } catch {
+      error.classList.remove('hidden');
+    }
+  }
+
+  void iniciar();
+</script>

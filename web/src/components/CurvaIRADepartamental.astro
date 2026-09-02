@@ -1,19 +1,16 @@
 ---
-// Curva semanal departamental de IRA. Consulta la API real
-// (/api/ira/departamental para la lista de departamentos, /api/ira/temporal/
-// {codigo} para la serie por año) -- IRA ya está cargada en Postgres
-// (clasificacion='notificado', ADR 0011, backend/ingestion/cargar_ira.py,
-// 2742 filas 2018-2023 sin 2020). Ya no lee el JSON estático de la corrida
-// exploratoria.
-//
-// Los huecos de la serie (semanas sin fila en casos_epidemiologicos: boletín
-// de vacaciones, tabla como imagen, corrección retroactiva excluida -- ver
-// docs/exploracion-ira-boletines-minsal.md) rompen la línea: no se
-// interpola.
+interface Props {
+  evento?: 'ira' | 'neumonias';
+}
+const evento = Astro.props.evento ?? 'ira';
+const etiqueta = evento === 'neumonias' ? 'Neumonías' : 'IRA';
+const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
 ---
 
 <section
   class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+  data-curva-evento={evento}
+  data-curva-api={apiBase}
 >
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="flex items-start gap-3">
@@ -22,30 +19,69 @@
         aria-hidden="true"></span>
       <div>
         <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
-          Casos semanales de IRA por departamento
+          Casos semanales de {etiqueta} por departamento
         </h2>
         <p
           class="mt-1 max-w-2xl font-sans text-sm leading-relaxed text-ink-muted"
         >
           Serie desacumulada de los boletines MINSAL (la fuente publica
-          acumulados desde SE1; aquí se diferencia entre cortes consecutivos).
-          Un año por línea; los huecos son semanas sin dato publicado o
-          correcciones retroactivas de MINSAL -- se dejan vacíos, no se
-          interpolan.
+          acumulados desde SE1). Unidad: conteo notificado. Un año por línea;
+          los huecos se dejan vacíos, no se interpolan. Más casos no equivale a
+          mayor riesgo.
         </p>
       </div>
     </div>
-    <label class="flex items-center gap-2 font-sans text-sm text-ink-muted">
-      Departamento
-      <select
-        id="ira-depto"
-        class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
-      ></select>
-    </label>
+    <div
+      class="flex flex-wrap items-center gap-2 font-sans text-sm text-ink-muted"
+    >
+      <label class="flex items-center gap-2"
+        >Departamento
+        <select
+          data-curva-depto
+          class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
+        ></select>
+      </label>
+      <label class="flex items-center gap-2"
+        >Año
+        <select
+          data-curva-anio
+          class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
+        >
+          <option value="todos">todos (comparar temporadas)</option>
+          <option value="2023">2023</option>
+          <option value="2022">2022</option>
+          <option value="2021">2021</option>
+          <option value="2019">2019</option>
+          <option value="2018">2018</option>
+        </select>
+      </label>
+      <label class="flex items-center gap-2"
+        >Comparar con
+        <select
+          data-curva-compare
+          class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
+        >
+          <option value="">(ningún otro departamento)</option>
+        </select>
+      </label>
+      <label class="flex items-center gap-2"
+        >SE
+        <input data-curva-desde type="range" min="1" max="52" value="1" />
+        <input data-curva-hasta type="range" min="1" max="52" value="52" />
+        <span data-curva-rango class="font-mono text-xs">SE1–SE52</span>
+      </label>
+      <button
+        type="button"
+        data-curva-export
+        class="rounded-lg border border-border bg-bg px-3 py-1.5 text-ink"
+      >
+        Exportar CSV
+      </button>
+    </div>
   </div>
 
   <div
-    id="curva-ira"
+    data-curva-canvas
     class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4"
   >
     <div data-estado aria-hidden="true">
@@ -56,8 +92,10 @@
 </section>
 
 <script>
-  import { obtenerIraDepartamental } from '../lib/analisis-api';
-  import type { DepartamentoIRA } from '../lib/tipos-analisis';
+  import type {
+    DepartamentoIRA,
+    RespuestaIraDepartamental,
+  } from '../lib/tipos-analisis';
 
   // [semana, valor|null]
   type Punto = [number, number | null];
@@ -84,16 +122,38 @@
     '2023': 1,
   };
 
+  function recortar(
+    series: Record<string, Punto[]>,
+    desde: number,
+    hasta: number,
+  ): Record<string, Punto[]> {
+    const out: Record<string, Punto[]> = {};
+    for (const anio of Object.keys(series)) {
+      out[anio] = (series[anio] ?? []).filter(
+        ([s]) => s >= desde && s <= hasta,
+      );
+    }
+    return out;
+  }
+
   function dibujar(
     contenedor: HTMLElement,
-    series: Record<string, Punto[]>,
-    depto: string,
+    capas: {
+      nombre: string;
+      series: Record<string, Punto[]>;
+      dashed?: boolean;
+    }[],
+    desde: number,
+    hasta: number,
   ) {
     contenedor.innerHTML = '';
 
+    const series = capas[0]?.series ?? {};
     const anios = Object.keys(series).sort();
-    const valores = anios.flatMap((a) =>
-      series[a].map((p) => p[1]).filter((v) => v !== null),
+    const valores = capas.flatMap((c) =>
+      Object.values(c.series).flatMap((pts) =>
+        pts.map((p) => p[1]).filter((v) => v !== null),
+      ),
     );
     if (valores.length === 0) {
       contenedor.innerHTML =
@@ -104,9 +164,11 @@
     const areaGrafica = ALTO - MARGEN.arriba - MARGEN.abajo;
     const escalaY = (v: number) =>
       ALTO - MARGEN.abajo - (v / (maxValor || 1)) * areaGrafica;
+    const anchoSe = Math.max(1, hasta - desde);
     const escalaX = (semana: number) =>
       MARGEN.izquierda +
-      ((semana - 1) / 51) * (ANCHO - MARGEN.izquierda - MARGEN.derecha);
+      ((semana - desde) / anchoSe) *
+        (ANCHO - MARGEN.izquierda - MARGEN.derecha);
 
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
@@ -114,7 +176,7 @@
     svg.setAttribute('role', 'img');
     svg.setAttribute(
       'aria-label',
-      `Casos semanales de IRA en ${depto}, por año (2018-2023, sin 2020)`,
+      `Casos semanales notificados ${capas.map((c) => c.nombre).join(' y ')}, SE${desde}–SE${hasta}`,
     );
 
     for (const nivel of [0, maxValor / 2, maxValor]) {
@@ -139,7 +201,8 @@
       svg.appendChild(etiqueta);
     }
 
-    for (const semana of [1, 10, 20, 30, 40, 50]) {
+    const marcas = [desde, Math.round((desde + hasta) / 2), hasta];
+    for (const semana of marcas) {
       const etiqueta = document.createElementNS(SVG_NS, 'text');
       etiqueta.setAttribute('x', String(escalaX(semana)));
       etiqueta.setAttribute('y', String(ALTO - 24));
@@ -151,31 +214,40 @@
       svg.appendChild(etiqueta);
     }
 
-    for (const anio of anios) {
-      // Un <path> con M en cada reinicio: los null (huecos) parten la línea.
-      let d = '';
-      let enTramo = false;
-      for (const [semana, valor] of series[anio]) {
-        if (valor === null) {
-          enTramo = false;
-          continue;
+    for (const capa of capas) {
+      const aniosCapa = Object.keys(capa.series).sort();
+      for (const anio of aniosCapa) {
+        let d = '';
+        let enTramo = false;
+        for (const [semana, valor] of capa.series[anio]) {
+          if (valor === null) {
+            enTramo = false;
+            continue;
+          }
+          d += `${enTramo ? 'L' : 'M'}${escalaX(semana).toFixed(1)},${escalaY(valor).toFixed(1)} `;
+          enTramo = true;
         }
-        d += `${enTramo ? 'L' : 'M'}${escalaX(semana).toFixed(1)},${escalaY(valor).toFixed(1)} `;
-        enTramo = true;
+        if (!d) continue;
+        const trazo = document.createElementNS(SVG_NS, 'path');
+        trazo.setAttribute('d', d.trim());
+        trazo.setAttribute('fill', 'none');
+        trazo.setAttribute(
+          'stroke',
+          capa.dashed ? 'var(--color-ink)' : 'var(--color-accent)',
+        );
+        trazo.setAttribute(
+          'stroke-opacity',
+          String(OPACIDAD_ANIO[anio] ?? 0.5),
+        );
+        trazo.setAttribute(
+          'stroke-width',
+          anio === aniosCapa[aniosCapa.length - 1] ? '2' : '1.5',
+        );
+        if (capa.dashed) trazo.setAttribute('stroke-dasharray', '4 3');
+        trazo.setAttribute('stroke-linejoin', 'round');
+        trazo.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(trazo);
       }
-      if (!d) continue;
-      const trazo = document.createElementNS(SVG_NS, 'path');
-      trazo.setAttribute('d', d.trim());
-      trazo.setAttribute('fill', 'none');
-      trazo.setAttribute('stroke', 'var(--color-accent)');
-      trazo.setAttribute('stroke-opacity', String(OPACIDAD_ANIO[anio] ?? 0.5));
-      trazo.setAttribute(
-        'stroke-width',
-        anio === anios[anios.length - 1] ? '2' : '1.5',
-      );
-      trazo.setAttribute('stroke-linejoin', 'round');
-      trazo.setAttribute('stroke-linecap', 'round');
-      svg.appendChild(trazo);
     }
 
     // Leyenda de años sobre la línea base inferior.
@@ -226,9 +298,10 @@
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 
   async function cargarTemporal(
+    apiBase: string,
     codigo: string,
   ): Promise<Record<string, Punto[]>> {
-    const resp = await fetch(`${API_BASE}/api/ira/temporal/${codigo}`);
+    const resp = await fetch(`${API_BASE}${apiBase}/temporal/${codigo}`);
     if (!resp.ok) throw new Error('respuesta no OK');
     const datos: RespuestaTemporal = await resp.json();
     const series: Record<string, Punto[]> = {};
@@ -238,21 +311,54 @@
     return series;
   }
 
-  async function iniciar() {
-    const contenedor = document.getElementById('curva-ira');
-    const selector = document.getElementById(
-      'ira-depto',
+  async function iniciarSeccion(seccion: HTMLElement) {
+    const apiBase = seccion.dataset.curvaApi ?? '/api/ira';
+    const contenedor = seccion.querySelector(
+      '[data-curva-canvas]',
+    ) as HTMLElement | null;
+    const selector = seccion.querySelector(
+      '[data-curva-depto]',
     ) as HTMLSelectElement | null;
-    if (!contenedor || !selector) return;
+    const selAnio = seccion.querySelector(
+      '[data-curva-anio]',
+    ) as HTMLSelectElement | null;
+    const selCompare = seccion.querySelector(
+      '[data-curva-compare]',
+    ) as HTMLSelectElement | null;
+    const inpDesde = seccion.querySelector(
+      '[data-curva-desde]',
+    ) as HTMLInputElement | null;
+    const inpHasta = seccion.querySelector(
+      '[data-curva-hasta]',
+    ) as HTMLInputElement | null;
+    const txtRango = seccion.querySelector(
+      '[data-curva-rango]',
+    ) as HTMLElement | null;
+    const btnExport = seccion.querySelector(
+      '[data-curva-export]',
+    ) as HTMLButtonElement | null;
+    if (
+      !contenedor ||
+      !selector ||
+      !selAnio ||
+      !selCompare ||
+      !inpDesde ||
+      !inpHasta ||
+      !txtRango
+    )
+      return;
+    let ultimoCsv = '';
 
     let departamentos: DepartamentoIRA[];
     try {
-      const datos = await obtenerIraDepartamental();
+      const resp = await fetch(`${API_BASE}${apiBase}/departamental`);
+      if (!resp.ok) throw new Error('respuesta no OK');
+      const datos: RespuestaIraDepartamental = await resp.json();
       departamentos = datos.departamentos;
     } catch {
       contenedor.innerHTML =
         '<p class="font-sans text-sm leading-relaxed text-ink-muted">' +
-        'No se pudo cargar la serie de IRA desde la API. Verificá que el backend esté ' +
+        'No se pudo cargar la serie desde la API. Verificá que el backend esté ' +
         'levantado (<code class="font-mono text-xs">docker compose up</code>). No se muestra ' +
         'ningún dato sustituto.</p>';
       return;
@@ -265,22 +371,88 @@
       opcion.textContent = d.nombre;
       if (d.nombre === 'San Salvador') opcion.selected = true;
       selector.appendChild(opcion);
+      const op2 = opcion.cloneNode(true) as HTMLOptionElement;
+      op2.selected = false;
+      selCompare.appendChild(op2);
     }
 
+    const rango = () => {
+      let desde = Number(inpDesde.value);
+      let hasta = Number(inpHasta.value);
+      if (desde > hasta) [desde, hasta] = [hasta, desde];
+      txtRango.textContent = `SE${desde}–SE${hasta}`;
+      return { desde, hasta };
+    };
+
     const refrescar = async () => {
+      const { desde, hasta } = rango();
       const codigo = selector.value;
       const nombre = selector.selectedOptions[0]?.textContent ?? codigo;
       try {
-        const series = await cargarTemporal(codigo);
-        dibujar(contenedor, series, nombre);
+        const series = await cargarTemporal(apiBase, codigo);
+        const filtro = selAnio.value;
+        const base = recortar(
+          filtro === 'todos' ? series : { [filtro]: series[filtro] ?? [] },
+          desde,
+          hasta,
+        );
+        const capas: {
+          nombre: string;
+          series: Record<string, Punto[]>;
+          dashed?: boolean;
+        }[] = [{ nombre, series: base }];
+        const cmp = selCompare.value;
+        if (cmp && cmp !== codigo) {
+          const series2 = await cargarTemporal(apiBase, cmp);
+          const nombre2 = selCompare.selectedOptions[0]?.textContent ?? cmp;
+          capas.push({
+            nombre: nombre2,
+            dashed: true,
+            series: recortar(
+              filtro === 'todos'
+                ? series2
+                : { [filtro]: series2[filtro] ?? [] },
+              desde,
+              hasta,
+            ),
+          });
+        }
+        dibujar(contenedor, capas, desde, hasta);
+        const lineas = ['departamento,anio,semana,valor'];
+        for (const capa of capas) {
+          for (const anio of Object.keys(capa.series)) {
+            for (const [s, v] of capa.series[anio]) {
+              lineas.push(`${capa.nombre},${anio},${s},${v ?? ''}`);
+            }
+          }
+        }
+        ultimoCsv = lineas.join('\n');
       } catch {
         contenedor.innerHTML =
           '<p class="font-sans text-sm text-ink-muted">No se pudo cargar la serie de este departamento.</p>';
+        ultimoCsv = '';
       }
     };
-    selector.addEventListener('change', refrescar);
-    refrescar();
+    selector.addEventListener('change', () => void refrescar());
+    selAnio.addEventListener('change', () => void refrescar());
+    selCompare.addEventListener('change', () => void refrescar());
+    inpDesde.addEventListener('input', () => void refrescar());
+    inpHasta.addEventListener('input', () => void refrescar());
+    btnExport?.addEventListener('click', () => {
+      if (!ultimoCsv) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(
+        new Blob([ultimoCsv], { type: 'text/csv;charset=utf-8' }),
+      );
+      a.download = 'serie-respiratoria.csv';
+      a.click();
+    });
+    void refrescar();
   }
 
-  iniciar();
+  document
+    .querySelectorAll<HTMLElement>('section[data-curva-evento]')
+    .forEach((seccion) => {
+      void iniciarSeccion(seccion);
+    });
 </script>

@@ -53,7 +53,6 @@
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { colorCasos, gradienteCss, RAMPA_CASOS } from '../../lib/colores';
-  import { debounce } from '../../lib/debounce';
   import { vincularMarcasPlot } from '../../lib/plot-interacciones';
   import { ANIOS_ANALISIS_DENGUE } from '../../lib/tipos-analisis';
   import type {
@@ -181,7 +180,7 @@
     filtrosActuales = filtros;
     void renderizar(filtros);
   });
-  new ResizeObserver(
-    debounce(() => void renderizar(filtrosActuales), 100),
-  ).observe(contenedor!);
+  new ResizeObserver(() => void renderizar(filtrosActuales)).observe(
+    contenedor!,
+  );
 </script>

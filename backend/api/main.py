@@ -42,6 +42,20 @@ from .ira import (
     cargar_ira_departamental,
     cargar_ira_departamento_temporal,
 )
+from .neumonias import (
+    AVISO_HONESTIDAD_NEUMONIAS,
+    ANIOS_NEUMONIAS,
+    cargar_heatmap_neumonias,
+    cargar_neumonias_departamental,
+    cargar_neumonias_departamento_temporal,
+)
+from .cobertura import cargar_cobertura
+from .respiratorios import (
+    AVISO_HONESTIDAD_VIRUS,
+    listar_virus,
+    semana_virus,
+    serie_virus,
+)
 
 # Artefactos de la tarjeta 23/24 -- generados por
 # backend/ingestion/construir_dataset_modelado.py y entrenar_clasificador.py,
@@ -79,13 +93,21 @@ app = FastAPI(
 # key_func: Uvicorn NO corre con --proxy-headers, y en Render el peer TCP es
 # el balanceador de la plataforma (una sola IP para todo el trafico). Sin
 # esto, todos los clientes compartirian un unico bucket y el limite global
-# estrangularia a todos los usuarios a la vez. Tomamos el primer salto de
-# X-Forwarded-For (el cliente real segun Render) y caemos a la IP del socket
-# solo en local/tests donde esa cabecera no existe.
+# estrangularia a todos los usuarios a la vez.
+#
+# Tomamos el ULTIMO salto de X-Forwarded-For, no el primero (issue #67): el
+# edge de Render ANEXA la IP real del cliente al final de la cabecera, asi
+# que el ultimo valor es el unico que el cliente no puede falsificar. Con el
+# primer valor, un cliente que mande "X-Forwarded-For: 1.2.3.4" ya seteado
+# se bucketiza como una IP distinta en cada request y evade el rate limiter
+# por completo. Caemos a la IP del socket solo en local/tests donde esa
+# cabecera no existe.
 def _client_ip(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        saltos = [salto.strip() for salto in forwarded.split(",") if salto.strip()]
+        if saltos:
+            return saltos[-1]
     return get_remote_address(request)
 
 
@@ -309,20 +331,44 @@ def casos_nacional(response: Response):
     ]
 
 
+# Artefactos derivados del clasificador historico (dataset CSV + joblib +
+# metricas). La carga es perezosa y se protege con un lock (issue #71): sin
+# el, dos requests concurrentes en cold start leen la cache como None a la
+# vez y ambos deserializan el joblib / parsean el CSV completo de forma
+# redundante -- justo en la rafaga de trafico que el rate limiter busca
+# absorber. Double-checked locking: el chequeo rapido sin lock cubre el
+# caso normal (cache ya poblada), el lock solo se toma en el arranque.
+_artefactos_lock = threading.Lock()
 _modelo_cache = None
 _dataset_riesgo_cache = None
 
 
 def _cargar_modelo():
+    """Devuelve el paquete del modelo, o None si el joblib no existe en este
+    despliegue (issue #72) -- el handler traduce None a una respuesta 200
+    explicita en vez de un 503."""
     global _modelo_cache
     if _modelo_cache is None:
-        if not MODELO_PATH.exists():
-            raise HTTPException(
-                status_code=503,
-                detail="Modelo no disponible -- correr entrenar_clasificador.py (tarjeta 24) primero.",
-            )
-        _modelo_cache = joblib.load(MODELO_PATH)
+        with _artefactos_lock:
+            if _modelo_cache is None:
+                if not MODELO_PATH.exists():
+                    return None
+                _modelo_cache = joblib.load(MODELO_PATH)
     return _modelo_cache
+
+
+def _cargar_dataset_riesgo():
+    """Devuelve las filas del dataset de modelado, o None si el CSV no
+    existe en este despliegue (issue #72)."""
+    global _dataset_riesgo_cache
+    if _dataset_riesgo_cache is None:
+        with _artefactos_lock:
+            if _dataset_riesgo_cache is None:
+                if not DATASET_RIESGO_PATH.exists():
+                    return None
+                with open(DATASET_RIESGO_PATH, newline="", encoding="utf-8") as f:
+                    _dataset_riesgo_cache = list(csv.DictReader(f))
+    return _dataset_riesgo_cache
 
 
 @app.get("/api/riesgo-nacional")
@@ -344,19 +390,23 @@ def riesgo_nacional(
     de verificar en vivo lo que predice, no hay fuente departamental
     automatizable después de 2023 (ver docs/contexto, punto F).
     """
-    global _dataset_riesgo_cache
-    if _dataset_riesgo_cache is None:
-        if not DATASET_RIESGO_PATH.exists():
-            raise HTTPException(
-                status_code=503,
-                detail="Dataset de modelado no disponible -- correr construir_dataset_modelado.py (tarjeta 23) primero.",
-            )
-
-        # ⚡ Bolt: Cache dataset to prevent unnecessary disk I/O on every request
-        with open(DATASET_RIESGO_PATH, newline="", encoding="utf-8") as f:
-            _dataset_riesgo_cache = list(csv.DictReader(f))
-
-    filas = _dataset_riesgo_cache
+    filas = _cargar_dataset_riesgo()
+    modelo_paquete = _cargar_modelo() if filas is not None else None
+    if filas is None or modelo_paquete is None:
+        # Los artefactos derivados (dataset_modelado.csv + joblib) estan en
+        # .gitignore y no se generan en el build de Render, asi que faltan en
+        # produccion (issue #72). No es un error del servidor: se responde
+        # 200 con disponible=false y el frontend muestra un aviso explicito,
+        # mismo patron que /ira cuando falta su extracto exploratorio.
+        _cache_control(response, CACHE_TTL_COMPUTO)
+        return {
+            "disponible": False,
+            "motivo": (
+                "El clasificador nacional historico no esta generado en este "
+                "despliegue (dataset de modelado y/o modelo entrenado ausentes)."
+            ),
+            "aviso": AVISO_HONESTIDAD_RIESGO_NACIONAL,
+        }
 
     if anio is None or semana is None:
         fila = max(filas, key=lambda r: (int(r["anio"]), int(r["semana_epi"])))
@@ -369,7 +419,6 @@ def riesgo_nacional(
             )
         fila = coincidencias[0]
 
-    modelo_paquete = _cargar_modelo()
     modelo = modelo_paquete["modelo"]
     columnas_feature = modelo_paquete["columnas_feature"]
     clases = modelo_paquete["clases"]
@@ -384,6 +433,7 @@ def riesgo_nacional(
 
     _cache_control(response, CACHE_TTL_COMPUTO)
     return {
+        "disponible": True,
         "anio": int(fila["anio"]),
         "semana_epi": int(fila["semana_epi"]),
         "etiqueta_predicha": etiqueta_predicha,
@@ -888,3 +938,141 @@ def ira_temporal_departamento(departamento_id: str, response: Response):
         },
         "aviso": AVISO_HONESTIDAD_IRA,
     }
+
+
+@app.get("/api/neumonias/departamental")
+def neumonias_departamental():
+    """Resumen departamental de Neumonías notificadas. Capa descriptiva."""
+    try:
+        with _conexion() as conn:
+            departamentos = cargar_neumonias_departamental(conn)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    return {"departamentos": departamentos, "aviso": AVISO_HONESTIDAD_NEUMONIAS}
+
+
+@app.get("/api/neumonias/temporal/{departamento_id}")
+def neumonias_temporal_departamento(departamento_id: str):
+    try:
+        with _conexion() as conn:
+            serie = cargar_neumonias_departamento_temporal(conn, codigo=departamento_id)
+            if serie is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No existe un departamento con código '{departamento_id}'.",
+                )
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT nombre FROM regiones WHERE nivel_admin = 1 AND codigo = %s",
+                (departamento_id,),
+            )
+            (nombre,) = cur.fetchone()
+            cur.close()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    return {
+        "departamento_codigo": departamento_id,
+        "departamento_nombre": nombre,
+        "anios": sorted(serie.keys()),
+        "series": {
+            str(anio): [[semana, valor] for semana, valor in sorted(semanas.items())]
+            for anio, semanas in serie.items()
+        },
+        "aviso": AVISO_HONESTIDAD_NEUMONIAS,
+        "unidad": "conteo_notificado",
+    }
+
+
+@app.get("/api/neumonias/heatmap/{anio}")
+def neumonias_heatmap(anio: int):
+    """Matriz departamento × semana. Celdas ausentes son huecos, no ceros."""
+    if anio not in ANIOS_NEUMONIAS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"año {anio} fuera de la ventana cargada {ANIOS_NEUMONIAS}",
+        )
+    try:
+        with _conexion() as conn:
+            departamentos = cargar_heatmap_neumonias(conn, anio)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    return {
+        "anio": anio,
+        "unidad": "conteo_notificado",
+        "departamentos": departamentos,
+        "aviso": AVISO_HONESTIDAD_NEUMONIAS,
+    }
+
+
+@app.get("/api/respiratorios/virus")
+def respiratorios_virus():
+    """Catálogo de series disponibles (virus × métrica × unidad). Nacional."""
+    try:
+        with _conexion() as conn:
+            series = listar_virus(conn)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    return {"series": series, "aviso": AVISO_HONESTIDAD_VIRUS, "granularidad": "nacional"}
+
+
+@app.get("/api/respiratorios/temporal")
+def respiratorios_temporal(virus: str, metrica: str = "detecciones"):
+    """Serie nacional semanal de un virus y una métrica (detecciones|positividad|muestras_analizadas|muestras_positivas)."""
+    permitidas = {"detecciones", "positividad", "muestras_analizadas", "muestras_positivas"}
+    if metrica not in permitidas:
+        raise HTTPException(status_code=400, detail=f"metrica debe ser una de {sorted(permitidas)}")
+    try:
+        with _conexion() as conn:
+            serie, unidad = serie_virus(conn, virus=virus, metrica=metrica)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    if not serie:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"No hay serie disponible para virus='{virus}' y metrica='{metrica}'. "
+                "Consulte GET /api/respiratorios/virus para las combinaciones cargadas."
+            ),
+        )
+    return {
+        "virus": virus,
+        "metrica": metrica,
+        "unidad": unidad,
+        "granularidad": "nacional",
+        "anios": sorted(serie.keys()),
+        "series": {
+            str(anio): [[semana, valor] for semana, valor in sorted(semanas.items())]
+            for anio, semanas in serie.items()
+        },
+        "aviso": AVISO_HONESTIDAD_VIRUS,
+    }
+
+
+@app.get("/api/respiratorios/semana/{anio}/{semana}")
+def respiratorios_semana(anio: int, semana: int):
+    if semana < 1 or semana > 53:
+        raise HTTPException(status_code=400, detail="semana epidemiológica fuera de 1-53")
+    try:
+        with _conexion() as conn:
+            filas = semana_virus(conn, anio=anio, semana=semana)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    return {
+        "anio": anio,
+        "semana": semana,
+        "observaciones": filas,
+        "aviso": AVISO_HONESTIDAD_VIRUS,
+        "granularidad": "nacional",
+    }
+
+
+@app.get("/api/respiratorios/cobertura")
+def respiratorios_cobertura():
+    """Semanas con dato en Postgres + notas de la exploración. No es M4."""
+    try:
+        with _conexion() as conn:
+            return cargar_cobertura(conn)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")

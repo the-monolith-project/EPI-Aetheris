@@ -53,6 +53,7 @@ def cargar_ira_departamental(conn) -> list[dict]:
             LEFT JOIN casos_epidemiologicos c
                 ON c.region_id = r.id
                 AND c.clasificacion = 'notificado'
+                AND c.tipo_evento_id = (SELECT id FROM tipos_evento WHERE codigo = 'ira')
             WHERE r.nivel_admin = 1
             GROUP BY r.nombre, r.codigo
             ORDER BY r.nombre
@@ -92,6 +93,7 @@ def cargar_ira_departamento_temporal(conn, codigo: str) -> dict[int, dict[int, f
             SELECT anio, semana_epi, conteo
             FROM casos_epidemiologicos
             WHERE region_id = %s AND clasificacion = 'notificado'
+              AND tipo_evento_id = (SELECT id FROM tipos_evento WHERE codigo = 'ira')
             ORDER BY anio, semana_epi
             """,
             (region_id,),

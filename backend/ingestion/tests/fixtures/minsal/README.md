@@ -50,3 +50,35 @@ Los usa `tests/test_corrida_ira.py`.
 | `SE522021.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE522021.pdf` | Título con rango "SE01-52 2021" (el corte es el segundo número); fila "Otros países" presente pero vacía; tasa sin separador ("19460") |
 | `SE012023.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE012023.pdf` | Layout 2023 temprano: tabla departamental en página propia SIN título y con encabezado de columna erróneo ("Grupo de edad") — la semana sale del pie de estratificación |
 | `SE522023.pagina_tabla_ira.txt` | `Boletin_epidemiologico_SE522023.pdf` | Separador de miles punto ("615.619"); discrepancia mínima real: las celdas suman 1,574,871 y el total impreso dice 1,574,872 |
+
+## Fixtures de Neumonías (`*.pagina_tabla_neumonias.txt`)
+
+Extractos de la página con la **tabla departamental de Neumonías** (pdfplumber
+`extract_text()`, nunca PDFs). Los usa `tests/test_corrida_respiratorios.py`
+y `backend/ingestion/corrida_respiratorios.py`. Extraídos 2026-08-28.
+
+| Fixture | Boletín | Por qué está aquí |
+|---|---|---|
+| `SE01-02-2018.pagina_tabla_neumonias.txt` | `…SE01-02-2018.pdf` | Layout lado-a-lado 2018 (sin tildes); corte SE2 de un boletín combinado; San Salvador 172, total 701 |
+| `SE032018.pagina_tabla_neumonias.txt` | `…SE032018.pdf` | Narrativa rezagada ("SE 2-2018"); el título de la tabla dice SE-03; San Salvador 259, total 1,142 |
+| `SE092018.pagina_tabla_neumonias.txt` / `SE102018.pagina_tabla_neumonias.txt` | `…SE092018.pdf` / `…SE102018.pdf` | Cortes consecutivos distintos (no reimpresión: SS 1,001 → 1,130) para desacumulación y huecos |
+| `SE332019.pagina_tabla_neumonias.txt` / `SE342019_v2.pagina_tabla_neumonias.txt` | `…SE332019.pdf` / `…SE342019_v2.pdf` | Reimpresión: los 14 valores de SE34 son idénticos a SE33 (San Salvador 5,871) |
+| `SE012019.pagina_tabla_neumonias.txt` | `…SE012019.pdf` | Título de tabla presente, 0 filas extraíbles — tabla-imagen |
+| `SE012023.pagina_tabla_neumonias.txt` | `…SE012023.pdf` | Layout 2023 página propia sin título de tabla; semana en el pie de estratificación (SE 1); SS 101, total 488 |
+| `SE252023.pagina_tabla_neumonias.txt` | `…SE252023.pdf` | Tabla departamental 2023 con título propio; SS 2,733, total 10,618 |
+| `SE522023.pagina_tabla_neumonias.txt` | `…SE522023.pdf` | Separador de miles punto ("5.667", "22.337"); las celdas suman 22,336 y el total impreso dice 22,337 |
+
+## Fixtures de vigilancia de virus (`*.pagina_vigilancia_virus.txt`)
+
+Extractos de la página con la **tabla laboratorial / vigilancia centinela**
+de influenza y otros virus respiratorios. Unidad observada: muestras, no
+casos clínicos. Granularidad: nacional.
+
+| Fixture | Boletín | Por qué está aquí |
+|---|---|---|
+| `SE01-02-2018.pagina_vigilancia_virus.txt` | `…SE01-02-2018.pdf` | Tabla de 3 columnas (año previo / año actual / semana); VSR e influenza B; **sin** SARS-CoV-2 |
+| `SE472018.pagina_vigilancia_virus.txt` | `…SE472018.pdf` | Número con asterisco (`2428*`, nota “Dato corregido”) que no debe impedir leer las tres columnas |
+| `SE032018.pagina_vigilancia_virus.txt` | `…SE032018.pdf` | Mismo layout 2018, corte SE03 |
+| `SE012023.pagina_vigilancia_virus.txt` | `…SE012023.pdf` | Layout 2023 temprano; encabezado de años de plantilla dudoso (imprime 2021/2022 en un boletín 2023) |
+| `SE252023.pagina_vigilancia_virus.txt` | `…SE252023.pdf` | Dos columnas (2022/2023 acumulado); aparece `COVID 19(SE25)` con un valor |
+| `SE522023.pagina_vigilancia_virus.txt` | `…SE522023.pdf` | Etiqueta `COVID 19(SE23)` **sin** valores extraíbles — no se fabrica; VSR 206; Adenovirus partido en dos líneas |
