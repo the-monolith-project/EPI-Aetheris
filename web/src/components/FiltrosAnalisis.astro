@@ -423,7 +423,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
     });
   botonExportar?.addEventListener('click', async () => {
     if (!botonExportar) return;
-    const textoOriginal = botonExportar.textContent || 'Descargar vista';
+    const textoOriginal = 'Descargar vista actual';
     botonExportar.disabled = true;
     botonExportar.textContent = 'Preparando...';
     if (estadoAcciones) estadoAcciones.textContent = 'Preparando CSV…';
