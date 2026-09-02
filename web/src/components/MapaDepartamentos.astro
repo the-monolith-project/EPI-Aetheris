@@ -212,8 +212,19 @@
 </style>
 
 <script>
-  import L from 'leaflet';
-  import 'leaflet/dist/leaflet.css';
+  // Leaflet (JS ~44KB + CSS ~6KB), el geojson de departamentos (~100KB) y
+  // los tiles de OpenStreetMap (decenas de peticiones) no son necesarios
+  // para el primer render de la página -- solo se importan/descargan aquí
+  // dentro de iniciar(), en lugar de al nivel de módulo, para que no
+  // compitan por ancho de banda ni CPU con el contenido inicial. Ver
+  // "iniciar()" al final del archivo para el diferido con
+  // requestIdleCallback.
+  import type Leaflet from 'leaflet';
+  // "?url" evita que Vite trate este CSS como parte del bundle de la
+  // página (que inyectaría un <link> en el <head> desde el primer HTML,
+  // volviendo a bloquear el render): solo da la URL del archivo, y el
+  // <link> se crea a mano dentro de iniciar().
+  import leafletCssHref from 'leaflet/dist/leaflet.css?url';
   import { obtenerDatasetAnalitico } from '../lib/analisis-api';
   import {
     actualizarFiltrosAnalisis,
@@ -922,7 +933,18 @@
     return [ANILLO_MUNDO, ...agujeros];
   }
 
+  function cargarCssLeaflet() {
+    if (document.querySelector(`link[href="${leafletCssHref}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = leafletCssHref;
+    document.head.appendChild(link);
+  }
+
   async function iniciar() {
+    cargarCssLeaflet();
+    const { default: L } = await import('leaflet');
+
     const contenedorSelector = document.getElementById('mapa-selector');
     const contenedorMapa = document.getElementById('mapa-departamentos');
     const contenedorLeyenda = document.getElementById('mapa-leyenda');
@@ -1049,7 +1071,7 @@
       interactive: false,
     }).addTo(mapa);
 
-    let capaGeoJsonActiva: L.GeoJSON | null = null;
+    let capaGeoJsonActiva: Leaflet.GeoJSON | null = null;
     let capaActivaId: IdCapa = capaMinsal.id;
     const cacheValoresPorCapa = new Map<
       IdCapa,
@@ -1058,7 +1080,7 @@
 
     function resaltarDepartamento(codigoActivo: string | null) {
       capaGeoJsonActiva?.eachLayer((capa) => {
-        const ruta = capa as L.Path & {
+        const ruta = capa as Leaflet.Path & {
           feature?: { properties?: { codigo?: string } };
           bringToFront?: () => void;
         };
@@ -1073,7 +1095,7 @@
     }
 
     function vincularSeleccionDepartamento(
-      capa: L.Layer,
+      capa: Leaflet.Layer,
       codigo: string,
       nombre: string,
     ) {
@@ -1081,7 +1103,7 @@
         actualizarFiltrosAnalisis({ departamento: codigo });
       capa.on('click', seleccionar);
       capa.on('add', () => {
-        const elemento = (capa as L.Path).getElement();
+        const elemento = (capa as Leaflet.Path).getElement();
         if (!elemento) return;
         elemento.setAttribute('data-departamento', codigo);
         elemento.setAttribute('tabindex', '0');
@@ -1326,5 +1348,14 @@
     }, false);
   }
 
-  iniciar();
+  // Se difiere al primer momento ocioso del navegador: el resto de la
+  // página (texto, layout) ya pintó, así que la descarga de Leaflet + el
+  // geojson + los tiles de OpenStreetMap no compite por ancho de banda ni
+  // CPU con el primer render. requestIdleCallback no existe en Safari, de
+  // ahí el fallback a setTimeout.
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => iniciar());
+  } else {
+    setTimeout(iniciar, 1);
+  }
 </script>
