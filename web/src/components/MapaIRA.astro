@@ -1,16 +1,19 @@
 ---
-// Mapa departamental de IRA -- capa única (volumen "notificado" acumulado
-// 2018-2023, sin 2020), consumiendo /api/ira/departamental (backend/api/ira.py).
-// Deliberadamente NO comparte layers/selector con MapaDepartamentos.astro: IRA
-// no tiene Iv/anomalía/presión calculados (esas fórmulas están cerradas solo
-// para dengue, ver AGENTS.md), así que no hay nada que seleccionar todavía --
-// un selector de una sola opción sería ruido de UI. Mismo geojson
-// (public/geo/slv-adm1.geojson), mismo motor Leaflet, mismos tokens visuales
-// que el mapa de dengue para que ambos se lean como el mismo sistema.
+interface Props {
+  evento?: 'ira' | 'neumonias';
+}
+const evento = Astro.props.evento ?? 'ira';
+const etiqueta = evento === 'neumonias' ? 'Neumonías' : 'IRA';
+const endpoint =
+  evento === 'neumonias'
+    ? '/api/neumonias/departamental'
+    : '/api/ira/departamental';
 ---
 
 <section
   class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+  data-mapa-evento={evento}
+  data-mapa-endpoint={endpoint}
 >
   <div class="flex items-start gap-3">
     <span
@@ -18,14 +21,13 @@
       aria-hidden="true"></span>
     <div>
       <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
-        Mapa departamental -- IRA
+        Mapa departamental -- {etiqueta}
       </h2>
       <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
         Capa descriptiva: volumen acumulado de casos "notificado" por
         departamento (MINSAL, 2018-2023, sin 2020). No es una clasificación de
-        riesgo ni alimenta ningún modelo -- IRA no tiene idoneidad, anomalía ni
-        presión relativa calculados (esas fórmulas están cerradas solo para
-        dengue).
+        riesgo. Unidad: conteo notificado, no positividad ni muestras. Más casos
+        no significa mayor riesgo sin una metodología aparte.
       </p>
     </div>
   </div>
@@ -55,7 +57,7 @@
   </div>
 
   <div
-    id="mapa-ira-no-disponible"
+    data-mapa-vacio
     class="mt-3 hidden rounded-lg border border-secondary bg-secondary/25 p-3"
   >
     <p class="font-sans text-sm text-ink">
@@ -65,11 +67,11 @@
   </div>
 
   <div
-    id="mapa-ira-departamentos"
+    data-mapa-canvas
     class="mt-4 h-[300px] w-full overflow-hidden rounded-xl border border-border shadow-inner sm:h-[420px] lg:h-[540px]"
   >
   </div>
-  <div id="mapa-ira-leyenda" class="mt-3"></div>
+  <div data-mapa-leyenda class="mt-3"></div>
 </section>
 
 <style>
@@ -107,8 +109,8 @@
 <script>
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
-  import { obtenerIraDepartamental } from '../lib/analisis-api';
 
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const SIN_DATO = '#e4e4e7';
   // Mismo family de la marca que la capa de volumen MINSAL de dengue, para
   // que "más oscuro = más casos" se lea igual en ambos mapas.
@@ -202,12 +204,17 @@
     return [ANILLO_MUNDO, ...agujeros];
   }
 
-  async function iniciar() {
-    const contenedorMapa = document.getElementById('mapa-ira-departamentos');
-    const contenedorLeyenda = document.getElementById('mapa-ira-leyenda');
-    const contenedorNoDisponible = document.getElementById(
-      'mapa-ira-no-disponible',
-    );
+  async function iniciarSeccion(seccion: HTMLElement) {
+    const contenedorMapa = seccion.querySelector(
+      '[data-mapa-canvas]',
+    ) as HTMLElement | null;
+    const contenedorLeyenda = seccion.querySelector(
+      '[data-mapa-leyenda]',
+    ) as HTMLElement | null;
+    const contenedorNoDisponible = seccion.querySelector(
+      '[data-mapa-vacio]',
+    ) as HTMLElement | null;
+    const endpoint = seccion.dataset.mapaEndpoint ?? '/api/ira/departamental';
     if (!contenedorMapa || !contenedorLeyenda || !contenedorNoDisponible)
       return;
 
@@ -220,6 +227,9 @@
       maxBounds: LIMITES_SV,
       maxBoundsViscosity: 1.0,
     }).setView([13.79, -88.9], 8);
+    mapa.whenReady(() => {
+      mapa.invalidateSize();
+    });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -240,7 +250,9 @@
     let valores: Map<string, number | undefined> | null = null;
 
     try {
-      const datos = await obtenerIraDepartamental();
+      const resp = await fetch(`${API_BASE}${endpoint}`);
+      if (!resp.ok) throw new Error('respuesta no OK');
+      const datos: { departamentos: DatoDepartamentoIra[] } = await resp.json();
       detalles = new Map(datos.departamentos.map((d) => [d.codigo, d]));
       valores = new Map(
         datos.departamentos.map((d) => [
@@ -313,5 +325,11 @@
     }).addTo(mapa);
   }
 
-  iniciar();
+  document
+    .querySelectorAll<HTMLElement>('section[data-mapa-evento]')
+    .forEach((seccion) => {
+      void iniciarSeccion(seccion).catch(() => {
+        seccion.querySelector('[data-mapa-vacio]')?.classList.remove('hidden');
+      });
+    });
 </script>

@@ -2,6 +2,24 @@
 
 > Todo lo marcado aquí está **cerrado / no negociable**. Respételo salvo instrucción explícita del usuario reabriéndolo. Para lo que sigue sin resolver, ver `02-decisiones-abiertas.md`. Para la evidencia empírica detrás de las decisiones de fuentes de datos, ver `03-fuentes-de-datos.md`.
 
+## Ingesta respiratoria: Neumonías + vigilancia virológica (cerrado 2026-08-28)
+
+Evidencia: `docs/exploracion-neumonias-boletines-minsal.md` y
+`docs/exploracion-vigilancia-virus-boletines-minsal.md` (264 PDF).
+
+- **Neumonías** es un conteo clínico departamental único, acumulado desde SE1,
+  mismo formato que IRA. Reutiliza `casos_epidemiologicos` con
+  `clasificacion='notificado'` (ADR 0011) y `tipos_evento='neumonia'`. No se
+  mezcla con IRA. No se copian M1–M4 de dengue.
+- **Influenza / VSR / SARS-CoV-2** son vigilancia laboratorial centinela
+  **nacional** (muestras, positivos, detecciones, positividad). No caben en
+  `casos_epidemiologicos`. Tabla nueva `vigilancia_virus_respiratorios`
+  (ADR 0012, migración `0008`). No hay mapa departamental.
+- **2020 no se descarga** para esta rama: COVID-19 como fila de la tabla
+  laboratorial solo aparece en 2023; no es una copia de la exclusión de
+  dengue/IRA. 2024+ sigue fuera.
+- OCR no se instala. Tablas-imagen se registran y se dejan como hueco.
+
 ## Pivote "Camino Ancho": cierre de la clasificación predictiva (cerrado 2026-08-18)
 
 **Reemplaza en la práctica el "Pivote de fase 1 — Opción C" de más abajo, que queda registrado como historia de cómo se llegó aquí, no como el estado vigente.** Léase primero esta sección; la de Opción C describe una fase intermedia ya superada.
@@ -69,7 +87,7 @@ GNU/Linux, hardware modesto. Docker obligatorio, despliegue reproducible con un 
 
 ## Reproducibilidad para un tercero: volcado de datos reales versionado (cerrado 2026-08-17, ADR 0010)
 
-Resuelve la contradicción entre "costo de replicación → $0" (arriba) y que `backend/ingestion/data/raw/` nunca se versiona: sin esto, `git clone` + `docker compose up` daba una base vacía. Se versiona `db/seed/seed_datos_reales.sql` — volcado `pg_dump --data-only` (4,4 MB, texto plano, sin un PDF crudo) de las tablas de hechos (`semanas_epidemiologicas`, `boletines_procesados`, `casos_epidemiologicos`, `variables_ambientales`); **no** incluye `regiones`/`tipos_evento`/`fuentes_datos` porque esas tres ya las siembran las propias migraciones (`0001`, `0004`, `0006`), ni `schema_migrations` porque esa tabla la crea el runner (ADR 0009), no `docker-entrypoint-initdb.d`. Se monta como archivo individual en `docker-compose.yml` (`db/seed/seed_datos_reales.sql:/docker-entrypoint-initdb.d/seed_datos_reales.sql`) junto a `db/migrations/*.sql` — Postgres no recorre subcarpetas dentro de esa ruta, por eso no basta con montar `db/seed/` completo. Nombrado sin prefijo numérico (`seed_...`) para que ordene después de `0001`-`0006` sin insinuar que es una migración de esquema. Verificado de punta a punta sobre Postgres 15 descartable: `0001`→`0006`→`seed_datos_reales.sql` en secuencia, conteos de fila exactos contra la base de desarrollo real. Es una foto fija (2026-08-17), no se regenera automáticamente — actualizarla es manual, cuando el equipo decida que vale una foto más reciente.
+Resuelve la contradicción entre "costo de replicación → $0" (arriba) y que `backend/ingestion/data/raw/` nunca se versiona: sin esto, `git clone` + `docker compose up` daba una base vacía. Se versiona `db/seed/seed_datos_reales.sql` — volcado `pg_dump --data-only` (4,4 MB, texto plano, sin un PDF crudo) de las tablas de hechos (`semanas_epidemiologicas`, `boletines_procesados`, `casos_epidemiologicos`, `variables_ambientales`); **no** incluye `regiones`/`tipos_evento`/`fuentes_datos` porque esas tres ya las siembran las propias migraciones (`0001`, `0004`, `0006`), ni `schema_migrations` porque esa tabla la crea el runner (ADR 0009), no `docker-entrypoint-initdb.d`. Se monta como archivo individual en `docker-compose.yml` (`db/seed/seed_datos_reales.sql:/docker-entrypoint-initdb.d/seed_datos_reales.sql`) junto a `db/migrations/*.sql` — Postgres no recorre subcarpetas dentro de esa ruta, por eso no basta con montar `db/seed/` completo. Nombrado sin prefijo numérico (`seed_...`) para que ordene después de `0001`-`0008` sin insinuar que es una migración de esquema. Verificado de punta a punta sobre Postgres 15 descartable: `0001`→`0006`→`seed_datos_reales.sql` en secuencia, conteos de fila exactos contra la base de desarrollo real. Es una foto fija, no se regenera automáticamente — actualizarla es manual, cuando el equipo decida que vale una foto más reciente. **Foto 2026-09-01:** el volcado incluye también `vigilancia_virus_respiratorios` y las filas de IRA/Neumonías (2.742 / 2.749) más 3.028 de vigilancia viral; detalle en la enmienda H del ADR 0010.
 
 ## Fuente y modelo climático (cerrado 2026-07-14, modelo enmendado 2026-08-07)
 

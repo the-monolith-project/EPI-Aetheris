@@ -42,6 +42,20 @@ from .ira import (
     cargar_ira_departamental,
     cargar_ira_departamento_temporal,
 )
+from .neumonias import (
+    AVISO_HONESTIDAD_NEUMONIAS,
+    ANIOS_NEUMONIAS,
+    cargar_heatmap_neumonias,
+    cargar_neumonias_departamental,
+    cargar_neumonias_departamento_temporal,
+)
+from .cobertura import cargar_cobertura
+from .respiratorios import (
+    AVISO_HONESTIDAD_VIRUS,
+    listar_virus,
+    semana_virus,
+    serie_virus,
+)
 
 # Artefactos de la tarjeta 23/24 -- generados por
 # backend/ingestion/construir_dataset_modelado.py y entrenar_clasificador.py,
@@ -924,3 +938,141 @@ def ira_temporal_departamento(departamento_id: str, response: Response):
         },
         "aviso": AVISO_HONESTIDAD_IRA,
     }
+
+
+@app.get("/api/neumonias/departamental")
+def neumonias_departamental():
+    """Resumen departamental de Neumonías notificadas. Capa descriptiva."""
+    try:
+        with _conexion() as conn:
+            departamentos = cargar_neumonias_departamental(conn)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    return {"departamentos": departamentos, "aviso": AVISO_HONESTIDAD_NEUMONIAS}
+
+
+@app.get("/api/neumonias/temporal/{departamento_id}")
+def neumonias_temporal_departamento(departamento_id: str):
+    try:
+        with _conexion() as conn:
+            serie = cargar_neumonias_departamento_temporal(conn, codigo=departamento_id)
+            if serie is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No existe un departamento con código '{departamento_id}'.",
+                )
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT nombre FROM regiones WHERE nivel_admin = 1 AND codigo = %s",
+                (departamento_id,),
+            )
+            (nombre,) = cur.fetchone()
+            cur.close()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    return {
+        "departamento_codigo": departamento_id,
+        "departamento_nombre": nombre,
+        "anios": sorted(serie.keys()),
+        "series": {
+            str(anio): [[semana, valor] for semana, valor in sorted(semanas.items())]
+            for anio, semanas in serie.items()
+        },
+        "aviso": AVISO_HONESTIDAD_NEUMONIAS,
+        "unidad": "conteo_notificado",
+    }
+
+
+@app.get("/api/neumonias/heatmap/{anio}")
+def neumonias_heatmap(anio: int):
+    """Matriz departamento × semana. Celdas ausentes son huecos, no ceros."""
+    if anio not in ANIOS_NEUMONIAS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"año {anio} fuera de la ventana cargada {ANIOS_NEUMONIAS}",
+        )
+    try:
+        with _conexion() as conn:
+            departamentos = cargar_heatmap_neumonias(conn, anio)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    return {
+        "anio": anio,
+        "unidad": "conteo_notificado",
+        "departamentos": departamentos,
+        "aviso": AVISO_HONESTIDAD_NEUMONIAS,
+    }
+
+
+@app.get("/api/respiratorios/virus")
+def respiratorios_virus():
+    """Catálogo de series disponibles (virus × métrica × unidad). Nacional."""
+    try:
+        with _conexion() as conn:
+            series = listar_virus(conn)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    return {"series": series, "aviso": AVISO_HONESTIDAD_VIRUS, "granularidad": "nacional"}
+
+
+@app.get("/api/respiratorios/temporal")
+def respiratorios_temporal(virus: str, metrica: str = "detecciones"):
+    """Serie nacional semanal de un virus y una métrica (detecciones|positividad|muestras_analizadas|muestras_positivas)."""
+    permitidas = {"detecciones", "positividad", "muestras_analizadas", "muestras_positivas"}
+    if metrica not in permitidas:
+        raise HTTPException(status_code=400, detail=f"metrica debe ser una de {sorted(permitidas)}")
+    try:
+        with _conexion() as conn:
+            serie, unidad = serie_virus(conn, virus=virus, metrica=metrica)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    if not serie:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"No hay serie disponible para virus='{virus}' y metrica='{metrica}'. "
+                "Consulte GET /api/respiratorios/virus para las combinaciones cargadas."
+            ),
+        )
+    return {
+        "virus": virus,
+        "metrica": metrica,
+        "unidad": unidad,
+        "granularidad": "nacional",
+        "anios": sorted(serie.keys()),
+        "series": {
+            str(anio): [[semana, valor] for semana, valor in sorted(semanas.items())]
+            for anio, semanas in serie.items()
+        },
+        "aviso": AVISO_HONESTIDAD_VIRUS,
+    }
+
+
+@app.get("/api/respiratorios/semana/{anio}/{semana}")
+def respiratorios_semana(anio: int, semana: int):
+    if semana < 1 or semana > 53:
+        raise HTTPException(status_code=400, detail="semana epidemiológica fuera de 1-53")
+    try:
+        with _conexion() as conn:
+            filas = semana_virus(conn, anio=anio, semana=semana)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    return {
+        "anio": anio,
+        "semana": semana,
+        "observaciones": filas,
+        "aviso": AVISO_HONESTIDAD_VIRUS,
+        "granularidad": "nacional",
+    }
+
+
+@app.get("/api/respiratorios/cobertura")
+def respiratorios_cobertura():
+    """Semanas con dato en Postgres + notas de la exploración. No es M4."""
+    try:
+        with _conexion() as conn:
+            return cargar_cobertura(conn)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
