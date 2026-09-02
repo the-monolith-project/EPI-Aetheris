@@ -43,10 +43,26 @@ const NAV = [
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    {
+      /* La hoja de Google Fonts se carga sin bloquear el render: el
+      truco media="print" + onload hace que el navegador la descargue con
+      baja prioridad y recién la aplique cuando ya cargó, en vez de
+      detener el primer pintado a esperarla (era una de las 2-3 hojas
+      render-blocking en cada carga). El <noscript> cubre a quien tenga
+      JS desactivado. */
+    }
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
     <title>{title}</title>
 
     <meta property="og:type" content="website" />
