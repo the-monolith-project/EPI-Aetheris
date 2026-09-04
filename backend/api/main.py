@@ -941,18 +941,20 @@ def ira_temporal_departamento(departamento_id: str, response: Response):
 
 
 @app.get("/api/neumonias/departamental")
-def neumonias_departamental():
+def neumonias_departamental(response: Response):
     """Resumen departamental de Neumonías notificadas. Capa descriptiva."""
     try:
         with _conexion() as conn:
             departamentos = cargar_neumonias_departamental(conn)
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {"departamentos": departamentos, "aviso": AVISO_HONESTIDAD_NEUMONIAS}
 
 
 @app.get("/api/neumonias/temporal/{departamento_id}")
-def neumonias_temporal_departamento(departamento_id: str):
+def neumonias_temporal_departamento(departamento_id: str, response: Response):
     try:
         with _conexion() as conn:
             serie = cargar_neumonias_departamento_temporal(conn, codigo=departamento_id)
@@ -972,6 +974,8 @@ def neumonias_temporal_departamento(departamento_id: str):
         raise
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "departamento_codigo": departamento_id,
         "departamento_nombre": nombre,
@@ -986,7 +990,7 @@ def neumonias_temporal_departamento(departamento_id: str):
 
 
 @app.get("/api/neumonias/heatmap/{anio}")
-def neumonias_heatmap(anio: int):
+def neumonias_heatmap(anio: int, response: Response):
     """Matriz departamento × semana. Celdas ausentes son huecos, no ceros."""
     if anio not in ANIOS_NEUMONIAS:
         raise HTTPException(
@@ -998,6 +1002,8 @@ def neumonias_heatmap(anio: int):
             departamentos = cargar_heatmap_neumonias(conn, anio)
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "anio": anio,
         "unidad": "conteo_notificado",
@@ -1007,18 +1013,20 @@ def neumonias_heatmap(anio: int):
 
 
 @app.get("/api/respiratorios/virus")
-def respiratorios_virus():
+def respiratorios_virus(response: Response):
     """Catálogo de series disponibles (virus × métrica × unidad). Nacional."""
     try:
         with _conexion() as conn:
             series = listar_virus(conn)
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {"series": series, "aviso": AVISO_HONESTIDAD_VIRUS, "granularidad": "nacional"}
 
 
 @app.get("/api/respiratorios/temporal")
-def respiratorios_temporal(virus: str, metrica: str = "detecciones"):
+def respiratorios_temporal(response: Response, virus: str, metrica: str = "detecciones"):
     """Serie nacional semanal de un virus y una métrica (detecciones|positividad|muestras_analizadas|muestras_positivas)."""
     permitidas = {"detecciones", "positividad", "muestras_analizadas", "muestras_positivas"}
     if metrica not in permitidas:
@@ -1036,6 +1044,8 @@ def respiratorios_temporal(virus: str, metrica: str = "detecciones"):
                 "Consulte GET /api/respiratorios/virus para las combinaciones cargadas."
             ),
         )
+
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "virus": virus,
         "metrica": metrica,
@@ -1051,7 +1061,7 @@ def respiratorios_temporal(virus: str, metrica: str = "detecciones"):
 
 
 @app.get("/api/respiratorios/semana/{anio}/{semana}")
-def respiratorios_semana(anio: int, semana: int):
+def respiratorios_semana(anio: int, semana: int, response: Response):
     if semana < 1 or semana > 53:
         raise HTTPException(status_code=400, detail="semana epidemiológica fuera de 1-53")
     try:
@@ -1059,6 +1069,8 @@ def respiratorios_semana(anio: int, semana: int):
             filas = semana_virus(conn, anio=anio, semana=semana)
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "anio": anio,
         "semana": semana,
@@ -1069,10 +1081,13 @@ def respiratorios_semana(anio: int, semana: int):
 
 
 @app.get("/api/respiratorios/cobertura")
-def respiratorios_cobertura():
+def respiratorios_cobertura(response: Response):
     """Semanas con dato en Postgres + notas de la exploración. No es M4."""
     try:
         with _conexion() as conn:
-            return cargar_cobertura(conn)
+            cobertura = cargar_cobertura(conn)
     except Exception:
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    _cache_control(response, CACHE_TTL_HISTORICO)
+    return cobertura
