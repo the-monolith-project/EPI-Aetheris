@@ -12,3 +12,8 @@
 **Vulnerability:** `web/src/components/MetricasModelo.astro` built HTML with `innerHTML` from API fields (`aviso`, `nota`, `corte_percentil`, `probabilidades` keys) without escaping them. A manipulated API response could inject `<script>` (stored/reflected XSS).
 **Learning:** Assigning strings that contain external data to `innerHTML` is unsafe by default even if the API is trusted today.
 **Prevention:** Escape `<`, `>`, `&`, `"`, `'` with the shared `escapeHtml` util (`web/src/utils/security`) on every dynamic interpolation inside `innerHTML`, or use `document.createElement()` + `textContent`. Reuse the existing util -- do not redefine it per component.
+
+## 2026-08-27 - XSS via unescaped API data in `MapaIRA.astro` innerHTML
+**Vulnerability:** Similar to the previous issue in `MetricasModelo.astro`, `web/src/components/MapaIRA.astro` built HTML with `innerHTML` (specifically `dibujarLeyenda` interpolating `etiqueta` and `layer.bindTooltip` interpolating `nombre` and `ventana`) from API fields and geojson properties without escaping them. An attacker could potentially inject `<script>` tags if the API responses or geojson were manipulated (stored/reflected XSS).
+**Learning:** Assigning strings that contain dynamic, external data to `innerHTML` or methods that use it internally (like Leaflet's `bindTooltip`) is a common attack vector and unsafe by default, even if the API is considered trusted.
+**Prevention:** Always escape variables containing dynamic data using `escapeHtml` (from `web/src/utils/security`) before passing them to `innerHTML` or `bindTooltip`.
