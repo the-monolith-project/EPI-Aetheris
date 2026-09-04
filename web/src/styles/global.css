@@ -83,6 +83,14 @@
 .card-elevated:hover {
   box-shadow: var(--shadow-card-hover);
 }
+/* Cuando la tarjeta entera es el elemento enfocable, su propio box-shadow
+   (sin capa) le gana al de :focus-visible (con capa) y se comía el halo
+   oscuro del anillo de foco. Esta regla combina ambos. */
+.card-elevated:focus-visible {
+  box-shadow:
+    0 0 0 4px rgba(1, 30, 30, 0.55),
+    var(--shadow-card-hover);
+}
 
 /* Placeholder de carga (skeleton) compartido por los componentes que hacen
    fetch -- construido solo con tokens existentes (border/bg), sin colores
