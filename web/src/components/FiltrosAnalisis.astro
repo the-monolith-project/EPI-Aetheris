@@ -40,12 +40,12 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
 
       <div class="mt-5 grid gap-4 md:grid-cols-12">
         <label
-          class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted md:col-span-2"
+          class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted md:col-span-2"
         >
           Año
           <select
             id="analisis-anio"
-            class="rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm font-normal text-ink"
+            class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal tabular-nums text-ink"
           >
             {
               ANIOS_ANALISIS_DENGUE.map((anio) => (
@@ -58,7 +58,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
         </label>
 
         <label
-          class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted md:col-span-3"
+          class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted md:col-span-3"
         >
           Periodo MINSAL
           <select
@@ -72,7 +72,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
         </label>
 
         <label
-          class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted md:col-span-3"
+          class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted md:col-span-3"
         >
           Departamento
           <select
@@ -85,7 +85,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
 
         <fieldset class="flex flex-col gap-1 md:col-span-4">
           <legend
-            class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+            class="font-sans text-xs font-medium text-ink-muted"
           >
             Serie MINSAL
           </legend>
@@ -107,11 +107,11 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
         </fieldset>
 
         <label
-          class="flex flex-col gap-2 rounded-xl border border-border bg-bg p-3 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted md:col-span-6"
+          class="flex flex-col gap-2 rounded-xl border border-border bg-bg p-3 font-sans text-xs font-medium text-ink-muted md:col-span-6"
         >
           Semana activa: <output
             id="analisis-semana-valor"
-            class="font-mono text-ink">SE01</output
+            class="font-sans tabular-nums text-ink">SE01</output
           >
           <input
             id="analisis-semana"
@@ -127,14 +127,16 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
           class="grid grid-cols-2 gap-3 rounded-xl border border-border bg-bg p-3 md:col-span-6"
         >
           <legend
-            class="px-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+            class="px-1 font-sans text-xs font-medium text-ink-muted"
           >
             Rango de comparación
           </legend>
           <label
-            class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+            class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted"
           >
-            Desde: <output id="analisis-desde-valor" class="font-mono text-ink"
+            Desde: <output
+              id="analisis-desde-valor"
+              class="font-sans tabular-nums text-ink"
               >SE01</output
             >
             <input
@@ -147,9 +149,11 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
             />
           </label>
           <label
-            class="flex flex-col gap-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+            class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted"
           >
-            Hasta: <output id="analisis-hasta-valor" class="font-mono text-ink"
+            Hasta: <output
+              id="analisis-hasta-valor"
+              class="font-sans tabular-nums text-ink"
               >SE53</output
             >
             <input
@@ -168,7 +172,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
           aria-describedby="analisis-comparar-ayuda"
         >
           <legend
-            class="px-1 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+            class="px-1 font-sans text-xs font-medium text-ink-muted"
           >
             Comparar departamentos
           </legend>

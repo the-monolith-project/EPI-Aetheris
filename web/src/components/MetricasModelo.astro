@@ -55,7 +55,7 @@
       >.
     </p>
 
-    <div id="riesgo-nacional" class="mt-3">
+    <div id="riesgo-nacional" class="mt-3" role="status">
       <div data-estado aria-hidden="true">
         <div class="skeleton h-16 w-full"></div>
         <div class="skeleton mt-3 h-24 w-full"></div>
@@ -73,6 +73,7 @@
 
 <script>
   import { escapeHtml } from '../utils/security';
+  import { renderErrorFuente, renderSinDato } from './estado-async';
 
   interface RiesgoNacional {
     anio: number;
@@ -134,7 +135,7 @@
           Semana ${datos.semana_epi} / ${datos.anio}. Salida retrospectiva del clasificador retirado: ${badge(datos.etiqueta_predicha)}
           &nbsp;·&nbsp; clase real observada (retrospectiva, no en vivo): ${badge(datos.etiqueta_real)}
         </p>
-        <ul class="mt-2 font-mono text-xs text-ink-muted">${probas}</ul>
+        <ul class="mt-2 font-sans text-xs tabular-nums text-ink-muted">${probas}</ul>
         <p class="mt-2 font-sans text-xs text-ink-muted">
           Casos observados esa semana (OpenDengue, clasificación='total'): ${datos.casos_observados}
         </p>
@@ -153,7 +154,7 @@
           Métricas del modelo (entrenado ${m.anios_entrenamiento.join(', ')} · probado ${m.anio_prueba} · corte ${escapeHtml(m.corte_percentil)})
         </p>
         <div class="overflow-x-auto">
-        <table class="mt-2 w-full border-collapse font-mono text-xs text-ink">
+        <table class="mt-2 w-full border-collapse font-sans text-xs tabular-nums text-ink">
           <thead>
             <tr class="text-left text-ink-muted">
               <th class="border-b border-border py-1.5 pr-4">&nbsp;</th>
@@ -204,18 +205,16 @@
       // del modelo no están generados en el despliegue (#72) -- aviso
       // explícito en vez de un fallo genérico.
       if (datos && 'disponible' in datos && datos.disponible === false) {
-        const estado = contenedor.querySelector('[data-estado]');
-        estado?.remove();
-        contenedor.innerHTML = `<p class="font-sans text-sm text-ink-muted">${escapeHtml(
+        renderSinDato(
+          contenedor,
           datos.motivo ??
             'La evaluación histórica no está generada en este despliegue.',
-        )}</p>`;
+        );
         return;
       }
       render(contenedor, datos as RiesgoNacional);
     } catch {
-      contenedor.innerHTML =
-        '<p class="font-sans text-sm text-ink-muted">No se pudo cargar la evaluación histórica en este momento.</p>';
+      renderErrorFuente(contenedor, () => void iniciar());
     }
   }
 

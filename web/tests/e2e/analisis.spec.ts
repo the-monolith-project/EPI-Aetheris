@@ -9,7 +9,10 @@ async function esperarPanel(page: import('@playwright/test').Page) {
   await expect(page.locator('#analisis-filtros-estado')).toContainText(
     '14 departamentos',
   );
-  await expect(page.locator('#scatter-resumen')).not.toContainText('Cargando');
+  // El panel "clima" (scatter) arranca oculto y difiere su render hasta que se
+  // muestra, así que ya no se espera por #scatter-resumen aquí. El heatmap de
+  // presión sí es visible en la vista general por defecto.
+  await expect(page.locator('#heatmap-resumen')).not.toContainText('Cargando');
   await expect(page.locator('#mapa-aviso')).not.toBeEmpty();
 }
 
@@ -30,7 +33,7 @@ test('sincroniza filtros, mapa, scatter, departamento, heatmap y serie', async (
 
   await page.locator('#analisis-anio').selectOption('2022');
   await expect(page).toHaveURL(/year=2022/);
-  await expect(page.locator('#scatter-resumen')).toContainText('2022 · SE01');
+  await expect(page.locator('#heatmap-resumen')).toContainText('2022');
 
   await page.locator('#analisis-semana').fill('31');
   await expect(page.locator('#analisis-semana-valor')).toHaveText('SE31');
@@ -38,7 +41,6 @@ test('sincroniza filtros, mapa, scatter, departamento, heatmap y serie', async (
   await expect(page.locator('#mapa-aviso')).toContainText(
     'semana seleccionada',
   );
-  await expect(page.locator('#scatter-resumen')).toContainText('2022 · SE31');
   await page.locator('#analisis-cerrar-filtros').click();
 
   const sanSalvador = page.locator('[data-departamento="SV-SS"]').first();
@@ -72,9 +74,6 @@ test('sincroniza filtros, mapa, scatter, departamento, heatmap y serie', async (
     .check();
   await expect(page).toHaveURL(/serie=confirmado/);
   await expect(page.locator('#heatmap-resumen')).toContainText('confirmado');
-  await expect(page.locator('#scatter-resumen')).toContainText(
-    'Percentil presión (confirmado)',
-  );
 });
 
 test('restaura la URL, limita la comparación y exporta el filtro actual', async ({
