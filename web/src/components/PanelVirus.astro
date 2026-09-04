@@ -65,11 +65,21 @@
   </p>
   <div
     data-virus-error
+    role="status"
     class="mt-3 hidden rounded-lg border border-secondary bg-secondary/25 p-3 font-sans text-sm"
   >
-    No se pudo cargar la vigilancia de virus. El componente no inventa series.
+    <p class="text-ink">
+      No se pudo contactar la fuente de datos. El componente no inventa series.
+    </p>
+    <button
+      type="button"
+      data-virus-reintentar
+      class="mt-2 rounded-lg border border-border bg-surface px-3 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+    >
+      Reintentar
+    </button>
   </div>
-  <div data-virus-heatmap class="mt-4 overflow-x-auto"></div>
+  <div data-virus-heatmap role="status" class="mt-4 overflow-x-auto"></div>
 </section>
 
 <script>
@@ -112,9 +122,20 @@
     return `rgb(${40}, ${80 + Math.round(80 * t)}, ${b})`;
   }
 
+  // Referencia al reintento vigente: antes de tener catálogo reintenta toda
+  // la inicialización; una vez cargado, reintenta solo el último fetch.
+  let reintentarVirus: () => void = () => void iniciar();
+
   async function iniciar() {
     const root = document.querySelector<HTMLElement>('[data-panel-virus]');
     if (!root) return;
+    const botonReintentar = root.querySelector<HTMLButtonElement>(
+      '[data-virus-reintentar]',
+    );
+    if (botonReintentar && !botonReintentar.dataset.enlazado) {
+      botonReintentar.dataset.enlazado = 'si';
+      botonReintentar.addEventListener('click', () => reintentarVirus());
+    }
     const selMetrica = root.querySelector<HTMLSelectElement>(
       '[data-virus-metrica]',
     )!;
@@ -242,7 +263,7 @@
       }
 
       const table = document.createElement('table');
-      table.className = 'font-mono text-[10px] border-collapse';
+      table.className = 'font-sans tabular-nums text-[11px] border-collapse';
       const thead = document.createElement('thead');
       const trh = document.createElement('tr');
       trh.appendChild(document.createElement('th'));
@@ -285,6 +306,10 @@
       heatmap.appendChild(nota);
     }
 
+    reintentarVirus = () => {
+      error.classList.add('hidden');
+      void refrescar();
+    };
     selMetrica.addEventListener('change', () => void refrescar());
     selAnio.addEventListener('change', () => void refrescar());
     toggles.addEventListener('change', () => void refrescar());
