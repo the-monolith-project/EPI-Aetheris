@@ -46,7 +46,9 @@
       aria-label="Reducir detalle de la curva"
       title="Reducir detalle">−</button
     >
-    <output id="curva-zoom-valor" class="font-mono text-ink">100%</output>
+    <output id="curva-zoom-valor" class="font-sans tabular-nums text-ink"
+      >100%</output
+    >
     <button
       id="curva-zoom-mas"
       type="button"
@@ -58,6 +60,7 @@
   <div
     id="curva-epidemica"
     class="mt-3 overflow-x-auto rounded-xl border border-border bg-bg p-3 sm:p-4"
+    role="status"
   >
     <!-- Skeleton con la misma altura aproximada del SVG final (viewBox 720x240,
          w-full) para que la página no salte al llegar los datos. -->
@@ -71,6 +74,7 @@
 <script>
   import { obtenerCasosNacionales } from '../lib/analisis-api';
   import type { CasoNacionalSemanal } from '../lib/tipos-analisis';
+  import { renderErrorFuente, renderSinDato } from './estado-async';
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const ANCHO = 720;
@@ -90,8 +94,7 @@
     });
 
     if (datos.length === 0) {
-      contenedor.innerHTML =
-        '<p class="font-sans text-sm text-ink-muted">Sin datos cargados todavía.</p>';
+      renderSinDato(contenedor, 'Sin serie nacional cargada todavía.');
       return;
     }
 
@@ -154,7 +157,8 @@
       etiquetaY.setAttribute('x', String(MARGEN.izquierda - 8));
       etiquetaY.setAttribute('y', String(y + 3));
       etiquetaY.setAttribute('text-anchor', 'end');
-      etiquetaY.setAttribute('font-family', 'var(--font-mono)');
+      etiquetaY.setAttribute('font-family', 'var(--font-sans)');
+      etiquetaY.style.fontVariantNumeric = 'tabular-nums';
       etiquetaY.setAttribute('font-size', '9');
       etiquetaY.setAttribute('fill', 'var(--color-ink-muted)');
       etiquetaY.textContent = Math.round(nivel).toLocaleString('es-SV');
@@ -211,7 +215,8 @@
       const etiqueta = document.createElementNS(SVG_NS, 'text');
       etiqueta.setAttribute('x', String(escalaX(i)));
       etiqueta.setAttribute('y', String(ALTO - 8));
-      etiqueta.setAttribute('font-family', 'var(--font-mono)');
+      etiqueta.setAttribute('font-family', 'var(--font-sans)');
+      etiqueta.style.fontVariantNumeric = 'tabular-nums';
       etiqueta.setAttribute('font-size', '10');
       etiqueta.setAttribute('fill', 'var(--color-ink-muted)');
       etiqueta.textContent = String(d.anio);
@@ -256,8 +261,7 @@
         botonDescarga.addEventListener('click', () => descargarCsv(datos));
       }
     } catch {
-      contenedor.innerHTML =
-        '<p class="font-sans text-sm text-ink-muted">No se pudo cargar la serie en este momento.</p>';
+      renderErrorFuente(contenedor, () => void iniciar());
     }
   }
 
