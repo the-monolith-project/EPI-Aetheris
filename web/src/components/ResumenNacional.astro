@@ -11,7 +11,7 @@
   aria-label="Resumen histórico nacional"
   class="grid grid-cols-2 gap-4 lg:grid-cols-4"
 >
-  <div id="resumen-nacional" class="contents">
+  <div id="resumen-nacional" class="contents" role="status">
     <div data-estado aria-hidden="true" class="contents">
       <div class="skeleton h-24 border border-border"></div>
       <div class="skeleton h-24 border border-border"></div>
@@ -29,6 +29,8 @@
 
 <script>
   import { obtenerCasosNacionales } from '../lib/analisis-api';
+  import type { CasoNacionalSemanal } from '../lib/tipos-analisis';
+  import { renderErrorFuente, renderSinDato } from './estado-async';
 
   function formatearSemana(fecha: string): string {
     const d = new Date(`${fecha}T00:00:00`);
@@ -43,16 +45,28 @@
     const contenedor = document.getElementById('resumen-nacional');
     if (!contenedor) return;
 
+    let datos: CasoNacionalSemanal[];
     try {
-      const datos = await obtenerCasosNacionales();
-      if (datos.length === 0) throw new Error('sin datos');
+      datos = await obtenerCasosNacionales();
+    } catch {
+      renderErrorFuente(contenedor, () => void iniciar());
+      return;
+    }
 
-      const total = datos.reduce((acc, d) => acc + d.conteo, 0);
-      const pico = datos.reduce((a, b) => (b.conteo > a.conteo ? b : a));
-      const primero = datos[0];
-      const ultimo = datos[datos.length - 1];
+    if (datos.length === 0) {
+      renderSinDato(
+        contenedor,
+        'Todavía no hay serie nacional cargada para este resumen.',
+      );
+      return;
+    }
 
-      contenedor.innerHTML = `
+    const total = datos.reduce((acc, d) => acc + d.conteo, 0);
+    const pico = datos.reduce((a, b) => (b.conteo > a.conteo ? b : a));
+    const primero = datos[0];
+    const ultimo = datos[datos.length - 1];
+
+    contenedor.innerHTML = `
         <div class="card-elevated rounded-2xl border border-border bg-surface p-4">
           <p class="font-sans text-2xl font-semibold tracking-tight text-ink">${total.toLocaleString('es-SV')}</p>
           <p class="mt-0.5 font-sans text-xs leading-snug text-ink-muted">
@@ -72,10 +86,6 @@
           </p>
         </div>
       `;
-    } catch {
-      contenedor.innerHTML =
-        '<p class="col-span-3 font-sans text-sm text-ink-muted">No se pudo cargar el resumen en este momento.</p>';
-    }
   }
 
   iniciar();

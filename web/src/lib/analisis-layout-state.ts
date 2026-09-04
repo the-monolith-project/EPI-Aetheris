@@ -36,7 +36,12 @@ const TODOS_LOS_PANELES = PANELES_ANALITICOS.map(({ id }) => id);
 
 const PRESETS: Record<
   VistaAnalisis,
-  Pick<EstadoLayoutAnalisis, 'panelesVisibles' | 'tamanos'>
+  {
+    panelesVisibles: PanelAnalitico[];
+    // Los presets solo fijan el tamaño de los paneles que muestran; el resto
+    // hereda de TAMANOS_PREDETERMINADOS al aplicarse.
+    tamanos: Partial<Record<PanelAnalitico, TamanoPanel>>;
+  }
 > = {
   general: {
     panelesVisibles: ['mapa', 'presion', 'temporadas', 'departamentos'],

@@ -38,7 +38,11 @@
 </article>
 
 <script>
-  import * as Plot from '@observablehq/plot';
+  // Carga perezosa de @observablehq/plot: este panel arranca oculto y no se
+  // muestra por defecto en /dengue. Import + fetch + render se difieren hasta
+  // que el panel entra en viewport (ver PanelAnalisis.astro y el
+  // `await import('leaflet')` de MapaDepartamentos.astro).
+  let Plot: typeof import('@observablehq/plot') | null = null;
   import { obtenerDatasetAnalitico } from '../../lib/analisis-api';
   import {
     actualizarFiltrosAnalisis,
@@ -95,7 +99,7 @@
           celda.codigo === filtros.departamento &&
           celda.semana === filtros.semana,
       );
-      const grafica = Plot.plot({
+      const grafica = Plot!.plot({
         width: Math.max(contenedor.clientWidth, 900),
         height: 400,
         marginLeft: 115,
@@ -164,11 +168,30 @@
     }
   }
 
-  suscribirFiltrosAnalisis((filtros) => {
-    filtrosActuales = filtros;
-    void renderizar(filtros);
-  });
-  new ResizeObserver(() => void renderizar(filtrosActuales)).observe(
-    contenedor!,
-  );
+  let activado = false;
+  async function activar() {
+    if (activado || !contenedor) return;
+    activado = true;
+    Plot = await import('@observablehq/plot');
+    suscribirFiltrosAnalisis((filtros) => {
+      filtrosActuales = filtros;
+      void renderizar(filtros);
+    });
+    new ResizeObserver(() => void renderizar(filtrosActuales)).observe(
+      contenedor,
+    );
+  }
+
+  const panel = contenedor?.closest('[data-panel-workspace]') ?? contenedor;
+  if (panel) {
+    const io = new IntersectionObserver((entradas) => {
+      if (entradas.some((entrada) => entrada.isIntersecting)) {
+        io.disconnect();
+        void activar();
+      }
+    });
+    io.observe(panel);
+  } else {
+    void activar();
+  }
 </script>

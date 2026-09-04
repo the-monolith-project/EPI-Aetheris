@@ -25,19 +25,33 @@
      (footer, secciones archivadas) donde el primario se queda corto. */
   --color-deep: #011e1e;
   --color-deep-ink: #dddbff;
-  --color-deep-ink-muted: rgba(221, 219, 255, 0.65);
+  /* 0.8 (antes 0.65): el contraste ya pasaba AA (~6:1), pero el token se usa
+     a tamaños chicos con tracking; subir la opacidad mejora legibilidad sin
+     cambiar el tono. */
+  --color-deep-ink-muted: rgba(221, 219, 255, 0.8);
+
+  /* Anillo de foco de teclado -- lavanda fija en vez de currentColor, que
+     dentro de bg-deep hereda --ink (#040316) y queda casi invisible sobre
+     #011e1e. La lavanda contrasta >12:1 sobre #011e1e; sobre el fondo claro
+     #f0f0f0 su contraste es bajo, así que global.css la combina con un
+     box-shadow oscuro exterior (anillo doble) -- ver nota ahí. */
+  --focus-ring: var(--color-secondary);
 
   --shadow-card:
     0 1px 2px rgba(4, 3, 22, 0.04), 0 16px 32px -20px rgba(4, 3, 22, 0.35);
   --shadow-card-hover:
     0 1px 2px rgba(4, 3, 22, 0.05), 0 20px 40px -18px rgba(4, 3, 22, 0.4);
 
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+  /* Las familias se auto-hospedan vía la Fonts API de Astro (astro.config.mjs);
+     cada una expone su propia var con nombre hasheado -- aquí se remapean a los
+     tokens que consume el resto del proyecto. El fallback se mantiene por si la
+     fuente auto-hospedada no carga. */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, 'SFMono-Regular', monospace;
   /* Voz de titular, aparte del cuerpo -- Inter hacía tanto los H1 como el
      texto de párrafo, sin ninguna diferenciación tipográfica real. Fraunces
      con optical sizing alto (~144) da un serif editorial con carácter, con
      restricción: solo en H1 de página y los 2 H2 de sección de la landing,
      nunca en subtítulos de tarjeta ni en UI funcional. */
-  --font-display: 'Fraunces', Georgia, serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
 }

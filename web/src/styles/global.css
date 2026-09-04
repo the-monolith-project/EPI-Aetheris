@@ -60,14 +60,16 @@
     color: var(--color-accent);
   }
 
-  /* Foco de teclado intencional -- antes dependía del anillo azul default
-     del navegador, sin ninguna decisión de marca. currentColor sigue el
-     color de texto real de cada elemento (blanco en el header/footer
-     oscuros, acento en enlaces sobre fondo claro), así que un solo valor
-     funciona en ambos contrastes sin reglas por sección. */
+  /* Foco de teclado intencional -- antes usaba currentColor, que dentro de
+     bg-deep hereda --ink (#040316) y deja el anillo casi invisible sobre
+     #011e1e. Anillo doble: el outline lavanda (--focus-ring) contrasta >12:1
+     sobre fondos oscuros; el box-shadow oscuro exterior aporta el contraste
+     que a la lavanda le falta sobre el fondo claro (#f0f0f0). Entre los dos
+     el anillo cumple >=3:1 en cualquier superficie del sitio. */
   :focus-visible {
-    outline: 2px solid currentColor;
+    outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(1, 30, 30, 0.55);
   }
 }
 
@@ -80,6 +82,14 @@
 }
 .card-elevated:hover {
   box-shadow: var(--shadow-card-hover);
+}
+/* Cuando la tarjeta entera es el elemento enfocable, su propio box-shadow
+   (sin capa) le gana al de :focus-visible (con capa) y se comía el halo
+   oscuro del anillo de foco. Esta regla combina ambos. */
+.card-elevated:focus-visible {
+  box-shadow:
+    0 0 0 4px rgba(1, 30, 30, 0.55),
+    var(--shadow-card-hover);
 }
 
 /* Placeholder de carga (skeleton) compartido por los componentes que hacen
@@ -110,5 +120,22 @@
 @media (prefers-reduced-motion: reduce) {
   .skeleton::after {
     animation: none;
+  }
+}
+
+/* Piso global de "reduced motion" -- va al final, DESPUÉS de las excepciones
+   intencionales de arriba (.skeleton::after ya se apaga con animation:none,
+   que este bloque no revierte). Neutraliza cualquier animación/transición
+   declarada en los .astro sin que cada componente tenga que repetir la
+   media query. No usa animation:none para no romper estados finales que
+   dependan del keyframe; acorta a ~0ms en su lugar. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

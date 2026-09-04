@@ -68,7 +68,9 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
         >SE
         <input data-curva-desde type="range" min="1" max="52" value="1" />
         <input data-curva-hasta type="range" min="1" max="52" value="52" />
-        <span data-curva-rango class="font-mono text-xs">SE1–SE52</span>
+        <span data-curva-rango class="font-sans tabular-nums text-xs"
+          >SE1–SE52</span
+        >
       </label>
       <button
         type="button"
@@ -83,6 +85,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
   <div
     data-curva-canvas
     class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4"
+    role="status"
   >
     <div data-estado aria-hidden="true">
       <div class="skeleton h-40 w-full sm:h-52"></div>
@@ -96,6 +99,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     DepartamentoIRA,
     RespuestaIraDepartamental,
   } from '../lib/tipos-analisis';
+  import { renderErrorFuente, renderSinDato } from './estado-async';
 
   // [semana, valor|null]
   type Punto = [number, number | null];
@@ -156,8 +160,10 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       ),
     );
     if (valores.length === 0) {
-      contenedor.innerHTML =
-        '<p class="font-sans text-sm text-ink-muted">Sin puntos con dato para este departamento.</p>';
+      renderSinDato(
+        contenedor,
+        'Sin puntos con dato para este departamento en el rango elegido.',
+      );
       return;
     }
     const maxValor = Math.max(...(valores as number[]));
@@ -194,7 +200,8 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       etiqueta.setAttribute('x', String(MARGEN.izquierda - 8));
       etiqueta.setAttribute('y', String(y + 3));
       etiqueta.setAttribute('text-anchor', 'end');
-      etiqueta.setAttribute('font-family', 'var(--font-mono)');
+      etiqueta.setAttribute('font-family', 'var(--font-sans)');
+      etiqueta.style.fontVariantNumeric = 'tabular-nums';
       etiqueta.setAttribute('font-size', '9');
       etiqueta.setAttribute('fill', 'var(--color-ink-muted)');
       etiqueta.textContent = Math.round(nivel).toLocaleString('es-SV');
@@ -207,7 +214,8 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       etiqueta.setAttribute('x', String(escalaX(semana)));
       etiqueta.setAttribute('y', String(ALTO - 24));
       etiqueta.setAttribute('text-anchor', 'middle');
-      etiqueta.setAttribute('font-family', 'var(--font-mono)');
+      etiqueta.setAttribute('font-family', 'var(--font-sans)');
+      etiqueta.style.fontVariantNumeric = 'tabular-nums';
       etiqueta.setAttribute('font-size', '9');
       etiqueta.setAttribute('fill', 'var(--color-ink-muted)');
       etiqueta.textContent = `SE${semana}`;
@@ -268,7 +276,8 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       const texto = document.createElementNS(SVG_NS, 'text');
       texto.setAttribute('x', String(x + 18));
       texto.setAttribute('y', String(ALTO - 5));
-      texto.setAttribute('font-family', 'var(--font-mono)');
+      texto.setAttribute('font-family', 'var(--font-sans)');
+      texto.style.fontVariantNumeric = 'tabular-nums';
       texto.setAttribute('font-size', '10');
       texto.setAttribute('fill', 'var(--color-ink-muted)');
       texto.textContent = anio;
@@ -356,11 +365,9 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       const datos: RespuestaIraDepartamental = await resp.json();
       departamentos = datos.departamentos;
     } catch {
-      contenedor.innerHTML =
-        '<p class="font-sans text-sm leading-relaxed text-ink-muted">' +
-        'No se pudo cargar la serie desde la API. Verificá que el backend esté ' +
-        'levantado (<code class="font-mono text-xs">docker compose up</code>). No se muestra ' +
-        'ningún dato sustituto.</p>';
+      // Los <select> nunca llegaron a poblarse en este punto, así que
+      // reintentar es volver a ejecutar iniciarSeccion sin duplicar opciones.
+      renderErrorFuente(contenedor, () => void iniciarSeccion(seccion));
       return;
     }
 
@@ -428,8 +435,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
         }
         ultimoCsv = lineas.join('\n');
       } catch {
-        contenedor.innerHTML =
-          '<p class="font-sans text-sm text-ink-muted">No se pudo cargar la serie de este departamento.</p>';
+        renderErrorFuente(contenedor, () => void refrescar());
         ultimoCsv = '';
       }
     };
