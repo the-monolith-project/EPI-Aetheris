@@ -64,9 +64,19 @@ from .respiratorios import (
 # abiertas, sin resolver) -- esta es la opcion "on-demand": recalcula desde
 # el dataset ya generado en vez de persistir nada nuevo en Postgres.
 INGESTION_DIR = Path(__file__).parent.parent / "ingestion"
-DATASET_RIESGO_PATH = INGESTION_DIR / "data" / "interim" / "dataset_modelado" / "dataset_modelado.csv"
-MODELO_PATH = INGESTION_DIR / "data" / "interim" / "modelo" / "clasificador_riesgo_nacional_v1.joblib"
-METRICAS_MODELO_PATH = INGESTION_DIR / "data" / "interim" / "modelo" / "metricas_modelo.json"
+DATASET_RIESGO_PATH = (
+    INGESTION_DIR / "data" / "interim" / "dataset_modelado" / "dataset_modelado.csv"
+)
+MODELO_PATH = (
+    INGESTION_DIR
+    / "data"
+    / "interim"
+    / "modelo"
+    / "clasificador_riesgo_nacional_v1.joblib"
+)
+METRICAS_MODELO_PATH = (
+    INGESTION_DIR / "data" / "interim" / "modelo" / "metricas_modelo.json"
+)
 
 AVISO_HONESTIDAD_RIESGO_NACIONAL = (
     "Esta clasificación es a nivel NACIONAL, entrenada sobre la serie agregada de "
@@ -80,8 +90,9 @@ AVISO_HONESTIDAD_RIESGO_NACIONAL = (
 app = FastAPI(
     title="EPI-Aetheris API",
     description="API para ingesta, predicción y consulta de datos epidemiológicos",
-    version="0.1.0"
+    version="0.1.0",
 )
+
 
 # --- Rate limiting (issue #61) -------------------------------------------------
 # slowapi en memoria: el proceso es un solo worker de Uvicorn tanto en
@@ -257,12 +268,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
         # Allow inline styles/scripts and jsdelivr to ensure FastAPI Swagger UI works.
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com"
+        )
         return response
 
+
 app.add_middleware(SecurityHeadersMiddleware)
+
 
 @app.get("/health")
 @limiter.exempt
@@ -275,17 +292,12 @@ def health_check(response: Response):
         with _conexion() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT 1;")
-        return {
-            "status": "ok",
-            "service": "backend",
-            "database": "connected"
-        }
+        return {"status": "ok", "service": "backend", "database": "connected"}
     except Exception:
         # Security: Do not log or leak the original connection error string to clients.
         # Original error can contain credentials if improperly handled by the driver.
         raise HTTPException(
-            status_code=500,
-            detail="Error de conexión a la base de datos"
+            status_code=500, detail="Error de conexión a la base de datos"
         )
 
 
@@ -299,8 +311,7 @@ def casos_nacional(response: Response):
     try:
         with _conexion() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(
-                    """
+                cursor.execute("""
                     SELECT s.fecha_inicio, c.anio, c.semana_epi, c.conteo
                     FROM casos_epidemiologicos c
                     JOIN regiones r ON r.id = c.region_id
@@ -311,13 +322,11 @@ def casos_nacional(response: Response):
                       AND c.clasificacion = 'total'
                       AND f.codigo = 'opendengue_v1_3'
                     ORDER BY c.anio, c.semana_epi
-                    """
-                )
+                    """)
                 filas = cursor.fetchall()
     except Exception:
         raise HTTPException(
-            status_code=500,
-            detail="Error de conexión a la base de datos"
+            status_code=500, detail="Error de conexión a la base de datos"
         )
 
     return [
@@ -411,7 +420,11 @@ def riesgo_nacional(
     if anio is None or semana is None:
         fila = max(filas, key=lambda r: (int(r["anio"]), int(r["semana_epi"])))
     else:
-        coincidencias = [r for r in filas if int(r["anio"]) == anio and int(r["semana_epi"]) == semana]
+        coincidencias = [
+            r
+            for r in filas
+            if int(r["anio"]) == anio and int(r["semana_epi"]) == semana
+        ]
         if not coincidencias:
             raise HTTPException(
                 status_code=404,
@@ -438,7 +451,9 @@ def riesgo_nacional(
         "semana_epi": int(fila["semana_epi"]),
         "etiqueta_predicha": etiqueta_predicha,
         "etiqueta_real": fila["etiqueta_riesgo"],
-        "probabilidades": {clase: round(probabilidades.get(clase, 0.0), 4) for clase in clases},
+        "probabilidades": {
+            clase: round(probabilidades.get(clase, 0.0), 4) for clase in clases
+        },
         "casos_observados": float(fila["casos"]),
         "metricas_modelo": metricas_modelo,
         "aviso": AVISO_HONESTIDAD_RIESGO_NACIONAL,
@@ -472,8 +487,7 @@ def casos_departamentales(request: Request, response: Response):
     try:
         with _conexion() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(
-                    """
+                cursor.execute("""
                     SELECT
                         r.nombre,
                         r.codigo,
@@ -489,13 +503,11 @@ def casos_departamentales(request: Request, response: Response):
                     WHERE r.nivel_admin = 1
                     GROUP BY r.nombre, r.codigo
                     ORDER BY r.nombre
-                    """
-                )
+                    """)
                 filas = cursor.fetchall()
     except Exception:
         raise HTTPException(
-            status_code=500,
-            detail="Error de conexión a la base de datos"
+            status_code=500, detail="Error de conexión a la base de datos"
         )
 
     _cache_control(response, CACHE_TTL_HISTORICO)
@@ -504,9 +516,15 @@ def casos_departamentales(request: Request, response: Response):
             {
                 "nombre": nombre,
                 "codigo": codigo,
-                "probable_total": int(probable_total) if probable_total is not None else 0,
-                "confirmado_total": int(confirmado_total) if confirmado_total is not None else 0,
-                "semanas_con_dato_probable": int(semanas_con_dato) if semanas_con_dato is not None else 0,
+                "probable_total": (
+                    int(probable_total) if probable_total is not None else 0
+                ),
+                "confirmado_total": (
+                    int(confirmado_total) if confirmado_total is not None else 0
+                ),
+                "semanas_con_dato_probable": (
+                    int(semanas_con_dato) if semanas_con_dato is not None else 0
+                ),
                 "primer_anio": primer_anio,
                 "ultimo_anio": ultimo_anio,
             }
@@ -544,7 +562,9 @@ AVISO_HONESTIDAD_IDONEIDAD = (
 
 @app.get("/api/v1/spatial/current")
 @limiter.limit(RATE_LIMIT_HEAVY)
-def idoneidad_espacial_actual(request: Request, response: Response, week: int, year: int):
+def idoneidad_espacial_actual(
+    request: Request, response: Response, week: int, year: int
+):
     """Índice de idoneidad biofísica (Iv) y anomalía climática continua
     (anomaly_sigma), por departamento, para la semana epidemiológica y año
     pedidos. Capa DESCRIPTIVA -- no hay campo de lead time ni de alerta
@@ -558,18 +578,26 @@ def idoneidad_espacial_actual(request: Request, response: Response, week: int, y
     baseline disponible devuelven anomaly_sigma=null, no un valor inventado.
     """
     if not (1 <= week <= 53):
-        raise HTTPException(status_code=422, detail="El parámetro 'week' debe estar entre 1 y 53.")
+        raise HTTPException(
+            status_code=422, detail="El parámetro 'week' debe estar entre 1 y 53."
+        )
 
     semanas_necesarias = [week] if week == 1 else [week - 1, week]
 
     try:
         with _conexion() as conn:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 ORDER BY nombre")
+                cursor.execute(
+                    "SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 ORDER BY nombre"
+                )
                 departamentos = cursor.fetchall()
-            clima = cargar_clima_departamentos(conn, anios=ANIOS_CLIMA, semanas=semanas_necesarias)
+            clima = cargar_clima_departamentos(
+                conn, anios=ANIOS_CLIMA, semanas=semanas_necesarias
+            )
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
 
     serie_iv = calcular_serie_iv(clima)
 
@@ -578,23 +606,29 @@ def idoneidad_espacial_actual(request: Request, response: Response, week: int, y
         serie_codigo = serie_iv.get(codigo, {})
         valor = serie_codigo.get(year, {}).get(week)
         if valor is None:
-            resultado.append({
-                "codigo": codigo,
-                "nombre": nombre,
-                "iv": None,
-                "anomaly_sigma": None,
-                "nota": "sin datos climáticos completos para esta semana/año en este departamento",
-            })
+            resultado.append(
+                {
+                    "codigo": codigo,
+                    "nombre": nombre,
+                    "iv": None,
+                    "anomaly_sigma": None,
+                    "nota": "sin datos climáticos completos para esta semana/año en este departamento",
+                }
+            )
             continue
 
-        _, mediana, desv = calcular_baseline_semana(serie_codigo, anio_excluir=year, semana=week)
+        _, mediana, desv = calcular_baseline_semana(
+            serie_codigo, anio_excluir=year, semana=week
+        )
         sigma = calcular_sigma(valor, mediana, desv)
-        resultado.append({
-            "codigo": codigo,
-            "nombre": nombre,
-            "iv": round(valor, 4),
-            "anomaly_sigma": round(sigma, 4) if sigma is not None else None,
-        })
+        resultado.append(
+            {
+                "codigo": codigo,
+                "nombre": nombre,
+                "iv": round(valor, 4),
+                "anomaly_sigma": round(sigma, 4) if sigma is not None else None,
+            }
+        )
 
     _cache_control(response, CACHE_TTL_COMPUTO)
     return {
@@ -646,7 +680,9 @@ def dataset_analitico_dengue(request: Request, response: Response, year: int):
         with _conexion() as conn:
             respuesta = construir_dataset_dengue(conn, anio=year)
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
 
     respuesta["avisos"] = {
         "idoneidad": AVISO_HONESTIDAD_IDONEIDAD,
@@ -658,7 +694,9 @@ def dataset_analitico_dengue(request: Request, response: Response, year: int):
 
 @app.get("/api/v1/analisis/dengue/procedencia")
 @limiter.limit(RATE_LIMIT_HEAVY)
-def procedencia_analitica_dengue(request: Request, response: Response, year: int, week: int, dept: str, serie: str):
+def procedencia_analitica_dengue(
+    request: Request, response: Response, year: int, week: int, dept: str, serie: str
+):
     """Trazabilidad almacenada de una observacion departamental de dengue."""
     if year not in ANIOS_ANALISIS_DENGUE:
         disponibles = ", ".join(str(anio) for anio in ANIOS_ANALISIS_DENGUE)
@@ -687,7 +725,9 @@ def procedencia_analitica_dengue(request: Request, response: Response, year: int
                 serie=serie,
             )
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
 
     if respuesta is None:
         raise HTTPException(
@@ -712,7 +752,9 @@ def presion_espacial_actual(request: Request, response: Response, week: int, yea
     explícita -- nunca un valor inventado ni interpolado.
     """
     if not (1 <= week <= 53):
-        raise HTTPException(status_code=422, detail="El parámetro 'week' debe estar entre 1 y 53.")
+        raise HTTPException(
+            status_code=422, detail="El parámetro 'week' debe estar entre 1 y 53."
+        )
 
     # Solo la ventana ±1 de la semana pedida; el baseline necesita los años
     # base completos más el año descrito (si no es uno de ellos).
@@ -722,17 +764,25 @@ def presion_espacial_actual(request: Request, response: Response, week: int, yea
     try:
         with _conexion() as conn:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 ORDER BY nombre")
+                cursor.execute(
+                    "SELECT codigo, nombre FROM regiones WHERE nivel_admin = 1 ORDER BY nombre"
+                )
                 departamentos = cursor.fetchall()
-            casos = cargar_casos_departamentales(conn, anios=anios_necesarios, semanas=semanas_necesarias)
+            casos = cargar_casos_departamentales(
+                conn, anios=anios_necesarios, semanas=semanas_necesarias
+            )
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
 
     resultado = []
     for codigo, nombre in departamentos:
         fila = {"codigo": codigo, "nombre": nombre}
         for serie in SERIES_PRESION:
-            fila[serie] = calcular_presion(casos.get(codigo, {}).get(serie, {}), anio=year, semana=week)
+            fila[serie] = calcular_presion(
+                casos.get(codigo, {}).get(serie, {}), anio=year, semana=week
+            )
         resultado.append(fila)
 
     _cache_control(response, CACHE_TTL_COMPUTO)
@@ -765,28 +815,36 @@ def presion_temporal_departamento(departamento_id: str, anio: int, response: Res
                     status_code=404,
                     detail=f"No existe un departamento con código '{departamento_id}'.",
                 )
-            casos_depto = cargar_casos_departamento(conn, codigo=departamento_id, anios=anios_necesarios)
+            casos_depto = cargar_casos_departamento(
+                conn, codigo=departamento_id, anios=anios_necesarios
+            )
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
 
     codigo, nombre = fila_region
 
     # Todas las semanas con alguna observación en cualquier año/serie -- las
     # semanas sin dato del propio `anio` salen con nota, no se omiten.
-    todas_las_semanas = sorted({
-        semana
-        for series in casos_depto.values()
-        for semanas in series.values()
-        for semana in semanas
-    })
+    todas_las_semanas = sorted(
+        {
+            semana
+            for series in casos_depto.values()
+            for semanas in series.values()
+            for semana in semanas
+        }
+    )
 
     semanas_salida = []
     for semana in todas_las_semanas:
         fila = {"semana_epi": semana}
         for serie in SERIES_PRESION:
-            fila[serie] = calcular_presion(casos_depto.get(serie, {}), anio=anio, semana=semana)
+            fila[serie] = calcular_presion(
+                casos_depto.get(serie, {}), anio=anio, semana=semana
+            )
         semanas_salida.append(fila)
 
     _cache_control(response, CACHE_TTL_HISTORICO)
@@ -800,7 +858,9 @@ def presion_temporal_departamento(departamento_id: str, anio: int, response: Res
 
 
 @app.get("/api/v1/temporal/{departamento_id}")
-def idoneidad_temporal_departamento(departamento_id: str, anio: int, response: Response):
+def idoneidad_temporal_departamento(
+    departamento_id: str, anio: int, response: Response
+):
     """Serie temporal de un departamento (Módulos 1 y 2): banda histórica
     (P25/mediana/P75 de Iv por semana-del-año, leave-one-out excluyendo
     `anio`) vs. la serie real de `anio`, con anomaly_sigma continuo por
@@ -823,36 +883,42 @@ def idoneidad_temporal_departamento(departamento_id: str, anio: int, response: R
                     status_code=404,
                     detail=f"No existe un departamento con código '{departamento_id}'.",
                 )
-            clima_depto = cargar_clima_departamento(conn, codigo=departamento_id, anios=ANIOS_CLIMA)
+            clima_depto = cargar_clima_departamento(
+                conn, codigo=departamento_id, anios=ANIOS_CLIMA
+            )
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
 
     codigo, nombre = fila_region
 
     serie_iv = calcular_serie_iv({codigo: clima_depto})
     serie_codigo = serie_iv.get(codigo, {})
 
-    todas_las_semanas = sorted({
-        semana
-        for semanas in serie_codigo.values()
-        for semana in semanas
-    })
+    todas_las_semanas = sorted(
+        {semana for semanas in serie_codigo.values() for semana in semanas}
+    )
 
     semanas_salida = []
     for semana in todas_las_semanas:
-        pool, mediana, desv = calcular_baseline_semana(serie_codigo, anio_excluir=anio, semana=semana)
+        pool, mediana, desv = calcular_baseline_semana(
+            serie_codigo, anio_excluir=anio, semana=semana
+        )
         iv_real = serie_codigo.get(anio, {}).get(semana)
         sigma = calcular_sigma(iv_real, mediana, desv) if iv_real is not None else None
-        semanas_salida.append({
-            "semana_epi": semana,
-            "iv_real": round(iv_real, 4) if iv_real is not None else None,
-            "p25_baseline": round(percentil(pool, 0.25), 4) if pool else None,
-            "mediana_baseline": round(mediana, 4) if mediana is not None else None,
-            "p75_baseline": round(percentil(pool, 0.75), 4) if pool else None,
-            "anomaly_sigma": round(sigma, 4) if sigma is not None else None,
-        })
+        semanas_salida.append(
+            {
+                "semana_epi": semana,
+                "iv_real": round(iv_real, 4) if iv_real is not None else None,
+                "p25_baseline": round(percentil(pool, 0.25), 4) if pool else None,
+                "mediana_baseline": round(mediana, 4) if mediana is not None else None,
+                "p75_baseline": round(percentil(pool, 0.75), 4) if pool else None,
+                "anomaly_sigma": round(sigma, 4) if sigma is not None else None,
+            }
+        )
 
     _cache_control(response, CACHE_TTL_HISTORICO)
     return {
@@ -889,7 +955,9 @@ def ira_departamental(request: Request, response: Response):
         with _conexion() as conn:
             departamentos = cargar_ira_departamental(conn)
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
 
     _cache_control(response, CACHE_TTL_HISTORICO)
     return {
@@ -924,7 +992,9 @@ def ira_temporal_departamento(departamento_id: str, response: Response):
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
 
     anios = sorted(serie.keys())
     _cache_control(response, CACHE_TTL_HISTORICO)
@@ -941,18 +1011,21 @@ def ira_temporal_departamento(departamento_id: str, response: Response):
 
 
 @app.get("/api/neumonias/departamental")
-def neumonias_departamental():
+def neumonias_departamental(response: Response):
     """Resumen departamental de Neumonías notificadas. Capa descriptiva."""
     try:
         with _conexion() as conn:
             departamentos = cargar_neumonias_departamental(conn)
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {"departamentos": departamentos, "aviso": AVISO_HONESTIDAD_NEUMONIAS}
 
 
 @app.get("/api/neumonias/temporal/{departamento_id}")
-def neumonias_temporal_departamento(departamento_id: str):
+def neumonias_temporal_departamento(departamento_id: str, response: Response):
     try:
         with _conexion() as conn:
             serie = cargar_neumonias_departamento_temporal(conn, codigo=departamento_id)
@@ -971,7 +1044,10 @@ def neumonias_temporal_departamento(departamento_id: str):
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "departamento_codigo": departamento_id,
         "departamento_nombre": nombre,
@@ -986,7 +1062,7 @@ def neumonias_temporal_departamento(departamento_id: str):
 
 
 @app.get("/api/neumonias/heatmap/{anio}")
-def neumonias_heatmap(anio: int):
+def neumonias_heatmap(anio: int, response: Response):
     """Matriz departamento × semana. Celdas ausentes son huecos, no ceros."""
     if anio not in ANIOS_NEUMONIAS:
         raise HTTPException(
@@ -997,7 +1073,10 @@ def neumonias_heatmap(anio: int):
         with _conexion() as conn:
             departamentos = cargar_heatmap_neumonias(conn, anio)
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "anio": anio,
         "unidad": "conteo_notificado",
@@ -1007,27 +1086,45 @@ def neumonias_heatmap(anio: int):
 
 
 @app.get("/api/respiratorios/virus")
-def respiratorios_virus():
+def respiratorios_virus(response: Response):
     """Catálogo de series disponibles (virus × métrica × unidad). Nacional."""
     try:
         with _conexion() as conn:
             series = listar_virus(conn)
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
-    return {"series": series, "aviso": AVISO_HONESTIDAD_VIRUS, "granularidad": "nacional"}
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
+    _cache_control(response, CACHE_TTL_HISTORICO)
+    return {
+        "series": series,
+        "aviso": AVISO_HONESTIDAD_VIRUS,
+        "granularidad": "nacional",
+    }
 
 
 @app.get("/api/respiratorios/temporal")
-def respiratorios_temporal(virus: str, metrica: str = "detecciones"):
+def respiratorios_temporal(
+    virus: str, response: Response, metrica: str = "detecciones"
+):
     """Serie nacional semanal de un virus y una métrica (detecciones|positividad|muestras_analizadas|muestras_positivas)."""
-    permitidas = {"detecciones", "positividad", "muestras_analizadas", "muestras_positivas"}
+    permitidas = {
+        "detecciones",
+        "positividad",
+        "muestras_analizadas",
+        "muestras_positivas",
+    }
     if metrica not in permitidas:
-        raise HTTPException(status_code=400, detail=f"metrica debe ser una de {sorted(permitidas)}")
+        raise HTTPException(
+            status_code=400, detail=f"metrica debe ser una de {sorted(permitidas)}"
+        )
     try:
         with _conexion() as conn:
             serie, unidad = serie_virus(conn, virus=virus, metrica=metrica)
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
     if not serie:
         raise HTTPException(
             status_code=404,
@@ -1036,6 +1133,7 @@ def respiratorios_temporal(virus: str, metrica: str = "detecciones"):
                 "Consulte GET /api/respiratorios/virus para las combinaciones cargadas."
             ),
         )
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "virus": virus,
         "metrica": metrica,
@@ -1051,14 +1149,19 @@ def respiratorios_temporal(virus: str, metrica: str = "detecciones"):
 
 
 @app.get("/api/respiratorios/semana/{anio}/{semana}")
-def respiratorios_semana(anio: int, semana: int):
+def respiratorios_semana(anio: int, semana: int, response: Response):
     if semana < 1 or semana > 53:
-        raise HTTPException(status_code=400, detail="semana epidemiológica fuera de 1-53")
+        raise HTTPException(
+            status_code=400, detail="semana epidemiológica fuera de 1-53"
+        )
     try:
         with _conexion() as conn:
             filas = semana_virus(conn, anio=anio, semana=semana)
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
+    _cache_control(response, CACHE_TTL_HISTORICO)
     return {
         "anio": anio,
         "semana": semana,
@@ -1069,10 +1172,14 @@ def respiratorios_semana(anio: int, semana: int):
 
 
 @app.get("/api/respiratorios/cobertura")
-def respiratorios_cobertura():
+def respiratorios_cobertura(response: Response):
     """Semanas con dato en Postgres + notas de la exploración. No es M4."""
     try:
         with _conexion() as conn:
-            return cargar_cobertura(conn)
+            cobertura = cargar_cobertura(conn)
     except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión a la base de datos"
+        )
+    _cache_control(response, CACHE_TTL_HISTORICO)
+    return cobertura
