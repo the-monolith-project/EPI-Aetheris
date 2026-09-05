@@ -13,3 +13,6 @@
 ## 2026-09-03 - [Accessibility & Micro-UX] Explicit states on icon-only buttons
 **Learning:** Icon-only interactive elements lacking explicit hover styles, disabled styles (opacity/cursor feedback), and tooltip (`title`) attributes suffer from poor discoverability and ambiguity, reducing overall application accessibility and user confidence.
 **Action:** When adding or auditing icon-only buttons (like zoom controls or action triggers), ensure they include distinct visual feedback for hover (`hover:bg-secondary/30`), disabled states (`disabled:opacity-50 disabled:cursor-not-allowed`), and a descriptive `title` attribute for tooltips, independent of screen-reader-only `aria-label` attributes.
+## 2026-09-05 - Range Sliders Accessibility
+**Learning:** Multiple range sliders (e.g., dual thumbs for min/max) inside a single wrapping `<label>` tag lack individual context for screen readers. The wrapper text becomes an ambiguous group label.
+**Action:** Always add explicit `aria-label` attributes to each `<input type="range">` when multiple inputs share the same visible label to distinguish their specific functions (e.g., 'Semana inicial' vs 'Semana final').
