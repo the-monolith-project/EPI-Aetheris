@@ -7,20 +7,20 @@ import Layout from '../layouts/Layout.astro';
 // repite el dashboard: explica qué es el proyecto, qué pregunta responde y
 // qué explícitamente NO hace, antes de que alguien vea un mapa sin contexto.
 // Mismo lenguaje de estatuto que el resto del sitio: descriptivo, no
-// predictivo, ayuda de priorización -- nunca diagnóstico ni pronóstico.
+// predictivo, ayuda de priorización — nunca diagnóstico ni pronóstico.
 //
 // Contenedor a max-w-[1600px] (mismo ancho que el header/footer del Layout):
 // en pantallas anchas una versión angosta dejaba la mitad de la pantalla en
 // blanco.
 //
 // Firma visual (revisión de diseño 2026-08-22): el hero ya NO usa el patrón
-// genérico "número grande + etiqueta + stats" -- ese patrón describía el
+// genérico "número grande + etiqueta + stats" — ese patrón describía el
 // proyecto desde afuera. En su lugar, la mitad derecha es el propio mapa
 // departamental (14 siluetas reales, del mismo geojson que consume
 // MapaDepartamentos.astro en /dengue), proyectado a SVG en build time. Es el
 // objeto central del proyecto mostrándose a sí mismo, no una cifra sobre él.
 // Las 4 cifras que antes eran una grilla de tarjetas ahora son una sola
-// línea de texto (ver <CIFRAS>) -- información de pie, no la pieza visual.
+// línea de texto (ver <CIFRAS>) — información de pie, no la pieza visual.
 
 interface DepartamentoGeo {
   codigo: string;
@@ -35,7 +35,7 @@ function construirSiluetaDepartamentos(): {
   // No usar new URL('../../public/...', import.meta.url): en dev resuelve
   // contra la ruta fuente real, pero astro build empaqueta este codigo en
   // dist/.prerender/chunks/, asi que la misma ruta relativa termina
-  // apuntando a dist/public/geo/... -- ese directorio no existe, Astro copia
+  // apuntando a dist/public/geo/... — ese directorio no existe, Astro copia
   // public/ a la raiz de dist/ (dist/geo/...). process.cwd() es estable en
   // ambos casos: astro build y astro dev corren con cwd en la raiz de web/.
   const ruta = join(process.cwd(), 'public/geo/slv-adm1.geojson');
@@ -67,7 +67,7 @@ function construirSiluetaDepartamentos(): {
   }
 
   // Corrección de aspecto: 1° de longitud cubre menos distancia real que 1°
-  // de latitud a esta latitud (~14°N) -- sin esto, El Salvador se ve
+  // de latitud a esta latitud (~14°N) — sin esto, El Salvador se ve
   // artificialmente ancho.
   const corrOAspecto = Math.cos(((minLat + maxLat) / 2) * (Math.PI / 180));
   const anchoGeo = (maxLon - minLon) * corrOAspecto;
@@ -133,7 +133,7 @@ const MODULOS = [
     nombre: 'Presión epidemiológica relativa',
     estado: 'Activo',
     texto:
-      'Ubica los casos observados (probable y confirmado, por separado) contra la propia historia del departamento -- un percentil, no una alerta de riesgo.',
+      'Ubica los casos observados (probable y confirmado, por separado) contra la propia historia del departamento — un percentil, no una alerta de riesgo.',
   },
   {
     id: 'M4',
@@ -146,9 +146,39 @@ const MODULOS = [
 
 const CIFRAS = [
   '14 departamentos cubiertos',
-  '3 fuentes públicas -- MINSAL, OpenDengue, Open-Meteo',
-  'ventana de datos 2018-2024',
-  '$0 de costo de replicar el sistema',
+  '3 fuentes públicas: MINSAL, OpenDengue, Open-Meteo',
+  'datos desde 2018 hasta 2024',
+  '$0 de costo para replicar el sistema',
+];
+
+const APORTES = [
+  {
+    titulo: 'Reproducible de verdad',
+    texto:
+      'Datos públicos, cero costo de licencias, código abierto. Un solo comando levanta el sistema completo con datos reales — no una demo.',
+  },
+  {
+    titulo: 'Cada departamento contra su propia historia',
+    texto:
+      'Catorce departamentos, cada uno leído contra sus propios años anteriores — nunca contra un promedio nacional que borra las diferencias regionales.',
+  },
+  {
+    titulo: 'Rigor por encima de conveniencia',
+    texto:
+      'Un modelo predictivo piloto se puso a prueba con los únicos años de brote real disponibles. Cuando no mostró capacidad predictiva, se retiró en vez de quedar en producción con una promesa que no podía cumplir.',
+  },
+];
+
+const ALCANCE_NO = [
+  'No predice brotes de dengue.',
+  'No asigna un nivel de riesgo por departamento.',
+  'El clasificador piloto que se probó quedó retirado: en los únicos años con un brote real, no predijo nada útil. Sigue en la vista dengue como referencia histórica, no como predicción en vivo.',
+];
+
+const ALCANCE_SI = [
+  'Ingeniería de software reproducible, sobre datos públicos y en contenedores — no un modelo epidemiológico novedoso ni un oráculo médico.',
+  'Una ayuda de priorización — nunca un diagnóstico ni un pronóstico.',
+  'Compara cada departamento contra su propia historia, nunca contra los demás.',
 ];
 
 const STACK = [
@@ -156,13 +186,13 @@ const STACK = [
     capa: 'Backend',
     tecnologia: 'Python · FastAPI',
     texto:
-      'API REST sobre PostgreSQL directo (sin ORM, psycopg2) -- todas las capas del mapa se calculan on-request, nada queda precomputado ni oculto.',
+      'API REST sobre PostgreSQL directo (sin ORM, psycopg2) — todas las capas del mapa se calculan on-request, nada queda precomputado ni oculto.',
   },
   {
     capa: 'Base de datos',
     tecnologia: 'PostgreSQL 15',
     texto:
-      'Esquema deliberadamente agnóstico a enfermedad y región (catálogos, no columnas fijas) -- dengue e IRA comparten la misma tabla de casos.',
+      'Esquema deliberadamente agnóstico a enfermedad y región (catálogos, no columnas fijas) — dengue e IRA comparten la misma tabla de casos.',
   },
   {
     capa: 'Frontend',
@@ -174,7 +204,7 @@ const STACK = [
     capa: 'Infraestructura',
     tecnologia: 'Docker Compose',
     texto:
-      '3 servicios (base de datos, backend, frontend) orquestados con un solo comando -- sin API de pago, sin suscripción obligatoria.',
+      '3 servicios (base de datos, backend, frontend) orquestados con un solo comando — sin API de pago, sin suscripción obligatoria.',
   },
 ];
 ---
@@ -196,10 +226,10 @@ const STACK = [
           Qué está pasando con el dengue, departamento por departamento
         </h1>
         <p class="mt-4 font-sans text-base leading-relaxed text-ink-muted">
-          EPI-Aetheris cruza casos reportados por MINSAL con clima (Open-Meteo)
-          para describir, semana a semana, qué tan inusual es lo que está
-          pasando en cada departamento contra su propia historia -- y qué tan
-          confiable es el dato detrás de esa lectura.
+          EPI-Aetheris cruza los casos que reporta el MINSAL con datos de clima
+          de Open-Meteo. Cada semana describe qué tan inusual es lo que pasa en
+          un departamento, comparado contra su propia historia — y qué tan
+          completo es el dato detrás de esa lectura.
         </p>
 
         <div class="mt-6 flex flex-wrap gap-3">
@@ -256,7 +286,7 @@ const STACK = [
             }
           </svg>
           <p class="mt-3 font-sans text-xs leading-snug text-deep-ink-muted">
-            Los 14 departamentos, tal como se ven en el mapa de dengue -- cada
+            Los 14 departamentos, tal como se ven en el mapa de dengue — cada
             uno comparado contra su propia historia, nunca entre sí.
           </p>
         </div>
@@ -267,25 +297,31 @@ const STACK = [
       {CIFRAS.join('  ·  ')}
     </p>
 
-    <section
-      class="mt-12 rounded-2xl border border-dashed border-border bg-surface p-5 sm:p-6 lg:p-8"
-    >
-      <p class="font-sans text-sm font-semibold text-ink">
-        Qué NO es este proyecto
-      </p>
+    <section class="mt-12 rounded-2xl bg-accent p-6 sm:p-8 lg:p-10">
       <p
-        class="mt-2 max-w-3xl font-sans text-sm leading-relaxed text-ink-muted"
+        class="font-sans text-xs font-semibold uppercase tracking-wide text-white/60"
       >
-        No predice brotes ni asigna un nivel de riesgo por departamento. Un
-        clasificador predictivo piloto fue evaluado y <strong class="text-ink"
-          >retirado</strong
-        > tras su validación empírica: en los únicos años con un brote real, no mostró
-        capacidad predictiva utilizable. Queda en la vista dengue como referencia
-        histórica, no como predicción en vivo. Este es un aporte de <strong
-          class="text-ink">ingeniería de software</strong
-        > -- reproducible, con datos públicos y contenedores -- no un modelo epidemiológico
-        novedoso ni un oráculo médico. Es una ayuda de priorización, nunca un diagnóstico.
+        Por qué importa
       </p>
+      <h2 class="mt-1 font-sans text-2xl font-semibold text-white sm:text-3xl">
+        Aportes del proyecto
+      </h2>
+      <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-8">
+        {
+          APORTES.map((a, i) => (
+            <div
+              class:list={[i > 0 && 'sm:border-l sm:border-white/15 sm:pl-8']}
+            >
+              <p class="font-sans text-sm font-semibold text-white">
+                {a.titulo}
+              </p>
+              <p class="mt-1.5 font-sans text-sm leading-relaxed text-white/75">
+                {a.texto}
+              </p>
+            </div>
+          ))
+        }
+      </div>
     </section>
 
     <section class="mt-12">
@@ -334,7 +370,7 @@ const STACK = [
       </h2>
       <p class="mt-1 max-w-2xl font-sans text-sm text-ink-muted">
         El aporte de este proyecto es de ingeniería de software, no de novedad
-        epidemiológica -- por eso el stack importa tanto como los módulos.
+        epidemiológica — por eso el stack importa tanto como los módulos.
       </p>
       <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {
@@ -356,6 +392,78 @@ const STACK = [
     </section>
 
     <section
+      class="mt-12 overflow-hidden rounded-2xl border border-border bg-surface"
+    >
+      <p
+        class="border-b border-border px-5 py-4 font-sans text-sm font-semibold text-ink sm:px-8"
+      >
+        Alcance del sistema
+      </p>
+      <div class="grid grid-cols-1 sm:grid-cols-2">
+        <div class="p-5 sm:p-6 lg:p-8">
+          <p
+            class="flex items-center gap-2 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+          >
+            <svg
+              class="h-4 w-4 shrink-0"
+              viewBox="0 0 20 20"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M6 6l8 8M14 6l-8 8"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"></path>
+            </svg>
+            No hace esto
+          </p>
+          <ul class="mt-3 space-y-3">
+            {
+              ALCANCE_NO.map((item) => (
+                <li class="font-sans text-sm leading-relaxed text-ink-muted">
+                  {item}
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+        <div
+          class="border-t border-border p-5 sm:border-l sm:border-t-0 sm:p-6 lg:p-8 bg-secondary/20"
+        >
+          <p
+            class="flex items-center gap-2 font-sans text-xs font-semibold uppercase tracking-wide text-accent"
+          >
+            <svg
+              class="h-4 w-4 shrink-0"
+              viewBox="0 0 20 20"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M4.5 10.5l3.5 3.5 7-8"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"></path>
+            </svg>
+            Sí es esto
+          </p>
+          <ul class="mt-3 space-y-3">
+            {
+              ALCANCE_SI.map((item) => (
+                <li class="font-sans text-sm leading-relaxed text-ink">
+                  {item}
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section
       class="mt-12 flex flex-col items-start gap-4 rounded-2xl bg-deep p-6 sm:flex-row sm:items-center sm:justify-between lg:p-8"
     >
       <div class="max-w-2xl">
@@ -363,7 +471,7 @@ const STACK = [
           Datos públicos, sin costo de replicar
         </p>
         <p class="mt-1 font-sans text-sm leading-relaxed text-deep-ink-muted">
-          MINSAL, OpenDengue y Open-Meteo -- ninguna API de pago, ningún dato
+          MINSAL, OpenDengue y Open-Meteo — ninguna API de pago, ningún dato
           personal, todo agregado. `docker compose up` levanta el sistema
           completo con datos reales incluidos. ¿Querés el porqué de cada
           decisión, no solo el resultado? Está en la
@@ -385,7 +493,7 @@ const STACK = [
 </Layout>
 
 <style>
-  /* Entrada escalonada de los 14 departamentos -- una sola vez al cargar,
+  /* Entrada escalonada de los 14 departamentos — una sola vez al cargar,
      nunca en loop. prefers-reduced-motion la desactiva por completo (los
      departamentos aparecen ya visibles, sin animación). */
   @keyframes hero-depto-entra {
