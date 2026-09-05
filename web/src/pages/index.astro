@@ -26,6 +26,8 @@ interface DepartamentoGeo {
   codigo: string;
   nombre: string;
   d: string;
+  cx: number;
+  cy: number;
 }
 
 function construirSiluetaDepartamentos(): {
@@ -90,11 +92,21 @@ function construirSiluetaDepartamentos(): {
       f.geometry.type === 'Polygon'
         ? [f.geometry.coordinates]
         : f.geometry.coordinates;
+    let bxMin = Infinity;
+    let bxMax = -Infinity;
+    let byMin = Infinity;
+    let byMax = -Infinity;
     const d = anillos
       .map((poligono: number[][][]) =>
         poligono
           .map((anillo: [number, number][]) => {
             const puntos = anillo.map(proyectar);
+            for (const [x, y] of puntos) {
+              if (x < bxMin) bxMin = x;
+              if (x > bxMax) bxMax = x;
+              if (y < byMin) byMin = y;
+              if (y > byMax) byMax = y;
+            }
             return `M${puntos.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join('L')}Z`;
           })
           .join(' '),
@@ -104,6 +116,8 @@ function construirSiluetaDepartamentos(): {
       codigo: f.properties.codigo,
       nombre: f.properties.shapeName.replace(/^Departamento de /, ''),
       d,
+      cx: Number(((bxMin + bxMax) / 2).toFixed(1)),
+      cy: Number(((byMin + byMax) / 2).toFixed(1)),
     };
   });
 
@@ -275,13 +289,25 @@ const STACK = [
           >
             {
               DEPARTAMENTOS_SVG.map((d, i) => (
-                <path
-                  d={d.d}
-                  class="hero-depto origin-center fill-secondary/90 stroke-deep transition-colors duration-200 group-hover:fill-secondary/70 hover:!fill-accent"
-                  style={`stroke-width:1.5; animation-delay:${i * 45}ms`}
-                >
-                  <title>{d.nombre}</title>
-                </path>
+                <g class="group/dep">
+                  <path
+                    d={d.d}
+                    class="hero-depto origin-center fill-secondary/90 stroke-deep transition-colors duration-200 group-hover:fill-secondary/70 group-hover/dep:!fill-[#eeecff] group-hover/dep:!stroke-accent"
+                    style={`stroke-width:1.5; animation-delay:${i * 45}ms`}
+                  >
+                    <title>{d.nombre}</title>
+                  </path>
+                  <text
+                    x={d.cx}
+                    y={d.cy}
+                    text-anchor="middle"
+                    dominant-baseline="middle"
+                    font-size="11"
+                    class="pointer-events-none select-none fill-deep font-semibold opacity-0 transition-opacity duration-200 group-hover/dep:opacity-100"
+                  >
+                    {d.nombre}
+                  </text>
+                </g>
               ))
             }
           </svg>

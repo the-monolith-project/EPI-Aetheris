@@ -42,7 +42,7 @@
         >SE
         <input data-hm-desde type="range" min="1" max="52" value="1" />
         <input data-hm-hasta type="range" min="1" max="52" value="52" />
-        <span data-hm-rango class="font-mono text-xs">SE1–SE52</span>
+        <span data-hm-rango class="font-sans tabular-nums text-xs">SE1–SE52</span>
       </label>
       <button
         type="button"
@@ -55,11 +55,22 @@
   </div>
   <div
     data-hm-error
+    role="status"
     class="mt-3 hidden rounded-lg border border-secondary bg-secondary/25 p-3 font-sans text-sm"
   >
-    No se pudo cargar el heatmap. No se muestra ningún dato sustituto.
+    <p class="text-ink">
+      No se pudo contactar la fuente de datos. No se muestra ningún dato
+      sustituto.
+    </p>
+    <button
+      type="button"
+      data-hm-reintentar
+      class="mt-2 rounded-lg border border-border bg-surface px-3 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+    >
+      Reintentar
+    </button>
   </div>
-  <div data-hm-grid class="mt-4 overflow-x-auto"></div>
+  <div data-hm-grid role="status" class="mt-4 overflow-x-auto"></div>
 </section>
 
 <script>
@@ -123,7 +134,7 @@
       }
 
       const table = document.createElement('table');
-      table.className = 'border-collapse font-mono text-[10px]';
+      table.className = 'border-collapse font-sans tabular-nums text-[11px]';
       const thead = document.createElement('thead');
       const trh = document.createElement('tr');
       const th0 = document.createElement('th');
@@ -210,6 +221,9 @@
       .querySelector('[data-hm-hasta]')
       ?.addEventListener('input', () => void pintar());
     root.querySelector('[data-hm-export]')?.addEventListener('click', exportar);
+    root
+      .querySelector('[data-hm-reintentar]')
+      ?.addEventListener('click', () => void pintar());
     void pintar();
   }
 </script>
