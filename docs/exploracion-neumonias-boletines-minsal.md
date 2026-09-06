@@ -5,7 +5,7 @@
 salida en `data/interim/corrida_respiratorios/`, gitignoreada)
 **Tests:** `backend/ingestion/tests/test_corrida_respiratorios.py` sobre extractos
 reales en `tests/fixtures/minsal/*.pagina_tabla_neumonias.txt`
-**Protocolo:** `docs/protocolo-exploracion-respiratorios.md`
+**Protocolo:** `docs/exploraciones-respiratorias/protocolo-exploracion-respiratorios.md`
 
 ## Alcance del corpus
 

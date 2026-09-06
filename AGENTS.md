@@ -452,8 +452,10 @@ La estructura existente es la fuente de verdad:
 docs/
 ├── adr/
 ├── contexto/
-├── corrida-canal-endemico-nacional.md
-└── corrida-canal-endemico-nacional-4zonas.md
+├── clasificador-retirado/          # clasificador retirado: corridas, auditorías y entrenamientos/
+├── experimentos/                   # experimentos descartados (multipaís, ONI, ventana climática)
+├── exploraciones-respiratorias/    # exploraciones e ingesta MINSAL respiratorios
+└── rescate-prediccion/             # línea de rescate de predicción: protocolo, tarea, corridas Vía
 ```
 
 Cuando surja conocimiento nuevo:

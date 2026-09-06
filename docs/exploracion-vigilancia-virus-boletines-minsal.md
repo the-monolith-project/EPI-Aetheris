@@ -4,7 +4,7 @@
 **Herramienta:** `backend/ingestion/corrida_respiratorios.py`
 **Tests:** `backend/ingestion/tests/test_corrida_respiratorios.py` contra
 `*.pagina_vigilancia_virus.txt`
-**Protocolo:** `docs/protocolo-exploracion-respiratorios.md`
+**Protocolo:** `docs/exploraciones-respiratorias/protocolo-exploracion-respiratorios.md`
 
 Neumonías se documenta aparte (`docs/exploracion-neumonias-boletines-minsal.md`).
 Esta nota cubre **solo** la vigilancia virológica.

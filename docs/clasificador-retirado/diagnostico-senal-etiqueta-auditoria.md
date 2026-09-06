@@ -1,7 +1,7 @@
 # Auditoría del diagnóstico de señal y etiqueta
 
 **Fecha:** 2026-08-17  
-**Alcance:** incorporación de los artefactos recibidos en `docs/tobeer/`  
+**Alcance:** incorporación de los artefactos recibidos en un drop de entrega (carpeta `docs/tobeer/`, eliminada del repo tras esta auditoría)  
 **Resultado:** reproducido con las dependencias del proyecto
 
 ## Procedencia recibida
@@ -17,7 +17,6 @@ Archivos recibidos:
 
 | Archivo | SHA-256 |
 |---|---|
-| `LEEME-procedencia.md` | `989a52e62bd89f61550dc342b8292eda2122e1edda407a86326463940476084e` |
 | `diagnostico_senal_etiqueta_auditable.py` original | `c1f0b821132787576f00fd567639a79714156d83accd78506d69f21243b1f53d` |
 | `corrida_completa.log` | `ee6055f5ab76586df31321b9f689ee9306f6d73b5c9306b5c4f499dfe4d626f8` |
 | `probabilidades_por_fila.csv` | `c688466b4b8651da03ee2bd33f2d366fc6d50fd305d42115c1badb45bf4da267` |
@@ -46,7 +45,7 @@ Comando de reproducción del original:
 docker compose run --rm --no-deps -T \
   -v /home/isaac/Documentos/EPI-Aetheris:/repo \
   -w /repo backend \
-  python docs/tobeer/diagnostico_senal_etiqueta_auditable.py \
+  python backend/ingestion/diagnostico_senal_etiqueta_auditable.py \
   --seed-sql db/seed/seed_datos_reales.sql \
   --salida backend/ingestion/data/interim/diagnostico_reproduccion
 ```

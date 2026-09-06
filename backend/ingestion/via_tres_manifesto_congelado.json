@@ -1,8 +1,8 @@
 {
   "version_manifesto": 1,
   "via": 3,
-  "protocolo": "docs/protocolo-evaluacion-rescate-prediccion.md v2",
-  "tarea": "docs/tarea-rescate-prediccion.md, seccion Via 3",
+  "protocolo": "docs/rescate-prediccion/protocolo-evaluacion-rescate-prediccion.md v2",
+  "tarea": "docs/rescate-prediccion/tarea-rescate-prediccion.md, seccion Via 3",
   "congelado": "2026-08-18T18:00:00-06:00",
   "interpretacion": "validacion_forward_chaining_exploratoria",
   "fuente": {

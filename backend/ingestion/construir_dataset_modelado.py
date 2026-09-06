@@ -65,7 +65,7 @@ LAGS = (1, 2)
 # "alto" siguio en 0.000 en los dos anios de prueba con casos reales (2019,
 # 2022), igual que con la ventana corta, y de paso empeoro el F1 macro del
 # modelo de produccion (2023). Revertido. Detalle completo del experimento
-# descartado en docs/experimento-ventana-climatica-ampliada.md -- no
+# descartado en docs/experimentos/experimento-ventana-climatica-ampliada.md -- no
 # reabrir esto sin una senal distinta de que el problema es de ventana.
 VENTANAS_MEDIA_MOVIL = (4,)  # semanas anteriores, sin incluir la semana actual
 ANIO_2020_EXCLUIDO = 2020  # recorte de entrenamiento, no de ingesta -- ver punto E

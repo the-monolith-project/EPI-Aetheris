@@ -360,7 +360,7 @@ La implementación deberá vivir, como mínimo, en rutas separadas de producció
 
 - `backend/ingestion/validar_via_menos_uno.py` — implementación experimental;
 - `backend/ingestion/tests/test_validar_via_menos_uno.py` — independencia y reglas temporales;
-- `docs/corrida-via-menos-uno.md` — informe reproducible cuando se autorice la corrida.
+- `docs/rescate-prediccion/corrida-via-menos-uno.md` — informe reproducible cuando se autorice la corrida.
 
 Cada ejecución escribe únicamente bajo `backend/ingestion/data/interim/via_menos_uno/`, carpeta no
 versionada, y produce:

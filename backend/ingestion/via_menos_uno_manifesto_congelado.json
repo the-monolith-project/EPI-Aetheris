@@ -1,6 +1,6 @@
 {
   "version_manifesto": 1,
-  "protocolo": "docs/protocolo-evaluacion-rescate-prediccion.md v2",
+  "protocolo": "docs/rescate-prediccion/protocolo-evaluacion-rescate-prediccion.md v2",
   "aprobado": "2026-08-18T08:23:00-06:00",
   "fuente": {
     "seed_relativo": "db/seed/seed_datos_reales.sql",

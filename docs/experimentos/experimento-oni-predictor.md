@@ -7,7 +7,7 @@
 
 ## Motivación
 
-Dos hallazgos previos (ver `docs/experimento-ventana-climatica-ampliada.md` y el CHANGELOG,
+Dos hallazgos previos (ver `docs/experimentos/experimento-ventana-climatica-ampliada.md` y el CHANGELOG,
 entradas 2026-08-16) mostraron que el clima local rezagado no anticipa las semanas reales "alto"
 en ningún año de prueba disponible (recall = 0.000 en 2019 y 2022). El índice ONI de NOAA
 (anomalía de temperatura superficial del mar, escala oceánica) está documentado en la literatura

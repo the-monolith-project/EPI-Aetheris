@@ -25,7 +25,7 @@ M3 responde: **"¿qué tan alta es la presión de casos observados en este depar
 | Cortes | **P50 y P75** sobre el pool del baseline |
 | Insuficiencia | `percentil = null` + nota explícita — nunca se inventa ni interpola un valor |
 
-**Sobre los cortes P50/P75:** la corrida nacional validada (`docs/corrida-canal-endemico-nacional.md`) mostró que P75/P90 fue el esquema que mejor separó los años pico. El coordinador eligió **deliberadamente** P50/P75 para M3: es más sensible y se acepta que pueda sobre-etiquetar semanas de años de baja transmisión. Es un trade-off consciente, no un error a corregir.
+**Sobre los cortes P50/P75:** la corrida nacional validada (`docs/clasificador-retirado/corrida-canal-endemico-nacional.md`) mostró que P75/P90 fue el esquema que mejor separó los años pico. El coordinador eligió **deliberadamente** P50/P75 para M3: es más sensible y se acepta que pueda sobre-etiquetar semanas de años de baja transmisión. Es un trade-off consciente, no un error a corregir.
 
 **Lectura cualitativa:** valor ≤ P50 → `baja`; P50 < valor ≤ P75 → `media`; valor > P75 → `alta`. La igualdad exacta con el corte cae hacia abajo (misma convención que `corrida_canal_endemico_nacional.clasificar`). Además de la categoría se expone el **percentil relativo crudo** (0–100) del valor observado dentro del pool — la inversa de la interpolación lineal de `percentil()`, con empates resueltos al punto medio — igual que M1/M2 exponen `iv` y `anomaly_sigma` continuos.
 
