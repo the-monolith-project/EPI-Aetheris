@@ -70,3 +70,8 @@ referencias_no_trakear/
 # docs/contexto/ y por AGENTS.md — se conservan localmente si hacen falta).
 CAMBIO_DE_ORIENTACION_CAMINO_ANCHO.md
 indicaciones-configuracion-codex-documentacion-EPI-Aetheris.md
+
+# design-sync
+ds-bundle/
+.ds-sync/
+.design-sync/.cache/
