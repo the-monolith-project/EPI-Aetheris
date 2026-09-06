@@ -11,9 +11,9 @@ import { glob } from 'astro/loaders';
 const biblioteca = defineCollection({
   loader: glob({
     pattern: [
-      'informe-cierre-rescate-prediccion.md',
-      'experimento-validacion-leadtime-camino-ancho.md',
-      'modulo-3-presion-epidemiologica.md',
+      'rescate-prediccion/informe-cierre-rescate-prediccion.md',
+      'experimentos/experimento-validacion-leadtime-camino-ancho.md',
+      'modulos-camino-ancho/modulo-3-presion-epidemiologica.md',
       'adr/0005-clasificacion-total-opendengue.md',
       'adr/0010-versionar-volcado-de-datos-reales.md',
       'adr/0011-clasificacion-ira-departamental.md',

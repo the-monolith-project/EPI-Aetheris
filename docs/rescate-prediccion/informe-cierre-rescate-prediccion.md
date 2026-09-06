@@ -55,12 +55,12 @@ defendible que publicar una métrica parcial bajo una pregunta distinta.
 
 ## Evidencia
 
-- `docs/corrida-via-menos-uno.md`
-- `docs/corrida-via-cero.md`
-- `docs/corrida-via-uno.md`
-- `docs/corrida-via-dos.md`
-- `docs/corrida-via-tres.md`
-- `docs/borrador-registro-documental-via-menos-uno.md`
+- `docs/rescate-prediccion/corrida-via-menos-uno.md`
+- `docs/rescate-prediccion/corrida-via-cero.md`
+- `docs/rescate-prediccion/corrida-via-uno.md`
+- `docs/rescate-prediccion/corrida-via-dos.md`
+- `docs/rescate-prediccion/corrida-via-tres.md`
+- `docs/rescate-prediccion/borrador-registro-documental-via-menos-uno.md`
 
 El registro formal en `docs/contexto/` permanece deliberadamente sin cambios, según la asignación
 del coordinador.

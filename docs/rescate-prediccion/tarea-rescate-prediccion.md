@@ -81,7 +81,7 @@ También se probó ampliar la ventana de entrenamiento a 2014–2023. No se adop
 
 ### Artefactos recibidos y auditados
 
-Los cuatro análisis llegaron en un solo script bajo `docs/tobeer/`, con procedencia, JSON,
+Los cuatro análisis llegaron en un solo script en una carpeta de entrega (`docs/tobeer/`, luego eliminada), con procedencia, JSON,
 probabilidades por fila y log. Se verificó lo siguiente:
 
 1. **Umbral/AUC:** recibido; AUC 0,234 en 2019 y 0,231 en 2022.
@@ -97,8 +97,7 @@ probabilidades por fila y log. Se verificó lo siguiente:
 La copia auditada que debe incluirse en el próximo commit está en
 `backend/ingestion/diagnostico_senal_etiqueta_auditable.py`, con pruebas en
 `backend/ingestion/tests/test_diagnostico_senal_etiqueta.py`. Procedencia, hashes, diferencias y
-límites están en `docs/diagnostico-senal-etiqueta-auditoria.md`. Los archivos de `docs/tobeer/` son el
-paquete de entrada y no sustituyen esas rutas permanentes.
+límites están en `docs/clasificador-retirado/diagnostico-senal-etiqueta-auditoria.md`.
 
 ---
 
@@ -190,7 +189,7 @@ Antes de las vías 0–3:
 7. Agrega pruebas automáticas que demuestren la independencia del fold y fallen si una etiqueta de
    entrenamiento depende del año externo de prueba.
 
-**Salida obligatoria:** `docs/protocolo-evaluacion-rescate-prediccion.md`, aprobado por Eduardo antes
+**Salida obligatoria:** `docs/rescate-prediccion/protocolo-evaluacion-rescate-prediccion.md`, aprobado por Eduardo antes
 de correr las demás vías. Si el protocolo cambia el esquema de años base o el criterio formal, debe
 registrarse siguiendo la puerta de gobernanza de la sección 4.
 

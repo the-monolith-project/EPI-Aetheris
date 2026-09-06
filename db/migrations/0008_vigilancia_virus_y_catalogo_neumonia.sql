@@ -9,7 +9,7 @@ BEGIN;
 
 INSERT INTO tipos_evento (codigo, nombre, descripcion) VALUES
     ('neumonia', 'Neumonías',
-     'Conteo semanal notificado por departamento (MINSAL, sin split probable/confirmado); serie publicada acumulada desde SE1, desacumulada por diferencia de cortes consecutivos. Exploración: backend/ingestion/corrida_respiratorios.py y docs/exploracion-neumonias-boletines-minsal.md.');
+     'Conteo semanal notificado por departamento (MINSAL, sin split probable/confirmado); serie publicada acumulada desde SE1, desacumulada por diferencia de cortes consecutivos. Exploración: backend/ingestion/corrida_respiratorios.py y docs/exploraciones-respiratorias/exploracion-neumonias-boletines-minsal.md.');
 
 CREATE TABLE vigilancia_virus_respiratorios (
     id             BIGSERIAL PRIMARY KEY,

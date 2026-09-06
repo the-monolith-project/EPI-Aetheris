@@ -136,7 +136,7 @@ límite climático transferible que detecte los cinco positivos de El Salvador.
 
 ## Diferencia respecto de la corrida multipaís histórica
 
-Esta Vía 0 no es una repetición numérica de `docs/experimento-multipais.md`. Corrige cuatro aspectos
+Esta Vía 0 no es una repetición numérica de `docs/experimentos/experimento-multipais.md`. Corrige cuatro aspectos
 que impiden interpretar aquella corrida como evidencia prospectiva de transferencia:
 
 1. la corrida histórica etiqueta contra un pool fijo que incluye años futuros; esta usa `H(y)`;

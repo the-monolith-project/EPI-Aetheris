@@ -9,7 +9,7 @@ mismo departamento. No comparte codigo ni logica con el clasificador
 retirado (entrenar_clasificador.py).
 
 Formula cerrada por el coordinador (documento de decision: INSTRUCCIONES de
-la tarea M3, 2026-08-21; ver tambien docs/modulo-3-presion-epidemiologica.md):
+la tarea M3, 2026-08-21; ver tambien docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md):
 
   - Variable base: casos_epidemiologicos.conteo, clasificacion IN
     ('probable', 'confirmado') como DOS SERIES SEPARADAS, nunca fusionadas,

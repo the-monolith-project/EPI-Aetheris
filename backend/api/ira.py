@@ -4,14 +4,14 @@ Endpoints descriptivos para Infección Respiratoria Aguda (IRA), ADR 0011
 
 Deliberadamente NO es un modulo de "El Camino Ancho" (M1-M4): IRA es otro
 tipo_evento, sin Iv/anomalia/presion calculados -- eso son formulas
-cerradas para dengue especificamente (docs/modulo-3-presion-epidemiologica.md)
+cerradas para dengue especificamente (docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md)
 y no hay decision del coordinador para extenderlas a IRA. Esto es solo la
 serie observada, igual de descriptiva que /api/casos-departamentales.
 
 Fuente: backend/ingestion/cargar_ira.py cargo 2742 filas "seguras" (sin
 `nota`, span de 1 semana, sin correcciones negativas) el 2026-08-22. Los
 huecos reales (boletines de vacaciones, tablas como imagen, correcciones
-retroactivas excluidas -- ver docs/exploracion-ira-boletines-minsal.md) NO
+retroactivas excluidas -- ver docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md) NO
 estan en la tabla: una semana sin fila es un hueco real de la fuente, no
 un cero. Nada se persiste aqui; todo se lee on-request de
 casos_epidemiologicos, mismo patron que idoneidad.py y presion.py.

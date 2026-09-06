@@ -11,7 +11,7 @@
 > descriptivamente por `GET /api/ira/departamental` y
 > `GET /api/ira/temporal/{departamento_codigo}` (`backend/api/ira.py`) y
 > consumidas por la página `/ira` del frontend. La evidencia empírica que lo
-> sustenta está en `docs/exploracion-ira-boletines-minsal.md` (corrida
+> sustenta está en `docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md` (corrida
 > exploratoria `backend/ingestion/corrida_ira.py`, 2026-08-21).
 
 ## Contexto

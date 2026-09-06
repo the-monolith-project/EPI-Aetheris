@@ -521,7 +521,7 @@ def casos_departamentales(request: Request, response: Response):
 # climática continua). Ver backend/api/idoneidad.py para las fórmulas y su
 # procedencia (duplicadas literalmente desde
 # backend/ingestion/validar_leadtime_camino_ancho.py, experimento ya
-# validado en docs/experimento-validacion-leadtime-camino-ancho.md).
+# validado en docs/experimentos/experimento-validacion-leadtime-camino-ancho.md).
 #
 # La validación empírica descartó la tesis de "ventana de anticipación"
 # (lead time) -- por eso estos endpoints NO exponen alerta binaria, NO
@@ -533,7 +533,7 @@ AVISO_HONESTIDAD_IDONEIDAD = (
     "Índice de idoneidad biofísica (Iv) para el vector Aedes aegypti, calculado a partir de "
     "clima ERA5-Land/ERA5 (temperatura, precipitación acumulada a 2 semanas, humedad relativa). "
     "NO es una predicción de casos ni una alerta -- una validación empírica retrospectiva "
-    "(docs/experimento-validacion-leadtime-camino-ancho.md) encontró que este índice NO anticipa "
+    "(docs/experimentos/experimento-validacion-leadtime-camino-ancho.md) encontró que este índice NO anticipa "
     "de forma medible y consistente el ascenso real de casos, así que esa tesis fue retirada. "
     "El componente de humedad relativa (f_H) es una estimación propia del equipo, sin cita "
     "bibliográfica. El 'anomaly_sigma' es un Z-score continuo contra el histórico del propio "
@@ -608,7 +608,7 @@ def idoneidad_espacial_actual(request: Request, response: Response, week: int, y
 # ---------------------------------------------------------------------------
 # "Camino Ancho" -- Módulo 3 (presión epidemiológica relativa). Ver
 # backend/api/presion.py para la fórmula (cerrada por el coordinador,
-# docs/modulo-3-presion-epidemiologica.md) y su procedencia (mismo patrón de
+# docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md) y su procedencia (mismo patrón de
 # percentil leave-one-out que corrida_canal_endemico_nacional.py). Igual que
 # M1/M2: calculado on-request, nada persistido, sin cambios de esquema.
 # ---------------------------------------------------------------------------

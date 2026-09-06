@@ -1,8 +1,8 @@
 {
   "version_manifesto": 1,
   "via": 1,
-  "tarea": "docs/tarea-rescate-prediccion.md, seccion Via 1",
-  "protocolo": "docs/protocolo-evaluacion-rescate-prediccion.md v2",
+  "tarea": "docs/rescate-prediccion/tarea-rescate-prediccion.md, seccion Via 1",
+  "protocolo": "docs/rescate-prediccion/protocolo-evaluacion-rescate-prediccion.md v2",
   "autorizacion": {
     "aprobado_por": "Eduardo",
     "fecha": "2026-08-18",
