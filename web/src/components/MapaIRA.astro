@@ -114,6 +114,7 @@ const endpoint =
   // <link> se crea a mano justo antes de instanciar el mapa.
   import type Leaflet from 'leaflet';
   import leafletCssHref from 'leaflet/dist/leaflet.css?url';
+  import { escapeHtml } from '../utils/security';
 
   function cargarCssLeaflet() {
     if (document.querySelector(`link[href="${leafletCssHref}"]`)) return;
@@ -175,7 +176,7 @@ const endpoint =
     const item = (color: string, etiqueta: string) =>
       `<span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-1">` +
       `<span style="background:${color}" class="inline-block h-2.5 w-2.5 rounded-full ring-1 ring-black/5"></span>` +
-      `<span class="font-mono text-[11px] text-ink-muted">${etiqueta}</span></span>`;
+      `<span class="font-mono text-[11px] text-ink-muted">${escapeHtml(etiqueta)}</span></span>`;
     const items = RAMPA.map((color, i) => item(color, rangos[i])).join('');
     contenedor.innerHTML = `
       <div class="flex flex-wrap items-center gap-1.5 font-sans text-xs text-ink-muted">
@@ -293,7 +294,7 @@ const endpoint =
             ? normalizarNombreDepto(feature.properties.shapeName)
             : (feature.properties?.codigo ?? '');
           layer.bindTooltip(
-            `<strong>${nombre}</strong><br>mapa no disponible todavía`,
+            `<strong>${escapeHtml(nombre)}</strong><br>mapa no disponible todavía`,
           );
         },
       }).addTo(mapa);
@@ -331,10 +332,10 @@ const endpoint =
             ? `${dato.primer_anio}-${dato.ultimo_anio}`
             : 'sin dato';
         layer.bindTooltip(
-          `<strong>${nombre}</strong><br>` +
+          `<strong>${escapeHtml(nombre)}</strong><br>` +
             `Notificado (acum.): ${dato.notificado_total}<br>` +
             `Semanas con dato: ${dato.semanas_con_dato}<br>` +
-            `Ventana: ${ventana}`,
+            `Ventana: ${escapeHtml(ventana)}`,
         );
       },
     }).addTo(mapa);
