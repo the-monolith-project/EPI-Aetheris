@@ -2,7 +2,7 @@
 
 - **Fecha:** 2026-08-21
 - **Estado:** fórmula cerrada por el coordinador del proyecto; implementada en `backend/api/presion.py`, servida por `GET /api/v1/presion/current?week=&year=` y `GET /api/v1/presion/temporal/{departamento_codigo}?anio=`.
-- **Contexto previo:** la decisión estuvo abierta desde el pivote "Camino Ancho" (`docs/informe-cierre-rescate-prediccion.md`, punto en `docs/contexto/02-decisiones-abiertas.md`) precisamente para que nadie inventara cortes, ventana ni piso de suficiencia de forma unilateral. Este documento registra la decisión que la cierra.
+- **Contexto previo:** la decisión estuvo abierta desde el pivote "Camino Ancho" (`docs/rescate-prediccion/informe-cierre-rescate-prediccion.md`, punto en `docs/contexto/02-decisiones-abiertas.md`) precisamente para que nadie inventara cortes, ventana ni piso de suficiencia de forma unilateral. Este documento registra la decisión que la cierra.
 
 ## Qué es M3 y qué NO es
 

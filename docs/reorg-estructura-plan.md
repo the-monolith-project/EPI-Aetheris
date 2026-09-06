@@ -233,6 +233,20 @@ estaba en esa fecha".
 
 Cada fase = un PR contra `dev`, con CI verde antes del siguiente.
 
+> **Estado de ejecución (rama `feat/reorg-estructura`):**
+> - PR 0 — HECHO (`9ac1493`): borrado `db/migrations/seed_datos_reales.sql`.
+> - PR 1 — HECHO (`d0be296`): 32 docs a subcarpetas, `docs/tobeer/` borrado.
+> - PR 2 — HECHO (`c5bb065`): 3 `exploracion-*-boletines-minsal.md` a
+>   `docs/exploraciones-respiratorias/`; refs backend/SQL/ADR/contexto actualizadas.
+>   Suite backend 208 passed / 53 skipped.
+> - PR 3 — HECHO: `informe-cierre-rescate-prediccion.md` →
+>   `docs/rescate-prediccion/`, `experimento-validacion-leadtime-camino-ancho.md`
+>   → `docs/experimentos/`, `modulo-3-presion-epidemiologica.md` →
+>   `docs/modulos-camino-ancho/` (nueva). `content.config.ts` (`pattern`),
+>   `ORDEN_BIBLIOTECA`, URL hardcodeada en `MetricasModelo.astro` y comentarios
+>   backend/AGENTS/contexto actualizados. Suite backend verde; `pnpm build`
+>   limpio con las 3 rutas `/biblioteca/<subcarpeta>/<id>` generadas.
+
 1. **PR 0 — limpieza trivial** (riesgo bajo, sin dependencias)
    - Borrar `db/migrations/seed_datos_reales.sql` (tras verificación §4).
    - Consolidar `backend/ingestion/clima/pruebaN_*` en subcarpetas (opcional).
