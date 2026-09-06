@@ -53,8 +53,7 @@ export function renderErrorFuente(
   marcarRegionEstado(contenedor);
 
   const caja = document.createElement('div');
-  caja.className =
-    'rounded-lg border border-secondary bg-secondary/25 p-3';
+  caja.className = 'rounded-lg border border-secondary bg-secondary/25 p-3';
 
   const p = document.createElement('p');
   p.className = 'font-sans text-sm leading-relaxed text-ink';
