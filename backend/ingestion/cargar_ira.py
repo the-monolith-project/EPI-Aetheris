@@ -12,8 +12,9 @@ corrida_ira.py, gitignoreado) e inserta solo las filas seguras:
   semanal", NO se interpola), primeros cortes de cada anio (acumulado
   SE1-SEx, NO se inserta como una sola semana -- inyectaria una observacion
   varias veces mas grande que la real), y correcciones retroactivas
-  (diferencia negativa, NO se clampea a cero). Ver docs/exploracion-ira-
-  boletines-minsal.md, hallazgos 2 y 5.
+  (diferencia negativa, NO se clampea a cero). Ver
+  docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md,
+  hallazgos 2 y 5.
 - Verificado antes de escribir este loader: las 2742 filas sin nota tienen
   span == 1 semana en las 70 combinaciones (anio, departamento) del corpus,
   sin excepcion, y ninguna es negativa.

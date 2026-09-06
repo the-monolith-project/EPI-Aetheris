@@ -3,7 +3,7 @@
 **Estado:** Aceptado (2026-08-28)
 
 > Única verdad documental: **Aceptado**. No queda pendiente de confirmación.
-> Aceptado sobre evidencia de `docs/exploracion-vigilancia-virus-boletines-minsal.md`
+> Aceptado sobre evidencia de `docs/exploraciones-respiratorias/exploracion-vigilancia-virus-boletines-minsal.md`
 > (corrida `backend/ingestion/corrida_respiratorios.py`, 264 PDF). Migración:
 > `db/migrations/0008_vigilancia_virus_y_catalogo_neumonia.sql`.
 > Neumonías **no** usa esta tabla: reutiliza `casos_epidemiologicos` con

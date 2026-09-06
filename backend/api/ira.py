@@ -11,7 +11,7 @@ serie observada, igual de descriptiva que /api/casos-departamentales.
 Fuente: backend/ingestion/cargar_ira.py cargo 2742 filas "seguras" (sin
 `nota`, span de 1 semana, sin correcciones negativas) el 2026-08-22. Los
 huecos reales (boletines de vacaciones, tablas como imagen, correcciones
-retroactivas excluidas -- ver docs/exploracion-ira-boletines-minsal.md) NO
+retroactivas excluidas -- ver docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md) NO
 estan en la tabla: una semana sin fila es un hueco real de la fuente, no
 un cero. Nada se persiste aqui; todo se lee on-request de
 casos_epidemiologicos, mismo patron que idoneidad.py y presion.py.

@@ -12,7 +12,7 @@ salida va a data/interim/corrida_ira/ (gitignoreada). La decision de esquema
 que haria falta para ingerir IRA de verdad (la tabla IRA no trae split
 probable/confirmado y el CHECK de casos_epidemiologicos.clasificacion solo
 admite 'probable'/'confirmado'/'total') es del coordinador via ADR, no de este
-script -- ver docs/adr/ (borrador propuesto) y docs/exploracion-ira-boletines-minsal.md.
+script -- ver docs/adr/ (borrador propuesto) y docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md.
 
 Hallazgos de formato que este parser incorpora (evidencia: ver el informe):
 

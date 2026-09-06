@@ -35,7 +35,7 @@ Las páginas del texto completo van separadas por `\f` (form feed).
 Extractos de la página que contiene la **tabla departamental de Infección
 Respiratoria Aguda (IRA)** de cada boletín (misma regla: texto extraído tal
 cual con pdfplumber, nunca PDFs), extraídos el 2026-08-21 para la corrida
-exploratoria `corrida_ira.py` (ver `docs/exploracion-ira-boletines-minsal.md`).
+exploratoria `corrida_ira.py` (ver `docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md`).
 Los usa `tests/test_corrida_ira.py`.
 
 | Fixture | Boletín | Por qué está aquí |

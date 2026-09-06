@@ -4,8 +4,8 @@
 
 ## Ingesta respiratoria: Neumonías + vigilancia virológica (cerrado 2026-08-28)
 
-Evidencia: `docs/exploracion-neumonias-boletines-minsal.md` y
-`docs/exploracion-vigilancia-virus-boletines-minsal.md` (264 PDF).
+Evidencia: `docs/exploraciones-respiratorias/exploracion-neumonias-boletines-minsal.md` y
+`docs/exploraciones-respiratorias/exploracion-vigilancia-virus-boletines-minsal.md` (264 PDF).
 
 - **Neumonías** es un conteo clínico departamental único, acumulado desde SE1,
   mismo formato que IRA. Reutiliza `casos_epidemiologicos` con
