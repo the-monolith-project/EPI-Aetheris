@@ -62,6 +62,27 @@ TITULO_INACTIVA = "Vigilancia rutinaria de dengue (cerrada el 31/08/2026)"
 
 LENGUAJE_PREDICTIVO = re.compile(r"va a haber brote|predic", re.IGNORECASE)
 
+# Catálogo de indicaciones (INDICACIONES_ALERTAS.md §5) para el tipo/nivel
+# de las filas demo activas. El GET público debe devolver exactamente esas
+# viñetas en `indicaciones`; no se regeneran desde M1–M3.
+CATALOGO_INDICACIONES = {
+    ("dengue", "atencion"): (
+        "Aplicar la definición de caso sospechoso a todo paciente febril sin foco aparente; no esperar signos de alarma para notificar.",
+        "Registrar y notificar en las primeras 24 h de la consulta.",
+        "A todo caso probable: hemograma basal y clasificación (dengue sin signos de alarma / con signos de alarma / grave) según guía MINSAL vigente.",
+        "Entregar hoja de signos de alarma al paciente y su acompañante; citar a control en 24-48 h durante la fase febril y al cese de la fiebre.",
+        "Reportar al SIBASI la sospecha de aumento para que valore inspección entomológica y control de foco en la zona de residencia de los casos.",
+        "No indicar AINE ni intramusculares en febriles sin diagnóstico.",
+    ),
+    ("respiratorio", "atencion"): (
+        "Aplicar clasificación de IRA y buscar activamente signos de dificultad respiratoria en menores de 5 años (tiraje, taquipnea, incapacidad de beber).",
+        "Usar oximetría de pulso en todo paciente con dificultad respiratoria; documentar SatO2.",
+        "Reforzar criterios de neumonía y de referencia según guía MINSAL vigente.",
+        "Indicar medidas de higiene respiratoria en sala de espera (ventilación, separación de sintomáticos, mascarilla al sintomático).",
+        "Notificar al SIBASI el incremento de consultas por IRA para valoración.",
+    ),
+}
+
 
 def _db_disponible() -> bool:
     try:
@@ -161,6 +182,20 @@ class AlertasApiTest(unittest.TestCase):
         r_dengue = self.client.get("/api/alertas", params={"tipo": "dengue"})
         titulos_dengue = {a["titulo"] for a in r_dengue.json()["alertas"]}
         self.assertNotIn(TITULO_INACTIVA, titulos_dengue)
+
+    def test_indicaciones_siguen_catalogo_del_nivel(self):
+        r = self.client.get("/api/alertas")
+        self.assertEqual(r.status_code, 200)
+        cuerpo = r.json()
+        vistos = {(a["tipo"], a["nivel"]) for a in cuerpo["alertas"]}
+        self.assertIn(("dengue", "atencion"), vistos)
+        self.assertIn(("respiratorio", "atencion"), vistos)
+        for alerta in cuerpo["alertas"]:
+            viñetas = CATALOGO_INDICACIONES.get((alerta["tipo"], alerta["nivel"]))
+            if viñetas is None:
+                continue
+            for viñeta in viñetas:
+                self.assertIn(viñeta, alerta["indicaciones"])
 
     def test_payload_sin_lenguaje_de_prediccion(self):
         r = self.client.get("/api/alertas")

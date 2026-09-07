@@ -2,7 +2,9 @@ import { expect, test } from '@playwright/test';
 
 import {
   renderTextoAccionable,
+  SIGNIFICADO_NIVEL,
   textoEstadoVacio,
+  textoSignificadoNivel,
   vistaDeAlertas,
 } from '../../src/lib/vista-alertas';
 
@@ -15,6 +17,20 @@ const TITULO_RESPIRATORIO =
   'IRA y detecciones virales por encima de años comparables en 2023';
 const TITULO_INACTIVA =
   'Vigilancia rutinaria de dengue (cerrada el 31/08/2026)';
+
+test('nivel meanings match INDICACIONES §4', () => {
+  expect(SIGNIFICADO_NIVEL.informativo).toBe(
+    'Sin señal relevante en los datos. Recordatorio de vigilancia rutinaria.',
+  );
+  expect(SIGNIFICADO_NIVEL.atencion).toBe(
+    'Los datos históricos recientes están por encima de lo esperado para la época. Reforzar notificación y búsqueda de casos.',
+  );
+  expect(SIGNIFICADO_NIVEL.intensificacion).toBe(
+    'Señal sostenida varias semanas y/o concentración territorial. Activar medidas locales y coordinar con SIBASI.',
+  );
+  expect(textoSignificadoNivel('atencion')).toBe(SIGNIFICADO_NIVEL.atencion);
+  expect(textoSignificadoNivel('otro')).toBe('');
+});
 
 test('empty-state copy is the list-empty view branch', () => {
   const vista = vistaDeAlertas([], '2026-09-06');
@@ -51,6 +67,19 @@ test('/alertas muestra aviso verbatim, campos de una alerta sembrada y sin copy 
   await expect(dengue).toContainText(TITULO_DENGUE);
   await expect(dengue.locator('[data-alerta-tipo]')).toContainText('Dengue');
   await expect(dengue.locator('[data-alerta-nivel]')).toContainText('Atención');
+  await expect(dengue.locator('[data-alerta-nivel-significado]')).toHaveText(
+    SIGNIFICADO_NIVEL.atencion,
+  );
+  await expect(dengue.locator('[data-alerta-indicaciones]')).toContainText(
+    'No indicar AINE ni intramusculares en febriles sin diagnóstico.',
+  );
+  await expect(page.locator('[data-niveles-leyenda]')).toBeVisible();
+  await expect(page.locator('[data-nivel-leyenda="atencion"]')).toContainText(
+    SIGNIFICADO_NIVEL.atencion,
+  );
+  await expect(
+    page.locator('[data-nivel-leyenda="intensificacion"]'),
+  ).toContainText(SIGNIFICADO_NIVEL.intensificacion);
   await expect(dengue.locator('[data-alerta-emision]')).toContainText(
     '01/09/2026',
   );
@@ -134,6 +163,14 @@ test('dengue y respiratorio enlazan a /alertas filtrado; la tarjeta vuelve al m�
   const tarjetaResp = page.locator('[data-alerta][data-tipo="respiratorio"]');
   await expect(tarjetaResp).toBeVisible();
   await expect(tarjetaResp).toContainText(TITULO_RESPIRATORIO);
+  await expect(
+    tarjetaResp.locator('[data-alerta-indicaciones]'),
+  ).toContainText(
+    'Usar oximetría de pulso en todo paciente con dificultad respiratoria; documentar SatO2.',
+  );
+  await expect(
+    tarjetaResp.locator('[data-alerta-nivel-significado]'),
+  ).toHaveText(SIGNIFICADO_NIVEL.atencion);
   await expect(page.locator('[data-alerta][data-tipo="dengue"]')).toHaveCount(
     0,
   );
