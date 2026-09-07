@@ -78,6 +78,24 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
       >
     </nav>
 
+    <div
+      class="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden"
+    >
+      <p
+        data-sello-frescura
+        class="font-sans text-xs text-ink-muted"
+        role="status"
+      >
+      </p>
+      <button
+        type="button"
+        data-imprimir
+        class="rounded-full border border-border bg-surface px-4 py-1.5 font-sans text-sm font-medium text-ink transition-colors hover:border-accent/40"
+      >
+        Imprimir cartel
+      </button>
+    </div>
+
     <div data-alertas>
       <p
         data-alertas-carga
@@ -110,15 +128,67 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
 <script>
   import {
     aplicarVistaAlertas,
+    calcularNuevas,
+    guardarAlertasVistas,
+    leerAlertasVistas,
     type PayloadAlertas,
     type PintarAlertas,
   } from '../lib/vista-alertas';
 
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const root = document.querySelector<HTMLElement>('[data-alertas]');
+
+  document
+    .querySelector<HTMLButtonElement>('[data-imprimir]')
+    ?.addEventListener('click', () => window.print());
+
+  // En papel no hay dónde hacer clic: los bloques clínicos se abren antes de
+  // imprimir y se vuelven a plegar después. CSS no puede abrir un <details>.
+  window.addEventListener('beforeprint', () => {
+    document
+      .querySelectorAll<HTMLDetailsElement>('[data-alerta-clinico]')
+      .forEach((d) => {
+        if (!d.open) d.dataset.plegadoAntesDeImprimir = '1';
+        d.open = true;
+      });
+  });
+  window.addEventListener('afterprint', () => {
+    document
+      .querySelectorAll<HTMLDetailsElement>('[data-alerta-clinico]')
+      .forEach((d) => {
+        if (d.dataset.plegadoAntesDeImprimir === '1') {
+          d.open = false;
+          delete d.dataset.plegadoAntesDeImprimir;
+        }
+      });
+  });
+
+  // Sello de frescura: sin él, una alerta servida desde el cache del service
+  // worker (posiblemente ya apagada por el equipo) se ve idéntica a una
+  // recién traída de la red. Eso tiene consecuencia clínica, no estética.
+  const sello = document.querySelector<HTMLElement>('[data-sello-frescura]');
+  function marcarFrescura(desdeCache: boolean): void {
+    if (!sello) return;
+    const ahora = new Date().toLocaleString('es-SV', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    });
+    sello.textContent = desdeCache
+      ? `Sin conexión: mostrando lo último guardado en este dispositivo. Consultado el ${ahora}.`
+      : `Datos cargados el ${ahora}.`;
+    sello.setAttribute('data-desde-cache', desdeCache ? '1' : '0');
+  }
+
   if (root) {
     const pintar: PintarAlertas = (payload) => {
-      aplicarVistaAlertas(root, payload);
+      const vistas = leerAlertasVistas();
+      const nuevas = calcularNuevas(payload.alertas, vistas);
+      aplicarVistaAlertas(root, payload, nuevas);
+      guardarAlertasVistas(payload.alertas.map((a) => a.id));
+      // Ancla #alerta-<id> de un enlace compartido: las tarjetas se pintan
+      // después de la carga, así que el salto nativo del navegador ya pasó.
+      const ancla = window.location.hash.slice(1);
+      if (ancla) document.getElementById(ancla)?.scrollIntoView();
     };
     (root as HTMLElement & { pintarAlertas?: PintarAlertas }).pintarAlertas =
       pintar;
@@ -150,6 +220,9 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
         if (!respuesta.ok) {
           throw new Error(String(respuesta.status));
         }
+        // El service worker marca lo servido desde su cache con esta cabecera
+        // (ver web/public/sw.js); una respuesta de red no la trae.
+        marcarFrescura(respuesta.headers.get('X-EPI-Cache') === 'sw');
         const datos: unknown = await respuesta.json();
         if (
           !datos ||
@@ -165,8 +238,26 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
         const error = root.querySelector<HTMLElement>('[data-alertas-error]');
         if (carga) carga.hidden = true;
         if (error) error.hidden = false;
+        if (sello) sello.textContent = '';
         root.setAttribute('data-cargado', '1');
         root.setAttribute('data-estado', 'error');
       });
   }
 </script>
+
+<style>
+  /* Cartel imprimible: la hoja debe quedar legible pegada en sala de espera,
+     sin navegación, filtros ni botones. Los bloques clínicos los abre el
+     listener de beforeprint (CSS no puede abrir un details). */
+  @media print {
+    :global(header[class*='sticky']),
+    :global(footer),
+    nav[aria-label='Filtrar alertas por tipo'] {
+      display: none !important;
+    }
+    :global([data-alerta]) {
+      page-break-inside: avoid;
+      border: 1px solid #999;
+    }
+  }
+</style>
