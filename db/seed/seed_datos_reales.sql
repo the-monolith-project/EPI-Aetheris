@@ -24,7 +24,6 @@ SET row_security = off;
 
 SET SESSION AUTHORIZATION DEFAULT;
 
-ALTER TABLE public.boletines_procesados DISABLE TRIGGER ALL;
 
 COPY public.boletines_procesados (id, anio, semana_archivo, url_origen, familia_esquema, suma_departamental_probable, suma_departamental_confirmado, total_nacional_publicado_probable, total_nacional_publicado_confirmado, validacion_cuadra, estado, fecha_procesado, notas, nombre_archivo, version) FROM stdin;
 1	2018	\N	https://www.salud.gob.sv/boletines-epidemiologicos-2018/	A	\N	\N	\N	\N	\N	ausencia_esperada	2026-08-16 08:15:07.442895+00	columna de acumulado-rango (SEn-n) detectada en el encabezado -- boletin de semanas combinadas (trampa 7), no se ingiere como semanal	Boletin_epidemiologico_SE01-02-2018.pdf	1
@@ -294,13 +293,11 @@ COPY public.boletines_procesados (id, anio, semana_archivo, url_origen, familia_
 \.
 
 
-ALTER TABLE public.boletines_procesados ENABLE TRIGGER ALL;
 
 --
 -- Data for Name: semanas_epidemiologicas; Type: TABLE DATA; Schema: public; Owner: aetheris_user
 --
 
-ALTER TABLE public.semanas_epidemiologicas DISABLE TRIGGER ALL;
 
 COPY public.semanas_epidemiologicas (anio, semana_epi, fecha_inicio, fecha_fin) FROM stdin;
 2018	1	2017-12-31	2018-01-06
@@ -985,13 +982,11 @@ COPY public.semanas_epidemiologicas (anio, semana_epi, fecha_inicio, fecha_fin) 
 \.
 
 
-ALTER TABLE public.semanas_epidemiologicas ENABLE TRIGGER ALL;
 
 --
 -- Data for Name: casos_epidemiologicos; Type: TABLE DATA; Schema: public; Owner: aetheris_user
 --
 
-ALTER TABLE public.casos_epidemiologicos DISABLE TRIGGER ALL;
 
 COPY public.casos_epidemiologicos (id, region_id, tipo_evento_id, anio, semana_epi, clasificacion, conteo, fuente_id, fecha_ingesta, boletin_id) FROM stdin;
 1431	2	1	2018	28	probable	1	2	2026-08-16 08:15:07.506196+00	53
@@ -12867,13 +12862,11 @@ COPY public.casos_epidemiologicos (id, region_id, tipo_evento_id, anio, semana_e
 \.
 
 
-ALTER TABLE public.casos_epidemiologicos ENABLE TRIGGER ALL;
 
 --
 -- Data for Name: variables_ambientales; Type: TABLE DATA; Schema: public; Owner: aetheris_user
 --
 
-ALTER TABLE public.variables_ambientales DISABLE TRIGGER ALL;
 
 COPY public.variables_ambientales (id, region_id, anio, semana_epi, variable, valor, fuente_id, fecha_ingesta) FROM stdin;
 92219	1	2018	1	oni_anom	-0.760	5	2026-08-16 07:32:42.864914+00
@@ -69803,13 +69796,11 @@ COPY public.variables_ambientales (id, region_id, anio, semana_epi, variable, va
 \.
 
 
-ALTER TABLE public.variables_ambientales ENABLE TRIGGER ALL;
 
 --
 -- Data for Name: vigilancia_virus_respiratorios; Type: TABLE DATA; Schema: public; Owner: aetheris_user
 --
 
-ALTER TABLE public.vigilancia_virus_respiratorios DISABLE TRIGGER ALL;
 
 COPY public.vigilancia_virus_respiratorios (id, region_id, anio, semana_epi, virus, metrica, valor, unidad, fuente_id, boletin_id, fecha_ingesta) FROM stdin;
 149	1	2018	2	todos	positividad	2.0000	porcentaje	2	\N	2026-08-28 15:33:35.536442+00
@@ -72843,7 +72834,6 @@ COPY public.vigilancia_virus_respiratorios (id, region_id, anio, semana_epi, vir
 \.
 
 
-ALTER TABLE public.vigilancia_virus_respiratorios ENABLE TRIGGER ALL;
 
 --
 -- Name: boletines_procesados_id_seq; Type: SEQUENCE SET; Schema: public; Owner: aetheris_user

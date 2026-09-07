@@ -32,9 +32,10 @@ Blueprint con tres servicios, todos en la región `oregon` (misma región =
 red privada entre backend y base):
 
 - `epi-aetheris-db` -- Postgres 15 gestionado, plan `basic-256mb`.
-- `epi-aetheris-backend` -- FastAPI vía Docker (`backend/Dockerfile`), CMD
-  sobreescrito para quitar `--reload` (ese flag es para el hot-reload de
-  docker-compose en desarrollo, no debe correr en el proceso de producción).
+- `epi-aetheris-backend` -- FastAPI vía Docker (`backend/Dockerfile.render`,
+  contexto = raíz del repo para incluir `db/aplicar_migraciones.py` y
+  `db/migrations/`). `preDeployCommand` corre `python db/aplicar_migraciones.py`
+  antes de conmutar tráfico. CMD de producción sin `--reload`.
 - `epi-aetheris-web` -- sitio estático Astro (`pnpm build`, publica `dist/`).
 
 Las variables de Postgres (`POSTGRES_HOST/PORT/DB/USER/PASSWORD`) se
@@ -49,31 +50,56 @@ verificar las URLs reales en el dashboard tras el primer deploy y corregir
 
 Render, a diferencia de la imagen oficial de Postgres en docker-compose, no
 tiene un hook `docker-entrypoint-initdb.d` que auto-aplique
-`db/migrations/*.sql` sobre una base gestionada recién creada. Hay que
-aplicarlas a mano:
+`db/migrations/*.sql` sobre una base gestionada recién creada. El
+`preDeployCommand` solo aplica lo *pendiente* contra una tabla
+`schema_migrations` que todavía no existe en una base vacía, así que el
+primer deploy del backend fallará ese paso hasta terminar lo siguiente.
 
 1. En el dashboard de Render, conectar el Blueprint a este repo (rama
-   `main`) -- esto crea los 3 servicios pero el backend fallará su
-   healthcheck hasta el paso 3, porque la base está vacía.
+   `main`) -- esto crea los 3 servicios. El backend fallará
+   `preDeployCommand` / healthcheck hasta el paso 3, porque la base está
+   vacía.
 2. Copiar la **External Connection String** de `epi-aetheris-db` (dashboard
    → esa base → "Connect" → External).
-3. Desde el host (no dentro de ningún contenedor), aplicar migraciones y
-   seed contra esa base remota:
+3. Desde el host (no dentro de ningún contenedor), aplicar el DDL, registrar
+   las migraciones y cargar el seed:
 
    ```bash
-   cd db
-   export MIGRACIONES_POSTGRES_HOST=<host externo de Render>
+   export POSTGRES_HOST=<host externo de Render>
    export POSTGRES_PORT=<puerto externo>
    export POSTGRES_USER=aetheris_user
    export POSTGRES_DB=epi_aetheris
    export POSTGRES_PASSWORD=<password del dashboard>
-   python aplicar_migraciones.py --bootstrap
-   psql "<external connection string>" -f seed/seed_datos_reales.sql
+   CONN="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+
+   # La base gestionada nace vacia: hay que correr el DDL. --bootstrap solo
+   # crea schema_migrations y marca archivos como ya aplicados, no ejecuta SQL.
+   for f in db/migrations/[0-9]*.sql; do
+     psql "$CONN" -v ON_ERROR_STOP=1 -f "$f"
+   done
+   python db/aplicar_migraciones.py --bootstrap
+
+   # -X: no leer ~/.psqlrc. --single-transaction + ON_ERROR_STOP: si algo
+   # falla, rollback de toda la carga, no un seed a medias.
+   # El dump hace SELECT pg_catalog.set_config('search_path', '', false)
+   # y eso PERSISTE en la sesion psql: un segundo -f en la misma invocacion
+   # (psql ... -f seed.sql -f otra.sql) no encuentra tablas en public
+   # a menos que esa otra cosa use nombres calificados public.* o ejecute
+   # SET search_path TO public. Por eso el seed va en su propia invocacion.
+   psql "$CONN" -X --single-transaction -v ON_ERROR_STOP=1 -q -f db/seed/seed_datos_reales.sql
    ```
 
-   `--bootstrap` crea la tabla `schema_migrations` y siembra qué migraciones
-   ya se consideran aplicadas (ver ADR 0009) -- correrlo antes de cargar el
-   seed evita que el runner normal intente reaplicar el DDL después.
+   El seed versionado ya no incluye `ALTER TABLE ... DISABLE/ENABLE TRIGGER
+   ALL` (issue #82). `pg_dump --disable-triggers` las emite por defecto y
+   `aetheris_user` en el Postgres gestionado de Render no es superuser, así
+   que esas líneas abortaban la carga. El generador `db/generar_seed.sh`
+   las filtra; no hace falta un `grep -v` a mano. Las FK se validan igual:
+   el dump ordena las tablas por dependencia.
+
+   `--bootstrap` crea `schema_migrations` y registra qué migraciones ya
+   corrieron (ver ADR 0009). A partir de aquí el `preDeployCommand` puede
+   aplicar lo nuevo. Forzar un Manual Deploy del backend para que pase el
+   healthcheck.
 4. Verificar en el dashboard las URLs reales asignadas a
    `epi-aetheris-backend` y `epi-aetheris-web`. Si Render agregó un sufijo
    por colisión de nombre, actualizar `CORS_ALLOWED_ORIGINS` (env var del
@@ -87,8 +113,20 @@ aplicarlas a mano:
 
 ## Cambios de esquema después del primer despliegue
 
-Igual que en local (ver AGENTS.md, sección de comandos): agregar un archivo
-nuevo en `db/migrations/`, luego correr `python aplicar_migraciones.py`
-(sin `--bootstrap`) contra la base de Render usando las mismas variables de
-entorno del paso 3. Sigue aplicando la regla del proyecto: ADR aceptado en
-`docs/adr/` antes de escribir la migración.
+Agregar un archivo nuevo en `db/migrations/` (ADR aceptado en `docs/adr/`
+antes de escribirlo) y mergear a `main`. El `preDeployCommand` del backend
+(`python db/aplicar_migraciones.py`) corre contra las mismas `POSTGRES_*`
+del servicio, antes de conmutar tráfico. Si la migración falla, el deploy
+no avanza y sigue viva la versión anterior.
+
+No hace falta exportar `MIGRACIONES_POSTGRES_HOST`: el runner lee
+`POSTGRES_HOST` (y el resto de `POSTGRES_*`). Desde el host, contra
+docker-compose, `POSTGRES_HOST=db` se trata como `localhost` porque ese
+nombre solo resuelve dentro de `aetheris_network`.
+
+Para aplicar una migración a Render *sin* esperar un deploy (p. ej. un
+hotfix), el mismo comando desde el host con las variables del paso 3:
+
+```bash
+python db/aplicar_migraciones.py
+```

@@ -1,0 +1,22 @@
+# Contexto de build en la raiz del repo (Render, backend/Dockerfile.render).
+# docker-compose usa contexto ./backend y su propio backend/.dockerignore.
+.git
+.github
+.grok
+.venv
+**/.venv
+**/node_modules
+**/.env
+**/__pycache__
+**/*.pyc
+
+web
+docs
+graphify-out
+
+# El seed no hace falta en la imagen del backend (se carga a mano la
+# primera vez contra la base gestionada). Evita inflar el contexto ~5 MB.
+db/seed
+
+backend/ingestion/data
+backend/.venv

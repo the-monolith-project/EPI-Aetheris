@@ -13,6 +13,10 @@ por docker-compose.yml):
     python db/aplicar_migraciones.py --bootstrap   # una sola vez, ver ADR 0009 punto C
     python db/aplicar_migraciones.py               # aplica lo nuevo
 
+En Render, el mismo comando (sin --bootstrap) corre como preDeployCommand
+dentro de la imagen del backend, con las env vars POSTGRES_* que ya inyecta
+el servicio (fromDatabase).
+
 Requiere psycopg2 y python-dotenv (ya en backend/requirements.txt; usar
 backend/.venv o instalar ambos en el entorno desde el que se corra).
 """
@@ -22,6 +26,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -30,12 +35,22 @@ from dotenv import load_dotenv
 
 _REPO_ROOT = Path(__file__).parent.parent
 _MIGRATIONS_DIR = Path(__file__).parent / "migrations"
+# Solo migraciones numeradas. Ignora residuos como seed_datos_reales.sql
+# (vacio, ya borrado en #100) u otros .sql que no son DDL versionado.
+_NOMBRE_MIGRACION = re.compile(r"^\d{4}_.+\.sql$")
 
 
 def _conectar() -> psycopg2.extensions.connection:
     load_dotenv(_REPO_ROOT / ".env")
+    host = os.getenv("POSTGRES_HOST", "localhost")
+    if host == "db":
+        # Nombre de servicio de docker-compose: solo resuelve dentro de
+        # aetheris_network. Este runner corre desde el host (ADR 0009) o en
+        # el preDeploy de Render, donde POSTGRES_HOST ya es el hostname
+        # gestionado. No usar MIGRACIONES_POSTGRES_HOST.
+        host = "localhost"
     return psycopg2.connect(
-        host=os.getenv("MIGRACIONES_POSTGRES_HOST", "localhost"),
+        host=host,
         database=os.getenv("POSTGRES_DB"),
         user=os.getenv("POSTGRES_USER"),
         password=os.getenv("POSTGRES_PASSWORD"),
@@ -49,7 +64,14 @@ def _tabla_existe(cur, nombre: str) -> bool:
 
 
 def _archivos_migracion() -> list[Path]:
-    return sorted(_MIGRATIONS_DIR.glob("*.sql"))
+    archivos: list[Path] = []
+    for ruta in sorted(_MIGRATIONS_DIR.glob("*.sql")):
+        if not _NOMBRE_MIGRACION.match(ruta.name):
+            continue
+        if ruta.stat().st_size == 0:
+            continue
+        archivos.append(ruta)
+    return archivos
 
 
 def _checksum(ruta: Path) -> str:

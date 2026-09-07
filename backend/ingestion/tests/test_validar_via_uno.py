@@ -51,6 +51,9 @@ class ViaUnoTest(unittest.TestCase):
             self.manifiesto["autorizacion"]["aprobado_por"], "Eduardo"
         )
         self.assertEqual(base.sha256(SEED), self.manifiesto["fuente"]["seed_sha256"])
+        seed_sql = SEED.read_text(encoding="utf-8")
+        self.assertNotIn("DISABLE TRIGGER ALL", seed_sql)
+        self.assertNotIn("ENABLE TRIGGER ALL", seed_sql)
         self.assertEqual(
             via.validar_firma_previa(self.firma, self.manifiesto),
             "314e8662fd29c08b283a3fdfc9500591e821f633fb7d1e2cf193d648080d4e8c",
