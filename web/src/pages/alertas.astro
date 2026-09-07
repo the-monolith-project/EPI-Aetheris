@@ -33,8 +33,7 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
             >No sustituyen los lineamientos oficiales del MINSAL ni el criterio
             clínico.</strong
           >{' '}
-          No son tiempo real. La coexistencia temporal de eventos no demuestra
-          causalidad.
+          No son tiempo real. La coexistencia temporal de eventos no demuestra causalidad.
         </p>
       </aside>
       <p class="sr-only">{AVISO_HONESTIDAD_ALERTAS}</p>
@@ -121,9 +120,8 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
     const pintar: PintarAlertas = (payload) => {
       aplicarVistaAlertas(root, payload);
     };
-    (
-      root as HTMLElement & { pintarAlertas?: PintarAlertas }
-    ).pintarAlertas = pintar;
+    (root as HTMLElement & { pintarAlertas?: PintarAlertas }).pintarAlertas =
+      pintar;
 
     const tipoPedido = new URLSearchParams(window.location.search).get('tipo');
     const tipo =
@@ -131,19 +129,18 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
         ? tipoPedido
         : undefined;
 
-    const activo =
-      'border-accent bg-accent text-accent-ink';
+    const activo = 'border-accent bg-accent text-accent-ink';
     const inactivo = 'border-border bg-surface';
-    document.querySelectorAll<HTMLAnchorElement>('[data-filtro-tipo]').forEach(
-      (el) => {
+    document
+      .querySelectorAll<HTMLAnchorElement>('[data-filtro-tipo]')
+      .forEach((el) => {
         const valor = el.getAttribute('data-filtro-tipo');
         const esActivo =
           (tipo === undefined && valor === 'todas') || valor === tipo;
         el.setAttribute('aria-current', esActivo ? 'page' : 'false');
         if (!esActivo) el.removeAttribute('aria-current');
         el.className = `rounded-full border px-3 py-1.5 ${esActivo ? activo : inactivo}`;
-      },
-    );
+      });
     const url = tipo
       ? `${API_BASE}/api/alertas?tipo=${encodeURIComponent(tipo)}`
       : `${API_BASE}/api/alertas`;

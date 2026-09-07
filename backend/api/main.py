@@ -249,8 +249,12 @@ def _conexion():
 #     riesgo-nacional) recalculadas en cada request -- TTL más corto porque
 #     son las más caras y las que más se beneficiarían de un cambio de
 #     metodología sin esperar una hora completa de cache.
+#   - CACHE_TTL_ALERTAS: alertas de campo (ADR 0013). Las redacta y apaga
+#     el equipo a mano; el valor de la vista es "¿hay algo vigente ahora?".
+#     TTL corto para que un cambio se refleje en el minuto, no en la hora.
 CACHE_TTL_HISTORICO = 3600
 CACHE_TTL_COMPUTO = 900
+CACHE_TTL_ALERTAS = 60
 
 
 def _cache_control(response: Response, max_age: int) -> None:
@@ -1204,11 +1208,15 @@ def alertas_publicas(response: Response, tipo: str | None = None):
     try:
         with _conexion() as conn:
             cuerpo = consultar_alertas_publicas(conn, tipo=tipo)
-    except Exception:
+    except Exception as exc:
+        # Contrato propio ({aviso, ultima_revision, alertas}); no se degrada
+        # a {disponible:false} como los endpoints respiratorios. Solo se
+        # distingue fallo de conexión (503) del resto (500).
+        status = 503 if _es_fallo_conexion(exc) else 500
         raise HTTPException(
-            status_code=500,
+            status_code=status,
             detail="Error de conexión a la base de datos",
         )
 
-    _cache_control(response, CACHE_TTL_HISTORICO)
+    _cache_control(response, CACHE_TTL_ALERTAS)
     return cuerpo

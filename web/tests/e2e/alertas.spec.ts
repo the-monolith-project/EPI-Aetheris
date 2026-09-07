@@ -118,9 +118,9 @@ test('dengue y respiratorio enlazan a /alertas filtrado; la tarjeta vuelve al m√
   );
   const tarjetaDengue = page.locator('[data-alerta][data-tipo="dengue"]');
   await expect(tarjetaDengue).toBeVisible();
-  await expect(page.locator('[data-alerta][data-tipo="respiratorio"]')).toHaveCount(
-    0,
-  );
+  await expect(
+    page.locator('[data-alerta][data-tipo="respiratorio"]'),
+  ).toHaveCount(0);
   await expect(
     tarjetaDengue.locator('[data-enlace-modulo="dengue"]'),
   ).toHaveAttribute('href', '/dengue');
@@ -134,7 +134,9 @@ test('dengue y respiratorio enlazan a /alertas filtrado; la tarjeta vuelve al m√
   const tarjetaResp = page.locator('[data-alerta][data-tipo="respiratorio"]');
   await expect(tarjetaResp).toBeVisible();
   await expect(tarjetaResp).toContainText(TITULO_RESPIRATORIO);
-  await expect(page.locator('[data-alerta][data-tipo="dengue"]')).toHaveCount(0);
+  await expect(page.locator('[data-alerta][data-tipo="dengue"]')).toHaveCount(
+    0,
+  );
   await expect(
     tarjetaResp.locator('[data-enlace-modulo="respiratorio"]'),
   ).toHaveAttribute('href', '/respiratorio');
