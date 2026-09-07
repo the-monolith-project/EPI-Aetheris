@@ -34,6 +34,6 @@ COMMENT ON COLUMN casos_epidemiologicos.clasificacion IS
 
 INSERT INTO tipos_evento (codigo, nombre, descripcion) VALUES
     ('ira', 'Infección Respiratoria Aguda',
-     'Conteo semanal notificado por departamento (MINSAL, sin split probable/confirmado); serie publicada acumulada desde SE1, desacumulada por diferencia de cortes consecutivos. Exploración validada en backend/ingestion/corrida_ira.py y docs/exploracion-ira-boletines-minsal.md.');
+     'Conteo semanal notificado por departamento (MINSAL, sin split probable/confirmado); serie publicada acumulada desde SE1, desacumulada por diferencia de cortes consecutivos. Exploración validada en backend/ingestion/corrida_ira.py y docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md.');
 
 COMMIT;

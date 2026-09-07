@@ -12,7 +12,7 @@ ANIOS = [2018, 2019, 2021, 2022, 2023]
 SEMANAS_NOMINALES = 52
 
 # Hechos de la corrida exploratoria sobre el corpus congelado 2018-2019 y
-# 2021-2023 (docs/exploracion-*-boletines-minsal.md), no umbrales nuevos.
+# 2021-2023 (docs/exploraciones-respiratorias/exploracion-*-boletines-minsal.md), no umbrales nuevos.
 # Si se incorporan 2020 o 2024+, regenerar estas constantes desde esa
 # exploración; no reutilizar los recuentos de tablas-imagen / vacaciones.
 NOTAS_NEUMONIAS = {
@@ -22,7 +22,7 @@ NOTAS_NEUMONIAS = {
     "reimpresiones": ["SE34/2019_v2 = SE33/2019 (14 valores idénticos)"],
     "correcciones_negativas_excluidas": 23,
     "cortes_usables_exploracion": {"2018": 46, "2019": 22, "2021": 50, "2022": 48, "2023": 49},
-    "fuente_informe": "docs/exploracion-neumonias-boletines-minsal.md",
+    "fuente_informe": "docs/exploraciones-respiratorias/exploracion-neumonias-boletines-minsal.md",
     "nota_corpus": (
         "Constantes del corpus histórico congelado 2018-2019 y 2021-2023. "
         "Si se incorporan 2020 o 2024+, regenerarlas desde la nueva exploración."
@@ -35,14 +35,14 @@ NOTAS_VIRUS = {
     "anio_2020_descargado": False,
     "granularidad": "nacional",
     "unidad": "muestras / detecciones / positividad (no casos clínicos)",
-    "fuente_informe": "docs/exploracion-vigilancia-virus-boletines-minsal.md",
+    "fuente_informe": "docs/exploraciones-respiratorias/exploracion-vigilancia-virus-boletines-minsal.md",
     "nota_corpus": (
         "Constantes del corpus histórico congelado 2018-2019 y 2021-2023. "
         "Si se incorporan 2020 o 2024+, regenerarlas desde la nueva exploración."
     ),
 }
 NOTAS_IRA = {
-    "fuente_informe": "docs/exploracion-ira-boletines-minsal.md",
+    "fuente_informe": "docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md",
     "nota": "Misma ventana 2018-2023 sin 2020; tablas-imagen en 2019 temprana.",
 }
 

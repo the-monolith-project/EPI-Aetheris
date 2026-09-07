@@ -13,6 +13,32 @@
 
 const CLASE_TEXTO_NEUTRO = 'font-sans text-sm leading-relaxed text-ink-muted';
 
+export const MOTIVO_NO_DISPONIBLE_DEFECTO =
+  'Los datos no están disponibles en este despliegue.';
+
+export type RespuestaNoDisponible = {
+  disponible: false;
+  motivo?: string;
+};
+
+/**
+ * Contrato 200 { disponible: false, motivo } (#72, #84): la fuente respondió,
+ * pero el recurso no está generado o la tabla no está cargada. No es un
+ * error de red.
+ */
+export function esNoDisponible(datos: unknown): datos is RespuestaNoDisponible {
+  return (
+    typeof datos === 'object' &&
+    datos !== null &&
+    (datos as { disponible?: unknown }).disponible === false
+  );
+}
+
+export function motivoNoDisponible(datos: RespuestaNoDisponible): string {
+  const motivo = datos.motivo?.trim();
+  return motivo || MOTIVO_NO_DISPONIBLE_DEFECTO;
+}
+
 /**
  * Marca el contenedor como región viva para lectores de pantalla, sin pisar
  * un role/aria-live que ya venga del HTML del componente.

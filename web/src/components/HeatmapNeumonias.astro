@@ -91,6 +91,12 @@
 </section>
 
 <script>
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderSinDato,
+  } from './estado-async';
+
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const RAMPA = ['#cde2fb', '#9ec5f4', '#5598e7', '#256abf', '#0d366b'];
   const SIN_DATO = '#f4f4f5';
@@ -138,6 +144,12 @@
       const resp = await fetch(`${API_BASE}/api/neumonias/heatmap/${anio}`);
       if (!resp.ok) throw new Error('no ok');
       const datos = await resp.json();
+      if (esNoDisponible(datos)) {
+        error.classList.add('hidden');
+        ultimo = null;
+        renderSinDato(grid, motivoNoDisponible(datos));
+        return;
+      }
       const departamentos: DeptoHeat[] = datos.departamentos;
       ultimo = { anio, departamentos };
       error.classList.add('hidden');

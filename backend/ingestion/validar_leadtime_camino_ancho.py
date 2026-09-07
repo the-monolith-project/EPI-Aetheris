@@ -1,6 +1,6 @@
 """
-Validacion empirica previa del "Camino Ancho" (docs/experimento-validacion-
-leadtime-camino-ancho.md). Responde una sola pregunta: si el indice de
+Validacion empirica previa del "Camino Ancho"
+(docs/experimentos/experimento-validacion-leadtime-camino-ancho.md). Responde una sola pregunta: si el indice de
 idoneidad biofisica (Iv) + detector de anomalias estacionales habrian
 anticipado el ascenso real de casos observado en los boletines MINSAL,
 y por cuantas semanas -- reportando el resultado real, incluyendo los

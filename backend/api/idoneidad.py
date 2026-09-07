@@ -1,7 +1,7 @@
 """
 Motor de idoneidad biofisica (Iv) y anomalia climatica continua -- Modulos 1
-y 2 de "El Camino Ancho" v3 (docs/experimento-validacion-leadtime-camino-
-ancho.md).
+y 2 de "El Camino Ancho" v3
+(docs/experimentos/experimento-validacion-leadtime-camino-ancho.md).
 
 Las formulas de Iv y el metodo de Z-score leave-one-out estan duplicados
 LITERALMENTE (mismas constantes, mismo metodo de resolucion de `c`) desde

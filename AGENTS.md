@@ -452,8 +452,10 @@ La estructura existente es la fuente de verdad:
 docs/
 ├── adr/
 ├── contexto/
-├── corrida-canal-endemico-nacional.md
-└── corrida-canal-endemico-nacional-4zonas.md
+├── clasificador-retirado/          # clasificador retirado: corridas, auditorías y entrenamientos/
+├── experimentos/                   # experimentos descartados (multipaís, ONI, ventana climática)
+├── exploraciones-respiratorias/    # exploraciones e ingesta MINSAL respiratorios
+└── rescate-prediccion/             # línea de rescate de predicción: protocolo, tarea, corridas Vía
 ```
 
 Cuando surja conocimiento nuevo:
@@ -479,7 +481,7 @@ Referencia rápida. El detalle vive en `docs/`; aquí solo lo que conviene tener
 
 EPI-Aetheris es un sistema de vigilancia epidemiológica **descriptiva** (piloto: dengue e IRA en El Salvador). Ingesta casos históricos y predictores ambientales, los alinea por semana epidemiológica y los expone vía FastAPI + mapa Leaflet.
 
-- **El clasificador predictivo está retirado** (pivote "Camino Ancho", cerrado 2026-08-18 — `docs/informe-cierre-rescate-prediccion.md`). El código entrenado (`entrenar_clasificador.py` y afines) se conserva como referencia histórica: **no lo extiendas ni presentes su salida como predicción en vivo.**
+- **El clasificador predictivo está retirado** (pivote "Camino Ancho", cerrado 2026-08-18 — `docs/rescate-prediccion/informe-cierre-rescate-prediccion.md`). El código entrenado (`entrenar_clasificador.py` y afines) se conserva como referencia histórica: **no lo extiendas ni presentes su salida como predicción en vivo.**
 - El proyecto es descriptivo, no predictivo: "qué está pasando y qué tan inusual es contra su propia historia", nunca "qué va a pasar".
 - El aporte es de **ingeniería de software** (sistema libre, contenedorizado, reproducible), no de novedad epidemiológica ni un oráculo médico.
 - Modelo de dominio **agnóstico a enfermedad y región**: `tipos_evento` y `regiones` son catálogos, no columnas fijas.
@@ -487,10 +489,11 @@ EPI-Aetheris es un sistema de vigilancia epidemiológica **descriptiva** (piloto
 ### Módulos Camino Ancho
 
 - **M1 — Idoneidad biofísica (`Iv`)** y **M2 — Anomalía climática continua (Z-score leave-one-out)** — implementados en `backend/api/idoneidad.py`, servidos vía `GET /api/v1/spatial/current` y `/api/v1/temporal/{codigo}`. M2 es serie continua: sin alerta binaria, sin lenguaje de lead-time.
-- **M3 — Presión epidemiológica relativa** — implementado en `backend/api/presion.py` (fórmula **cerrada** por la coordinación 2026-08-21, `docs/modulo-3-presion-epidemiologica.md`): percentil histórico leave-one-out por departamento, `probable` y `confirmado` como series **separadas** (nunca `total`), años base 2018/2019/2021/2022/2023, ventana ±1 semana, piso de ≥3 años, cortes P50/P75. Salida = percentil + lectura cualitativa (baja/media/alta), **nunca alerta binaria**; celdas insuficientes → `null` + nota. Vía `GET /api/v1/presion/current` y `/api/v1/presion/temporal/{codigo}`. No ajustes estos parámetros sin nueva decisión de la coordinación.
+- **M3 — Presión epidemiológica relativa** — implementado en `backend/api/presion.py` (fórmula **cerrada** por la coordinación 2026-08-21, `docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md`): percentil histórico leave-one-out por departamento, `probable` y `confirmado` como series **separadas** (nunca `total`), años base 2018/2019/2021/2022/2023, ventana ±1 semana, piso de ≥3 años, cortes P50/P75. Salida = percentil + lectura cualitativa (baja/media/alta), **nunca alerta binaria**; celdas insuficientes → `null` + nota. Vía `GET /api/v1/presion/current` y `/api/v1/presion/temporal/{codigo}`. No ajustes estos parámetros sin nueva decisión de la coordinación.
 - **M4 — Confianza de vigilancia** — no implementado, sin fórmula aprobada. No la inventes.
+- **Alertas de campo** — tabla `alertas` (ADR 0013, migración `0009`). Decisiones humanas persistidas; **no** se generan desde M1–M3 ni del clasificador. Solo `GET /api/alertas` (filas `activa=true`, filtro opcional `tipo`). UI en `/alertas`.
 
-Nada de M1–M3 se persiste (se calcula on-request, sin cambios de esquema). El selector de capas del mapa (`web/src/components/MapaDepartamentos.astro`) tiene botones para M1/M2 y para las dos series de M3, y un placeholder deshabilitado para M4. IRA se sirve aparte (`backend/api/ira.py`, UI en `/ira`) y **no** computa módulos Camino Ancho.
+Nada de M1–M3 se persiste (se calcula on-request, sin cambios de esquema). El selector de capas del mapa (`web/src/components/MapaDepartamentos.astro`) tiene botones para M1/M2 y para las dos series de M3, y un placeholder deshabilitado para M4. IRA se sirve aparte (`backend/api/ira.py`, UI en `/ira`) y **no** computa módulos Camino Ancho. Las alertas de campo sí se persisten: las redacta el equipo, no un módulo.
 
 ### Arquitectura
 
@@ -513,6 +516,7 @@ Tres servicios Docker (`docker-compose.yml`, red `aetheris_network`):
 - `boletines_procesados.familia_esquema`: `A` o `B`.
 - `fuentes_datos.codigo`: `opendengue_v1_3`, `minsal_pdf`, `open_meteo_era5_land`, `open_meteo_era5` (ADR 0006 — `era5` es exclusivo para `precipitation_sum`/`precipitation_hours`), `noaa_oni`.
 - `regiones.codigo`: ISO 3166-2:SV (**sin verificar aún** contra el GeoJSON de Leaflet — confírmalo antes de usarlo como clave de join).
+- `alertas.tipo`: `dengue`, `respiratorio`. `alertas.nivel`: `informativo`, `atencion`, `intensificacion` (ADR 0013). `activa` es el filtro de la vista pública; no lo infieras de `vigente_hasta`.
 - Semanas epidemiológicas: **PAHO/CDC (MMWR), no ISO 8601** — usa la librería `epiweeks`, no recalcules límites a mano.
 
 ### Fuentes de datos

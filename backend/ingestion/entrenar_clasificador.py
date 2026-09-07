@@ -298,12 +298,12 @@ def main() -> None:
                     (
                         "Recall de 'alto' no evaluable -- el año de prueba no tuvo semanas reales "
                         "'alto' con este corte, no es un fallo del modelo. "
-                        f"Ver docs/entrenamiento-clasificador-riesgo-nacional{sufijo}.md."
+                        f"Ver docs/clasificador-retirado/entrenamientos/entrenamiento-clasificador-riesgo-nacional{sufijo}.md."
                     ) if met_modelo["n_alto_real"] == 0 else (
                         f"Recall de 'alto' SI evaluable ({met_modelo['n_alto_real']} semanas reales "
                         f"en el año de prueba): {met_modelo['recall_alto']:.3f} para el modelo, "
                         f"{met_clima['recall_alto']:.3f} para la línea base climatológica. "
-                        f"Ver docs/entrenamiento-clasificador-riesgo-nacional{sufijo}.md."
+                        f"Ver docs/clasificador-retirado/entrenamientos/entrenamiento-clasificador-riesgo-nacional{sufijo}.md."
                     )
                 ),
             },
@@ -340,7 +340,13 @@ def main() -> None:
     for nombre, imp in importancias[:10]:
         print(f"  {nombre}: {imp:.4f}")
 
-    docs_path = DOCS_DIR / f"entrenamiento-clasificador-riesgo-nacional{sufijo}.md"
+    docs_path = (
+        DOCS_DIR
+        / "clasificador-retirado"
+        / "entrenamientos"
+        / f"entrenamiento-clasificador-riesgo-nacional{sufijo}.md"
+    )
+    docs_path.parent.mkdir(parents=True, exist_ok=True)
     escribir_documento(
         cols, train, test, met_modelo, met_clima, met_persist, n_excluidas_persist,
         importancias, modelo_path, supera_clima, docs_path, es_produccion, corte_label,

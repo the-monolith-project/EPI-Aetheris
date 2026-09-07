@@ -80,12 +80,12 @@ Los 264 boletines ya usados para dengue e IRA publican, en otras páginas:
   acumulada desde SE1, un solo conteo (sin probable/confirmado). Misma
   familia de trampas que IRA (imagen en 2019 temprana, vacaciones, una
   reimpresión SE34/2019, discrepancias ±1 en 2023). Informe:
-  `docs/exploracion-neumonias-boletines-minsal.md`.
+  `docs/exploraciones-respiratorias/exploracion-neumonias-boletines-minsal.md`.
 - **Vigilancia centinela de influenza y otros virus:** tabla **nacional** de
   laboratorio (muestras, positivos, detecciones por virus, positividad).
   No es un conteo clínico. COVID-19 como fila aparece solo en 2023, con el
   rótulo `COVID 19`, no “SARS-CoV-2”. Informe:
-  `docs/exploracion-vigilancia-virus-boletines-minsal.md`. Persistencia:
+  `docs/exploraciones-respiratorias/exploracion-vigilancia-virus-boletines-minsal.md`. Persistencia:
   ADR 0012.
 
 ## Clima — Open-Meteo

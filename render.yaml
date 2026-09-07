@@ -1,9 +1,9 @@
 # Blueprint de despliegue en Render (backend + Postgres + frontend estático,
 # una sola cuenta). Ver docs/despliegue-render.md para el procedimiento
-# completo de primer despliegue -- este archivo declara los servicios, no
-# reemplaza los pasos manuales (aplicar migraciones + cargar el seed contra
-# la base gestionada, algo que docker-compose hace solo via
-# docker-entrypoint-initdb.d y Render no replica automáticamente).
+# completo. El primer despliegue sigue siendo manual (aplicar el DDL +
+# --bootstrap + cargar el seed contra la base gestionada: Render no tiene
+# docker-entrypoint-initdb.d). Las migraciones *posteriores* las aplica
+# preDeployCommand antes de conmutar trafico (issue #83).
 #
 # El backend y la base quedan en la misma región para hablarse por red
 # privada. El sitio estático no acepta región (se sirve por CDN global).
@@ -29,13 +29,19 @@ services:
     # main (dev es integración y la rama por defecto del repo). Ver AGENTS.md
     # §15. Explícito aquí para que no dependa de la rama por defecto de GitHub.
     branch: main
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    # El Dockerfile trae --reload para el hot-reload de docker-compose en
-    # desarrollo local (bind mount de ./backend:/app) -- en Render no hay
-    # bind mount y --reload no debería correr contra un proceso de
-    # producción, así que se sobreescribe el CMD del Dockerfile aquí.
+    # Contexto = raiz del repo para copiar db/aplicar_migraciones.py y
+    # db/migrations/ dentro de la imagen. docker-compose sigue construyendo
+    # backend/Dockerfile con contexto ./backend.
+    dockerfilePath: ./backend/Dockerfile.render
+    dockerContext: .
+    # Dockerfile.render ya no usa --reload (ese flag es del Dockerfile de
+    # compose, con bind mount). Se deja dockerCommand explicito por si el
+    # Blueprint se sincroniza contra una imagen vieja.
     dockerCommand: uvicorn api.main:app --host 0.0.0.0 --port 8000
+    # Corre en una instancia de la imagen recien construida, con las mismas
+    # POSTGRES_* que el servicio, antes de conmutar trafico. Si falla, el
+    # deploy no avanza y sigue viva la version anterior.
+    preDeployCommand: python db/aplicar_migraciones.py
     healthCheckPath: /health
     envVars:
       - key: POSTGRES_HOST

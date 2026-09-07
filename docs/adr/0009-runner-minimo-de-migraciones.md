@@ -20,6 +20,8 @@ Esa condición ya no se cumple. Verificado en vivo contra la base del entorno de
 
 **E. Ejecución desde el host**, no dentro del contenedor `backend`. `POSTGRES_HOST=db` en `.env` resuelve solo dentro de la red Docker del proyecto; el puerto 5432 ya está publicado al host (`docker-compose.yml`), así que el script usa `localhost` por defecto, no la variable de entorno existente — evita una ambigüedad de dos convenciones de host bajo el mismo nombre.
 
+**E (enmienda 2026-09-06, issue #83).** El runner lee las mismas `POSTGRES_*` que el servicio backend. Default de `POSTGRES_HOST`: `localhost`. Si el valor es exactamente `db` (nombre de servicio de docker-compose), se trata como `localhost` porque este proceso no corre dentro de `aetheris_network`. En Render, `preDeployCommand` ejecuta `python db/aplicar_migraciones.py` dentro de una instancia de la imagen del backend, donde `POSTGRES_HOST` ya es el hostname gestionado (`fromDatabase`) — no hace falta el override `MIGRACIONES_POSTGRES_HOST`, que se retira. El glob de archivos ignora todo `.sql` que no cumpla `NNNN_*.sql` y los archivos de 0 bytes (residuo `db/migrations/seed_datos_reales.sql`, ya borrado en #100).
+
 ## Consecuencias
 
 * Positivo: una migración nueva desde ahora se aplica en segundos contra la base real, sin perder los datos de producción ya cargados.

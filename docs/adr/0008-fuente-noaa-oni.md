@@ -4,7 +4,7 @@
 
 ## Contexto
 
-Las corridas de evaluación con años de prueba reales (2019, 2022 — ver `docs/contexto/CHANGELOG.md`, entrada 2026-08-16) mostraron que el clasificador de riesgo nacional obtiene **recall de "alto" = 0,000** en ambos, empatado con la línea base climatológica. El experimento de ampliar la ventana de rezago climático (4→4/8/12 semanas) no movió esa métrica (`docs/experimento-ventana-climatica-ampliada.md`). El clima local rezagado (Open-Meteo, por departamento) no está capturando la señal de brote severo.
+Las corridas de evaluación con años de prueba reales (2019, 2022 — ver `docs/contexto/CHANGELOG.md`, entrada 2026-08-16) mostraron que el clasificador de riesgo nacional obtiene **recall de "alto" = 0,000** en ambos, empatado con la línea base climatológica. El experimento de ampliar la ventana de rezago climático (4→4/8/12 semanas) no movió esa métrica (`docs/experimentos/experimento-ventana-climatica-ampliada.md`). El clima local rezagado (Open-Meteo, por departamento) no está capturando la señal de brote severo.
 
 La literatura epidemiológica documenta El Niño/La Niña (medido por el índice ONI de NOAA) como factor asociado a brotes de dengue en Centroamérica — condiciones más cálidas y secas durante El Niño favorecen la cría de *Aedes aegypti* en agua almacenada. Es una oscilación climática de escala oceánica/continental, distinta en naturaleza del clima superficial local que ya se usa (temperatura, humedad, precipitación por departamento) — no reemplaza esas variables, las complementa con una señal que Open-Meteo no puede dar por diseño (es un dato puntual por coordenada, no un índice de teleconexión).
 

@@ -1,6 +1,6 @@
 """
 Inicio de temporada por departamento-anio, para el diagnostico de lead time
-del "Camino Ancho" (docs/experimento-validacion-leadtime-camino-ancho.md,
+del "Camino Ancho" (docs/experimentos/experimento-validacion-leadtime-camino-ancho.md,
 en construccion). No entrena nada, no escribe a Postgres.
 
 Metodologia acordada explicitamente con el coordinador (no inventada aqui):

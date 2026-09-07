@@ -1,6 +1,6 @@
 # Corrida del canal endémico — 4 zonas OPS, serie nacional (2026-08-11)
 
-> Resumen de una página de `backend/ingestion/corrida_canal_endemico_4zonas.py`. Continuación directa de `corrida_canal_endemico_nacional.py` (docs/corrida-canal-endemico-nacional.md) — no reabre ninguno de sus parámetros. Exploratorio: no entrena nada, no decide el colapso a 3 clases que sigue abierto en `docs/contexto/02-decisiones-abiertas.md`, punto A. Salida completa (no versionada) en `backend/ingestion/data/interim/canal_endemico_nacional_4zonas/`.
+> Resumen de una página de `backend/ingestion/corrida_canal_endemico_4zonas.py`. Continuación directa de `corrida_canal_endemico_nacional.py` (docs/clasificador-retirado/corrida-canal-endemico-nacional.md) — no reabre ninguno de sus parámetros. Exploratorio: no entrena nada, no decide el colapso a 3 clases que sigue abierto en `docs/contexto/02-decisiones-abiertas.md`, punto A. Salida completa (no versionada) en `backend/ingestion/data/interim/canal_endemico_nacional_4zonas/`.
 
 ## Método
 
