@@ -58,6 +58,10 @@ from .respiratorios import (
     semana_virus,
     serie_virus,
 )
+from .alertas import (
+    TIPOS_ALERTA,
+    consultar_alertas_publicas,
+)
 
 # Artefactos de la tarjeta 23/24 -- generados por
 # backend/ingestion/construir_dataset_modelado.py y entrenar_clasificador.py,
@@ -245,8 +249,12 @@ def _conexion():
 #     riesgo-nacional) recalculadas en cada request -- TTL más corto porque
 #     son las más caras y las que más se beneficiarían de un cambio de
 #     metodología sin esperar una hora completa de cache.
+#   - CACHE_TTL_ALERTAS: alertas de campo (ADR 0013). Las redacta y apaga
+#     el equipo a mano; el valor de la vista es "¿hay algo vigente ahora?".
+#     TTL corto para que un cambio se refleje en el minuto, no en la hora.
 CACHE_TTL_HISTORICO = 3600
 CACHE_TTL_COMPUTO = 900
+CACHE_TTL_ALERTAS = 60
 
 
 def _cache_control(response: Response, max_age: int) -> None:
@@ -1180,3 +1188,35 @@ def respiratorios_cobertura(response: Response):
     _cache_control(response, CACHE_TTL_HISTORICO)
     cobertura["disponible"] = True
     return cobertura
+
+
+# ---------------------------------------------------------------------------
+# Alertas de campo (ADR 0013). Decisiones humanas persistidas: no se
+# calculan desde M1–M3 ni desde el clasificador retirado. Solo lectura.
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/alertas")
+def alertas_publicas(response: Response, tipo: str | None = None):
+    """Lista alertas con activa=TRUE. Filtro opcional `tipo` (dengue |
+    respiratorio). Sin alta ni edición por HTTP."""
+    if tipo is not None and tipo not in TIPOS_ALERTA:
+        raise HTTPException(
+            status_code=422,
+            detail="El parámetro 'tipo' debe ser 'dengue' o 'respiratorio'.",
+        )
+    try:
+        with _conexion() as conn:
+            cuerpo = consultar_alertas_publicas(conn, tipo=tipo)
+    except Exception as exc:
+        # Contrato propio ({aviso, ultima_revision, alertas}); no se degrada
+        # a {disponible:false} como los endpoints respiratorios. Solo se
+        # distingue fallo de conexión (503) del resto (500).
+        status = 503 if _es_fallo_conexion(exc) else 500
+        raise HTTPException(
+            status_code=status,
+            detail="Error de conexión a la base de datos",
+        )
+
+    _cache_control(response, CACHE_TTL_ALERTAS)
+    return cuerpo

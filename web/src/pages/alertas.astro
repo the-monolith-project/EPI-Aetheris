@@ -1,0 +1,172 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { AVISO_HONESTIDAD_ALERTAS } from '../lib/vista-alertas';
+
+const tipoPedido = Astro.url.searchParams.get('tipo');
+const filtroDengue = tipoPedido === 'dengue';
+const filtroRespiratorio = tipoPedido === 'respiratorio';
+---
+
+<Layout title="EPI-Aetheris — Alertas de campo">
+  <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+    <header class="mb-8 max-w-3xl">
+      <p
+        class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+      >
+        Alertas de campo · redacción humana · datos históricos
+      </p>
+      <h1
+        class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
+      >
+        Alertas de campo
+      </h1>
+      <aside
+        data-aviso-honestidad
+        class="mt-4 rounded-2xl border border-border bg-surface p-4 font-sans text-sm leading-relaxed text-ink"
+      >
+        <p>
+          Herramienta académica en desarrollo (INSAMT, Equipo 4). Las alertas y
+          sus indicaciones las redacta manualmente el equipo de vigilancia del
+          proyecto a partir de datos públicos históricos (MINSAL, OpenDengue,
+          Open-Meteo).{' '}
+          <strong
+            >No sustituyen los lineamientos oficiales del MINSAL ni el criterio
+            clínico.</strong
+          >{' '}
+          No son tiempo real. La coexistencia temporal de eventos no demuestra causalidad.
+        </p>
+      </aside>
+      <p class="sr-only">{AVISO_HONESTIDAD_ALERTAS}</p>
+    </header>
+
+    <nav
+      class="mb-6 flex flex-wrap gap-2 font-sans text-sm"
+      aria-label="Filtrar alertas por tipo"
+    >
+      <a
+        href="/alertas"
+        data-filtro-tipo="todas"
+        aria-current={tipoPedido ? undefined : 'page'}
+        class:list={[
+          'rounded-full border px-3 py-1.5',
+          tipoPedido
+            ? 'border-border bg-surface'
+            : 'border-accent bg-accent text-accent-ink',
+        ]}>Todas</a
+      >
+      <a
+        href="/alertas?tipo=dengue"
+        data-filtro-tipo="dengue"
+        aria-current={filtroDengue ? 'page' : undefined}
+        class:list={[
+          'rounded-full border px-3 py-1.5',
+          filtroDengue
+            ? 'border-accent bg-accent text-accent-ink'
+            : 'border-border bg-surface',
+        ]}>Dengue</a
+      >
+      <a
+        href="/alertas?tipo=respiratorio"
+        data-filtro-tipo="respiratorio"
+        aria-current={filtroRespiratorio ? 'page' : undefined}
+        class:list={[
+          'rounded-full border px-3 py-1.5',
+          filtroRespiratorio
+            ? 'border-accent bg-accent text-accent-ink'
+            : 'border-border bg-surface',
+        ]}>Respiratorio</a
+      >
+    </nav>
+
+    <div data-alertas>
+      <p
+        data-alertas-carga
+        class="font-sans text-sm text-ink-muted"
+        role="status"
+      >
+        Cargando alertas…
+      </p>
+      <p
+        data-alertas-error
+        hidden
+        class="rounded-lg border border-secondary bg-secondary/25 p-3 font-sans text-sm text-ink"
+        role="status"
+      >
+        No se pudieron cargar las alertas.
+      </p>
+      <p
+        data-alertas-vacio
+        hidden
+        class="rounded-2xl border border-border bg-surface p-5 font-sans text-sm leading-relaxed text-ink"
+        role="status"
+      >
+        No hay alertas activas. Última revisión del equipo:
+      </p>
+      <div data-alertas-lista class="flex flex-col gap-4"></div>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import {
+    aplicarVistaAlertas,
+    type PayloadAlertas,
+    type PintarAlertas,
+  } from '../lib/vista-alertas';
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const root = document.querySelector<HTMLElement>('[data-alertas]');
+  if (root) {
+    const pintar: PintarAlertas = (payload) => {
+      aplicarVistaAlertas(root, payload);
+    };
+    (root as HTMLElement & { pintarAlertas?: PintarAlertas }).pintarAlertas =
+      pintar;
+
+    const tipoPedido = new URLSearchParams(window.location.search).get('tipo');
+    const tipo =
+      tipoPedido === 'dengue' || tipoPedido === 'respiratorio'
+        ? tipoPedido
+        : undefined;
+
+    const activo = 'border-accent bg-accent text-accent-ink';
+    const inactivo = 'border-border bg-surface';
+    document
+      .querySelectorAll<HTMLAnchorElement>('[data-filtro-tipo]')
+      .forEach((el) => {
+        const valor = el.getAttribute('data-filtro-tipo');
+        const esActivo =
+          (tipo === undefined && valor === 'todas') || valor === tipo;
+        el.setAttribute('aria-current', esActivo ? 'page' : 'false');
+        if (!esActivo) el.removeAttribute('aria-current');
+        el.className = `rounded-full border px-3 py-1.5 ${esActivo ? activo : inactivo}`;
+      });
+    const url = tipo
+      ? `${API_BASE}/api/alertas?tipo=${encodeURIComponent(tipo)}`
+      : `${API_BASE}/api/alertas`;
+
+    fetch(url)
+      .then(async (respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error(String(respuesta.status));
+        }
+        const datos: unknown = await respuesta.json();
+        if (
+          !datos ||
+          typeof datos !== 'object' ||
+          !Array.isArray((datos as PayloadAlertas).alertas)
+        ) {
+          throw new Error('contrato');
+        }
+        pintar(datos as PayloadAlertas);
+      })
+      .catch(() => {
+        const carga = root.querySelector<HTMLElement>('[data-alertas-carga]');
+        const error = root.querySelector<HTMLElement>('[data-alertas-error]');
+        if (carga) carga.hidden = true;
+        if (error) error.hidden = false;
+        root.setAttribute('data-cargado', '1');
+        root.setAttribute('data-estado', 'error');
+      });
+  }
+</script>

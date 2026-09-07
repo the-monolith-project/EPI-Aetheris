@@ -2,6 +2,15 @@
 
 > Todo lo marcado aquí está **cerrado / no negociable**. Respételo salvo instrucción explícita del usuario reabriéndolo. Para lo que sigue sin resolver, ver `02-decisiones-abiertas.md`. Para la evidencia empírica detrás de las decisiones de fuentes de datos, ver `03-fuentes-de-datos.md`.
 
+## Alertas de campo humanas (cerrado 2026-09-06)
+
+ADR 0013, migración `db/migrations/0009_alertas_de_campo.sql`, `GET /api/alertas`, página `/alertas`.
+
+- Una alerta es una **decisión humana persistida** (tipo, nivel, título, contexto, indicaciones, fuente, autor, vigencia, `activa`). No se calcula desde M1/M2/M3, el canal endémico ni el clasificador retirado.
+- Valores controlados: `tipo` = `dengue` | `respiratorio`; `nivel` = `informativo` | `atencion` | `intensificacion`. El equipo los asigna al emitir; no se recalculan.
+- Vista pública: solo `activa = TRUE`, filtro opcional `tipo`. Sin autenticación ni `POST`/`PUT` de administración en este alcance. La demo de Expotécnica se siembra en la propia migración, no regenerando `seed_datos_reales.sql` (ADR 0010).
+- Copy descriptivo. El aviso de honestidad de `/alertas` es estatuto visible, no tiempo real ni lineamiento MINSAL.
+
 ## Ingesta respiratoria: Neumonías + vigilancia virológica (cerrado 2026-08-28)
 
 Evidencia: `docs/exploraciones-respiratorias/exploracion-neumonias-boletines-minsal.md` y
