@@ -44,6 +44,12 @@
 </section>
 
 <script>
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderSinDato,
+  } from './estado-async';
+
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const ANIOS = ['2018', '2019', '2021', '2022', '2023'];
 
@@ -92,6 +98,10 @@
       const resp = await fetch(`${API_BASE}/api/respiratorios/cobertura`);
       if (!resp.ok) throw new Error('no ok');
       const d = await resp.json();
+      if (esNoDisponible(d)) {
+        renderSinDato(cuerpo, motivoNoDisponible(d));
+        return;
+      }
       const aviso = document.createElement('p');
       aviso.className = 'text-xs leading-relaxed text-ink-muted';
       aviso.textContent = `${d.aviso} Procedencia: ${d.procedencia}.`;

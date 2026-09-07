@@ -83,6 +83,12 @@
 </section>
 
 <script>
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderSinDato,
+  } from './estado-async';
+
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const VIRUS_DEFAULT = [
     'influenza',
@@ -150,6 +156,12 @@
     let catalogo: CatalogoItem[] = [];
     try {
       const datos = await jsonOk(`${API_BASE}/api/respiratorios/virus`);
+      if (esNoDisponible(datos)) {
+        error.classList.add('hidden');
+        aviso.textContent = '';
+        renderSinDato(heatmap, motivoNoDisponible(datos));
+        return;
+      }
       catalogo = datos.series;
       aviso.textContent = datos.aviso;
     } catch {
@@ -224,6 +236,11 @@
           const datos = await jsonOk(
             `${API_BASE}/api/respiratorios/temporal?virus=${encodeURIComponent(virus)}&metrica=${encodeURIComponent(metrica)}`,
           );
+          if (esNoDisponible(datos)) {
+            error.classList.add('hidden');
+            renderSinDato(heatmap, motivoNoDisponible(datos));
+            return;
+          }
           const etiqueta =
             virus === 'todos' ? 'Todos los virus / vigilancia total' : virus;
           seriesPorVirus[etiqueta] = datos.series;

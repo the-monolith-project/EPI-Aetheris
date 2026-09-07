@@ -141,4 +141,40 @@ test.describe('observatorio respiratorio', () => {
       'No se pudo cargar',
     );
   });
+
+  test('si la API responde disponible:false, se muestra el motivo y no un error de red', async ({
+    page,
+  }) => {
+    const motivo =
+      'Los datos de vigilancia de virus respiratorios no están disponibles en este despliegue (tabla ausente o sin filas).';
+    const cuerpo = JSON.stringify({
+      disponible: false,
+      motivo,
+      aviso: 'aviso de honestidad',
+    });
+    await page.route('**/api/respiratorios/cobertura', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: cuerpo,
+      }),
+    );
+    await page.route('**/api/respiratorios/virus', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: cuerpo,
+      }),
+    );
+    await page.goto('/respiratorio');
+    await expect(page.locator('[data-cob-cuerpo]')).toContainText(
+      'tabla ausente o sin filas',
+      { timeout: 15_000 },
+    );
+    await expect(page.locator('[data-cob-error]')).toBeHidden();
+    await expect(page.locator('[data-panel-virus]')).toContainText(
+      'tabla ausente o sin filas',
+    );
+    await expect(page.locator('[data-virus-error]')).toBeHidden();
+  });
 });

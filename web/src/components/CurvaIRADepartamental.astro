@@ -99,7 +99,12 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     DepartamentoIRA,
     RespuestaIraDepartamental,
   } from '../lib/tipos-analisis';
-  import { renderErrorFuente, renderSinDato } from './estado-async';
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderErrorFuente,
+    renderSinDato,
+  } from './estado-async';
 
   // [semana, valor|null]
   type Punto = [number, number | null];
@@ -312,10 +317,17 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
   ): Promise<Record<string, Punto[]>> {
     const resp = await fetch(`${API_BASE}${apiBase}/temporal/${codigo}`);
     if (!resp.ok) throw new Error('respuesta no OK');
-    const datos: RespuestaTemporal = await resp.json();
+    const datos = await resp.json();
+    if (esNoDisponible(datos)) {
+      throw Object.assign(new Error(motivoNoDisponible(datos)), {
+        noDisponible: true,
+        motivo: motivoNoDisponible(datos),
+      });
+    }
+    const cuerpo = datos as RespuestaTemporal;
     const series: Record<string, Punto[]> = {};
-    for (const anio of datos.anios) {
-      series[String(anio)] = datos.series[String(anio)] ?? [];
+    for (const anio of cuerpo.anios) {
+      series[String(anio)] = cuerpo.series[String(anio)] ?? [];
     }
     return series;
   }
@@ -362,8 +374,12 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     try {
       const resp = await fetch(`${API_BASE}${apiBase}/departamental`);
       if (!resp.ok) throw new Error('respuesta no OK');
-      const datos: RespuestaIraDepartamental = await resp.json();
-      departamentos = datos.departamentos;
+      const datos = await resp.json();
+      if (esNoDisponible(datos)) {
+        renderSinDato(contenedor, motivoNoDisponible(datos));
+        return;
+      }
+      departamentos = (datos as RespuestaIraDepartamental).departamentos;
     } catch {
       // Los <select> nunca llegaron a poblarse en este punto, así que
       // reintentar es volver a ejecutar iniciarSeccion sin duplicar opciones.
@@ -434,8 +450,19 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
           }
         }
         ultimoCsv = lineas.join('\n');
-      } catch {
-        renderErrorFuente(contenedor, () => void refrescar());
+      } catch (err) {
+        const noDisponible =
+          err instanceof Error &&
+          (err as Error & { noDisponible?: boolean }).noDisponible === true;
+        if (noDisponible) {
+          renderSinDato(
+            contenedor,
+            (err as Error & { motivo?: string }).motivo ??
+              motivoNoDisponible({ disponible: false }),
+          );
+        } else {
+          renderErrorFuente(contenedor, () => void refrescar());
+        }
         ultimoCsv = '';
       }
     };

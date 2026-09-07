@@ -14,6 +14,8 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
+from psycopg2 import InterfaceError, OperationalError
+from psycopg2.errors import UndefinedTable
 from psycopg2.pool import ThreadedConnectionPool
 
 from .analisis import (
@@ -49,7 +51,7 @@ from .neumonias import (
     cargar_neumonias_departamental,
     cargar_neumonias_departamento_temporal,
 )
-from .cobertura import cargar_cobertura
+from .cobertura import AVISO_COBERTURA, cargar_cobertura
 from .respiratorios import (
     AVISO_HONESTIDAD_VIRUS,
     listar_virus,
@@ -249,6 +251,60 @@ CACHE_TTL_COMPUTO = 900
 
 def _cache_control(response: Response, max_age: int) -> None:
     response.headers["Cache-Control"] = f"public, max-age={max_age}"
+
+
+# Degradación elegante (issue #84): tabla ausente / sin filas no es un
+# fallo de conexión. Mismo contrato que /api/riesgo-nacional (#72):
+# 200 { disponible: false, motivo } para que el frontend muestre un aviso
+# explícito. Un OperationalError/timeout sí es un problema de servicio.
+MOTIVO_VIRUS_AUSENTE = (
+    "Los datos de vigilancia de virus respiratorios no están disponibles "
+    "en este despliegue (tabla ausente o sin filas)."
+)
+MOTIVO_NEUMONIAS_AUSENTE = (
+    "Los datos de neumonías no están disponibles en este despliegue "
+    "(tabla ausente o sin filas)."
+)
+MOTIVO_COBERTURA_AUSENTE = (
+    "La cobertura del observatorio respiratorio no está disponible en "
+    "este despliegue (tabla ausente o sin filas)."
+)
+
+
+def _es_tabla_ausente(exc: BaseException) -> bool:
+    """True si Postgres reporta relación inexistente (SQLSTATE 42P01)."""
+    actual: BaseException | None = exc
+    vistos: set[int] = set()
+    while actual is not None and id(actual) not in vistos:
+        vistos.add(id(actual))
+        if isinstance(actual, UndefinedTable):
+            return True
+        if getattr(actual, "pgcode", None) == "42P01":
+            return True
+        actual = actual.__cause__ or actual.__context__
+    return False
+
+
+def _es_fallo_conexion(exc: BaseException) -> bool:
+    return isinstance(exc, (OperationalError, InterfaceError, TimeoutError))
+
+
+def _respuesta_no_disponible(response: Response, motivo: str, aviso: str) -> dict:
+    _cache_control(response, CACHE_TTL_HISTORICO)
+    return {"disponible": False, "motivo": motivo, "aviso": aviso}
+
+
+def _degradar_consulta(
+    exc: BaseException, response: Response, motivo: str, aviso: str
+) -> dict:
+    """UndefinedTable → 200 disponible=false. Conexión → 503. Resto → 500."""
+    if _es_tabla_ausente(exc):
+        return _respuesta_no_disponible(response, motivo, aviso)
+    status = 503 if _es_fallo_conexion(exc) else 500
+    raise HTTPException(
+        status_code=status,
+        detail="Error de conexión a la base de datos",
+    )
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -946,11 +1002,17 @@ def neumonias_departamental(response: Response):
     try:
         with _conexion() as conn:
             departamentos = cargar_neumonias_departamental(conn)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    except Exception as exc:
+        return _degradar_consulta(
+            exc, response, MOTIVO_NEUMONIAS_AUSENTE, AVISO_HONESTIDAD_NEUMONIAS
+        )
 
     _cache_control(response, CACHE_TTL_HISTORICO)
-    return {"departamentos": departamentos, "aviso": AVISO_HONESTIDAD_NEUMONIAS}
+    return {
+        "disponible": True,
+        "departamentos": departamentos,
+        "aviso": AVISO_HONESTIDAD_NEUMONIAS,
+    }
 
 
 @app.get("/api/neumonias/temporal/{departamento_id}")
@@ -972,11 +1034,14 @@ def neumonias_temporal_departamento(departamento_id: str, response: Response):
             cur.close()
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    except Exception as exc:
+        return _degradar_consulta(
+            exc, response, MOTIVO_NEUMONIAS_AUSENTE, AVISO_HONESTIDAD_NEUMONIAS
+        )
 
     _cache_control(response, CACHE_TTL_HISTORICO)
     return {
+        "disponible": True,
         "departamento_codigo": departamento_id,
         "departamento_nombre": nombre,
         "anios": sorted(serie.keys()),
@@ -1000,11 +1065,14 @@ def neumonias_heatmap(anio: int, response: Response):
     try:
         with _conexion() as conn:
             departamentos = cargar_heatmap_neumonias(conn, anio)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    except Exception as exc:
+        return _degradar_consulta(
+            exc, response, MOTIVO_NEUMONIAS_AUSENTE, AVISO_HONESTIDAD_NEUMONIAS
+        )
 
     _cache_control(response, CACHE_TTL_HISTORICO)
     return {
+        "disponible": True,
         "anio": anio,
         "unidad": "conteo_notificado",
         "departamentos": departamentos,
@@ -1018,11 +1086,23 @@ def respiratorios_virus(response: Response):
     try:
         with _conexion() as conn:
             series = listar_virus(conn)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    except Exception as exc:
+        return _degradar_consulta(
+            exc, response, MOTIVO_VIRUS_AUSENTE, AVISO_HONESTIDAD_VIRUS
+        )
+
+    if not series:
+        return _respuesta_no_disponible(
+            response, MOTIVO_VIRUS_AUSENTE, AVISO_HONESTIDAD_VIRUS
+        )
 
     _cache_control(response, CACHE_TTL_HISTORICO)
-    return {"series": series, "aviso": AVISO_HONESTIDAD_VIRUS, "granularidad": "nacional"}
+    return {
+        "disponible": True,
+        "series": series,
+        "aviso": AVISO_HONESTIDAD_VIRUS,
+        "granularidad": "nacional",
+    }
 
 
 @app.get("/api/respiratorios/temporal")
@@ -1034,8 +1114,10 @@ def respiratorios_temporal(response: Response, virus: str, metrica: str = "detec
     try:
         with _conexion() as conn:
             serie, unidad = serie_virus(conn, virus=virus, metrica=metrica)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    except Exception as exc:
+        return _degradar_consulta(
+            exc, response, MOTIVO_VIRUS_AUSENTE, AVISO_HONESTIDAD_VIRUS
+        )
     if not serie:
         raise HTTPException(
             status_code=404,
@@ -1047,6 +1129,7 @@ def respiratorios_temporal(response: Response, virus: str, metrica: str = "detec
 
     _cache_control(response, CACHE_TTL_HISTORICO)
     return {
+        "disponible": True,
         "virus": virus,
         "metrica": metrica,
         "unidad": unidad,
@@ -1067,11 +1150,14 @@ def respiratorios_semana(anio: int, semana: int, response: Response):
     try:
         with _conexion() as conn:
             filas = semana_virus(conn, anio=anio, semana=semana)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    except Exception as exc:
+        return _degradar_consulta(
+            exc, response, MOTIVO_VIRUS_AUSENTE, AVISO_HONESTIDAD_VIRUS
+        )
 
     _cache_control(response, CACHE_TTL_HISTORICO)
     return {
+        "disponible": True,
         "anio": anio,
         "semana": semana,
         "observaciones": filas,
@@ -1086,8 +1172,11 @@ def respiratorios_cobertura(response: Response):
     try:
         with _conexion() as conn:
             cobertura = cargar_cobertura(conn)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+    except Exception as exc:
+        return _degradar_consulta(
+            exc, response, MOTIVO_COBERTURA_AUSENTE, AVISO_COBERTURA
+        )
 
     _cache_control(response, CACHE_TTL_HISTORICO)
+    cobertura["disponible"] = True
     return cobertura
