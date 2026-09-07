@@ -323,6 +323,89 @@ const STACK = [
       {CIFRAS.join('  ·  ')}
     </p>
 
+    {
+      /* Enfoque dual (ADR 0014). Dos puertas, no un modo con estado: son
+      enlaces normales, así que un enlace compartido funciona igual para
+      cualquiera y no hay dos arquitecturas que mantener sincronizadas. */
+    }
+    <section class="mt-10" aria-labelledby="puertas-titulo">
+      <h2 id="puertas-titulo" class="sr-only">Por dónde entrar</h2>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <a
+          href="/alertas"
+          data-puerta="consulta"
+          class="card-elevated flex flex-col rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-accent/40 sm:p-6"
+        >
+          <p
+            class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+          >
+            Personal de salud
+          </p>
+          <p class="mt-1 font-display text-lg font-semibold text-ink">
+            Qué hay vigente y qué hacer
+          </p>
+          <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
+            Alertas de campo redactadas por el equipo de vigilancia, con
+            indicaciones para la unidad. Sirve en consulta, se puede imprimir y
+            queda disponible sin señal.
+          </p>
+          <span
+            class="mt-4 font-sans text-sm font-medium text-accent underline underline-offset-2"
+            >Ver alertas de campo</span
+          >
+        </a>
+
+        <a
+          href="/analisis"
+          data-puerta="analisis"
+          class="card-elevated flex flex-col rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-accent/40 sm:p-6"
+        >
+          <p
+            class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+          >
+            Investigación y datos
+          </p>
+          <p class="mt-1 font-display text-lg font-semibold text-ink">
+            Explorar las series
+          </p>
+          <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
+            Dengue, respiratorio e IRA por departamento, contra la propia
+            historia de cada uno. Mismos datos que expone la API pública.
+          </p>
+          <span
+            class="mt-4 font-sans text-sm font-medium text-accent underline underline-offset-2"
+            >Abrir herramientas de análisis</span
+          >
+        </a>
+      </div>
+    </section>
+
+    {
+      /* Tira de alertas vigentes: el estado que cambia, arriba del material
+      estático de presentación. Si el backend no responde, la sección entera
+      se oculta -- la landing no depende de la API para tener sentido. */
+    }
+    <section data-tira-alertas hidden class="mt-8">
+      <div class="rounded-2xl border border-border bg-secondary/20 p-5 sm:p-6">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 class="font-sans text-sm font-semibold text-ink">
+            Alertas de campo vigentes
+          </h2>
+          <a
+            href="/alertas"
+            class="font-sans text-sm font-medium text-accent underline underline-offset-2"
+            >Ver todas</a
+          >
+        </div>
+        <ul data-tira-alertas-lista class="mt-3 space-y-2"></ul>
+        <p class="mt-3 font-sans text-xs leading-relaxed text-ink-muted">
+          Redacción humana del equipo de vigilancia sobre datos públicos
+          históricos. No sustituye los lineamientos del MINSAL ni el criterio
+          clínico.
+        </p>
+      </div>
+    </section>
+
     <section class="mt-12 rounded-2xl bg-accent p-6 sm:p-8 lg:p-10">
       <p
         class="font-sans text-xs font-semibold uppercase tracking-wide text-white/60"
@@ -517,6 +600,50 @@ const STACK = [
     </section>
   </main>
 </Layout>
+
+<script>
+  import {
+    ETIQUETAS_NIVEL,
+    ETIQUETAS_TIPO,
+    type PayloadAlertas,
+  } from '../lib/vista-alertas';
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const seccion = document.querySelector<HTMLElement>('[data-tira-alertas]');
+  const lista = document.querySelector<HTMLElement>(
+    '[data-tira-alertas-lista]',
+  );
+
+  if (seccion && lista) {
+    fetch(`${API_BASE}/api/alertas`)
+      .then(async (respuesta) => {
+        if (!respuesta.ok) throw new Error(String(respuesta.status));
+        const datos = (await respuesta.json()) as PayloadAlertas;
+        if (!Array.isArray(datos.alertas) || datos.alertas.length === 0) return;
+
+        for (const alerta of datos.alertas.slice(0, 3)) {
+          const item = document.createElement('li');
+          item.className = 'font-sans text-sm leading-relaxed';
+          const enlace = document.createElement('a');
+          enlace.href = `/alertas?tipo=${encodeURIComponent(alerta.tipo)}#alerta-${alerta.id}`;
+          enlace.className = 'text-ink underline underline-offset-2';
+          // textContent, no innerHTML: el título lo redacta una persona y
+          // llega como texto plano desde la API.
+          enlace.textContent = alerta.titulo;
+          const etiqueta = document.createElement('span');
+          etiqueta.className =
+            'mr-2 font-semibold uppercase tracking-wide text-accent';
+          etiqueta.textContent = `${ETIQUETAS_TIPO[alerta.tipo] ?? alerta.tipo} · ${ETIQUETAS_NIVEL[alerta.nivel] ?? alerta.nivel}`;
+          item.append(etiqueta, enlace);
+          lista.appendChild(item);
+        }
+        seccion.hidden = false;
+      })
+      .catch(() => {
+        // Backend caído o dormido: la landing se queda sin la tira y ya.
+      });
+  }
+</script>
 
 <style>
   /* Entrada escalonada de los 14 departamentos — una sola vez al cargar,

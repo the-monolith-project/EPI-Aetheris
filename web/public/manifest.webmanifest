@@ -1,0 +1,19 @@
+{
+  "name": "EPI-Aetheris",
+  "short_name": "EPI-Aetheris",
+  "description": "Vigilancia epidemiológica descriptiva de dengue e IRA en El Salvador. Alertas de campo redactadas por el equipo. No es un diagnóstico ni un pronóstico.",
+  "lang": "es",
+  "start_url": "/alertas",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2a2a72",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

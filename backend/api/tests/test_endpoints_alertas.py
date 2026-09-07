@@ -42,6 +42,16 @@ CAMPOS_ALERTA = (
     "activa",
 )
 
+# Campos clínicos opcionales (ADR 0014). Siempre presentes en el JSON, pero
+# pueden venir en null mientras el equipo no los llene con fuente oficial.
+CAMPOS_CLINICOS_OPCIONALES = (
+    "signos_alarma",
+    "criterios_referencia",
+    "que_notificar",
+    "definicion_caso",
+    "contacto_vigilancia",
+)
+
 TITULO_DENGUE_ACTIVA = (
     "Casos probables de dengue por encima de años comparables en 2023"
 )
@@ -107,6 +117,21 @@ class AlertasApiTest(unittest.TestCase):
             self.assertTrue(alerta["vigente_desde"])
             self.assertTrue(alerta["contexto"])
             self.assertTrue(alerta["indicaciones"])
+
+    def test_campos_clinicos_opcionales_siempre_presentes(self):
+        """Contenedores del ADR 0014: la clave existe aunque el valor sea null.
+
+        El frontend decide mostrar u ocultar cada bloque según el valor; que
+        la clave falte sería un cambio de contrato, no un campo vacío.
+        """
+        r = self.client.get("/api/alertas")
+        self.assertEqual(r.status_code, 200)
+        alertas = r.json()["alertas"]
+        self.assertGreaterEqual(len(alertas), 1)
+        for alerta in alertas:
+            for campo in CAMPOS_CLINICOS_OPCIONALES:
+                self.assertIn(campo, alerta)
+                self.assertIsInstance(alerta[campo], (str, type(None)))
 
     def test_filtro_tipo_no_mezcla_dengue_con_respiratorio(self):
         r = self.client.get("/api/alertas", params={"tipo": "dengue"})

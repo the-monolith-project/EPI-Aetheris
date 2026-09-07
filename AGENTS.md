@@ -289,6 +289,22 @@ Antes de instalar una librería nueva, revisa si existe una decisión previa sob
 
 No introduzcas React, Vue u otro framework de componentes salvo decisión explícita del equipo.
 
+**Arquitectura de información (ADR 0014).** El sitio tiene dos caras —consulta
+(`/alertas`) y análisis (`/analisis`, que agrupa `/dengue`, `/respiratorio` e
+`/ira`)— pero **no** un interruptor de "modo": son secciones, sin estado
+persistido, y ninguna esconde a la otra. No agregues un toggle de enfoque en la
+barra. Ninguna vista se titula "hoy" ni "esta semana": la ventana cargada llega
+hasta 2023 y `regiones.nivel_admin = 2` (municipio) sigue reservado sin filas.
+
+**Service worker (`web/public/sw.js`).** Escrito a mano, sin dependencias.
+`GET /api/alertas` va **network-first** —una alerta ya apagada tiene
+consecuencia clínica— y lo servido desde cache se marca con `_desde_cache: true`
+en el cuerpo JSON para que `/alertas` muestre el sello de frescura. La marca va
+en el cuerpo y no en una cabecera porque la API es de otro origen y el navegador
+filtra por CORS las cabeceras propias; el backend nunca emite ese campo. No
+cambies la estrategia a cache-first ni quites el sello. Al desplegar, sube
+`VERSION` en `sw.js`.
+
 Al representar resultados epidemiológicos:
 
 * diferencia claramente datos descriptivos y salidas del modelo;
@@ -491,7 +507,7 @@ EPI-Aetheris es un sistema de vigilancia epidemiológica **descriptiva** (piloto
 - **M1 — Idoneidad biofísica (`Iv`)** y **M2 — Anomalía climática continua (Z-score leave-one-out)** — implementados en `backend/api/idoneidad.py`, servidos vía `GET /api/v1/spatial/current` y `/api/v1/temporal/{codigo}`. M2 es serie continua: sin alerta binaria, sin lenguaje de lead-time.
 - **M3 — Presión epidemiológica relativa** — implementado en `backend/api/presion.py` (fórmula **cerrada** por la coordinación 2026-08-21, `docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md`): percentil histórico leave-one-out por departamento, `probable` y `confirmado` como series **separadas** (nunca `total`), años base 2018/2019/2021/2022/2023, ventana ±1 semana, piso de ≥3 años, cortes P50/P75. Salida = percentil + lectura cualitativa (baja/media/alta), **nunca alerta binaria**; celdas insuficientes → `null` + nota. Vía `GET /api/v1/presion/current` y `/api/v1/presion/temporal/{codigo}`. No ajustes estos parámetros sin nueva decisión de la coordinación.
 - **M4 — Confianza de vigilancia** — no implementado, sin fórmula aprobada. No la inventes.
-- **Alertas de campo** — tabla `alertas` (ADR 0013, migración `0009`). Decisiones humanas persistidas; **no** se generan desde M1–M3 ni del clasificador. Solo `GET /api/alertas` (filas `activa=true`, filtro opcional `tipo`). UI en `/alertas`.
+- **Alertas de campo** — tabla `alertas` (ADR 0013, migración `0009`). Decisiones humanas persistidas; **no** se generan desde M1–M3 ni del clasificador. Solo `GET /api/alertas` (filas `activa=true`, filtro opcional `tipo`). UI en `/alertas`. Migración `0010` (ADR 0014) añade cinco columnas `TEXT` nulas — `definicion_caso`, `signos_alarma`, `criterios_referencia`, `que_notificar`, `contacto_vigilancia`: son **contenedores vacíos**, los llena el equipo con fuente MINSAL/OPS. No inventes texto clínico ni datos de contacto para rellenarlos.
 
 Nada de M1–M3 se persiste (se calcula on-request, sin cambios de esquema). El selector de capas del mapa (`web/src/components/MapaDepartamentos.astro`) tiene botones para M1/M2 y para las dos series de M3, y un placeholder deshabilitado para M4. IRA se sirve aparte (`backend/api/ira.py`, UI en `/ira`) y **no** computa módulos Camino Ancho. Las alertas de campo sí se persisten: las redacta el equipo, no un módulo.
 
