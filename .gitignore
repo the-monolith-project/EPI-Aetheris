@@ -65,7 +65,7 @@ DOCKER.mdar
 
 #temporales
 referencias_no_trakear/
-
+INDICACIONES_ALERTAS.md
 # Documentos legacy que no se versionan (síntesis históricas superadas por
 # docs/contexto/ y por AGENTS.md — se conservan localmente si hacen falta).
 CAMBIO_DE_ORIENTACION_CAMINO_ANCHO.md

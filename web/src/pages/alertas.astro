@@ -1,6 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { AVISO_HONESTIDAD_ALERTAS } from '../lib/vista-alertas';
+import {
+  AVISO_HONESTIDAD_ALERTAS,
+  ETIQUETAS_NIVEL,
+  NIVELES_ALERTA,
+  SIGNIFICADO_NIVEL,
+} from '../lib/vista-alertas';
 
 const tipoPedido = Astro.url.searchParams.get('tipo');
 const filtroDengue = tipoPedido === 'dengue';
@@ -37,6 +42,22 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
         </p>
       </aside>
       <p class="sr-only">{AVISO_HONESTIDAD_ALERTAS}</p>
+      <section
+        data-niveles-leyenda
+        class="mt-4 rounded-2xl border border-border bg-surface p-4 font-sans text-sm leading-relaxed text-ink"
+      >
+        <h2 class="font-sans text-sm font-semibold text-ink">Niveles</h2>
+        <dl class="mt-2 space-y-2">
+          {
+            NIVELES_ALERTA.map((clave) => (
+              <div data-nivel-leyenda={clave}>
+                <dt class="font-semibold">{ETIQUETAS_NIVEL[clave]}</dt>
+                <dd class="text-ink-muted">{SIGNIFICADO_NIVEL[clave]}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </section>
     </header>
 
     <nav

@@ -633,7 +633,12 @@ const STACK = [
           const etiqueta = document.createElement('span');
           etiqueta.className =
             'mr-2 font-semibold uppercase tracking-wide text-accent';
-          etiqueta.textContent = `${ETIQUETAS_TIPO[alerta.tipo] ?? alerta.tipo} · ${ETIQUETAS_NIVEL[alerta.nivel] ?? alerta.nivel}`;
+          const etiquetaNivel = (
+            alerta.nivel in ETIQUETAS_NIVEL
+              ? ETIQUETAS_NIVEL[alerta.nivel as keyof typeof ETIQUETAS_NIVEL]
+              : alerta.nivel
+          );
+          etiqueta.textContent = `${ETIQUETAS_TIPO[alerta.tipo] ?? alerta.tipo} · ${etiquetaNivel}`;
           item.append(etiqueta, enlace);
           lista.appendChild(item);
         }
