@@ -1,0 +1,28 @@
+# Imagen de produccion para Render. El contexto de build es la raiz del
+# repo (render.yaml: dockerContext: .) para poder copiar db/aplicar_migraciones.py
+# y db/migrations/ -- el preDeployCommand necesita esos archivos dentro de
+# la imagen, y no viven bajo backend/. docker-compose sigue usando
+# backend/Dockerfile con contexto ./backend; no mezclar los dos.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY backend/ .
+COPY db/aplicar_migraciones.py db/aplicar_migraciones.py
+COPY db/migrations/ db/migrations/
+
+RUN useradd --create-home --shell /bin/bash appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
