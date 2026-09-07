@@ -297,9 +297,12 @@ export function leerAlertasVistas(): Set<number> {
   }
 }
 
-export function guardarAlertasVistas(ids: number[]): void {
+export function guardarAlertasVistas(ids: Iterable<number>): void {
   try {
-    window.localStorage.setItem(CLAVE_VISTAS, JSON.stringify(ids));
+    window.localStorage.setItem(
+      CLAVE_VISTAS,
+      JSON.stringify([...new Set(ids)]),
+    );
   } catch {
     // Sin almacenamiento la vista sigue funcionando; solo se pierde el "Nueva".
   }

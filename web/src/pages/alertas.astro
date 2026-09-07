@@ -184,7 +184,10 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
       const vistas = leerAlertasVistas();
       const nuevas = calcularNuevas(payload.alertas, vistas);
       aplicarVistaAlertas(root, payload, nuevas);
-      guardarAlertasVistas(payload.alertas.map((a) => a.id));
+      // Union, no reemplazo: payload.alertas viene filtrado por `tipo`. Con
+      // reemplazo, entrar por /alertas?tipo=dengue borraría del historial las
+      // respiratorias ya vistas y al volver a /alertas saldrían como "Nueva".
+      guardarAlertasVistas([...vistas, ...payload.alertas.map((a) => a.id)]);
       // Ancla #alerta-<id> de un enlace compartido: las tarjetas se pintan
       // después de la carga, así que el salto nativo del navegador ya pasó.
       const ancla = window.location.hash.slice(1);
@@ -220,10 +223,16 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
         if (!respuesta.ok) {
           throw new Error(String(respuesta.status));
         }
-        // El service worker marca lo servido desde su cache con esta cabecera
-        // (ver web/public/sw.js); una respuesta de red no la trae.
-        marcarFrescura(respuesta.headers.get('X-EPI-Cache') === 'sw');
         const datos: unknown = await respuesta.json();
+        // El service worker marca lo servido desde su cache con `_desde_cache`
+        // en el cuerpo (ver web/public/sw.js). Va en el cuerpo y no en una
+        // cabecera porque la API es de otro origen y el navegador filtra por
+        // CORS las cabeceras propias. El backend nunca emite este campo.
+        marcarFrescura(
+          typeof datos === 'object' &&
+            datos !== null &&
+            (datos as { _desde_cache?: boolean })._desde_cache === true,
+        );
         if (
           !datos ||
           typeof datos !== 'object' ||

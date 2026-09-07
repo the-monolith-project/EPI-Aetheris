@@ -60,9 +60,17 @@ alerta que el equipo ya apagó tiene consecuencia clínica, así que la red
 siempre gana y el cache es último recurso.
 
 Cuando la respuesta sale del cache, el service worker la marca con
-`X-EPI-Cache: sw` y `/alertas` muestra "sin conexión — mostrando lo
-último guardado". El sello no es adorno: sin él, un dato guardado hace
-días se ve idéntico a uno recién traído.
+`_desde_cache: true` **en el cuerpo JSON** y `/alertas` muestra "sin
+conexión — mostrando lo último guardado". El sello no es adorno: sin él,
+un dato guardado hace días se ve idéntico a uno recién traído.
+
+La marca va en el cuerpo y no en una cabecera porque la API vive en otro
+origen: el navegador filtra por CORS las cabeceras que la página puede
+leer, y una cabecera propia puesta por el service worker llega pero es
+invisible — comprobado, ni siquiera añadiendo
+`Access-Control-Expose-Headers` a la respuesta sintética.
+`_desde_cache` es un marcador de transporte del service worker, no un
+campo del contrato de `/api/alertas`: el backend nunca lo emite.
 
 **4. Novedad, impresión y compartir, todo sin backend.**
 

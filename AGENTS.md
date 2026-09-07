@@ -298,9 +298,12 @@ hasta 2023 y `regiones.nivel_admin = 2` (municipio) sigue reservado sin filas.
 
 **Service worker (`web/public/sw.js`).** Escrito a mano, sin dependencias.
 `GET /api/alertas` va **network-first** —una alerta ya apagada tiene
-consecuencia clínica— y lo servido desde cache se marca `X-EPI-Cache: sw` para
-que `/alertas` muestre el sello de frescura. No cambies esa estrategia a
-cache-first ni quites el sello. Al desplegar, sube `VERSION` en `sw.js`.
+consecuencia clínica— y lo servido desde cache se marca con `_desde_cache: true`
+en el cuerpo JSON para que `/alertas` muestre el sello de frescura. La marca va
+en el cuerpo y no en una cabecera porque la API es de otro origen y el navegador
+filtra por CORS las cabeceras propias; el backend nunca emite ese campo. No
+cambies la estrategia a cache-first ni quites el sello. Al desplegar, sube
+`VERSION` en `sw.js`.
 
 Al representar resultados epidemiológicos:
 

@@ -39,6 +39,43 @@ test('solo las alertas no vistas se marcan como nuevas', () => {
   expect([...nuevas].sort()).toEqual([2, 3]);
 });
 
+test('filtrar por tipo no borra del historial las alertas del otro tipo', async ({
+  page,
+}) => {
+  // Repro de un clic: /alertas guarda las dos, el chip "Dengue" recarga con
+  // la lista filtrada, y al volver a /alertas la respiratoria no debe salir
+  // marcada como nueva. El historial se une, no se reemplaza.
+  await page.goto('/alertas');
+  await expect(page.locator('[data-alertas]')).toHaveAttribute(
+    'data-cargado',
+    '1',
+    { timeout: 15_000 },
+  );
+  const todas = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('epi-aetheris:alertas-vistas') ?? '[]'),
+  );
+  expect(todas.length).toBeGreaterThan(1);
+
+  await page.goto('/alertas?tipo=dengue');
+  await expect(page.locator('[data-alertas]')).toHaveAttribute(
+    'data-cargado',
+    '1',
+    { timeout: 15_000 },
+  );
+  const trasFiltro = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('epi-aetheris:alertas-vistas') ?? '[]'),
+  );
+  for (const id of todas) expect(trasFiltro).toContain(id);
+
+  await page.goto('/alertas');
+  await expect(page.locator('[data-alertas]')).toHaveAttribute(
+    'data-cargado',
+    '1',
+    { timeout: 15_000 },
+  );
+  await expect(page.locator('[data-alerta-nueva]')).toHaveCount(0);
+});
+
 test('la barra no ofrece un interruptor de enfoque y agrupa el análisis', async ({
   page,
 }) => {
@@ -122,4 +159,44 @@ test('los campos clínicos en null no dejan bloques vacíos en la tarjeta', asyn
   await expect(
     page.locator('[data-alerta]').first().locator('[data-alerta-compartir]'),
   ).toBeVisible();
+});
+
+test('/alertas abre sin conexión desde el cache del service worker', async ({
+  page,
+  context,
+}) => {
+  // El item que se justificó por consecuencia clínica: si el cache no sirve
+  // /alertas sin red, el sello de frescura nunca se dispara y la función no
+  // existe. Se verifica de verdad, no por construcción.
+  await page.goto('/alertas');
+  await expect(page.locator('[data-alertas]')).toHaveAttribute(
+    'data-cargado',
+    '1',
+    { timeout: 15_000 },
+  );
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  // El SW confirma que ya guardó los subrecursos de esta página.
+  await expect(page.locator('html')).toHaveAttribute('data-sw-listo', '1', {
+    timeout: 15_000,
+  });
+
+  // context.setOffline no alcanza al service worker (corre en otro contexto y
+  // sigue llegando a la red). Se corta la API a nivel de contexto, que sí
+  // intercepta las peticiones que origina el worker.
+  await context.route('**/api/alertas*', (ruta) => ruta.abort());
+  await page.reload();
+  await expect(page.locator('[data-alertas]')).toHaveAttribute(
+    'data-cargado',
+    '1',
+    { timeout: 15_000 },
+  );
+  await expect(page.locator('[data-sello-frescura]')).toHaveAttribute(
+    'data-desde-cache',
+    '1',
+  );
+  await expect(page.locator('[data-sello-frescura]')).toContainText(
+    'Sin conexión',
+  );
+  await expect(page.locator('[data-alerta]').first()).toBeVisible();
+  await context.unroute('**/api/alertas*');
 });
