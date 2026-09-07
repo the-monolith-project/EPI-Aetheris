@@ -21,6 +21,8 @@ AVISO_HONESTIDAD_NEUMONIAS = (
 
 
 def cargar_neumonias_departamental(conn) -> list[dict]:
+    # count(c.id) y no count(*): el LEFT JOIN sin coincidencias deja una
+    # fila con c.* = NULL; count(*) la cuenta como 1 (fila fantasma, issue #84).
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -28,7 +30,7 @@ def cargar_neumonias_departamental(conn) -> list[dict]:
                 r.nombre,
                 r.codigo,
                 sum(c.conteo) AS notificado_total,
-                count(*) AS semanas_con_dato,
+                count(c.id) AS semanas_con_dato,
                 min(c.anio) AS primer_anio,
                 max(c.anio) AS ultimo_anio
             FROM regiones r
