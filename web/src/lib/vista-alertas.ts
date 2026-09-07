@@ -9,11 +9,36 @@ export const ETIQUETAS_TIPO: Record<TipoAlerta, string> = {
   respiratorio: 'Respiratorio',
 };
 
-export const ETIQUETAS_NIVEL: Record<string, string> = {
+export const NIVELES_ALERTA = [
+  'informativo',
+  'atencion',
+  'intensificacion',
+] as const;
+export type NivelAlerta = (typeof NIVELES_ALERTA)[number];
+
+export const ETIQUETAS_NIVEL: Record<NivelAlerta, string> = {
   informativo: 'Informativo',
   atencion: 'Atención',
   intensificacion: 'Intensificación',
 };
+
+/** Significado operativo de cada nivel (INDICACIONES_ALERTAS.md §4). */
+export const SIGNIFICADO_NIVEL: Record<NivelAlerta, string> = {
+  informativo:
+    'Sin señal relevante en los datos. Recordatorio de vigilancia rutinaria.',
+  atencion:
+    'Los datos históricos recientes están por encima de lo esperado para la época. Reforzar notificación y búsqueda de casos.',
+  intensificacion:
+    'Señal sostenida varias semanas y/o concentración territorial. Activar medidas locales y coordinar con SIBASI.',
+};
+
+export function esNivelAlerta(valor: string): valor is NivelAlerta {
+  return (NIVELES_ALERTA as readonly string[]).includes(valor);
+}
+
+export function textoSignificadoNivel(nivel: string): string {
+  return esNivelAlerta(nivel) ? SIGNIFICADO_NIVEL[nivel] : '';
+}
 
 export interface AlertaPublica {
   id: number;
@@ -139,7 +164,10 @@ function pintarTarjeta(alerta: AlertaPublica, esNueva = false): HTMLElement {
   articulo.id = `alerta-${alerta.id}`;
 
   const tipo = ETIQUETAS_TIPO[alerta.tipo] ?? alerta.tipo;
-  const nivel = ETIQUETAS_NIVEL[alerta.nivel] ?? alerta.nivel;
+  const nivel = esNivelAlerta(alerta.nivel)
+    ? ETIQUETAS_NIVEL[alerta.nivel]
+    : alerta.nivel;
+  const significadoNivel = textoSignificadoNivel(alerta.nivel);
   const modulo = rutaModulo(alerta.tipo);
 
   const encabezado = document.createElement('header');
@@ -154,6 +182,11 @@ function pintarTarjeta(alerta: AlertaPublica, esNueva = false): HTMLElement {
           : ''
       }
     </p>
+    ${
+      significadoNivel
+        ? `<p class="mt-1 font-sans text-sm text-ink-muted" data-alerta-nivel-significado>${escapeHtml(significadoNivel)}</p>`
+        : ''
+    }
     <h2 class="mt-1 font-display text-xl font-semibold text-ink" data-alerta-titulo></h2>
     <p class="mt-2 font-sans text-sm text-ink-muted">
       Emisión: <time data-alerta-emision datetime="${escapeHtml(alerta.vigente_desde)}">${escapeHtml(formatearFechaIso(alerta.vigente_desde))}</time>
