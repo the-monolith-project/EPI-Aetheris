@@ -21,7 +21,9 @@ AVISO_HONESTIDAD_ALERTAS = (
 
 _COLUMNAS = (
     "id, tipo, nivel, titulo, contexto, indicaciones, fuente, autor, "
-    "vigente_desde, vigente_hasta, activa"
+    "vigente_desde, vigente_hasta, activa, "
+    "signos_alarma, criterios_referencia, que_notificar, "
+    "definicion_caso, contacto_vigilancia"
 )
 
 
@@ -44,6 +46,11 @@ def _fila_publica(fila: tuple) -> dict:
         vigente_desde,
         vigente_hasta,
         activa,
+        signos_alarma,
+        criterios_referencia,
+        que_notificar,
+        definicion_caso,
+        contacto_vigilancia,
     ) = fila
     return {
         "id": int(ident),
@@ -57,6 +64,13 @@ def _fila_publica(fila: tuple) -> dict:
         "vigente_desde": _iso(vigente_desde),
         "vigente_hasta": _iso(vigente_hasta),
         "activa": bool(activa),
+        # Campos clínicos opcionales (ADR 0014). NULL en BD -> None en el JSON;
+        # el frontend omite el bloque cuando el valor es None.
+        "signos_alarma": signos_alarma,
+        "criterios_referencia": criterios_referencia,
+        "que_notificar": que_notificar,
+        "definicion_caso": definicion_caso,
+        "contacto_vigilancia": contacto_vigilancia,
     }
 
 
