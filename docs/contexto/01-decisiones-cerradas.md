@@ -2,6 +2,17 @@
 
 > Todo lo marcado aquí está **cerrado / no negociable**. Respételo salvo instrucción explícita del usuario reabriéndolo. Para lo que sigue sin resolver, ver `02-decisiones-abiertas.md`. Para la evidencia empírica detrás de las decisiones de fuentes de datos, ver `03-fuentes-de-datos.md`.
 
+## Enfoque dual panorama/análisis (cerrado 2026-09-07)
+
+ADR 0014, migración `db/migrations/0010_alertas_campos_clinicos.sql`, página `/analisis`, `web/public/sw.js`.
+
+- **No hay interruptor de "modo" en la barra.** Las dos caras del sitio son secciones de una sola arquitectura de información, no un estado que la persona alterna: un modo no se descubre, se olvida, y hace que el mismo enlace compartido abra distinto según quién lo reciba. Navegación: `Inicio · Alertas · Análisis · Biblioteca · Sugerencias`, con `/dengue`, `/respiratorio` e `/ira` agrupados bajo `/analisis`. Ninguna cara esconde a la otra.
+- La portada ofrece dos puertas ("Personal de salud" → `/alertas`, "Investigación y datos" → `/analisis`) que son **enlaces normales, sin estado persistido**, más una tira de alertas vigentes que se oculta sola si el backend no responde.
+- Los cinco campos clínicos de `alertas` (`definicion_caso`, `signos_alarma`, `criterios_referencia`, `que_notificar`, `contacto_vigilancia`) son **contenedores opcionales**: la API expone siempre la clave, el valor puede ser `null`, y la vista omite el bloque vacío. El contenido lo redacta y carga el equipo con fuente MINSAL/OPS atribuida — texto clínico y datos de contacto reales no se inventan.
+- El cache offline es **network-first para `GET /api/alertas`** (una alerta ya apagada tiene consecuencia clínica; la red siempre gana) y stale-while-revalidate para el shell. Toda respuesta servida desde cache se marca `X-EPI-Cache: sw` y la vista muestra el sello "sin conexión — mostrando lo último guardado". El sello no es opcional. Al desplegar hay que subir `VERSION` en `sw.js`.
+- **Sin superficie de escritura nueva.** No hay formulario de feedback propio ni `POST` de alertas; el feedback sigue por GitHub Issues vía `/sugerencias`.
+- Ninguna vista se titula "hoy" ni "esta semana": la ventana cargada llega hasta 2023 y `regiones.nivel_admin = 2` (municipio) sigue reservado sin filas.
+
 ## Alertas de campo humanas (cerrado 2026-09-06)
 
 ADR 0013, migración `db/migrations/0009_alertas_de_campo.sql`, `GET /api/alertas`, página `/alertas`.
