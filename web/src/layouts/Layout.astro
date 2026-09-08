@@ -39,8 +39,7 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
     etiqueta: 'Análisis',
     rutas: ['/analisis', '/dengue', '/respiratorio'],
   },
-  // Selección curada de docs/ y docs/adr/ del repo, renderizada a HTML --
-  // ver web/src/content.config.ts para qué documentos entran y por qué.
+  // Documentos propios en docs/biblioteca/ (ADR 0016).
   { href: '/biblioteca', etiqueta: 'Biblioteca' },
   // Sin backend: la página solo enruta a GitHub Issues del repo. Recibir
   // sugerencias con formulario propio exigiría tabla nueva + ADR y guardar
