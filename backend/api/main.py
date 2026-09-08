@@ -128,6 +128,11 @@ RATE_LIMIT_DEFAULT = os.getenv("RATE_LIMIT_DEFAULT", "120/minute")
 # Umbral mas estricto para los endpoints que recalculan on-demand desde CSV +
 # modelo joblib y abren una conexion nueva a Postgres por request.
 RATE_LIMIT_HEAVY = os.getenv("RATE_LIMIT_HEAVY", "30/minute")
+# Escritura de alertas (POST/PATCH): operacion humana de baja frecuencia.
+# Mas estricto que el global; configurable por env igual que los otros dos.
+# El valor se lee en import para que los tests puedan bajarlo via
+# monkeypatch + importlib.reload (un literal en el decorador lo romperia).
+RATE_LIMIT_WRITE = os.getenv("RATE_LIMIT_WRITE", "10/minute")
 
 limiter = Limiter(
     key_func=_client_ip,
@@ -157,7 +162,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_methods=["GET", "POST", "PATCH", "HEAD", "OPTIONS"],
-    allow_headers=["*"],
+    # Lista explicita: el formulario de /alertas/nueva manda Authorization
+    # (Bearer) y Content-Type (JSON). Un comodín aqui no es necesario y
+    # oculta que cabeceras reales acepta el preflight.
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Las respuestas grandes de esta API son series históricas completas en JSON
@@ -328,6 +336,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # La API no usa geolocalizacion, camara, microfono ni pagos; negarlas
+        # no cambia el contrato JSON y cubre clientes que si interpretan la
+        # cabecera (p.ej. si /docs se abre en un navegador).
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), camera=(), microphone=(), payment=()"
+        )
         # Allow inline styles/scripts and jsdelivr to ensure FastAPI Swagger UI works.
         response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com"
         return response
@@ -1259,7 +1274,9 @@ def alertas_publicas(
 
 
 @app.post("/api/alertas", status_code=201)
+@limiter.limit(RATE_LIMIT_WRITE)
 def alertas_crear(
+    request: Request,
     cuerpo: AlertaCrear,
     response: Response,
     authorization: str | None = Header(default=None),
@@ -1279,8 +1296,10 @@ def alertas_crear(
 
 
 @app.patch("/api/alertas/{alerta_id}")
+@limiter.limit(RATE_LIMIT_WRITE)
 def alertas_parchear(
     alerta_id: int,
+    request: Request,
     cuerpo: AlertaParche,
     response: Response,
     authorization: str | None = Header(default=None),
