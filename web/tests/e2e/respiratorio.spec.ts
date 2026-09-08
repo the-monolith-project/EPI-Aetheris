@@ -62,11 +62,8 @@ test.describe('observatorio respiratorio', () => {
     await expect(toggles).not.toContainText('influenza_b');
   });
 
-  test('/ira redirige al observatorio y la curva admite año y rango SE', async ({
-    page,
-  }) => {
-    await page.goto('/ira');
-    await expect(page).toHaveURL(/\/respiratorio/);
+  test('la curva de neumonías admite año y rango SE', async ({ page }) => {
+    await page.goto('/respiratorio#neumonias');
     const curva = page.locator('#neumonias [data-curva-evento="neumonias"]');
     // Neumonías sí está cargada en esta base; IRA puede estar vacía.
     await expect(curva.locator('svg')).toBeVisible({ timeout: 20_000 });

@@ -10,7 +10,7 @@
 > `casos_epidemiologicos` (2018-2023 sin 2020, 14 departamentos), servidas
 > descriptivamente por `GET /api/ira/departamental` y
 > `GET /api/ira/temporal/{departamento_codigo}` (`backend/api/ira.py`) y
-> consumidas por la página `/ira` del frontend. La evidencia empírica que lo
+> consumidas por la sección IRA de `/respiratorio` en el frontend. La evidencia empírica que lo
 > sustenta está en `docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md` (corrida
 > exploratoria `backend/ingestion/corrida_ira.py`, 2026-08-21).
 

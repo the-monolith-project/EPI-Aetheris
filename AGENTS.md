@@ -292,8 +292,9 @@ Antes de instalar una librería nueva, revisa si existe una decisión previa sob
 No introduzcas React, Vue u otro framework de componentes salvo decisión explícita del equipo.
 
 **Arquitectura de información (ADR 0014).** El sitio tiene dos caras —consulta
-(`/alertas`) y análisis (`/analisis`, que agrupa `/dengue`, `/respiratorio` e
-`/ira`)— pero **no** un interruptor de "modo": son secciones, sin estado
+(`/alertas`) y análisis (`/analisis`, que agrupa `/dengue` y `/respiratorio`;
+IRA y neumonías son secciones de `/respiratorio`)— pero **no** un interruptor de
+"modo": son secciones, sin estado
 persistido, y ninguna esconde a la otra. No agregues un toggle de enfoque en la
 barra. Ninguna vista se titula "hoy" ni "esta semana": la ventana cargada llega
 hasta 2023 y `regiones.nivel_admin = 2` (municipio) sigue reservado sin filas.

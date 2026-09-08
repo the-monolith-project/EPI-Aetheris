@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 
 // Índice de las herramientas descriptivas (ADR 0014). Existe para que la
-// puerta de entrada del sitio pueda ser el panorama sin que las tres vistas
+// puerta de entrada del sitio pueda ser el panorama sin que las dos vistas
 // de análisis pierdan un lugar propio y estable en la navegación. No calcula
 // nada: solo enruta y repite el estatuto (descriptivo, nunca predictivo).
 
@@ -19,14 +19,7 @@ const HERRAMIENTAS = [
     titulo: 'Respiratorio',
     estado: 'Sin capas Camino Ancho',
     texto:
-      'Neumonías notificadas por departamento y vigilancia laboratorial nacional de virus (muestras y detecciones, no casos). Las fórmulas de idoneidad, anomalía y presión siguen cerradas solo a dengue: no se reutilizan aquí sin validación propia.',
-  },
-  {
-    href: '/ira',
-    titulo: 'IRA',
-    estado: 'Serie notificada',
-    texto:
-      'Infección respiratoria aguda notificada por departamento (ADR 0011). Serie publicada acumulada desde la semana 1 y desacumulada por diferencia entre cortes consecutivos.',
+      'Neumonías e infección respiratoria aguda (IRA) notificadas por departamento (ADR 0011), más vigilancia laboratorial nacional de virus (muestras y detecciones). Cada serie conserva su unidad.',
   },
 ];
 
@@ -40,7 +33,7 @@ const COMO_LEER = [
 
 <Layout
   title="EPI-Aetheris — Análisis"
-  descripcion="Herramientas descriptivas de EPI-Aetheris: dengue, respiratorio e IRA por departamento, sobre datos públicos históricos."
+  descripcion="Herramientas descriptivas de EPI-Aetheris: dengue y respiratorio por departamento, sobre datos públicos históricos."
 >
   <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
     <header class="max-w-3xl">
@@ -55,7 +48,7 @@ const COMO_LEER = [
         Análisis
       </h1>
       <p class="mt-3 font-sans text-base leading-relaxed text-ink-muted">
-        Las tres vistas descriptivas del sistema. Si lo que buscás es qué hacer
+        Las dos vistas descriptivas del sistema. Si lo que buscás es qué hacer
         hoy en la unidad de salud, la sección de
         <a
           href="/alertas"
@@ -65,7 +58,7 @@ const COMO_LEER = [
       </p>
     </header>
 
-    <div class="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
       {
         HERRAMIENTAS.map((h) => (
           <a

@@ -23,21 +23,21 @@ const ruta = Astro.url.pathname;
 const urlCanonica = new URL(ruta, Astro.site);
 // Nav de dos caras (ADR 0014). No es un "modo" con estado: son secciones, y
 // ninguna esconde a la otra. Arriba queda lo que sirve en consulta
-// (Alertas); las tres herramientas descriptivas se agrupan bajo /analisis en
+// (Alertas); las dos herramientas descriptivas se agrupan bajo /analisis en
 // vez de ocupar una entrada cada una. `rutas` marca qué prefijos encienden
-// la entrada -- /dengue, /respiratorio e /ira viven bajo Análisis aunque su
+// la entrada -- /dengue y /respiratorio viven bajo Análisis aunque su
 // URL no empiece con /analisis.
 const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
   { href: '/', etiqueta: 'Inicio' },
   // Puente vigilancia -> personal de salud (ADR 0013): decisiones humanas.
   { href: '/alertas', etiqueta: 'Alertas' },
   // Índice de las herramientas descriptivas. Dengue lleva Camino Ancho
-  // completo; respiratorio e IRA (ADR 0011, aceptado 2026-08-22) van sin
-  // capas Iv/anomalía/presión -- esas fórmulas siguen cerradas solo a dengue.
+  // completo; respiratorio (neumonías, IRA y virus, ADR 0011) va sin capas
+  // Iv/anomalía/presión -- esas fórmulas siguen cerradas solo a dengue.
   {
     href: '/analisis',
     etiqueta: 'Análisis',
-    rutas: ['/analisis', '/dengue', '/respiratorio', '/ira'],
+    rutas: ['/analisis', '/dengue', '/respiratorio'],
   },
   // Selección curada de docs/ y docs/adr/ del repo, renderizada a HTML --
   // ver web/src/content.config.ts para qué documentos entran y por qué.

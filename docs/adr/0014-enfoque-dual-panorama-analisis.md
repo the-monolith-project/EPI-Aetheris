@@ -29,7 +29,7 @@ intensivos de la cara de análisis.
 **1. Dos caras como secciones, no como modo.**
 
 La navegación pasa a `Inicio · Alertas · Análisis · Biblioteca ·
-Sugerencias`. `/dengue`, `/respiratorio` e `/ira` se agrupan bajo un
+Sugerencias`. `/dengue` y `/respiratorio` se agrupan bajo un
 índice nuevo, `/analisis`, en vez de ocupar una entrada cada una.
 Ninguna cara esconde a la otra y no hay estado persistido: un enlace
 compartido se comporta igual para cualquiera.

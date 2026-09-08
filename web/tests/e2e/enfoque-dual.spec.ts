@@ -106,7 +106,7 @@ test('la portada ofrece dos puertas que son enlaces sin estado', async ({
   await expect(analisis).toHaveJSProperty('tagName', 'A');
 });
 
-test('/analisis enlaza las tres herramientas y no promete tiempo real', async ({
+test('/analisis enlaza las dos herramientas y no promete tiempo real', async ({
   page,
 }) => {
   await page.goto('/analisis');
@@ -114,7 +114,7 @@ test('/analisis enlaza las tres herramientas y no promete tiempo real', async ({
   await expect(
     page.locator('[data-herramienta="/respiratorio"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-herramienta="/ira"]')).toBeVisible();
+  await expect(page.locator('[data-herramienta="/ira"]')).toHaveCount(0);
   await expect(page.locator('main')).toContainText(
     'Las series son históricas, no de tiempo real',
   );
