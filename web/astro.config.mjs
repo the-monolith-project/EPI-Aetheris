@@ -32,8 +32,8 @@ export default defineConfig({
       // 400 cuerpo · 500 font-medium · 600 font-semibold · 700 monograma.
       weights: [400, 500, 600, 700],
       display: 'swap',
-      // Sin restringir `styles`: /biblioteca renderiza markdown de docs/ y
-      // puede contener <em>; se conserva la itálica real de Inter.
+      // Sin restringir `styles`: /biblioteca renderiza markdown y puede
+      // contener <em>; se conserva la itálica real de Inter.
       fallbacks: ['Arial', 'sans-serif'],
     },
     {

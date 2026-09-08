@@ -1,24 +1,22 @@
 import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
+import { z } from 'astro/zod';
 
-// Selección curada de docs/ del repo -- la fuente de verdad sigue siendo
-// docs/ (no se duplica contenido, esto solo lee esos .md en build). Curada
-// a propósito: docs/ tiene 40+ archivos escritos para el equipo (corridas
-// experimentales, ADR internos de columnas), no todos sirven para alguien
-// externo (estudiante/investigador) que se topa con el proyecto y quiere
-// entender qué es y por qué se tomaron las decisiones clave. Ver ORDEN_BIBLIOTECA
-// en web/src/pages/biblioteca/index.astro para agregar/quitar documentos.
+// Documentos propios de la Biblioteca pública (docs/biblioteca/), escritos
+// para un lector externo. La documentación interna del equipo (docs/contexto/,
+// docs/adr/, corridas) no alimenta esta colección: se sintetiza, no se
+// reutiliza cruda. Orden, título, descripción y agrupación salen del
+// frontmatter -- no hay un array paralelo en las páginas.
 const biblioteca = defineCollection({
   loader: glob({
-    pattern: [
-      'rescate-prediccion/informe-cierre-rescate-prediccion.md',
-      'experimentos/experimento-validacion-leadtime-camino-ancho.md',
-      'modulos-camino-ancho/modulo-3-presion-epidemiologica.md',
-      'adr/0005-clasificacion-total-opendengue.md',
-      'adr/0010-versionar-volcado-de-datos-reales.md',
-      'adr/0011-clasificacion-ira-departamental.md',
-    ],
-    base: new URL('../../docs', import.meta.url),
+    pattern: '*.md',
+    base: new URL('../../docs/biblioteca', import.meta.url),
+  }),
+  schema: z.object({
+    titulo: z.string(),
+    descripcion: z.string(),
+    orden: z.number(),
+    categoria: z.string().optional(),
   }),
 });
 
