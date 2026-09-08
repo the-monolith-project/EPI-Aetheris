@@ -104,15 +104,12 @@ test('la portada ofrece dos puertas que son enlaces sin estado', async ({
   // Enlaces, no botones: un enlace compartido abre igual para cualquiera.
   await expect(consulta).toHaveJSProperty('tagName', 'A');
   await expect(analisis).toHaveJSProperty('tagName', 'A');
-  const m4 = page.locator('main').getByText('Confianza de vigilancia');
+  // M4 pasó a estado Activo con el rename de #114 (antes «Confianza de
+  // vigilancia», En desarrollo).
+  const m4 = page.locator('main').getByText('Integridad de la vigilancia');
   await expect(m4).toBeVisible();
-  await expect(page.locator('main')).toContainText('Próximamente');
   await expect(page.locator('main')).toContainText(
-    'Va a mostrar qué tan completa es la cobertura de reporte',
-  );
-  await expect(page.locator('main')).not.toContainText('fórmula aprobada');
-  await expect(page.locator('main')).not.toContainText(
-    'Fórmula todavía no definida',
+    'Tres hechos verificables sobre la calidad del dato',
   );
 });
 
