@@ -223,6 +223,26 @@ def agregar_a_semana(puntos: list[PuntoDiario],
     return grupos
 
 
+DIAS_MINIMOS_SEMANA = 5
+# Una semana epidemiologica con menos de este numero de dias observados se
+# descarta en vez de agregarse. El reanalisis ERA5 no cubre los ~5 dias mas
+# recientes (ADR 0018), asi que la semana de cola de una corrida al anio en
+# curso queda parcial. Para variables de suma (precipitacion) una semana
+# parcial es indistinguible aguas abajo de una semana genuinamente seca, y
+# alimenta el Iv/anomalia de /api/v1/spatial/current y el baseline
+# leave-one-out del Modulo 2. Mismo criterio que experimento_multipais.py.
+
+
+def descartar_semanas_incompletas(
+    grupos: dict[tuple[str, int, int, str], list[float]],
+    minimo: int = DIAS_MINIMOS_SEMANA,
+) -> tuple[dict[tuple[str, int, int, str], list[float]], int]:
+    """Filtra los grupos (depto, anio, semana, variable) con menos de `minimo`
+    observaciones diarias. Devuelve (grupos_completos, n_descartados)."""
+    completos = {k: v for k, v in grupos.items() if len(v) >= minimo}
+    return completos, len(grupos) - len(completos)
+
+
 def fecha_fin_archivo(anio_fin: int, hoy: date | None = None) -> date:
     """Tope del archive ERA5: no pide un 31 de diciembre futuro.
 
@@ -272,6 +292,13 @@ def cargar(anio_inicio: int, anio_fin: int) -> int:
     try:
         mapa_fecha_a_semana = construir_mapa_fecha_a_semana(conn)
         grupos = agregar_a_semana(puntos, mapa_fecha_a_semana)
+        grupos, incompletas = descartar_semanas_incompletas(grupos)
+        if incompletas:
+            print(
+                f"{incompletas} grupos depto-semana-variable descartados por tener "
+                f"<{DIAS_MINIMOS_SEMANA} dias observados (semana de cola parcial / "
+                f"rezago ERA5); no se agregan para no contaminar el baseline."
+            )
 
         with conn.cursor() as cur:
             cur.execute("SELECT codigo, id FROM regiones WHERE nivel_admin = 1")
