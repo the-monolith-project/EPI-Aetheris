@@ -109,6 +109,34 @@ class SpatialCurrentTest(unittest.TestCase):
         r = self.client.get("/api/v1/spatial/current")
         self.assertEqual(r.status_code, 422)
 
+    def test_aviso_describe_condicion_biofisica_no_prediccion(self):
+        r = self.client.get("/api/v1/spatial/current", params={"week": 20, "year": 2019})
+        self.assertEqual(r.status_code, 200)
+        aviso = r.json()["aviso"]
+        aviso_l = aviso.lower()
+        self.assertIn("biofísica", aviso_l)
+        self.assertIn("2023", aviso)
+        self.assertNotIn("predic", aviso_l)
+        self.assertNotIn("lead time", aviso_l)
+
+    def test_anio_2025_consulta_clima_y_iv_numerico_si_hay_variables(self):
+        r = self.client.get("/api/v1/spatial/current", params={"week": 20, "year": 2025})
+        self.assertEqual(r.status_code, 200)
+        cuerpo = r.json()
+        self.assertEqual(cuerpo["anio"], 2025)
+        self.assertIn("aviso", cuerpo)
+        self.assertNotIn("predic", cuerpo["aviso"].lower())
+        con_iv = [d for d in cuerpo["departamentos"] if d["iv"] is not None]
+        if not con_iv:
+            raise unittest.SkipTest(
+                "sin clima completo 2025/SE20 en Postgres -- el fixture de "
+                "test_idoneidad cubre el cálculo; este caso exige backfill."
+            )
+        for depto in con_iv:
+            self.assertIsInstance(depto["iv"], (int, float))
+            self.assertGreaterEqual(depto["iv"], 0.0)
+            self.assertLessEqual(depto["iv"], 1.0)
+
 
 class TemporalDepartamentoTest(unittest.TestCase):
     def setUp(self):

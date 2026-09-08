@@ -24,7 +24,11 @@ Definida como ventana de *entrenamiento* (capa de modelado). Si se implementa co
 
 ## F. Uso de casos recientes como predictor / operación en semanas actuales — sin objeto tras el pivote
 
-Este punto preguntaba cómo comunicar que el clasificador retirado no podía verificarse en vivo. Con la predicción cerrada (`01-decisiones-cerradas.md`, "Pivote 'Camino Ancho'"), la pregunta ya no aplica en esos términos. Queda una pregunta análoga para Camino Ancho, sin resolver todavía: **M3 (presión epidemiológica relativa), si compara contra casos recientes, también depende de una fuente departamental que no existe automatizada después de 2023** — cómo comunicar esa misma limitación de cobertura temporal en la nueva interfaz sigue sin definir. Ver punto A.
+Este punto preguntaba cómo comunicar que el clasificador retirado no podía verificarse en vivo. Con la predicción cerrada (`01-decisiones-cerradas.md`, "Pivote 'Camino Ancho'"), la pregunta ya no aplica en esos términos.
+
+**Cerrado en parte (A1, ADR 0018, 2026-09-08) para la capa climática:** M1/M2 se extienden hasta el año en curso; el aviso de idoneidad y el panel de auditoría declaran que eso es condición biofísica, no incidencia, y que el reanálisis ERA5 tiene ~5 días de rezago. No cierra el refresco recurrente (A2).
+
+Queda abierta la pregunta análoga para **M3** (presión epidemiológica relativa): si compara contra casos recientes, depende de una fuente departamental que no existe automatizada después de 2023 — cómo comunicar esa limitación en la interfaz de presión sigue sin definir. Ver punto A.
 
 ## G. Dónde vive la salida de M3/M4
 

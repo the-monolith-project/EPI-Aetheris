@@ -54,11 +54,14 @@ coordinador (no inventada aqui):
     absoluto (nunca se descargo, ver AGENTS.md) -- no aplica exclusion
     especial aqui, simplemente no hay datos que comparar ese anio.
   - Baseline de Iv (mediana/desviacion por semana-del-anio): leave-one-
-    out sobre el corpus climatico completo 2014-2024 (excluyendo el anio
-    evaluado de su propio baseline, mismo principio que canal_endemico_
-    nacional.py aplica a casos) -- SIN ventana de semanas vecinas (el
-    documento no la pide para Iv, a diferencia del canal endemico de
-    casos que si la usa).
+    out sobre el corpus climatico ANIOS_CLIMA (2014 hasta el anio en
+    curso; ADR 0018 AMPLIAR) excluyendo el anio evaluado de su propio
+    baseline, mismo principio que canal_endemico_nacional.py aplica a
+    casos -- SIN ventana de semanas vecinas (el documento no la pide
+    para Iv, a diferencia del canal endemico de casos que si la usa).
+    El experimento original (docs/experimentos/) se corrio sobre
+    2014-2024; la constante crece a proposito y mueve los sigma ya
+    mostrados.
   - Alerta: Z >= 1.5 dos semanas consecutivas (criterio literal del
     documento, seccion 4 Modulo 2). Primera alerta cronologica del anio
     = semana de deteccion. Sin alerta => "sin alerta", no se fuerza nada.
@@ -74,6 +77,7 @@ import math
 import statistics
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from corrida_canal_endemico_nacional import (
@@ -93,7 +97,8 @@ RAIZ = Path(__file__).parent
 INTERIM_ROOT = RAIZ / "data" / "interim" / "leadtime_camino_ancho"
 DOC_ROOT = RAIZ.parent.parent / "docs"
 
-ANIOS_CLIMA = list(range(2014, 2025))  # 2014-2024, corpus completo para el baseline
+ANIO_CLIMA_INICIO = 2014
+ANIOS_CLIMA = list(range(ANIO_CLIMA_INICIO, date.today().year + 1))
 ANIOS_EVALUADOS = ANIOS_BASE  # [2018, 2019, 2021, 2022, 2023] -- unicos con casos MINSAL depto cargados
 
 TMIN, TMAX = 16.0, 38.0
@@ -299,7 +304,9 @@ def main() -> None:
 
     print(f"c de normalizacion de f_T resuelto numericamente: {C_NORM:.6f}\n")
 
-    print("Cargando clima departamental 2014-2024...")
+    print(
+        f"Cargando clima departamental {ANIOS_CLIMA[0]}-{ANIOS_CLIMA[-1]}..."
+    )
     clima = cargar_clima_departamental()
     serie_iv = calcular_serie_Iv(clima)
 

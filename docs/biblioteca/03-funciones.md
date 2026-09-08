@@ -28,7 +28,7 @@ Responde qué tan favorable es el clima de un departamento-semana para *Aedes ae
 
 Responde qué tan inusual es el `Iv` de un departamento-semana respecto de su propia historia climática.
 
-**Método.** Z-score leave-one-out de `Iv` por (departamento, semana del año). Línea base: corpus 2014–2024, excluyendo el año descrito (anti-fuga). Misma semana exacta, **sin** ventana de semanas vecinas.
+**Método.** Z-score leave-one-out de `Iv` por (departamento, semana del año). Línea base: corpus desde 2014 hasta el año en curso (ADR 0018; los años nuevos entran al pool y mueven los σ históricos), excluyendo el año descrito (anti-fuga). Misma semana exacta, **sin** ventana de semanas vecinas. El reanálisis ERA5 tiene un rezago de unos 5 días.
 
 **Presentación.** Serie continua (`anomaly_sigma`). El umbral Z ≥ 1,5 durante dos semanas consecutivas se usó en el experimento de lead time y se retiró: ese umbral se cruza en el 100 % de los años evaluados y no discrimina.
 

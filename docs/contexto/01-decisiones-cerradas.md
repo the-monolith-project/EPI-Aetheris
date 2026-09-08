@@ -2,6 +2,10 @@
 
 > Todo lo marcado aquí está **cerrado / no negociable**. Respételo salvo instrucción explícita del usuario reabriéndolo. Para lo que sigue sin resolver, ver `02-decisiones-abiertas.md`. Para la evidencia empírica detrás de las decisiones de fuentes de datos, ver `03-fuentes-de-datos.md`.
 
+## Extensión de la capa climática M1/M2 hasta el presente (cerrado 2026-09-08)
+
+ADR 0018. `ANIOS_CLIMA` llega al año calendario en curso (las dos copias, API e ingestión de lead-time). El pool leave-one-out de anomalía **amplía**: los años nuevos entran al baseline y **recalculan mediana y σ de 2018–2023 ya publicados**. El rezago ERA5 de ~5 días se declara, no se rellena con pronóstico. M3, dataset analítico de dengue, IRA y neumonías siguen anclados a 2023. El refresco semanal (A2) no está decidido.
+
 ## Alertas operables (cerrado 2026-09-07)
 
 ADR 0015, migración `db/migrations/0011_alertas_etiquetas_y_contenido_clinico.sql`, `POST`/`PATCH /api/alertas`, páginas `/alertas/archivo` y `/alertas/nueva`.
@@ -62,7 +66,7 @@ Evidencia: `docs/exploraciones-respiratorias/exploracion-neumonias-boletines-min
 **Lo que sí se conserva y se reorienta:** el proyecto pasa a llamarse, en su narrativa de producto, **"Camino Ancho"** — una herramienta descriptiva y no predictiva de análisis espacio-temporal. La pregunta central cambia de "¿habrá un brote?" a "¿qué está ocurriendo epidemiológica y ambientalmente en cada departamento, qué tan inusual es respecto a su historia, y qué tan confiable es la información?". Se organiza en cuatro módulos:
 
 - **M1 — Idoneidad biofísica (`Iv`).** Implementado (`backend/api/idoneidad.py`, mismas fórmulas y constantes ya validadas en `backend/ingestion/validar_leadtime_camino_ancho.py`): `f_T` forma Brière (Tmin=16°C, Tmax=38°C, constante de normalización resuelta numéricamente, no publicada), `f_R` logística sobre precipitación acumulada a 2 semanas (R0=30 mm/semana, k=0.1), `f_H` rampa lineal — **estimación propia del equipo, no citada**, el documento fuente solo pedía "penaliza humedad bajo 50%" sin fórmula.
-- **M2 — Anomalía climática continua.** Implementado, mismo archivo. Z-score leave-one-out de `Iv` por (departamento, semana), línea base 2014–2024, expuesto como **serie continua únicamente** — sin alerta binaria, sin regla de dos semanas consecutivas, sin lenguaje de "temporada adelantada" ni lead time. Retirado deliberadamente tras el hallazgo de que Z≥1,5 se cruza en el 100 % de los años evaluados y no discrimina nada por sí solo.
+- **M2 — Anomalía climática continua.** Implementado, mismo archivo. Z-score leave-one-out de `Iv` por (departamento, semana), línea base desde 2014 hasta el año calendario en curso (ADR 0018: el pool **amplía**; mediana y σ de 2018–2023 se mueven al entrar años nuevos), expuesto como **serie continua únicamente** — sin alerta binaria, sin regla de dos semanas consecutivas, sin lenguaje de "temporada adelantada" ni lead time. Retirado deliberadamente tras el hallazgo de que Z≥1,5 se cruza en el 100 % de los años evaluados y no discrimina nada por sí solo.
 - **M3 — Presión epidemiológica relativa.** No implementado. Sin fórmula aprobada — ver `02-decisiones-abiertas.md`.
 - **M4 — Confianza de vigilancia.** No implementado. Sin fórmula aprobada — ver `02-decisiones-abiertas.md`.
 
