@@ -4,8 +4,11 @@
 #   - los planes de delegación legacy por nombre exacto
 # Estos ya están en .gitignore; sólo llegan al stage con `git add -f`. Este hook
 # es la última red para que no ensucien el repo en GitHub.
+#
+# --diff-filter=ACMR: sólo alta/copia/modificación/renombrado. Un borrado (D) de
+# uno de estos archivos es justo lo que se quiere y no se bloquea.
 
-bloqueados=$(git diff --cached --name-only \
+bloqueados=$(git diff --cached --name-only --diff-filter=ACMR \
   | grep -E '(\.local\.md$|(^|/)INDICACIONES_ALERTAS\.md$|(^|/)PLAN_ALERTAS_OPERABLES\.md$)' \
   || true)
 
