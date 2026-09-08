@@ -1,7 +1,4 @@
-import {
-  aniosClimaPresentacion,
-  type FiltrosAnalisis,
-} from './tipos-analisis';
+import { aniosClimaPresentacion, type FiltrosAnalisis } from './tipos-analisis';
 
 export const EVENTO_FILTROS_ANALISIS = 'epi:filters-changed';
 

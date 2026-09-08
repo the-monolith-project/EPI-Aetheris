@@ -92,9 +92,7 @@ export function obtenerIntegridadVigilancia(): Promise<IntegridadVigilancia> {
           !datos ||
           typeof datos !== 'object' ||
           !('antiguedad' in datos) ||
-          !Array.isArray(
-            (datos as { resumen_anual?: unknown }).resumen_anual,
-          )
+          !Array.isArray((datos as { resumen_anual?: unknown }).resumen_anual)
         ) {
           throw new Error(
             'La integridad de vigilancia no tiene el contrato esperado.',
