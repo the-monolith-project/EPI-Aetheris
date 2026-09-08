@@ -1,0 +1,19 @@
+#!/bin/sh
+# Bloquea el commit de archivos de trabajo local para agentes de código:
+#   - cualquier *.local.md (convención de delegación de tareas, ver AGENTS.md)
+#   - los planes de delegación legacy por nombre exacto
+# Estos ya están en .gitignore; sólo llegan al stage con `git add -f`. Este hook
+# es la última red para que no ensucien el repo en GitHub.
+
+bloqueados=$(git diff --cached --name-only \
+  | grep -E '(\.local\.md$|(^|/)INDICACIONES_ALERTAS\.md$|(^|/)PLAN_ALERTAS_OPERABLES\.md$)' \
+  || true)
+
+if [ -n "$bloqueados" ]; then
+  echo "pre-commit: archivos de trabajo local que NO se versionan:" >&2
+  printf '%s\n' "$bloqueados" | sed 's/^/  - /' >&2
+  echo "" >&2
+  echo "Sacálos del stage:  git restore --staged <archivo>" >&2
+  echo "Si de verdad va al repo: renombralo sin .local y quitá su match en .gitignore." >&2
+  exit 1
+fi

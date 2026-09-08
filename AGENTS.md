@@ -452,6 +452,20 @@ Antes de modificar:
 
 No hagas commit, push, merge, rebase o force push salvo que el usuario lo solicite.
 
+### Archivos de tarea locales
+
+Los `.md` que se te pasan para delegar o describir una tarea (planes, listas de
+indicaciones, informes de auditoría intermedios) **no se versionan**: son
+andamiaje, no entregable. Lo que queda en el repo al terminar es el código, el
+ADR, la migración y las pruebas — nunca el `.md` de la tarea.
+
+* Nombralos con sufijo **`.local.md`** (p. ej. `PLAN_ALERTAS_OPERABLES.local.md`,
+  `AUDITORIA_TONO.local.md`). `.gitignore` ignora `*.local.md`.
+* Viven en la raíz del repo (o del worktree) y aparecen ignorados, no como `??`.
+* El hook `.githooks/pre-commit` aborta el commit si uno llega al stage con
+  `git add -f`. Activalo una vez por clon: `git config core.hooksPath .githooks`.
+* No los agregues a `.gitignore` uno por uno ni con `git add -A` los subas.
+
 Al trabajar con un Pull Request, distingue siempre entre:
 
 * estado de `main`;
