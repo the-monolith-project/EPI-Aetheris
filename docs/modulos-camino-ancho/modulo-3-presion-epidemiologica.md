@@ -31,7 +31,7 @@ M3 responde: **"¿qué tan alta es la presión de casos observados en este depar
 
 ## Dónde vive el output
 
-Igual que M1/M2: **calculado on-request, nada persistido, sin cambios de esquema.** La pregunta abierta "¿dónde vive el output de M3/M4?" queda resuelta para M3 (mismo patrón on-request); sigue abierta para M4.
+Igual que M1/M2: **calculado on-request, nada persistido, sin cambios de esquema.** La pregunta "¿dónde vive el output de M3/M4?" quedó resuelta para ambos: M4 sigue el mismo patrón on-request (ADR 0019, `GET /api/v1/vigilancia/integridad`).
 
 ## Ejemplo de output real (docker-compose + `db/seed/seed_datos_reales.sql`, 2026-08-21)
 

@@ -72,3 +72,9 @@ def test_spatial_current_cache_computo(client):
     respuesta = client.get("/api/v1/spatial/current", params={"week": 24, "year": 2019})
     assert respuesta.status_code == 200
     assert respuesta.headers.get("cache-control") == "public, max-age=900"
+
+
+def test_vigilancia_integridad_cache_computo(client):
+    respuesta = client.get("/api/v1/vigilancia/integridad")
+    assert respuesta.status_code == 200
+    assert respuesta.headers.get("cache-control") == "public, max-age=900"

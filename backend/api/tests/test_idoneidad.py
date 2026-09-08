@@ -205,5 +205,56 @@ class SerieIvYAcumulacionPrecipitacionTest(unittest.TestCase):
         self.assertAlmostEqual(serie["SV-SS"][2019][6], esperado_semana_6, places=9)
 
 
+class ClimaPresenteFixtureTest(unittest.TestCase):
+    """Año ≥ 2024 con clima sintético completo: Iv no nulo.
+
+    No toca Postgres ni el seed. Fija que calcular_serie_iv (el motor
+    que alimenta /api/v1/spatial/current) no rechaza un año posterior a
+    2023 cuando las tres variables requeridas están presentes, y que
+    ANIOS_CLIMA incluye ese año (ADR 0018).
+    """
+
+    def test_anio_2025_con_variables_completas_produce_iv_no_nulo(self):
+        self.assertIn(2025, iv_mod.ANIOS_CLIMA)
+        clima = {
+            "SV-SS": {
+                2025: {
+                    19: {
+                        "temp_media": 26.0,
+                        "precipitation_sum": 15.0,
+                        "humedad_relativa_media": 75.0,
+                    },
+                    20: {
+                        "temp_media": 27.0,
+                        "precipitation_sum": 40.0,
+                        "humedad_relativa_media": 80.0,
+                    },
+                }
+            }
+        }
+        serie = iv_mod.calcular_serie_iv(clima)
+        valor = serie["SV-SS"][2025][20]
+        self.assertIsNotNone(valor)
+        self.assertGreater(valor, 0.0)
+        self.assertLessEqual(valor, 1.0)
+        esperado = iv_mod.calcular_Iv(27.0, 55.0, 80.0)
+        self.assertAlmostEqual(valor, esperado, places=9)
+
+    def test_anio_2024_sin_variable_requerida_se_omite(self):
+        clima = {
+            "SV-SS": {
+                2024: {
+                    10: {
+                        "temp_media": 27.0,
+                        "precipitation_sum": 20.0,
+                        # humedad ausente: no se imputa
+                    },
+                }
+            }
+        }
+        serie = iv_mod.calcular_serie_iv(clima)
+        self.assertNotIn(10, serie.get("SV-SS", {}).get(2024, {}))
+
+
 if __name__ == "__main__":
     unittest.main()

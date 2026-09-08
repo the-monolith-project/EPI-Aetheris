@@ -1,103 +1,76 @@
 ---
-import { getCollection, render } from 'astro:content';
+import { getCollection } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 
-// Orden narrativo, no alfabético: cuenta la historia en el orden en que
-// alguien externo la entendería mejor (qué se retiró y por qué -> el
-// experimento que lo cerró -> qué lo reemplazó -> cómo se sostienen algunas
-// decisiones de datos concretas). Cada entrada necesita una descripción
-// manual porque estos .md no traen frontmatter (son documentos internos del
-// equipo, reutilizados tal cual -- ver content.config.ts).
-const ORDEN_BIBLIOTECA: Array<{ id: string; descripcion: string }> = [
-  {
-    id: 'rescate-prediccion/informe-cierre-rescate-prediccion',
-    descripcion:
-      'Por qué se cerró la línea de clasificación predictiva de brotes y qué reemplazó ese objetivo -- el documento que explica el pivote completo del proyecto.',
-  },
-  {
-    id: 'experimentos/experimento-validacion-leadtime-camino-ancho',
-    descripcion:
-      'El experimento empírico que descartó la tesis de "anticipar el ascenso de una temporada" -- por qué esa idea no se puede comunicar de forma honesta con los datos disponibles.',
-  },
-  {
-    id: 'modulos-camino-ancho/modulo-3-presion-epidemiologica',
-    descripcion:
-      'La fórmula descriptiva que reemplaza al clasificador: percentil histórico de casos observados contra la propia historia de cada departamento, sin predecir nada.',
-  },
-  {
-    id: 'adr/0005-clasificacion-total-opendengue',
-    descripcion:
-      'Por qué el conteo agregado de OpenDengue no se guarda como "confirmado" -- un ejemplo concreto de cómo el esquema evita mezclar datos de procedencia distinta.',
-  },
-  {
-    id: 'adr/0010-versionar-volcado-de-datos-reales',
-    descripcion:
-      'Cómo el proyecto cumple su promesa de costo de replicación cercano a cero: un volcado de datos reales versionado para que "git clone + docker compose up" ya funcione.',
-  },
-  {
-    id: 'adr/0011-clasificacion-ira-departamental',
-    descripcion:
-      'El primer ejercicio real del diseño agnóstico a enfermedad del esquema: cómo se agregó un segundo evento (IRA) sin tocar ninguna columna.',
-  },
-];
-
-const entradas = await getCollection('biblioteca');
-const porId = new Map<string, CollectionEntry<'biblioteca'>>(
-  entradas.map((entrada: CollectionEntry<'biblioteca'>) => [
-    entrada.id,
-    entrada,
-  ]),
+const entradas = (await getCollection('biblioteca')).sort(
+  (a: CollectionEntry<'biblioteca'>, b: CollectionEntry<'biblioteca'>) =>
+    a.data.orden - b.data.orden,
 );
 
-const items = await Promise.all(
-  ORDEN_BIBLIOTECA.map(async ({ id, descripcion }) => {
-    const entrada = porId.get(id);
-    if (!entrada) return null;
-    const { headings } = await render(entrada);
-    const titulo =
-      headings.find(
-        (heading: { depth: number; text: string }) => heading.depth === 1,
-      )?.text ?? entrada.id;
-    return { id: entrada.id, titulo, descripcion };
-  }),
-);
-const disponibles = items.filter((i): i is NonNullable<typeof i> => i !== null);
+type Grupo = {
+  categoria: string;
+  items: CollectionEntry<'biblioteca'>[];
+};
+
+const grupos: Grupo[] = [];
+const indicePorCategoria = new Map<string, number>();
+for (const entrada of entradas) {
+  const categoria = entrada.data.categoria ?? 'Documentos';
+  const existente = indicePorCategoria.get(categoria);
+  if (existente === undefined) {
+    indicePorCategoria.set(categoria, grupos.length);
+    grupos.push({ categoria, items: [entrada] });
+  } else {
+    const grupo = grupos[existente];
+    if (grupo) grupo.items.push(entrada);
+  }
+}
 ---
 
-<Layout title="EPI-Aetheris — Biblioteca">
+<Layout
+  title="EPI-Aetheris — Biblioteca"
+  descripcion="Documentos del proyecto: qué es EPI-Aetheris, cómo llegó a su enfoque descriptivo, qué hace cada módulo, de dónde salen los datos y cómo se replica el sistema."
+>
   <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
-    <header class="mb-8 max-w-3xl">
+    <header class="mb-10 max-w-3xl">
       <h1
         class="font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
       >
         Biblioteca
       </h1>
       <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
-        EPI-Aetheris documenta sus decisiones a medida que se toman: qué se
-        probó, qué falló, qué se cerró y por qué. Esta es una selección curada
-        de esa documentación -- pensada para quien llega de afuera (estudiando,
-        investigando, evaluando el proyecto) y quiere entender el razonamiento
-        real detrás del sistema, no solo su resultado final. El repositorio
-        completo tiene más documentos técnicos internos; estos son los que mejor
-        cuentan la historia.
+        Aquí está el relato completo del sistema: qué es, cómo se construyó, qué
+        hace cada función, de dónde salen los datos y cómo se levanta en una
+        máquina nueva. Pensada para quien llega de afuera —estudiando,
+        investigando, evaluando o replicando el proyecto— y quiere leer el
+        producto con el mismo detalle que la interfaz.
       </p>
     </header>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="flex flex-col gap-10">
       {
-        disponibles.map((item) => (
-          <a
-            href={`/biblioteca/${item.id}`}
-            class="card-elevated flex flex-col gap-2 rounded-2xl border border-border bg-surface p-5"
-          >
-            <h2 class="font-sans text-base font-semibold leading-snug text-ink">
-              {item.titulo}
+        grupos.map((grupo) => (
+          <section>
+            <h2 class="font-display text-lg font-semibold tracking-tight text-ink">
+              {grupo.categoria}
             </h2>
-            <p class="font-sans text-sm leading-relaxed text-ink-muted">
-              {item.descripcion}
-            </p>
-          </a>
+            <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {grupo.items.map((item) => (
+                <a
+                  href={`/biblioteca/${item.id}`}
+                  class="card-elevated flex flex-col gap-2 rounded-2xl border border-border bg-surface p-5"
+                >
+                  <h3 class="font-sans text-base font-semibold leading-snug text-ink">
+                    {item.data.titulo}
+                  </h3>
+                  <p class="font-sans text-sm leading-relaxed text-ink-muted">
+                    {item.data.descripcion}
+                  </p>
+                </a>
+              ))}
+            </div>
+          </section>
         ))
       }
     </div>

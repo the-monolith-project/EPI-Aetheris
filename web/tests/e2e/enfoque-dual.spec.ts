@@ -104,9 +104,16 @@ test('la portada ofrece dos puertas que son enlaces sin estado', async ({
   // Enlaces, no botones: un enlace compartido abre igual para cualquiera.
   await expect(consulta).toHaveJSProperty('tagName', 'A');
   await expect(analisis).toHaveJSProperty('tagName', 'A');
+  // M4 pasó a estado Activo con el rename de #114 (antes «Confianza de
+  // vigilancia», En desarrollo).
+  const m4 = page.locator('main').getByText('Integridad de la vigilancia');
+  await expect(m4).toBeVisible();
+  await expect(page.locator('main')).toContainText(
+    'Tres hechos verificables sobre la calidad del dato',
+  );
 });
 
-test('/analisis enlaza las tres herramientas y no promete tiempo real', async ({
+test('/analisis enlaza las dos herramientas y no promete tiempo real', async ({
   page,
 }) => {
   await page.goto('/analisis');
@@ -114,7 +121,7 @@ test('/analisis enlaza las tres herramientas y no promete tiempo real', async ({
   await expect(
     page.locator('[data-herramienta="/respiratorio"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-herramienta="/ira"]')).toBeVisible();
+  await expect(page.locator('[data-herramienta="/ira"]')).toHaveCount(0);
   await expect(page.locator('main')).toContainText(
     'Las series son históricas, no de tiempo real',
   );
@@ -150,15 +157,99 @@ test('los campos clínicos en null no dejan bloques vacíos en la tarjeta', asyn
     '1',
     { timeout: 15_000 },
   );
-  // Las filas demo (migración 0009) llegan sin los campos de la 0010.
+  await page.locator('[data-alertas]').evaluate((el) => {
+    const pintar = (
+      el as HTMLElement & {
+        pintarAlertas?: (payload: {
+          aviso: string;
+          ultima_revision: string;
+          alertas: Array<Record<string, unknown>>;
+        }) => void;
+      }
+    ).pintarAlertas;
+    if (!pintar) throw new Error('pintarAlertas no está en el contenedor');
+    pintar({
+      aviso: '',
+      ultima_revision: '2026-09-07',
+      alertas: [
+        {
+          id: 9100,
+          tipo: 'dengue',
+          nivel: 'informativo',
+          titulo: 'Sin bloques clínicos',
+          contexto: 'No usar.',
+          indicaciones: '- No actuar.',
+          fuente: 'suite e2e',
+          autor: 'suite',
+          vigente_desde: '2026-09-01',
+          vigente_hasta: null,
+          activa: true,
+          signos_alarma: null,
+          criterios_referencia: null,
+          que_notificar: null,
+          definicion_caso: null,
+          contacto_vigilancia: null,
+        },
+      ],
+    });
+  });
   await expect(page.locator('[data-alerta-clinico]')).toHaveCount(0);
-  // La tarjeta sigue completa pese a eso.
   await expect(
     page.locator('[data-alerta]').first().locator('[data-alerta-indicaciones]'),
   ).toBeVisible();
   await expect(
     page.locator('[data-alerta]').first().locator('[data-alerta-compartir]'),
   ).toBeVisible();
+
+  // Alerta respiratoria con el patrón clínico de la migración 0011:
+  // definicion_caso y que_notificar con texto, signos_alarma y
+  // criterios_referencia en null. Se inyecta con pintarAlertas para no
+  // acoplar la suite a que 0011 esté aplicada en la base del preview.
+  await page.locator('[data-alertas]').evaluate((el) => {
+    const pintar = (
+      el as HTMLElement & {
+        pintarAlertas?: (payload: {
+          aviso: string;
+          ultima_revision: string;
+          alertas: Array<Record<string, unknown>>;
+        }) => void;
+      }
+    ).pintarAlertas;
+    if (!pintar) throw new Error('pintarAlertas no está en el contenedor');
+    pintar({
+      aviso: '',
+      ultima_revision: '2026-09-07',
+      alertas: [
+        {
+          id: 9101,
+          tipo: 'respiratorio',
+          nivel: 'atencion',
+          titulo: 'Con definición de caso',
+          contexto: 'No usar.',
+          indicaciones: '- No actuar.',
+          fuente: 'suite e2e',
+          autor: 'suite',
+          vigente_desde: '2026-09-01',
+          vigente_hasta: null,
+          activa: true,
+          signos_alarma: null,
+          criterios_referencia: null,
+          que_notificar: 'Notificación individual e inmediata.',
+          definicion_caso: 'Enfermedad respiratoria aguda febril.',
+          contacto_vigilancia: null,
+        },
+      ],
+    });
+  });
+  await expect(
+    page.locator('[data-alerta-clinico="signos_alarma"]'),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('[data-alerta-clinico="criterios_referencia"]'),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('[data-alerta-clinico="definicion_caso"]'),
+  ).toHaveCount(1);
 });
 
 test('/alertas abre sin conexión desde el cache del service worker', async ({
@@ -199,4 +290,67 @@ test('/alertas abre sin conexión desde el cache del service worker', async ({
   );
   await expect(page.locator('[data-alerta]').first()).toBeVisible();
   await context.unroute('**/api/alertas*');
+});
+
+test('el footer reestructurado expone las cuatro secciones y el aviso de sensibilidad', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const navFooter = page.locator('nav[aria-label="Pie de página"]');
+  // El nav usa `class="contents"` (no genera caja propia); se comprueba que
+  // está en el DOM y luego se afirma sobre sus enlaces, que sí resuelven.
+  await expect(navFooter).toBeAttached();
+
+  // Tramo 2: El proyecto
+  await expect(navFooter.getByRole('link', { name: 'Qué es' })).toHaveAttribute(
+    'href',
+    '/biblioteca/01-que-es',
+  );
+  await expect(
+    navFooter.getByRole('link', { name: 'Aviso de sensibilidad' }),
+  ).toHaveAttribute('href', '/biblioteca/05-sensibilidad-y-honestidad');
+  await expect(
+    navFooter.getByRole('link', { name: 'Arquitectura y reproducibilidad' }),
+  ).toHaveAttribute('href', '/biblioteca/06-arquitectura-y-reproducibilidad');
+  await expect(
+    navFooter.getByRole('link', { name: 'Código en GitHub' }),
+  ).toHaveAttribute(
+    'href',
+    'https://github.com/the-monolith-project/EPI-Aetheris',
+  );
+
+  // Tramo 3: Datos y método
+  await expect(
+    navFooter.getByRole('link', { name: 'Fuentes de datos' }),
+  ).toHaveAttribute('href', '/biblioteca/04-fuentes-de-datos');
+  await expect(
+    navFooter.getByRole('link', { name: 'Módulos M1–M3' }),
+  ).toHaveAttribute('href', '/biblioteca/03-funciones');
+  await expect(
+    navFooter.getByRole('link', { name: 'Licencias de datos' }),
+  ).toHaveAttribute('href', 'https://open-meteo.com/en/license');
+
+  // Tramo 4: Vigilancia
+  await expect(
+    navFooter.getByRole('link', { name: 'Alertas de campo' }),
+  ).toHaveAttribute('href', '/alertas');
+  await expect(
+    navFooter.getByRole('link', { name: 'Análisis por departamento' }),
+  ).toHaveAttribute('href', '/analisis');
+  await expect(
+    navFooter.getByRole('link', { name: 'Decisiones y trayectoria' }),
+  ).toHaveAttribute('href', '/biblioteca/02-historia');
+  await expect(
+    navFooter.getByRole('link', { name: 'Sugerencias (GitHub Issues)' }),
+  ).toHaveAttribute('href', '/sugerencias');
+
+  // Tira inferior de deslinde
+  const footer = page.locator('footer');
+  await expect(footer).toContainText(
+    'Proyecto académico · El Salvador · 2026.',
+  );
+  await expect(footer).toContainText(
+    'Ayuda de priorización sobre datos públicos agregados de MINSAL, OpenDengue y Open-Meteo, bajo licencia GPL-3.0',
+  );
+  await expect(footer).toContainText('GPL-3.0 · 2026');
 });

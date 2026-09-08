@@ -140,7 +140,7 @@ const MODULOS = [
     nombre: 'Anomalía climática',
     estado: 'Activo',
     texto:
-      'Compara la idoneidad biofísica actual contra la historia 2014-2024 del propio departamento. Serie continua, sin alerta binaria ni lenguaje de "cruce de umbral".',
+      'Compara la idoneidad biofísica actual contra la historia climática del propio departamento (desde 2014). Serie continua, sin alerta binaria ni lenguaje de "cruce de umbral".',
   },
   {
     id: 'M3',
@@ -151,10 +151,10 @@ const MODULOS = [
   },
   {
     id: 'M4',
-    nombre: 'Confianza de vigilancia',
-    estado: 'Próximamente',
+    nombre: 'Integridad de la vigilancia',
+    estado: 'Activo',
     texto:
-      'Va a mostrar qué tan completa es la cobertura de reporte detrás de cada lectura, en vez de un puntaje de confianza opaco. Sin fórmula aprobada todavía.',
+      'Tres hechos verificables sobre la calidad del dato —completitud geográfica, cuadre del boletín y antigüedad de cada serie— sin combinarlos en un índice opaco ni afirmar nada sobre transmisión.',
   },
 ];
 
@@ -167,9 +167,9 @@ const CIFRAS = [
 
 const APORTES = [
   {
-    titulo: 'Reproducible de verdad',
+    titulo: 'Un comando levanta el sistema entero',
     texto:
-      'Datos públicos, cero costo de licencias, código abierto. Un solo comando levanta el sistema completo con datos reales — no una demo.',
+      'Datos públicos, cero costo de licencias, código abierto bajo GPL-3.0. Un solo comando levanta el sistema completo con datos reales — no una demo.',
   },
   {
     titulo: 'Cada departamento contra su propia historia',
@@ -179,20 +179,18 @@ const APORTES = [
   {
     titulo: 'Rigor por encima de conveniencia',
     texto:
-      'Un modelo predictivo piloto se puso a prueba con los únicos años de brote real disponibles. Cuando no mostró capacidad predictiva, se retiró en vez de quedar en producción con una promesa que no podía cumplir.',
+      'Se valida contra los años de brote reales y se retira lo que no sostiene su promesa.',
   },
 ];
 
 const ALCANCE_NO = [
-  'No predice brotes de dengue.',
-  'No asigna un nivel de riesgo por departamento.',
-  'El clasificador piloto que se probó quedó retirado: en los únicos años con un brote real, no predijo nada útil. Sigue en la vista dengue como referencia histórica, no como predicción en vivo.',
+  'Describe lo ya publicado; no anticipa brotes ni asigna un nivel de riesgo automatizado por departamento.',
+  'El clasificador piloto quedó como archivo histórico en la vista dengue, para consultar su evaluación.',
 ];
 
 const ALCANCE_SI = [
-  'Ingeniería de software reproducible, sobre datos públicos y en contenedores — no un modelo epidemiológico novedoso ni un oráculo médico.',
-  'Una ayuda de priorización — nunca un diagnóstico ni un pronóstico.',
-  'Compara cada departamento contra su propia historia, nunca contra los demás.',
+  'Ingeniería sobre datos públicos, en contenedores Docker.',
+  'Ayuda de priorización: compara cada departamento contra su propia historia.',
 ];
 
 const STACK = [
@@ -399,9 +397,7 @@ const STACK = [
         </div>
         <ul data-tira-alertas-lista class="mt-3 space-y-2"></ul>
         <p class="mt-3 font-sans text-xs leading-relaxed text-ink-muted">
-          Redacción humana del equipo de vigilancia sobre datos públicos
-          históricos. No sustituye los lineamientos del MINSAL ni el criterio
-          clínico.
+          Redactadas por el equipo de vigilancia sobre datos públicos.
         </p>
       </div>
     </section>
@@ -410,7 +406,7 @@ const STACK = [
       <p
         class="font-sans text-xs font-semibold uppercase tracking-wide text-white/60"
       >
-        Por qué importa
+        Qué aporta el proyecto
       </p>
       <h2 class="mt-1 font-sans text-2xl font-semibold text-white sm:text-3xl">
         Aportes del proyecto
@@ -438,9 +434,8 @@ const STACK = [
         Cuatro preguntas, cuatro módulos
       </h2>
       <p class="mt-1 max-w-2xl font-sans text-sm text-ink-muted">
-        "Camino Ancho": en vez de "¿va a haber un brote?", cada módulo responde
-        una pregunta más chica y verificable contra la propia historia del
-        departamento.
+        En vez de "¿va a haber un brote?", cada módulo responde una pregunta más
+        chica y verificable contra la propia historia del departamento.
       </p>
       <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {
@@ -478,8 +473,8 @@ const STACK = [
         Con qué está construido
       </h2>
       <p class="mt-1 max-w-2xl font-sans text-sm text-ink-muted">
-        El aporte de este proyecto es de ingeniería de software, no de novedad
-        epidemiológica — por eso el stack importa tanto como los módulos.
+        El aporte de este proyecto es de ingeniería de software: por eso el
+        stack importa tanto como los módulos.
       </p>
       <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {
@@ -633,11 +628,10 @@ const STACK = [
           const etiqueta = document.createElement('span');
           etiqueta.className =
             'mr-2 font-semibold uppercase tracking-wide text-accent';
-          const etiquetaNivel = (
+          const etiquetaNivel =
             alerta.nivel in ETIQUETAS_NIVEL
               ? ETIQUETAS_NIVEL[alerta.nivel as keyof typeof ETIQUETAS_NIVEL]
-              : alerta.nivel
-          );
+              : alerta.nivel;
           etiqueta.textContent = `${ETIQUETAS_TIPO[alerta.tipo] ?? alerta.tipo} · ${etiquetaNivel}`;
           item.append(etiqueta, enlace);
           lista.appendChild(item);

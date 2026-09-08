@@ -1,7 +1,8 @@
 # EPI-Aetheris
 
-Sistema de predicción epidemiológica para El Salvador. Piloto inicial con
-dengue; arquitectura agnóstica al tipo de evento y región.
+Sistema descriptivo de vigilancia epidemiológica para El Salvador,
+contenedorizado y reproducible a costo cero. Piloto con dengue;
+arquitectura agnóstica al tipo de evento y región.
 
 ## Stack
 
@@ -49,9 +50,10 @@ La base queda poblada con datos reales desde el primer arranque (volcado version
 
 ```
 backend/api/       → FastAPI app (punto de entrada: api/main.py:app)
-backend/ingestion/ → pipeline de ingesta (no implementado)
-backend/model/     → modelos de predicción (no implementado)
+backend/ingestion/ → pipeline de ingesta y experimentos de validación
+backend/model/     → artefactos del clasificador retirado (no versionados, ver issue #72)
 web/               → frontend Astro
 db/migrations/     → schema SQL (cargado automáticamente al iniciar db)
-docs/adr/          → Architecture Decision Records (pendiente)
+db/seed/           → volcado de datos reales (ADR 0010)
+docs/adr/          → Architecture Decision Records
 ```

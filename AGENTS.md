@@ -167,6 +167,10 @@ No presentes su salida como:
 * recomendación médica;
 * descubrimiento epidemiológico novedoso.
 
+Eso aplica a la *salida de los módulos y del clasificador*. Es distinto —y sí está permitido— mostrar material informativo de prevención tomado literalmente de una fuente oficial publicada (OPS/OMS, MINSAL) con su cita: tarjetas tipo "elimine criaderos, revise depósitos de agua". No se redacta consejo clínico propio ni se generan recomendaciones automáticas por nivel de riesgo.
+
+**Redacción de producto:** el copy de cara al usuario se escribe en voz afirmativa — primero qué es y qué aporta, después el límite. Cada salvedad ("no es diagnóstico", "no es clasificación de riesgo", "sin predicción", "coexistencia ≠ causalidad") se declara una sola vez, en su hogar canónico (footer, panel de alertas, Biblioteca), no en cada pantalla. El rigor se muestra con métricas y fuentes visibles, no repitiendo disclaimers.
+
 El aporte principal del proyecto es de ingeniería de software: reproducibilidad, integración, despliegue y acceso abierto.
 
 ### Costos y dependencias
@@ -290,8 +294,9 @@ Antes de instalar una librería nueva, revisa si existe una decisión previa sob
 No introduzcas React, Vue u otro framework de componentes salvo decisión explícita del equipo.
 
 **Arquitectura de información (ADR 0014).** El sitio tiene dos caras —consulta
-(`/alertas`) y análisis (`/analisis`, que agrupa `/dengue`, `/respiratorio` e
-`/ira`)— pero **no** un interruptor de "modo": son secciones, sin estado
+(`/alertas`) y análisis (`/analisis`, que agrupa `/dengue` y `/respiratorio`;
+IRA y neumonías son secciones de `/respiratorio`)— pero **no** un interruptor de
+"modo": son secciones, sin estado
 persistido, y ninguna esconde a la otra. No agregues un toggle de enfoque en la
 barra. Ninguna vista se titula "hoy" ni "esta semana": la ventana cargada llega
 hasta 2023 y `regiones.nivel_admin = 2` (municipio) sigue reservado sin filas.
@@ -346,6 +351,7 @@ Cuando una tarea toque autenticación, middleware, CORS, cabeceras HTTP, secreto
 * no guardes secretos en el repositorio;
 * utiliza `.env.example` únicamente como referencia de variables;
 * nunca copies credenciales reales a código, documentación, tests o commits.
+* `POST`/`PATCH /api/alertas` llevan umbral propio `RATE_LIMIT_WRITE` (default `10/minute`); `SecurityHeadersMiddleware` incluye `Referrer-Policy` y `Permissions-Policy`; CORS `allow_headers` es lista explícita (`Authorization`, `Content-Type`), no `*`. No reordenes los middleware.
 
 ---
 
@@ -449,6 +455,20 @@ Antes de modificar:
 
 No hagas commit, push, merge, rebase o force push salvo que el usuario lo solicite.
 
+### Archivos de tarea locales
+
+Los `.md` que se te pasan para delegar o describir una tarea (planes, listas de
+indicaciones, informes de auditoría intermedios) **no se versionan**: son
+andamiaje, no entregable. Lo que queda en el repo al terminar es el código, el
+ADR, la migración y las pruebas — nunca el `.md` de la tarea.
+
+* Nombralos con sufijo **`.local.md`** (p. ej. `PLAN_ALERTAS_OPERABLES.local.md`,
+  `AUDITORIA_TONO.local.md`). `.gitignore` ignora `*.local.md`.
+* Viven en la raíz del repo (o del worktree) y aparecen ignorados, no como `??`.
+* El hook `.githooks/pre-commit` aborta el commit si uno llega al stage con
+  `git add -f`. Activalo una vez por clon: `git config core.hooksPath .githooks`.
+* No los agregues a `.gitignore` uno por uno ni con `git add -A` los subas.
+
 Al trabajar con un Pull Request, distingue siempre entre:
 
 * estado de `main`;
@@ -467,6 +487,7 @@ La estructura existente es la fuente de verdad:
 ```text
 docs/
 ├── adr/
+├── biblioteca/                     # documentos públicos de /biblioteca (síntesis, no copia de docs/)
 ├── contexto/
 ├── clasificador-retirado/          # clasificador retirado: corridas, auditorías y entrenamientos/
 ├── experimentos/                   # experimentos descartados (multipaís, ONI, ventana climática)
@@ -499,17 +520,17 @@ EPI-Aetheris es un sistema de vigilancia epidemiológica **descriptiva** (piloto
 
 - **El clasificador predictivo está retirado** (pivote "Camino Ancho", cerrado 2026-08-18 — `docs/rescate-prediccion/informe-cierre-rescate-prediccion.md`). El código entrenado (`entrenar_clasificador.py` y afines) se conserva como referencia histórica: **no lo extiendas ni presentes su salida como predicción en vivo.**
 - El proyecto es descriptivo, no predictivo: "qué está pasando y qué tan inusual es contra su propia historia", nunca "qué va a pasar".
-- El aporte es de **ingeniería de software** (sistema libre, contenedorizado, reproducible), no de novedad epidemiológica ni un oráculo médico.
+- El aporte es de **ingeniería de software** (sistema libre, contenedorizado, reproducible), no de novedad epidemiológica ni un oráculo médico (esto no impide mostrar guías de prevención públicas citadas).
 - Modelo de dominio **agnóstico a enfermedad y región**: `tipos_evento` y `regiones` son catálogos, no columnas fijas.
 
 ### Módulos Camino Ancho
 
 - **M1 — Idoneidad biofísica (`Iv`)** y **M2 — Anomalía climática continua (Z-score leave-one-out)** — implementados en `backend/api/idoneidad.py`, servidos vía `GET /api/v1/spatial/current` y `/api/v1/temporal/{codigo}`. M2 es serie continua: sin alerta binaria, sin lenguaje de lead-time.
 - **M3 — Presión epidemiológica relativa** — implementado en `backend/api/presion.py` (fórmula **cerrada** por la coordinación 2026-08-21, `docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md`): percentil histórico leave-one-out por departamento, `probable` y `confirmado` como series **separadas** (nunca `total`), años base 2018/2019/2021/2022/2023, ventana ±1 semana, piso de ≥3 años, cortes P50/P75. Salida = percentil + lectura cualitativa (baja/media/alta), **nunca alerta binaria**; celdas insuficientes → `null` + nota. Vía `GET /api/v1/presion/current` y `/api/v1/presion/temporal/{codigo}`. No ajustes estos parámetros sin nueva decisión de la coordinación.
-- **M4 — Confianza de vigilancia** — no implementado, sin fórmula aprobada. No la inventes.
-- **Alertas de campo** — tabla `alertas` (ADR 0013, migración `0009`). Decisiones humanas persistidas; **no** se generan desde M1–M3 ni del clasificador. Solo `GET /api/alertas` (filas `activa=true`, filtro opcional `tipo`). UI en `/alertas`. Migración `0010` (ADR 0014) añade cinco columnas `TEXT` nulas — `definicion_caso`, `signos_alarma`, `criterios_referencia`, `que_notificar`, `contacto_vigilancia`: son **contenedores vacíos**, los llena el equipo con fuente MINSAL/OPS. No inventes texto clínico ni datos de contacto para rellenarlos.
+- **M4 — Integridad de vigilancia** — implementado en `backend/api/vigilancia.py` (fórmula **cerrada** 2026-09-08, ADR 0018): tres métricas separadas, sin número compuesto. `completitud` = n/14 departamentos con fila esa semana-serie (dengue MINSAL, `probable`/`confirmado`); `cuadre` = expone `validacion_cuadra` y la discrepancia ya almacenada en `boletines_procesados` (no recalcula la suma); `antiguedad` = semanas PAHO/CDC (`epiweeks`) desde la última SE con dato, por serie — **no** es latencia de reporte. Vía `GET /api/v1/vigilancia/integridad` (`week`+`year` = vista semanal; sin parámetros = resumen anual + antigüedad). Capa del mapa `'confianza'`. No combines las tres en un índice ni uses lenguaje de riesgo.
+- **Alertas de campo** — tabla `alertas` (ADR 0013, migración `0009`; operable por ADR 0015, migración `0011`). Decisiones humanas persistidas; **no** se generan desde M1–M3 ni del clasificador. `GET /api/alertas` por defecto: `activa=true` y `etiqueta IS NULL`, filtro opcional `tipo`; parámetros opcionales `desde`/`hasta` (solapamiento de vigencia), `incluir_inactivas=true`, `incluir_etiquetadas=true` (AND). UI en `/alertas`; archivo en `/alertas/archivo`; formulario de alta (sin enlace en la nav) en `/alertas/nueva`. `POST /api/alertas` y `PATCH /api/alertas/{id}` exigen `Authorization: Bearer` contra `ALERTAS_TOKEN` (`secrets.compare_digest`); sin token en el entorno → 503; cabecera ausente o token incorrecto → 401; no hay `DELETE`. Esos dos endpoints llevan además `@limiter.limit(RATE_LIMIT_WRITE)` (default `10/minute`; ADR 0017); el GET público se queda con el límite global. `etiqueta`: `NULL` | `test` | `simulacro` | `historica`. Migración `0010` (ADR 0014) añadió cinco columnas `TEXT` nulas; `0011` las llena **por `tipo`** con transcripción citada (VIGEPES/OPS): dengue tiene los cuatro bloques clínicos; respiratorio deja `signos_alarma` y `criterios_referencia` en `NULL`; `contacto_vigilancia` es la ruta SIBASI/VIGEPES-01 **sin teléfono ni correo**. No inventes texto clínico ni datos de contacto. `AVISO_HONESTIDAD_ALERTAS` no se altera.
 
-Nada de M1–M3 se persiste (se calcula on-request, sin cambios de esquema). El selector de capas del mapa (`web/src/components/MapaDepartamentos.astro`) tiene botones para M1/M2 y para las dos series de M3, y un placeholder deshabilitado para M4. IRA se sirve aparte (`backend/api/ira.py`, UI en `/ira`) y **no** computa módulos Camino Ancho. Las alertas de campo sí se persisten: las redacta el equipo, no un módulo.
+Nada de M1–M4 se persiste (se calcula on-request, sin cambios de esquema). El selector de capas del mapa (`web/src/components/MapaDepartamentos.astro`) tiene botones para M1/M2, las dos series de M3 y la integridad de vigilancia (M4). IRA se sirve aparte (`backend/api/ira.py`, UI en `/respiratorio`) y **no** computa módulos Camino Ancho. Las alertas de campo sí se persisten: las redacta el equipo, no un módulo.
 
 ### Arquitectura
 
@@ -532,7 +553,7 @@ Tres servicios Docker (`docker-compose.yml`, red `aetheris_network`):
 - `boletines_procesados.familia_esquema`: `A` o `B`.
 - `fuentes_datos.codigo`: `opendengue_v1_3`, `minsal_pdf`, `open_meteo_era5_land`, `open_meteo_era5` (ADR 0006 — `era5` es exclusivo para `precipitation_sum`/`precipitation_hours`), `noaa_oni`.
 - `regiones.codigo`: ISO 3166-2:SV (**sin verificar aún** contra el GeoJSON de Leaflet — confírmalo antes de usarlo como clave de join).
-- `alertas.tipo`: `dengue`, `respiratorio`. `alertas.nivel`: `informativo`, `atencion`, `intensificacion` (ADR 0013). `activa` es el filtro de la vista pública; no lo infieras de `vigente_hasta`.
+- `alertas.tipo`: `dengue`, `respiratorio`. `alertas.nivel`: `informativo`, `atencion`, `intensificacion` (ADR 0013). `alertas.etiqueta`: `NULL` | `test` | `simulacro` | `historica` (ADR 0015; `NULL` = producción). `activa` es el filtro de la vista pública; no lo infieras de `vigente_hasta`.
 - Semanas epidemiológicas: **PAHO/CDC (MMWR), no ISO 8601** — usa la librería `epiweeks`, no recalcules límites a mano.
 
 ### Fuentes de datos
@@ -550,7 +571,7 @@ Las trampas empíricas —MINSAL (el año impreso en el PDF no es fiable; dos fa
 
 ### Decisiones abiertas
 
-`docs/contexto/02-decisiones-abiertas.md` es la fuente. No resuelvas unilateralmente: la fórmula de M4 y dónde vive su salida, las coordenadas departamentales para Open-Meteo, si la exclusión de 2020 gobierna la ingesta, y si algún clasificador se reactiva (la línea predictiva está cerrada — no la resucites sin instrucción explícita).
+`docs/contexto/02-decisiones-abiertas.md` es la fuente. No resuelvas unilateralmente: las coordenadas departamentales para Open-Meteo, si la exclusión de 2020 gobierna la ingesta, y si algún clasificador se reactiva (la línea predictiva está cerrada — no la resucites sin instrucción explícita). M4 (fórmula y dónde vive) quedó cerrado el 2026-09-08, ADR 0018.
 
 ### Comandos
 

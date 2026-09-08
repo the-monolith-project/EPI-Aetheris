@@ -7,6 +7,11 @@
 > campos clínicos opcionales a `alertas` y caching offline con sello de
 > frescura. Migración: `db/migrations/0010_alertas_campos_clinicos.sql`.
 
+**Nota de estado (2026-09-07):** La consecuencia "la API de alertas sigue
+siendo de solo lectura" queda superada por ADR 0015. El resto de este
+ADR (enfoque dual, campos clínicos como contenedores, service worker)
+sigue vigente.
+
 ## Contexto
 
 El piloto tiene dos usos que no se parecen:
@@ -29,7 +34,7 @@ intensivos de la cara de análisis.
 **1. Dos caras como secciones, no como modo.**
 
 La navegación pasa a `Inicio · Alertas · Análisis · Biblioteca ·
-Sugerencias`. `/dengue`, `/respiratorio` e `/ira` se agrupan bajo un
+Sugerencias`. `/dengue` y `/respiratorio` se agrupan bajo un
 índice nuevo, `/analisis`, en vez de ocupar una entrada cada una.
 Ninguna cara esconde a la otra y no hay estado persistido: un enlace
 compartido se comporta igual para cualquiera.

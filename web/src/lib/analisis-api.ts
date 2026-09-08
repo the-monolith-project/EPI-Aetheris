@@ -3,6 +3,7 @@ import type {
   CasoNacionalSemanal,
   DatasetAnaliticoDengue,
   FiltrosAnalisis,
+  IntegridadVigilancia,
   ProcedenciaAnalitica,
   RespuestaIraDepartamental,
 } from './tipos-analisis';
@@ -14,6 +15,7 @@ const cachePorAnio = new Map<
 >();
 let cacheCasosNacionales: Promise<CasoNacionalSemanal[]> | null = null;
 let cacheIraDepartamental: Promise<RespuestaIraDepartamental> | null = null;
+let cacheIntegridad: Promise<IntegridadVigilancia> | null = null;
 const cacheProcedencia = new Map<string, Promise<ProcedenciaAnalitica>>();
 
 function cargarDataset(
@@ -74,6 +76,36 @@ export function obtenerCasosNacionales(): Promise<CasoNacionalSemanal[]> {
       });
   }
   return cacheCasosNacionales;
+}
+
+export function obtenerIntegridadVigilancia(): Promise<IntegridadVigilancia> {
+  if (!cacheIntegridad) {
+    cacheIntegridad = fetch(`${API_BASE}/api/v1/vigilancia/integridad`)
+      .then(async (respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error(
+            `No se pudo cargar la integridad de vigilancia (${respuesta.status}).`,
+          );
+        }
+        const datos: unknown = await respuesta.json();
+        if (
+          !datos ||
+          typeof datos !== 'object' ||
+          !('antiguedad' in datos) ||
+          !Array.isArray((datos as { resumen_anual?: unknown }).resumen_anual)
+        ) {
+          throw new Error(
+            'La integridad de vigilancia no tiene el contrato esperado.',
+          );
+        }
+        return datos as IntegridadVigilancia;
+      })
+      .catch((error) => {
+        cacheIntegridad = null;
+        throw error;
+      });
+  }
+  return cacheIntegridad;
 }
 
 // Mismo patrón que obtenerCasosNacionales: MapaIRA y CurvaIRADepartamental

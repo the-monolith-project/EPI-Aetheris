@@ -1,46 +1,39 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { DEPARTAMENTOS } from '../lib/departamentos';
 
 // Índice de las herramientas descriptivas (ADR 0014). Existe para que la
-// puerta de entrada del sitio pueda ser el panorama sin que las tres vistas
+// puerta de entrada del sitio pueda ser el panorama sin que las dos vistas
 // de análisis pierdan un lugar propio y estable en la navegación. No calcula
-// nada: solo enruta y repite el estatuto (descriptivo, nunca predictivo).
+// nada: solo enruta; el estatuto vive en el footer y en la Biblioteca.
 
 const HERRAMIENTAS = [
   {
     href: '/dengue',
     titulo: 'Dengue',
-    estado: 'Camino Ancho completo',
+    estado: 'Capas descriptivas completas',
     texto:
-      'Mapa departamental con las tres capas activas: idoneidad biofísica (M1), anomalía climática frente a la propia historia del departamento (M2) y presión epidemiológica relativa como percentil (M3). Incluye el clasificador piloto retirado, marcado como referencia histórica.',
+      'Mapa departamental con las tres capas activas: idoneidad biofísica (M1), anomalía climática frente a la propia historia del departamento (M2) y presión epidemiológica relativa como percentil (M3). Incluye el archivo histórico del clasificador piloto.',
   },
   {
     href: '/respiratorio',
     titulo: 'Respiratorio',
-    estado: 'Sin capas Camino Ancho',
+    estado: 'Series notificadas, sin capas climáticas',
     texto:
-      'Neumonías notificadas por departamento y vigilancia laboratorial nacional de virus (muestras y detecciones, no casos). Las fórmulas de idoneidad, anomalía y presión siguen cerradas solo a dengue: no se reutilizan aquí sin validación propia.',
-  },
-  {
-    href: '/ira',
-    titulo: 'IRA',
-    estado: 'Serie notificada',
-    texto:
-      'Infección respiratoria aguda notificada por departamento (ADR 0011). Serie publicada acumulada desde la semana 1 y desacumulada por diferencia entre cortes consecutivos.',
+      'Neumonías e infección respiratoria aguda (IRA) notificadas por departamento (ADR 0011), más vigilancia laboratorial nacional de virus (muestras y detecciones). Cada serie conserva su unidad.',
   },
 ];
 
 const COMO_LEER = [
-  'Cada departamento se compara contra su propia historia, nunca contra los demás ni contra un promedio nacional.',
-  'Ninguna capa asigna un nivel de riesgo ni anticipa un brote. Son descripciones de lo ya publicado.',
+  'Cada departamento se compara contra su propia historia.',
+  'Cada capa describe lo ya publicado: un percentil, un conteo, una anomalía.',
   'Las series son históricas, no de tiempo real: el dato más reciente cargado no es el de esta semana.',
-  'La coexistencia temporal de dos series no demuestra que una cause la otra.',
 ];
 ---
 
 <Layout
   title="EPI-Aetheris — Análisis"
-  descripcion="Herramientas descriptivas de EPI-Aetheris: dengue, respiratorio e IRA por departamento, sobre datos públicos históricos."
+  descripcion="Herramientas descriptivas de EPI-Aetheris: dengue y respiratorio por departamento, sobre datos públicos históricos."
 >
   <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
     <header class="max-w-3xl">
@@ -55,8 +48,8 @@ const COMO_LEER = [
         Análisis
       </h1>
       <p class="mt-3 font-sans text-base leading-relaxed text-ink-muted">
-        Las tres vistas descriptivas del sistema. Si lo que buscás es qué hacer
-        hoy en la unidad de salud, la sección de
+        Las dos vistas descriptivas del sistema. Para lo que está vigente y las
+        indicaciones para la unidad, la sección de
         <a
           href="/alertas"
           class="font-medium text-accent underline underline-offset-2"
@@ -65,7 +58,7 @@ const COMO_LEER = [
       </p>
     </header>
 
-    <div class="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
       {
         HERRAMIENTAS.map((h) => (
           <a
@@ -91,6 +84,40 @@ const COMO_LEER = [
         ))
       }
     </div>
+
+    <section
+      data-seccion-fichas
+      class="mt-8 rounded-2xl border border-border bg-surface p-5 sm:p-6"
+    >
+      <div
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+      >
+        <div>
+          <h2 class="font-sans text-base font-semibold text-ink">
+            Fichas departamentales imprimibles
+          </h2>
+          <p class="mt-1 font-sans text-sm text-ink-muted leading-relaxed">
+            Resumen en una hoja diseñado para campo e impresión sin conexión:
+            estado de la última semana disponible (M1, M2, M3), series
+            históricas, IRA, neumonías y guías de prevención oficiales citadas.
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        {
+          DEPARTAMENTOS.map((dep) => (
+            <a
+              href={`/analisis/ficha/${dep.codigo}`}
+              data-ficha-enlace={dep.codigo}
+              class="rounded-full border border-border bg-bg px-3 py-1.5 font-sans text-xs font-medium text-ink transition-colors hover:border-accent/40 hover:text-accent"
+            >
+              {dep.nombre} <span class="text-ink-muted">({dep.codigo})</span>
+            </a>
+          ))
+        }
+      </div>
+    </section>
 
     <section
       class="mt-10 rounded-2xl border border-border bg-surface p-5 sm:p-6"

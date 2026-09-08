@@ -6,9 +6,7 @@
       Disponibilidad de observaciones
     </h3>
     <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
-      Presencia o ausencia de la serie MINSAL seleccionada por departamento y
-      semana. Esta vista describe cobertura del dato; no representa riesgo ni
-      intensidad epidemiológica.
+      Muestra qué semanas tienen dato MINSAL y cuáles no, por departamento.
     </p>
   </header>
 
@@ -50,7 +48,11 @@
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { vincularMarcasPlot } from '../../lib/plot-interacciones';
-  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+  import {
+    esAnioAnalisisDengue,
+    notaAnioSoloClima,
+    type FiltrosAnalisis,
+  } from '../../lib/tipos-analisis';
 
   interface CeldaDisponibilidad {
     codigo: string;
@@ -76,6 +78,12 @@
     if (!contenedor) return;
     const idRevision = ++revision;
     if (resumen) resumen.textContent = 'Cargando cobertura semanal…';
+    if (!esAnioAnalisisDengue(filtros.anio)) {
+      contenedor.replaceChildren();
+      if (resumen) resumen.textContent = notaAnioSoloClima(filtros.anio);
+      return;
+    }
+
     try {
       const dataset = await obtenerDatasetAnalitico(filtros.anio);
       if (idRevision !== revision) return;

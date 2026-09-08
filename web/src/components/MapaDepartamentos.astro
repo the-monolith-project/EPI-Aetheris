@@ -9,9 +9,9 @@
 // Ninguna de las capas es salida del clasificador de riesgo (ese vive en
 // MetricasModelo.astro, a nivel nacional). Todas son descriptivas: volumen
 // de casos MINSAL, idoneidad biofísica, anomalía climática continua,
-// presión epidemiológica relativa (M3, dos series separadas), y una capa
-// todavía no implementada (índice de confianza de vigilancia) que se
-// muestra deshabilitada ("próximamente") en vez de inventar una fórmula.
+// presión epidemiológica relativa (M3, dos series separadas), e integridad
+// de la vigilancia (M4: presencia de dato / hueco / boletín que no cuadra).
+// M4 no es un semáforo de riesgo ni un índice compuesto.
 //
 // La capa de anomalía climática es deliberadamente NO un semáforo de
 // alerta -- este proyecto retiró un diseño de alerta binaria porque se
@@ -146,14 +146,23 @@
         >
         </h3>
       </div>
-      <button
-        type="button"
-        id="mapa-detalle-cerrar"
-        class="rounded-full border border-border bg-surface px-2.5 py-1 font-sans text-xs text-ink-muted transition-colors hover:border-accent/40 hover:text-ink"
-        aria-label="Cerrar detalle de departamento"
-      >
-        Cerrar
-      </button>
+      <div class="flex items-center gap-2">
+        <a
+          id="mapa-detalle-ficha"
+          href="#"
+          class="rounded-full border border-border bg-surface px-3 py-1 font-sans text-xs font-semibold text-accent transition-colors hover:border-accent/40 hover:underline"
+        >
+          Ficha imprimible
+        </a>
+        <button
+          type="button"
+          id="mapa-detalle-cerrar"
+          class="rounded-full border border-border bg-surface px-2.5 py-1 font-sans text-xs text-ink-muted transition-colors hover:border-accent/40 hover:text-ink"
+          aria-label="Cerrar detalle de departamento"
+        >
+          Cerrar
+        </button>
+      </div>
     </div>
 
     <dl
@@ -233,6 +242,7 @@
   } from '../lib/analisis-state';
   import {
     ANIOS_ANALISIS_DENGUE,
+    esAnioAnalisisDengue,
     type AnioAnalisisDengue,
   } from '../lib/tipos-analisis';
   import { escapeHtml } from '../utils/security';
@@ -393,7 +403,13 @@
       const anios: readonly AnioAnalisisDengue[] =
         filtros.modoMinsal === 'historico'
           ? ANIOS_ANALISIS_DENGUE
-          : [filtros.anio];
+          : esAnioAnalisisDengue(filtros.anio)
+            ? [filtros.anio]
+            : [];
+      if (anios.length === 0) {
+        detallesMinsal = new Map();
+        return new Map();
+      }
       const datasets = await Promise.all(
         anios.map((anio) => obtenerDatasetAnalitico(anio)),
       );
@@ -450,11 +466,7 @@
 
   // ---------------------------------------------------------------------
   // Capas 2 y 3: idoneidad biofísica (Iv) y anomalía climática continua --
-  // ambas vienen del mismo endpoint espacial, GET /api/v1/spatial/current.
-  // El backend todavía no está mergeado (equipo en paralelo); el fetch se
-  // aísla en una sola función con caché de un único intento, y el parseo de
-  // nombres de campo vive en un único lugar para que un cambio de contrato
-  // sea un ajuste de una línea.
+  // GET /api/v1/spatial/current (no el dataset de dengue, que corta en 2023).
   // ---------------------------------------------------------------------
 
   interface DatoEspacial {
@@ -476,16 +488,26 @@
     if (!cacheEspacial) {
       cacheEspacial = (async () => {
         try {
-          const datos = await obtenerDatasetAnalitico(ANIO_ESPACIAL);
+          const resp = await fetch(
+            `${API_BASE}/api/v1/spatial/current?week=${SEMANA_ESPACIAL}&year=${ANIO_ESPACIAL}`,
+          );
+          if (!resp.ok) return null;
+          const cuerpo: {
+            departamentos?: Array<{
+              codigo: string;
+              iv: number | null;
+              anomaly_sigma: number | null;
+            }>;
+          } = await resp.json();
           const mapa = new Map<string, DatoEspacial>();
-          for (const departamento of datos.departamentos) {
-            const fila = departamento.semanas.find(
-              (semana) => semana.semana_epi === SEMANA_ESPACIAL,
-            );
-            mapa.set(departamento.codigo, {
-              codigo: departamento.codigo,
-              iv: fila?.iv ?? undefined,
-              anomalia_sigma: fila?.anomaly_sigma ?? undefined,
+          for (const fila of cuerpo.departamentos ?? []) {
+            mapa.set(fila.codigo, {
+              codigo: fila.codigo,
+              iv: typeof fila.iv === 'number' ? fila.iv : undefined,
+              anomalia_sigma:
+                typeof fila.anomaly_sigma === 'number'
+                  ? fila.anomaly_sigma
+                  : undefined,
             });
           }
           detallesEspacial = mapa;
@@ -505,8 +527,7 @@
     etiqueta: 'Idoneidad biofísica (Iv)',
     disponible: true,
     aviso:
-      'Resume qué tan favorables son las condiciones ambientales para el vector en la semana ' +
-      'seleccionada, en una escala de 0 a 1. No estima casos ni probabilidad de brote.',
+      'Resume qué tan favorables son las condiciones ambientales para el vector, de 0 a 1. Es condición biofísica (clima), no incidencia ni riesgo; los casos MINSAL y la presión epidemiológica no llegan más allá de 2023.',
     tituloLeyenda: 'Idoneidad biofísica (Iv, 0-1)',
     rampa: RAMPA_IV,
     sinDatoColor: SIN_DATO,
@@ -556,9 +577,9 @@
     etiqueta: 'Anomalía climática (continua)',
     disponible: true,
     aviso:
-      'Muestra cuánto se apartan las condiciones ambientales de la referencia histórica del ' +
-      'mismo departamento y semana. Se expresa en desviaciones estándar y no funciona como un ' +
-      'umbral de alerta.',
+      'Se expresa en desviaciones estándar frente a la referencia histórica del mismo ' +
+      'departamento y semana. Es condición biofísica (clima), no incidencia ni riesgo; ' +
+      'los casos MINSAL y la presión epidemiológica no llegan más allá de 2023.',
     tituloLeyenda: 'Anomalía climática (σ respecto al promedio histórico)',
     rampa: RAMPA_ANOMALIA,
     sinDatoColor: SIN_DATO,
@@ -630,6 +651,10 @@
     if (!cachePresion) {
       cachePresion = (async () => {
         try {
+          if (!esAnioAnalisisDengue(ANIO_ESPACIAL)) {
+            detallesPresion = new Map();
+            return new Map();
+          }
           const datos = await obtenerDatasetAnalitico(ANIO_ESPACIAL);
           const mapa = new Map<string, DatoPresion>();
           for (const departamento of datos.departamentos) {
@@ -676,7 +701,7 @@
       disponible: true,
       aviso:
         `Compara los casos ${serie} observados con la historia del mismo departamento y periodo. ` +
-        'Un valor alto indica una observación relativamente inusual, no una predicción.',
+        'Un valor alto indica qué tan inusual es lo observado frente a la historia del propio departamento.',
       tituloLeyenda: `Presión relativa (${serie}, frente a P50/P75 de su referencia histórica)`,
       rampa: RAMPA_PRESION,
       sinDatoColor: SIN_DATO,
@@ -708,22 +733,89 @@
   const capaPresionProbable = definirCapaPresion('probable');
   const capaPresionConfirmado = definirCapaPresion('confirmado');
 
+  // ---------------------------------------------------------------------
+  // Capa 6: integridad de la vigilancia (M4). Tres hechos por separado;
+  // el color del mapa solo codifica presencia / hueco / boletín que no
+  // cuadra. Sin índice compuesto y sin paleta de semáforo de riesgo.
+  // GET /api/v1/vigilancia/integridad?week=&year=
+  // ---------------------------------------------------------------------
+
+  interface IntegridadSemana {
+    completitud?: {
+      probable: {
+        departamentos: { codigo: string; presente: boolean }[];
+      };
+      confirmado: {
+        departamentos: { codigo: string; presente: boolean }[];
+      };
+    };
+    cuadre?: { cuadra: boolean | null };
+  }
+
+  let cacheConfianza: Promise<IntegridadSemana | null> | null = null;
+
+  async function obtenerIntegridadSemana(): Promise<IntegridadSemana | null> {
+    if (!cacheConfianza) {
+      cacheConfianza = (async () => {
+        try {
+          const resp = await fetch(
+            `${API_BASE}/api/v1/vigilancia/integridad?week=${SEMANA_ESPACIAL}&year=${ANIO_ESPACIAL}`,
+          );
+          if (!resp.ok) return null;
+          return (await resp.json()) as IntegridadSemana;
+        } catch {
+          return null;
+        }
+      })();
+    }
+    return cacheConfianza;
+  }
+
+  const ESTADO_SIN_DATO = 0;
+  const ESTADO_PRESENTE = 1;
+  const ESTADO_NO_CUADRA = 2;
+  const RAMPA_CONFIANZA = ['#d4d4d8', '#5b7c99', '#c4a35a'];
+
   const capaConfianza: DefinicionCapa = {
     id: 'confianza',
-    etiqueta: 'Índice de confianza de vigilancia (próximamente)',
-    disponible: false,
+    etiqueta: 'Integridad de la vigilancia',
+    disponible: true,
     aviso:
-      'Fórmula todavía no definida en el equipo. Busca hacer visible dónde la vigilancia ' +
-      'departamental es más escasa. Esta capa permanece deshabilitada hasta contar con un método aprobado.',
-    tituloLeyenda: '',
-    rampa: [],
+      'El color indica si ese departamento tiene fila esa semana, si falta el dato, o si el ' +
+      'boletín no cuadra aritméticamente. No es un nivel de riesgo ni un índice de confianza opaco.',
+    tituloLeyenda: 'Calidad del dato (semana seleccionada)',
+    rampa: RAMPA_CONFIANZA,
     sinDatoColor: SIN_DATO,
     async cargarValores() {
-      return null;
+      const datos = await obtenerIntegridadSemana();
+      if (!datos?.completitud) return null;
+      const serie = obtenerFiltrosAnalisis().serie;
+      const cuadra = datos.cuadre?.cuadra;
+      const valores = new Map<string, number | undefined>();
+      for (const departamento of datos.completitud[serie].departamentos) {
+        if (!departamento.presente) {
+          valores.set(departamento.codigo, ESTADO_SIN_DATO);
+        } else if (cuadra === false) {
+          valores.set(departamento.codigo, ESTADO_NO_CUADRA);
+        } else {
+          valores.set(departamento.codigo, ESTADO_PRESENTE);
+        }
+      }
+      return valores;
     },
-    calcularCortes: () => [],
-    etiquetasLeyenda: () => [],
-    tooltipValor: () => 'sin dato',
+    calcularCortes: () => [0.5, 1.5],
+    etiquetasLeyenda: () => [
+      'sin dato esta semana',
+      'dato presente',
+      'el boletín no cuadra',
+    ],
+    tooltipValor(valor) {
+      if (valor === ESTADO_SIN_DATO) return 'sin dato esta semana';
+      if (valor === ESTADO_NO_CUADRA)
+        return 'dato presente — el boletín no cuadra';
+      if (valor === ESTADO_PRESENTE) return 'dato presente';
+      return 'sin dato';
+    },
   };
 
   const CAPAS: DefinicionCapa[] = [
@@ -956,6 +1048,9 @@
     const detalleSnapshot = document.getElementById('mapa-detalle-snapshot');
     const detalleCurva = document.getElementById('mapa-detalle-curva');
     const detalleCerrar = document.getElementById('mapa-detalle-cerrar');
+    const detalleFicha = document.getElementById(
+      'mapa-detalle-ficha',
+    ) as HTMLAnchorElement | null;
     if (
       !contenedorSelector ||
       !contenedorMapa ||
@@ -985,6 +1080,13 @@
     async function mostrarDetalle(codigo: string, nombre: string) {
       contenedorDetalle.classList.remove('hidden');
       detalleNombre.textContent = nombre;
+      if (detalleFicha) {
+        detalleFicha.href = `/analisis/ficha/${codigo}`;
+        detalleFicha.setAttribute(
+          'aria-label',
+          `Ver ficha imprimible de ${nombre}`,
+        );
+      }
       detalleSnapshot.innerHTML =
         '<div class="skeleton h-12 rounded-lg"></div><div class="skeleton h-12 rounded-lg"></div>' +
         '<div class="skeleton h-12 rounded-lg"></div><div class="skeleton h-12 rounded-lg"></div>';
@@ -1305,6 +1407,7 @@
         ANIO_ESPACIAL = filtros.anio;
         cacheEspacial = null;
         cachePresion = null;
+        cacheConfianza = null;
         (
           [
             'minsal_volumen',
@@ -1312,12 +1415,14 @@
             'anomalia',
             'presion_probable',
             'presion_confirmado',
+            'confianza',
           ] as IdCapa[]
         ).forEach((id) => cacheValoresPorCapa.delete(id));
       }
 
       if (cambioSerie || cambioModoMinsal) {
         cacheValoresPorCapa.delete('minsal_volumen');
+        cacheValoresPorCapa.delete('confianza');
       }
 
       if (

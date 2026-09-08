@@ -1,5 +1,9 @@
 import { obtenerDatasetAnalitico } from './analisis-api';
-import type { FiltrosAnalisis } from './tipos-analisis';
+import {
+  esAnioAnalisisDengue,
+  notaAnioSoloClima,
+  type FiltrosAnalisis,
+} from './tipos-analisis';
 
 function celdaCsv(valor: string | number | null): string {
   if (valor === null) return '';
@@ -21,6 +25,9 @@ function descargar(nombre: string, contenido: string): void {
 export async function exportarAnalisisCsv(
   filtros: FiltrosAnalisis,
 ): Promise<number> {
+  if (!esAnioAnalisisDengue(filtros.anio)) {
+    throw new Error(notaAnioSoloClima(filtros.anio));
+  }
   const dataset = await obtenerDatasetAnalitico(filtros.anio);
   const codigos =
     filtros.comparar.length > 0

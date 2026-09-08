@@ -9,7 +9,7 @@ interface Props {
 
 const {
   title = 'EPI-Aetheris',
-  descripcion = 'Vigilancia epidemiológica descriptiva de dengue e IRA en El Salvador. Datos públicos, software libre y reproducible. No es un diagnóstico ni un pronóstico.',
+  descripcion = 'Vigilancia epidemiológica descriptiva de dengue e IRA en El Salvador, sobre datos públicos de MINSAL, OpenDengue y Open-Meteo. Licencia GPL-3.0.',
 } = Astro.props;
 
 // API pública real -- FastAPI genera /docs (Swagger UI) gratis a partir de
@@ -23,24 +23,23 @@ const ruta = Astro.url.pathname;
 const urlCanonica = new URL(ruta, Astro.site);
 // Nav de dos caras (ADR 0014). No es un "modo" con estado: son secciones, y
 // ninguna esconde a la otra. Arriba queda lo que sirve en consulta
-// (Alertas); las tres herramientas descriptivas se agrupan bajo /analisis en
+// (Alertas); las dos herramientas descriptivas se agrupan bajo /analisis en
 // vez de ocupar una entrada cada una. `rutas` marca qué prefijos encienden
-// la entrada -- /dengue, /respiratorio e /ira viven bajo Análisis aunque su
+// la entrada -- /dengue y /respiratorio viven bajo Análisis aunque su
 // URL no empiece con /analisis.
 const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
   { href: '/', etiqueta: 'Inicio' },
   // Puente vigilancia -> personal de salud (ADR 0013): decisiones humanas.
   { href: '/alertas', etiqueta: 'Alertas' },
   // Índice de las herramientas descriptivas. Dengue lleva Camino Ancho
-  // completo; respiratorio e IRA (ADR 0011, aceptado 2026-08-22) van sin
-  // capas Iv/anomalía/presión -- esas fórmulas siguen cerradas solo a dengue.
+  // completo; respiratorio (neumonías, IRA y virus, ADR 0011) va sin capas
+  // Iv/anomalía/presión -- esas fórmulas siguen cerradas solo a dengue.
   {
     href: '/analisis',
     etiqueta: 'Análisis',
-    rutas: ['/analisis', '/dengue', '/respiratorio', '/ira'],
+    rutas: ['/analisis', '/dengue', '/respiratorio'],
   },
-  // Selección curada de docs/ y docs/adr/ del repo, renderizada a HTML --
-  // ver web/src/content.config.ts para qué documentos entran y por qué.
+  // Documentos propios en docs/biblioteca/ (ADR 0016).
   { href: '/biblioteca', etiqueta: 'Biblioteca' },
   // Sin backend: la página solo enruta a GitHub Issues del repo. Recibir
   // sugerencias con formulario propio exigiría tabla nueva + ADR y guardar
@@ -129,65 +128,176 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
             })
           }
         </nav>
-
-        {
-          /* ...  <span
-          class="hidden shrink-0 rounded-full border border-white/15 bg-white/5 px-3 py-1 font-sans text-[11px] font-medium uppercase tracking-wide text-white/80 lg:inline-block"
-        >
-          Camino Ancho &middot; descriptivo, no predictivo
-        </span>*/
-        }
       </div>
     </header>
 
     <slot />
 
     <footer class="mt-12 bg-deep">
-      <div class="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 lg:px-12">
-        <p class="font-sans text-xs leading-relaxed text-deep-ink-muted">
-          Datos públicos agregados (MINSAL, OpenDengue, Open-Meteo) &middot;
-          software libre y reproducible. Esta herramienta es una ayuda de
-          priorización, no un diagnóstico ni un pronóstico. Ninguna capa asigna
-          un nivel de riesgo departamental.
-        </p>
-        <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-sans text-xs">
-          <a
-            href={`${API_BASE}/docs`}
-            class="text-deep-ink underline underline-offset-2 hover:text-white"
-          >
-            API pública (Swagger)
-          </a>
-          <a
-            href="https://github.com/the-monolith-project/EPI-Aetheris"
-            class="text-deep-ink underline underline-offset-2 hover:text-white"
-          >
-            Código en GitHub
-          </a>
-        </div>
-        <p
-          class="mt-4 font-sans text-[11px] uppercase tracking-wide text-deep-ink-muted"
+      <div class="mx-auto max-w-[1600px] px-4 py-10 sm:px-8 sm:py-12 lg:px-12">
+        <div
+          class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[1.25fr_repeat(3,1fr)] lg:gap-12"
         >
-          Fuentes
-        </p>
-        <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 font-sans text-xs">
-          <a
-            href="https://www.salud.gob.sv/category/publicaciones/informes-de-vigilancia-sanitaria/"
-            class="text-deep-ink-muted underline underline-offset-2 hover:text-white"
-          >
-            MINSAL · boletines de vigilancia
-          </a>
-          <a
-            href="https://opendengue.org/"
-            class="text-deep-ink-muted underline underline-offset-2 hover:text-white"
-          >
-            OpenDengue
-          </a>
-          <a
-            href="https://open-meteo.com/en/license"
-            class="text-deep-ink-muted underline underline-offset-2 hover:text-white"
-          >
-            Open-Meteo (CC BY 4.0)
-          </a>
+          <div class="flex flex-col items-start">
+            <a
+              href="/"
+              class="rounded-xs font-display text-xl font-semibold tracking-tight text-white hover:text-white"
+            >
+              EPI-Aetheris
+            </a>
+            <p
+              class="mt-2.5 font-sans text-xs leading-relaxed text-deep-ink-muted"
+            >
+              Vigilancia epidemiológica de dengue y enfermedad respiratoria en
+              El Salvador.
+            </p>
+            <p class="mt-3 font-mono text-[11px] text-deep-ink-muted">
+              GPL-3.0 · 2026
+            </p>
+          </div>
+
+          <nav aria-label="Pie de página" class="contents">
+            <div>
+              <h2
+                class="font-sans text-[11px] font-semibold uppercase tracking-wider text-deep-ink-muted"
+              >
+                El proyecto
+              </h2>
+              <ul class="mt-3 space-y-2 font-sans text-xs">
+                <li>
+                  <a
+                    href="/biblioteca/01-que-es"
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    Qué es
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/biblioteca/05-sensibilidad-y-honestidad"
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    Aviso de sensibilidad
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/biblioteca/06-arquitectura-y-reproducibilidad"
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    Arquitectura y reproducibilidad
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/the-monolith-project/EPI-Aetheris"
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    Código en GitHub
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h2
+                class="font-sans text-[11px] font-semibold uppercase tracking-wider text-deep-ink-muted"
+              >
+                Datos y método
+              </h2>
+              <ul class="mt-3 space-y-2 font-sans text-xs">
+                <li>
+                  <a
+                    href="/biblioteca/04-fuentes-de-datos"
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    Fuentes de datos
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/biblioteca/03-funciones"
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    Módulos M1–M3
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={`${API_BASE}/docs`}
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    API pública (Swagger)
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://open-meteo.com/en/license"
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    Licencias de datos
+                  </a>
+                  <span
+                    class="mt-0.5 block text-[11px] leading-normal text-deep-ink-muted"
+                  >
+                    MINSAL · OpenDengue · Open-Meteo CC BY 4.0
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h2
+                class="font-sans text-[11px] font-semibold uppercase tracking-wider text-deep-ink-muted"
+              >
+                Vigilancia
+              </h2>
+              <ul class="mt-3 space-y-2 font-sans text-xs">
+                <li>
+                  <a
+                    href="/alertas"
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    Alertas de campo
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/analisis"
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    Análisis por departamento
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/biblioteca/02-historia"
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    Decisiones y trayectoria
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/sugerencias"
+                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                  >
+                    Sugerencias (GitHub Issues)
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </div>
+
+        <div class="mt-10 border-t border-white/10 pt-6 sm:mt-12">
+          <p class="font-sans text-xs leading-relaxed text-deep-ink-muted">
+            Proyecto académico · El Salvador · 2026. Ayuda de priorización sobre
+            datos públicos agregados de MINSAL, OpenDengue y Open-Meteo, bajo
+            licencia GPL-3.0; no reemplaza los lineamientos del MINSAL ni el
+            criterio clínico. Las capas describen cada departamento contra su
+            propia historia, no asignan un nivel de riesgo automatizado.
+          </p>
         </div>
       </div>
     </footer>

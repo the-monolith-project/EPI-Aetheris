@@ -34,7 +34,11 @@ trae el rango continuo completo, igual que backend/ingestion/cargar_
 opendengue.py.
 
 Uso:
-    python3 cargar_clima.py [--anio-inicio 2018] [--anio-fin 2024]
+    python3 cargar_clima.py [--anio-inicio 2018] [--anio-fin AÑO_EN_CURSO]
+
+El archive ERA5 no acepta fechas futuras y tiene un rezago de ~5 días:
+fecha_fin se recorta a hoy. No se usa el modelo de pronóstico para
+cerrar ese tramo (ADR 0018).
 """
 
 from __future__ import annotations
@@ -57,7 +61,7 @@ CENTROIDES_PATH = RAIZ / "geo" / "centroides_departamentos.csv"
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
 ANIO_INICIO_DEFAULT = 2018
-ANIO_FIN_DEFAULT = 2024
+ANIO_FIN_DEFAULT = date.today().year
 
 VARIABLES_ERA5_LAND = [
     "temperature_2m_max", "temperature_2m_min", "temperature_2m_mean",
@@ -219,11 +223,61 @@ def agregar_a_semana(puntos: list[PuntoDiario],
     return grupos
 
 
+DIAS_MINIMOS_SEMANA = 5
+# Una semana epidemiologica con menos de este numero de dias observados se
+# descarta en vez de agregarse. El reanalisis ERA5 no cubre los ~5 dias mas
+# recientes (ADR 0018), asi que la semana de cola de una corrida al anio en
+# curso queda parcial. Para variables de suma (precipitacion) una semana
+# parcial es indistinguible aguas abajo de una semana genuinamente seca, y
+# alimenta el Iv/anomalia de /api/v1/spatial/current y el baseline
+# leave-one-out del Modulo 2. Mismo criterio que experimento_multipais.py.
+
+
+def descartar_semanas_incompletas(
+    grupos: dict[tuple[str, int, int, str], list[float]],
+    minimo: int = DIAS_MINIMOS_SEMANA,
+) -> tuple[dict[tuple[str, int, int, str], list[float]], int]:
+    """Filtra los grupos (depto, anio, semana, variable) con menos de `minimo`
+    observaciones diarias. Devuelve (grupos_completos, n_descartados)."""
+    completos = {k: v for k, v in grupos.items() if len(v) >= minimo}
+    return completos, len(grupos) - len(completos)
+
+
+def fecha_fin_archivo(anio_fin: int, hoy: date | None = None) -> date:
+    """Tope del archive ERA5: no pide un 31 de diciembre futuro.
+
+    El reanálisis tiene además ~5 días de rezago (ADR 0018); esos días
+    salen nulos y no se imputan. `hoy` es inyectable para pruebas.
+    """
+    tope = hoy if hoy is not None else date.today()
+    return min(date(anio_fin, 12, 31), tope)
+
+
+def rango_archivo(
+    anio_inicio: int, anio_fin: int, hoy: date | None = None
+) -> tuple[date, date]:
+    """(fecha_inicio, fecha_fin) listo para el archive; error si queda invertido."""
+    inicio = date(anio_inicio, 1, 1)
+    fin = fecha_fin_archivo(anio_fin, hoy=hoy)
+    if inicio > fin:
+        raise ValueError(
+            f"Rango invertido para el archive ERA5: {inicio.isoformat()} > "
+            f"{fin.isoformat()}. Ajusta --anio-inicio/--anio-fin."
+        )
+    return inicio, fin
+
+
 def cargar(anio_inicio: int, anio_fin: int) -> int:
     deptos = leer_departamentos()
-    fecha_inicio = date(anio_inicio, 1, 1).isoformat()
-    fecha_fin = date(anio_fin, 12, 31).isoformat()
+    inicio, fin = rango_archivo(anio_inicio, anio_fin)
+    fecha_inicio = inicio.isoformat()
+    fecha_fin = fin.isoformat()
 
+    if date.fromisoformat(fecha_fin) < date(anio_fin, 12, 31):
+        print(
+            f"fecha_fin recortada a {fecha_fin} (ERA5 archive no acepta fechas "
+            f"futuras; rezago de reanálisis ~5 días, ADR 0018)."
+        )
     print(f"Llamando Open-Meteo (era5_land, 5 variables, {len(deptos)} departamentos, "
           f"{fecha_inicio} a {fecha_fin})...")
     resp_era5_land = llamar_open_meteo(deptos, "era5_land", VARIABLES_ERA5_LAND, fecha_inicio, fecha_fin)
@@ -238,6 +292,13 @@ def cargar(anio_inicio: int, anio_fin: int) -> int:
     try:
         mapa_fecha_a_semana = construir_mapa_fecha_a_semana(conn)
         grupos = agregar_a_semana(puntos, mapa_fecha_a_semana)
+        grupos, incompletas = descartar_semanas_incompletas(grupos)
+        if incompletas:
+            print(
+                f"{incompletas} grupos depto-semana-variable descartados por tener "
+                f"<{DIAS_MINIMOS_SEMANA} dias observados (semana de cola parcial / "
+                f"rezago ERA5); no se agregan para no contaminar el baseline."
+            )
 
         with conn.cursor() as cur:
             cur.execute("SELECT codigo, id FROM regiones WHERE nivel_admin = 1")

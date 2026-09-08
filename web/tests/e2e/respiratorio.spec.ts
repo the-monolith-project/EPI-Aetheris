@@ -11,7 +11,10 @@ test.describe('observatorio respiratorio', () => {
       page.getByRole('heading', { name: /Observatorio respiratorio/i }),
     ).toBeVisible();
     await expect(page.locator('body')).not.toContainText('La Influenza causó');
-    await expect(page.locator('main')).toContainText('sin predicción');
+    await expect(page.locator('main')).toContainText(
+      'Observatorio respiratorio · MINSAL',
+    );
+    await expect(page.locator('main')).not.toContainText('sin predicción');
 
     const cobertura = page.locator('[data-cobertura]');
     await expect(cobertura).toContainText('MINSAL', { timeout: 15_000 });
@@ -62,11 +65,8 @@ test.describe('observatorio respiratorio', () => {
     await expect(toggles).not.toContainText('influenza_b');
   });
 
-  test('/ira redirige al observatorio y la curva admite año y rango SE', async ({
-    page,
-  }) => {
-    await page.goto('/ira');
-    await expect(page).toHaveURL(/\/respiratorio/);
+  test('la curva de neumonías admite año y rango SE', async ({ page }) => {
+    await page.goto('/respiratorio#neumonias');
     const curva = page.locator('#neumonias [data-curva-evento="neumonias"]');
     // Neumonías sí está cargada en esta base; IRA puede estar vacía.
     await expect(curva.locator('svg')).toBeVisible({ timeout: 20_000 });
@@ -89,7 +89,7 @@ test.describe('observatorio respiratorio', () => {
 
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      heatmap.getByRole('button', { name: /Exportar CSV/i }).click(),
+      heatmap.getByRole('button', { name: /Exportar.*CSV/i }).click(),
     ]);
     const tmp = test.info().outputPath('neumonias-heatmap.csv');
     await download.saveAs(tmp);

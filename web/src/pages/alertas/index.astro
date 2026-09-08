@@ -1,11 +1,13 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import Layout from '../../layouts/Layout.astro';
 import {
   AVISO_HONESTIDAD_ALERTAS,
+  AVISO_HONESTIDAD_ALERTAS_CLINICO,
+  AVISO_HONESTIDAD_ALERTAS_INTRO,
   ETIQUETAS_NIVEL,
   NIVELES_ALERTA,
   SIGNIFICADO_NIVEL,
-} from '../lib/vista-alertas';
+} from '../../lib/vista-alertas';
 
 const tipoPedido = Astro.url.searchParams.get('tipo');
 const filtroDengue = tipoPedido === 'dengue';
@@ -18,7 +20,7 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
       <p
         class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
       >
-        Alertas de campo · redacción humana · datos históricos
+        Alertas de campo · equipo de vigilancia
       </p>
       <h1
         class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
@@ -30,15 +32,8 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
         class="mt-4 rounded-2xl border border-border bg-surface p-4 font-sans text-sm leading-relaxed text-ink"
       >
         <p>
-          Herramienta académica en desarrollo (INSAMT, Equipo 4). Las alertas y
-          sus indicaciones las redacta manualmente el equipo de vigilancia del
-          proyecto a partir de datos públicos históricos (MINSAL, OpenDengue,
-          Open-Meteo).{' '}
-          <strong
-            >No sustituyen los lineamientos oficiales del MINSAL ni el criterio
-            clínico.</strong
-          >{' '}
-          No son tiempo real. La coexistencia temporal de eventos no demuestra causalidad.
+          {AVISO_HONESTIDAD_ALERTAS_INTRO}{' '}
+          <strong>{AVISO_HONESTIDAD_ALERTAS_CLINICO}</strong>
         </p>
       </aside>
       <p class="sr-only">{AVISO_HONESTIDAD_ALERTAS}</p>
@@ -97,6 +92,11 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
             : 'border-border bg-surface',
         ]}>Respiratorio</a
       >
+      <a
+        href="/alertas/archivo"
+        class="rounded-full border border-border bg-surface px-3 py-1.5"
+        >Archivo de alertas emitidas</a
+      >
     </nav>
 
     <div
@@ -154,7 +154,7 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
     leerAlertasVistas,
     type PayloadAlertas,
     type PintarAlertas,
-  } from '../lib/vista-alertas';
+  } from '../../lib/vista-alertas';
 
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const root = document.querySelector<HTMLElement>('[data-alertas]');

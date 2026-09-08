@@ -3,10 +3,11 @@ import json
 import os
 import threading
 from contextlib import contextmanager
+from datetime import date
 from pathlib import Path
 
 import joblib
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -52,6 +53,7 @@ from .neumonias import (
     cargar_neumonias_departamento_temporal,
 )
 from .cobertura import AVISO_COBERTURA, cargar_cobertura
+from .vigilancia import construir_integridad
 from .respiratorios import (
     AVISO_HONESTIDAD_VIRUS,
     listar_virus,
@@ -60,7 +62,12 @@ from .respiratorios import (
 )
 from .alertas import (
     TIPOS_ALERTA,
+    AlertaCrear,
+    AlertaParche,
+    comprobar_token_escritura,
     consultar_alertas_publicas,
+    crear_alerta,
+    parchear_alerta,
 )
 
 # Artefactos de la tarjeta 23/24 -- generados por
@@ -75,17 +82,14 @@ MODELO_PATH = INGESTION_DIR / "data" / "interim" / "modelo" / "clasificador_ries
 METRICAS_MODELO_PATH = INGESTION_DIR / "data" / "interim" / "modelo" / "metricas_modelo.json"
 
 AVISO_HONESTIDAD_RIESGO_NACIONAL = (
-    "Esta clasificación es a nivel NACIONAL, entrenada sobre la serie agregada de "
-    "El Salvador (pivote 'Opción C'). No representa riesgo por departamento -- el mapa "
-    "no debe interpretarse como si cada departamento tuviera este nivel de riesgo "
-    "individualmente. La coropleta departamental del mapa es una capa DESCRIPTIVA "
-    "aparte (volumen de casos MINSAL, no riesgo) -- estos datos todavía no alimentan "
-    "ningún clasificador."
+    "Clasificación entrenada sobre la serie nacional agregada de El Salvador. "
+    "El mapa departamental es una capa descriptiva aparte (volumen de casos MINSAL); "
+    "estos datos no alimentan ningún clasificador."
 )
 
 app = FastAPI(
     title="EPI-Aetheris API",
-    description="API para ingesta, predicción y consulta de datos epidemiológicos",
+    description="API para ingesta, análisis y consulta de datos epidemiológicos descriptivos",
     version="0.1.0"
 )
 
@@ -122,6 +126,11 @@ RATE_LIMIT_DEFAULT = os.getenv("RATE_LIMIT_DEFAULT", "120/minute")
 # Umbral mas estricto para los endpoints que recalculan on-demand desde CSV +
 # modelo joblib y abren una conexion nueva a Postgres por request.
 RATE_LIMIT_HEAVY = os.getenv("RATE_LIMIT_HEAVY", "30/minute")
+# Escritura de alertas (POST/PATCH): operacion humana de baja frecuencia.
+# Mas estricto que el global; configurable por env igual que los otros dos.
+# El valor se lee en import para que los tests puedan bajarlo via
+# monkeypatch + importlib.reload (un literal en el decorador lo romperia).
+RATE_LIMIT_WRITE = os.getenv("RATE_LIMIT_WRITE", "10/minute")
 
 limiter = Limiter(
     key_func=_client_ip,
@@ -150,8 +159,11 @@ if "*" in cors_origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_methods=["GET"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "HEAD", "OPTIONS"],
+    # Lista explicita: el formulario de /alertas/nueva manda Authorization
+    # (Bearer) y Content-Type (JSON). Un comodín aqui no es necesario y
+    # oculta que cabeceras reales acepta el preflight.
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Las respuestas grandes de esta API son series históricas completas en JSON
@@ -322,6 +334,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # La API no usa geolocalizacion, camara, microfono ni pagos; negarlas
+        # no cambia el contrato JSON y cubre clientes que si interpretan la
+        # cabecera (p.ej. si /docs se abre en un navegador).
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), camera=(), microphone=(), payment=()"
+        )
         # Allow inline styles/scripts and jsdelivr to ensure FastAPI Swagger UI works.
         response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com"
         return response
@@ -510,11 +529,9 @@ def riesgo_nacional(
 
 
 AVISO_HONESTIDAD_CASOS_DEPARTAMENTALES = (
-    "Capa DESCRIPTIVA -- casos probables/confirmados desacumulados de boletines MINSAL "
-    "(2018-2023, con huecos reales entre boletines). No es una clasificación de riesgo: "
-    "el color representa volumen de casos acumulado en la ventana cargada, no un nivel de "
-    "riesgo por departamento. El clasificador de esta primera entrega es nacional (ver "
-    "/api/riesgo-nacional) -- estos datos NO alimentan ningún modelo todavía."
+    "Casos probables y confirmados desacumulados de boletines MINSAL "
+    "(2018-2023, con huecos entre boletines). El color representa volumen "
+    "acumulado en la ventana cargada."
 )
 
 
@@ -594,15 +611,12 @@ def casos_departamentales(request: Request, response: Response):
 # ---------------------------------------------------------------------------
 
 AVISO_HONESTIDAD_IDONEIDAD = (
-    "Índice de idoneidad biofísica (Iv) para el vector Aedes aegypti, calculado a partir de "
-    "clima ERA5-Land/ERA5 (temperatura, precipitación acumulada a 2 semanas, humedad relativa). "
-    "NO es una predicción de casos ni una alerta -- una validación empírica retrospectiva "
-    "(docs/experimentos/experimento-validacion-leadtime-camino-ancho.md) encontró que este índice NO anticipa "
-    "de forma medible y consistente el ascenso real de casos, así que esa tesis fue retirada. "
-    "El componente de humedad relativa (f_H) es una estimación propia del equipo, sin cita "
-    "bibliográfica. El 'anomaly_sigma' es un Z-score continuo contra el histórico del propio "
-    "departamento/semana -- no implica alerta ni umbral alguno; un valor alto no es, por sí "
-    "mismo, evidencia de brote."
+    "Índice de idoneidad biofísica (Iv) para Aedes aegypti, a partir de clima ERA5-Land "
+    "(temperatura, precipitación a 2 semanas, humedad). Describe condición ambiental, "
+    "no incidencia ni riesgo: los casos MINSAL y la presión epidemiológica se detienen "
+    "en 2023, y el reanálisis ERA5 llega hasta unos 5 días antes de hoy. Una validación "
+    "retrospectiva mostró que no anticipa de forma consistente el ascenso de casos; el "
+    "componente de humedad es una estimación propia del equipo."
 )
 
 
@@ -615,11 +629,10 @@ def idoneidad_espacial_actual(request: Request, response: Response, week: int, y
     binaria (ver AVISO_HONESTIDAD_IDONEIDAD y docstring del módulo
     idoneidad.py: esa tesis fue retirada tras validación empírica).
 
-    El baseline de anomaly_sigma es leave-one-out sobre el corpus climático
-    completo 2014-2024 (excluye el propio año pedido de su baseline), misma
-    semana exacta, sin ventana de semanas vecinas -- igual método que
-    validar_leadtime_camino_ancho.py. Departamentos con menos de 3 años de
-    baseline disponible devuelven anomaly_sigma=null, no un valor inventado.
+    El baseline de anomaly_sigma es leave-one-out sobre ANIOS_CLIMA (2014
+    hasta el año en curso; ADR 0018). Excluye el propio año pedido, misma
+    semana exacta, sin ventana de semanas vecinas. Departamentos con menos
+    de 3 años de baseline disponible devuelven anomaly_sigma=null.
     """
     if not (1 <= week <= 53):
         raise HTTPException(status_code=422, detail="El parámetro 'week' debe estar entre 1 y 53.")
@@ -678,16 +691,11 @@ def idoneidad_espacial_actual(request: Request, response: Response, week: int, y
 # ---------------------------------------------------------------------------
 
 AVISO_HONESTIDAD_PRESION = (
-    "Presión epidemiológica relativa: percentil del conteo de casos observado "
-    "(MINSAL, desacumulado) dentro de la historia del propio departamento "
-    "(años base 2018, 2019, 2021, 2022, 2023 -- 2020 excluido por colapso real de "
-    "vigilancia durante covid, no por baja transmisión; ventana ±1 semana, "
-    "leave-one-out). Es 100% DESCRIPTIVO: dice qué tan inusual es lo ya observado "
-    "contra su propia historia, NO predice nada, NO es una alerta ni un nivel de "
-    "riesgo. Los cortes P50/P75 son deliberadamente sensibles (decisión del equipo): "
-    "'alta' puede aparecer en semanas de años de baja transmisión. 'probable' y "
-    "'confirmado' son series separadas y no comparables entre sí. Los huecos "
-    "(null + nota) reflejan límites reales de la fuente MINSAL, no errores."
+    "Percentil del conteo observado (MINSAL, desacumulado) dentro de la historia "
+    "del propio departamento (años base 2018, 2019, 2021-2023; ventana ±1 semana, "
+    "leave-one-out). Los cortes P50/P75 son deliberadamente sensibles: 'alta' puede "
+    "aparecer en años de baja transmisión. 'probable' y 'confirmado' son series "
+    "separadas."
 )
 
 
@@ -1174,9 +1182,46 @@ def respiratorios_semana(anio: int, semana: int, response: Response):
     }
 
 
+@app.get("/api/v1/vigilancia/integridad")
+@limiter.limit(RATE_LIMIT_HEAVY)
+def vigilancia_integridad(
+    request: Request,
+    response: Response,
+    week: int | None = None,
+    year: int | None = None,
+):
+    """Integridad de la vigilancia (Módulo 4): completitud geográfica,
+    cuadre aritmético del boletín y antigüedad por serie. Capa DESCRIPTIVA
+    de la calidad del dato -- ver AVISO_HONESTIDAD_VIGILANCIA.
+
+    `week` y `year` van juntos (vista por semana para el mapa). Sin
+    parámetros: resumen anual de completitud + antigüedad por serie.
+    Nada se persiste; se calcula on-request desde tablas existentes.
+    """
+    if (week is None) != (year is None):
+        raise HTTPException(
+            status_code=422,
+            detail="Los parámetros 'week' y 'year' deben enviarse juntos.",
+        )
+    if week is not None and not (1 <= week <= 53):
+        raise HTTPException(
+            status_code=422,
+            detail="El parámetro 'week' debe estar entre 1 y 53.",
+        )
+
+    try:
+        with _conexion() as conn:
+            cuerpo = construir_integridad(conn, week=week, year=year)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    _cache_control(response, CACHE_TTL_COMPUTO)
+    return cuerpo
+
+
 @app.get("/api/respiratorios/cobertura")
 def respiratorios_cobertura(response: Response):
-    """Semanas con dato en Postgres + notas de la exploración. No es M4."""
+    """Semanas con dato en Postgres + notas de la exploración. Distinto de M4."""
     try:
         with _conexion() as conn:
             cobertura = cargar_cobertura(conn)
@@ -1191,15 +1236,42 @@ def respiratorios_cobertura(response: Response):
 
 
 # ---------------------------------------------------------------------------
-# Alertas de campo (ADR 0013). Decisiones humanas persistidas: no se
-# calculan desde M1–M3 ni desde el clasificador retirado. Solo lectura.
+# Alertas de campo (ADR 0013, ADR 0015). Decisiones humanas persistidas:
+# no se calculan desde M1–M3 ni desde el clasificador retirado.
+# GET público por defecto: activa=TRUE y etiqueta IS NULL. POST/PATCH
+# exigen Bearer contra ALERTAS_TOKEN. Sin DELETE.
 # ---------------------------------------------------------------------------
 
 
+def _autorizar_escritura_alertas(authorization: str | None) -> None:
+    error = comprobar_token_escritura(authorization)
+    if error is not None:
+        codigo, detalle = error
+        raise HTTPException(status_code=codigo, detail=detalle)
+
+
+def _alertas_http_error(exc: BaseException) -> None:
+    status = 503 if _es_fallo_conexion(exc) else 500
+    raise HTTPException(
+        status_code=status,
+        detail="Error de conexión a la base de datos",
+    )
+
+
 @app.get("/api/alertas")
-def alertas_publicas(response: Response, tipo: str | None = None):
-    """Lista alertas con activa=TRUE. Filtro opcional `tipo` (dengue |
-    respiratorio). Sin alta ni edición por HTTP."""
+def alertas_publicas(
+    response: Response,
+    tipo: str | None = None,
+    desde: date | None = None,
+    hasta: date | None = None,
+    incluir_inactivas: bool = False,
+    incluir_etiquetadas: bool = False,
+):
+    """Lista alertas. Sin parámetros extra: activa=TRUE y etiqueta IS NULL.
+
+    Filtros opcionales combinados con AND: tipo, desde/hasta (solapamiento
+    de vigencia), incluir_inactivas, incluir_etiquetadas.
+    """
     if tipo is not None and tipo not in TIPOS_ALERTA:
         raise HTTPException(
             status_code=422,
@@ -1207,16 +1279,74 @@ def alertas_publicas(response: Response, tipo: str | None = None):
         )
     try:
         with _conexion() as conn:
-            cuerpo = consultar_alertas_publicas(conn, tipo=tipo)
+            cuerpo = consultar_alertas_publicas(
+                conn,
+                tipo=tipo,
+                desde=desde,
+                hasta=hasta,
+                incluir_inactivas=incluir_inactivas,
+                incluir_etiquetadas=incluir_etiquetadas,
+            )
     except Exception as exc:
         # Contrato propio ({aviso, ultima_revision, alertas}); no se degrada
         # a {disponible:false} como los endpoints respiratorios. Solo se
         # distingue fallo de conexión (503) del resto (500).
-        status = 503 if _es_fallo_conexion(exc) else 500
-        raise HTTPException(
-            status_code=status,
-            detail="Error de conexión a la base de datos",
-        )
+        _alertas_http_error(exc)
 
     _cache_control(response, CACHE_TTL_ALERTAS)
     return cuerpo
+
+
+@app.post("/api/alertas", status_code=201)
+@limiter.limit(RATE_LIMIT_WRITE)
+def alertas_crear(
+    request: Request,
+    cuerpo: AlertaCrear,
+    response: Response,
+    authorization: str | None = Header(default=None),
+):
+    """Crea una alerta redactada por el equipo. Exige Bearer ALERTAS_TOKEN."""
+    _autorizar_escritura_alertas(authorization)
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        with _conexion() as conn:
+            creada = crear_alerta(conn, cuerpo)
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        _alertas_http_error(exc)
+    return creada
+
+
+@app.patch("/api/alertas/{alerta_id}")
+@limiter.limit(RATE_LIMIT_WRITE)
+def alertas_parchear(
+    alerta_id: int,
+    request: Request,
+    cuerpo: AlertaParche,
+    response: Response,
+    authorization: str | None = Header(default=None),
+):
+    """Edita una alerta. Como mínimo puede poner activa=false. Sin DELETE."""
+    _autorizar_escritura_alertas(authorization)
+    response.headers["Cache-Control"] = "no-store"
+    if not cuerpo.model_dump(exclude_unset=True):
+        raise HTTPException(
+            status_code=422,
+            detail="El cuerpo debe incluir al menos un campo a modificar.",
+        )
+    try:
+        with _conexion() as conn:
+            actualizada = parchear_alerta(conn, alerta_id, cuerpo)
+            if actualizada is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No existe una alerta con id {alerta_id}.",
+                )
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        _alertas_http_error(exc)
+    return actualizada

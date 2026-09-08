@@ -1,0 +1,1459 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import {
+  DEPARTAMENTOS,
+  type DepartamentoInfo,
+} from '../../../lib/departamentos';
+import {
+  AVISO_DEFECTO_IDONEIDAD,
+  AVISO_DEFECTO_PRESION,
+  AVISO_DEFECTO_IRA,
+  AVISO_DEFECTO_NEUMONIAS,
+  AVISO_DEFECTO_PREVENCION,
+} from '../../../lib/ficha-departamental';
+
+export function getStaticPaths() {
+  return DEPARTAMENTOS.map((dep) => ({
+    params: { departamento: dep.codigo },
+    props: { departamento: dep },
+  }));
+}
+
+interface Props {
+  departamento: DepartamentoInfo;
+}
+
+const { departamento } = Astro.props;
+const { codigo, nombre } = departamento;
+---
+
+<Layout
+  title={`EPI-Aetheris — Ficha departamental: ${nombre} (${codigo})`}
+  descripcion={`Ficha epidemiológica descriptiva para campo del departamento de ${nombre} (${codigo}), El Salvador.`}
+>
+  <main class="mx-auto max-w-[1400px] px-4 py-6 sm:px-8 sm:py-8 lg:px-12">
+    <!-- Barra superior de navegacion y controles (oculta en impresion) -->
+    <div
+      class="print:hidden mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <nav
+        aria-label="Migas de pan"
+        class="flex items-center gap-2 font-sans text-xs text-ink-muted"
+      >
+        <a
+          href="/analisis"
+          class="hover:text-accent underline underline-offset-2">Análisis</a
+        >
+        <span>/</span>
+        <a href="/dengue" class="hover:text-accent underline underline-offset-2"
+          >Dengue</a
+        >
+        <span>/</span>
+        <span class="font-semibold text-ink">Ficha {nombre} ({codigo})</span>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2">
+          <label
+            for="selector-departamento"
+            class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+          >
+            Departamento:
+          </label>
+          <select
+            id="selector-departamento"
+            class="rounded-lg border border-border bg-surface px-3 py-1.5 font-sans text-xs font-medium text-ink focus:border-accent focus:outline-none"
+          >
+            {
+              DEPARTAMENTOS.map((dep) => (
+                <option value={dep.codigo} selected={dep.codigo === codigo}>
+                  {dep.nombre} ({dep.codigo})
+                </option>
+              ))
+            }
+          </select>
+        </div>
+
+        <button
+          type="button"
+          data-imprimir
+          disabled
+          aria-disabled="true"
+          class="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-1.5 font-sans text-xs font-semibold text-ink transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:border-accent/40 hover:text-accent"
+        >
+          <svg
+            class="h-4 w-4 shrink-0 text-accent"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M5 7V3h10v4M5 14H4a2 2 0 01-2-2V9a2 2 0 012-2h12a2 2 0 012 2v3a2 2 0 01-2 2h-1M5 11h10v6H5v-6z"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"></path>
+          </svg>
+          <span data-imprimir-texto>Cargando datos…</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenedor principal de la ficha imprimible -->
+    <article
+      data-ficha
+      data-codigo={codigo}
+      data-nombre={nombre}
+      class="rounded-2xl border border-border bg-surface p-5 sm:p-8 space-y-6 print:p-0 print:border-none print:bg-transparent print:space-y-4"
+    >
+      <!-- Encabezado de la Ficha -->
+      <header class="border-b border-border pb-5 print:pb-3">
+        <div
+          class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
+        >
+          <div>
+            <p
+              class="font-sans text-xs font-semibold uppercase tracking-wider text-accent print:text-black"
+            >
+              EPI-Aetheris · Ficha Epidemiológica Departamental
+            </p>
+            <h1
+              class="mt-1 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl print:text-2xl print:text-black"
+            >
+              {nombre}
+              <span
+                class="font-sans text-base font-normal text-ink-muted print:text-black"
+                >({codigo})</span
+              >
+            </h1>
+            <p
+              class="mt-1 font-sans text-xs text-ink-muted print:text-black leading-relaxed"
+            >
+              Resumen descriptivo de vigilancia espacio-temporal para uso en
+              unidades de salud y campo territorial.
+            </p>
+          </div>
+
+          <div
+            class="rounded-xl border border-border bg-bg/50 p-3 sm:text-right print:border-black print:bg-transparent text-xs font-sans text-ink-muted print:text-black space-y-0.5"
+          >
+            <p>
+              <strong class="font-medium text-ink print:text-black"
+                >Generado:</strong
+              >
+              <span data-fecha-impresion>Cargando fecha…</span>
+            </p>
+            <p>
+              <strong class="font-medium text-ink print:text-black"
+                >Licencia:</strong
+              > Código abierto (GPL-3.0)
+            </p>
+            <p>
+              <strong class="font-medium text-ink print:text-black"
+                >Cobertura:</strong
+              > Datos públicos agregados de El Salvador
+            </p>
+          </div>
+        </div>
+
+        <!-- Sello de fechas y semanas de corte por componente -->
+        <div
+          class="mt-4 rounded-xl border border-border bg-bg p-3 print:bg-transparent print:border-black font-sans text-xs text-ink"
+        >
+          <p
+            class="font-semibold uppercase tracking-wide text-ink-muted print:text-black mb-1.5"
+          >
+            Corte temporal por componente:
+          </p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div>
+              <span class="text-ink-muted print:text-black">Clima (M1/M2):</span
+              >
+              <p
+                data-corte-clima
+                class="font-semibold text-ink print:text-black"
+              >
+                Consultando…
+              </p>
+            </div>
+            <div>
+              <span class="text-ink-muted print:text-black"
+                >Dengue Probable (M3):</span
+              >
+              <p
+                data-corte-probable
+                class="font-semibold text-ink print:text-black"
+              >
+                Consultando…
+              </p>
+            </div>
+            <div>
+              <span class="text-ink-muted print:text-black"
+                >Dengue Confirmado (M3):</span
+              >
+              <p
+                data-corte-confirmado
+                class="font-semibold text-ink print:text-black"
+              >
+                Consultando…
+              </p>
+            </div>
+            <div>
+              <span class="text-ink-muted print:text-black"
+                >IRA y Neumonías:</span
+              >
+              <p
+                data-corte-respiratorio
+                class="font-semibold text-ink print:text-black"
+              >
+                Consultando…
+              </p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- SECCION 1: Estado de la ultima semana disponible -->
+      <section
+        data-seccion-ficha
+        class="rounded-xl border border-border bg-bg/30 p-4 sm:p-5 print:border-black print:p-3 print:bg-transparent"
+      >
+        <div
+          class="flex items-baseline justify-between gap-2 border-b border-border pb-2 mb-3"
+        >
+          <h2
+            class="font-sans text-sm font-bold uppercase tracking-wide text-ink print:text-black"
+          >
+            1. Estado de la última semana disponible (M1, M2, M3)
+          </h2>
+          <span class="font-sans text-xs text-ink-muted print:text-black"
+            >Módulos descriptivos M1–M3</span
+          >
+        </div>
+
+        <div
+          data-estado-m1m2m3
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+        >
+          <!-- M1: Idoneidad biofisica -->
+          <div
+            class="rounded-lg border border-border bg-surface p-3 print:border-black flex flex-col justify-between"
+          >
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <span
+                  class="font-sans text-[11px] font-semibold uppercase tracking-wider text-ink-muted print:text-black"
+                >
+                  M1 · Idoneidad biofísica
+                </span>
+                <span
+                  data-m1-badge
+                  class="rounded bg-secondary/30 px-1.5 py-0.5 font-sans text-[10px] text-ink font-medium"
+                >
+                  Iv [0–1]
+                </span>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span
+                  data-m1-valor
+                  class="font-display text-2xl font-bold text-ink print:text-black"
+                  >--</span
+                >
+                <span
+                  data-m1-semana
+                  class="font-sans text-xs text-ink-muted print:text-black"
+                  >--</span
+                >
+              </div>
+              <p
+                data-m1-comparativa
+                class="mt-1 font-sans text-xs text-ink-muted print:text-black leading-relaxed"
+              >
+                Cargando datos climáticos…
+              </p>
+            </div>
+            <p
+              data-m1-aviso
+              class="mt-2 border-t border-border/60 pt-1.5 font-sans text-[10px] leading-tight text-ink-muted print:text-black"
+            >
+              {AVISO_DEFECTO_IDONEIDAD}
+            </p>
+          </div>
+
+          <!-- M2: Anomalia continua -->
+          <div
+            class="rounded-lg border border-border bg-surface p-3 print:border-black flex flex-col justify-between"
+          >
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <span
+                  class="font-sans text-[11px] font-semibold uppercase tracking-wider text-ink-muted print:text-black"
+                >
+                  M2 · Anomalía climática
+                </span>
+                <span
+                  data-m2-badge
+                  class="rounded bg-secondary/30 px-1.5 py-0.5 font-sans text-[10px] text-ink font-medium"
+                >
+                  Z-score (σ)
+                </span>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span
+                  data-m2-valor
+                  class="font-display text-2xl font-bold text-ink print:text-black"
+                  >--</span
+                >
+                <span
+                  data-m2-semana
+                  class="font-sans text-xs text-ink-muted print:text-black"
+                  >--</span
+                >
+              </div>
+              <p
+                data-m2-lectura
+                class="mt-1 font-sans text-xs text-ink-muted print:text-black leading-relaxed"
+              >
+                Cargando anomalía…
+              </p>
+            </div>
+            <p
+              data-m2-aviso
+              class="mt-2 border-t border-border/60 pt-1.5 font-sans text-[10px] leading-tight text-ink-muted print:text-black"
+            >
+              {AVISO_DEFECTO_IDONEIDAD}
+            </p>
+          </div>
+
+          <!-- M3: Presion Probable -->
+          <div
+            class="rounded-lg border border-border bg-surface p-3 print:border-black flex flex-col justify-between"
+          >
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <span
+                  class="font-sans text-[11px] font-semibold uppercase tracking-wider text-ink-muted print:text-black"
+                >
+                  M3 · Presión (Probable)
+                </span>
+                <span
+                  data-m3-prob-cat
+                  class="rounded bg-secondary/30 px-1.5 py-0.5 font-sans text-[10px] text-ink font-medium"
+                >
+                  Percentil
+                </span>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span
+                  data-m3-prob-valor
+                  class="font-display text-2xl font-bold text-ink print:text-black"
+                  >--</span
+                >
+                <span
+                  data-m3-prob-semana
+                  class="font-sans text-xs text-ink-muted print:text-black"
+                  >--</span
+                >
+              </div>
+              <p
+                data-m3-prob-casos
+                class="mt-1 font-sans text-xs text-ink-muted print:text-black leading-relaxed"
+              >
+                Cargando serie probable…
+              </p>
+            </div>
+            <p
+              data-m3-prob-aviso
+              class="mt-2 border-t border-border/60 pt-1.5 font-sans text-[10px] leading-tight text-ink-muted print:text-black"
+            >
+              {AVISO_DEFECTO_PRESION}
+            </p>
+          </div>
+
+          <!-- M3: Presion Confirmado -->
+          <div
+            class="rounded-lg border border-border bg-surface p-3 print:border-black flex flex-col justify-between"
+          >
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <span
+                  class="font-sans text-[11px] font-semibold uppercase tracking-wider text-ink-muted print:text-black"
+                >
+                  M3 · Presión (Confirmado)
+                </span>
+                <span
+                  data-m3-conf-cat
+                  class="rounded bg-secondary/30 px-1.5 py-0.5 font-sans text-[10px] text-ink font-medium"
+                >
+                  Percentil
+                </span>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span
+                  data-m3-conf-valor
+                  class="font-display text-2xl font-bold text-ink print:text-black"
+                  >--</span
+                >
+                <span
+                  data-m3-conf-semana
+                  class="font-sans text-xs text-ink-muted print:text-black"
+                  >--</span
+                >
+              </div>
+              <p
+                data-m3-conf-casos
+                class="mt-1 font-sans text-xs text-ink-muted print:text-black leading-relaxed"
+              >
+                Cargando serie confirmada…
+              </p>
+            </div>
+            <p
+              data-m3-conf-aviso
+              class="mt-2 border-t border-border/60 pt-1.5 font-sans text-[10px] leading-tight text-ink-muted print:text-black"
+            >
+              {AVISO_DEFECTO_PRESION}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCION 2: Series historicas y bandas de referencia (2023) -->
+      <section
+        data-seccion-ficha
+        class="rounded-xl border border-border bg-bg/30 p-4 sm:p-5 print:border-black print:p-3 print:bg-transparent"
+      >
+        <div
+          class="flex items-baseline justify-between gap-2 border-b border-border pb-2 mb-3"
+        >
+          <h2
+            class="font-sans text-sm font-bold uppercase tracking-wide text-ink print:text-black"
+          >
+            2. Series históricas y bandas de referencia (<span data-anio-clima
+              >—</span
+            >)
+          </h2>
+          <span class="font-sans text-xs text-ink-muted print:text-black"
+            >Evolución semanal vs histórico</span
+          >
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Grafica M1: Idoneidad biofisica vs Banda P25-P75 -->
+          <div
+            class="rounded-lg border border-border bg-surface p-3 print:border-black"
+          >
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <h3
+                class="font-sans text-xs font-semibold text-ink print:text-black"
+              >
+                Idoneidad biofísica (Iv) vs Banda histórica P25–P75
+              </h3>
+              <span
+                class="font-sans text-[10px] text-ink-muted print:text-black"
+                >Línea: <span data-anio-clima>—</span> · Sombra: P25–P75</span
+              >
+            </div>
+            <div
+              id="grafica-m1"
+              class="h-36 w-full flex items-center justify-center font-sans text-xs text-ink-muted"
+            >
+              Cargando gráfica de idoneidad…
+            </div>
+          </div>
+
+          <!-- Grafica M2: Anomalia continua sigma -->
+          <div
+            class="rounded-lg border border-border bg-surface p-3 print:border-black"
+          >
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <h3
+                class="font-sans text-xs font-semibold text-ink print:text-black"
+              >
+                Anomalía climática continua (Z-score σ leave-one-out)
+              </h3>
+              <span
+                class="font-sans text-[10px] text-ink-muted print:text-black"
+                >Desviaciones frente a la propia historia</span
+              >
+            </div>
+            <div
+              id="grafica-m2"
+              class="h-36 w-full flex items-center justify-center font-sans text-xs text-ink-muted"
+            >
+              Cargando gráfica de anomalía…
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla resumen de semanas recientes -->
+        <div class="mt-4 overflow-x-auto">
+          <h3
+            class="font-sans text-xs font-semibold text-ink print:text-black mb-1.5"
+          >
+            Observaciones recientes de <span data-anio-clima>—</span> (últimas semanas
+            registradas)
+          </h3>
+          <table
+            class="w-full border-collapse font-sans text-xs text-ink print:text-black"
+          >
+            <thead>
+              <tr
+                class="border-b border-border bg-bg/50 print:border-black print:bg-transparent text-left text-[11px] font-semibold text-ink-muted print:text-black"
+              >
+                <th class="p-1.5">Semana</th>
+                <th class="p-1.5">Iv real</th>
+                <th class="p-1.5">Mediana hist.</th>
+                <th class="p-1.5">Anomalía σ</th>
+                <th class="p-1.5">Probables</th>
+                <th class="p-1.5">Pctil Prob.</th>
+                <th class="p-1.5">Confirmados</th>
+                <th class="p-1.5">Pctil Conf.</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-semanas-cuerpo">
+              <tr>
+                <td
+                  colspan="8"
+                  class="p-3 text-center text-ink-muted print:text-black"
+                >
+                  Cargando tabla de observaciones…
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECCION 3: Infecciones respiratorias (IRA y Neumonias) -->
+      <section
+        data-seccion-ficha
+        class="rounded-xl border border-border bg-bg/30 p-4 sm:p-5 print:border-black print:p-3 print:bg-transparent"
+      >
+        <div
+          class="flex items-baseline justify-between gap-2 border-b border-border pb-2 mb-3"
+        >
+          <h2
+            class="font-sans text-sm font-bold uppercase tracking-wide text-ink print:text-black"
+          >
+            3. Infecciones Respiratorias (IRA y Neumonías)
+          </h2>
+          <span class="font-sans text-xs text-ink-muted print:text-black"
+            >Series MINSAL notificadas (ADR 0011)</span
+          >
+        </div>
+
+        <div
+          id="seccion-respiratorio-cuerpo"
+          class="grid grid-cols-1 sm:grid-cols-2 gap-3 font-sans text-xs"
+        >
+          <!-- Tarjeta IRA -->
+          <div
+            data-respiratorio-ira
+            class="rounded-lg border border-border bg-surface p-3 print:border-black flex flex-col justify-between"
+          >
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-ink print:text-black"
+                  >Infección Respiratoria Aguda (IRA)</span
+                >
+                <span class="text-[10px] text-ink-muted print:text-black"
+                  >Notificado total</span
+                >
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span
+                  data-ira-conteo
+                  class="font-display text-xl font-bold text-ink print:text-black"
+                  >--</span
+                >
+                <span
+                  data-ira-semana
+                  class="text-xs text-ink-muted print:text-black">en 2023</span
+                >
+              </div>
+              <p
+                data-ira-detalle
+                class="mt-1 text-ink-muted print:text-black leading-relaxed"
+              >
+                Consultando registros de IRA…
+              </p>
+            </div>
+            <p
+              data-ira-aviso
+              class="mt-2 border-t border-border/60 pt-1 text-[10px] text-ink-muted print:text-black"
+            >
+              {AVISO_DEFECTO_IRA}
+            </p>
+          </div>
+
+          <!-- Tarjeta Neumonias -->
+          <div
+            data-respiratorio-neumonias
+            class="rounded-lg border border-border bg-surface p-3 print:border-black flex flex-col justify-between"
+          >
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-ink print:text-black"
+                  >Neumonías notificadas</span
+                >
+                <span class="text-[10px] text-ink-muted print:text-black"
+                  >Notificado total</span
+                >
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span
+                  data-neumonias-conteo
+                  class="font-display text-xl font-bold text-ink print:text-black"
+                  >--</span
+                >
+                <span
+                  data-neumonias-semana
+                  class="text-xs text-ink-muted print:text-black">en 2023</span
+                >
+              </div>
+              <p
+                data-neumonias-detalle
+                class="mt-1 text-ink-muted print:text-black leading-relaxed"
+              >
+                Consultando registros de neumonías…
+              </p>
+            </div>
+            <p
+              data-neumonias-aviso
+              class="mt-2 border-t border-border/60 pt-1 text-[10px] text-ink-muted print:text-black"
+            >
+              {AVISO_DEFECTO_NEUMONIAS}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCION 4: Guias de prevencion oficiales citadas -->
+      <section
+        data-seccion-ficha
+        class="rounded-xl border border-border bg-bg/30 p-4 sm:p-5 print:border-black print:p-3 print:bg-transparent"
+      >
+        <div
+          class="flex items-baseline justify-between gap-2 border-b border-border pb-2 mb-3"
+        >
+          <h2
+            class="font-sans text-sm font-bold uppercase tracking-wide text-ink print:text-black"
+          >
+            4. Guías de Prevención Oficiales Citadas
+          </h2>
+          <span class="font-sans text-xs text-ink-muted print:text-black"
+            >Contenedores de material oficial publicado</span
+          >
+        </div>
+
+        <div id="seccion-prevencion-cuerpo" class="space-y-3 font-sans text-xs">
+          <p data-prevencion-carga class="text-ink-muted print:text-black">
+            Cargando guías citadas de alertas vigentes…
+          </p>
+          <div
+            data-prevencion-lista
+            class="grid grid-cols-1 sm:grid-cols-2 gap-3"
+          >
+          </div>
+        </div>
+
+        <p
+          data-prevencion-aviso
+          class="mt-3 border-t border-border/60 pt-2 font-sans text-[10px] text-ink-muted print:text-black leading-relaxed"
+        >
+          {AVISO_DEFECTO_PREVENCION}
+        </p>
+      </section>
+
+      <!-- Pie de pagina para impresion -->
+      <footer
+        class="pt-2 border-t border-border print:border-black font-sans text-[11px] leading-relaxed text-ink-muted print:text-black"
+      >
+        <p>
+          <strong>Aviso institucional:</strong> Herramienta descriptiva de priorización
+          y apoyo técnico desarrollada por INSAMT Equipo 4 sobre datos públicos agregados
+          (MINSAL, OpenDengue, Open-Meteo). Licencia GPL-3.0. No constituye diagnóstico
+          médico ni predicción infalible. Cada departamento se evalúa exclusivamente
+          frente a su propia serie histórica.
+        </p>
+      </footer>
+    </article>
+  </main>
+</Layout>
+
+<script>
+  import {
+    encontrarUltimaSemanaM1M2,
+    encontrarUltimaSemanaPresion,
+    formatearSigma,
+    formatearPercentil,
+    formatearCategoria,
+    AVISO_DEFECTO_IDONEIDAD,
+    AVISO_DEFECTO_PRESION,
+    AVISO_DEFECTO_IRA,
+    AVISO_DEFECTO_NEUMONIAS,
+    AVISO_DEFECTO_PREVENCION,
+    type RespuestaM1M2,
+    type RespuestaPresion,
+    type RespuestaSerieRespiratoria,
+    type PayloadAlertasRespuesta,
+  } from '../../../lib/ficha-departamental';
+  import {
+    escapeHtml,
+    renderTextoAccionable,
+  } from '../../../lib/vista-alertas';
+
+  // Rellena un slot de aviso con el texto `aviso` que ya trae la respuesta del
+  // endpoint (los AVISO_HONESTIDAD_* canonicos del backend). La constante local
+  // solo actua de reserva si la respuesta no lo incluye.
+  function pintarAviso(
+    selector: string,
+    avisoRespuesta: string | null | undefined,
+    reserva: string,
+  ): void {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el) return;
+    const texto =
+      typeof avisoRespuesta === 'string' && avisoRespuesta.trim().length > 0
+        ? avisoRespuesta.trim()
+        : reserva;
+    el.textContent = texto;
+  }
+
+  // Devuelve, como string, el anio mas reciente presente en el objeto `series`
+  // de una respuesta respiratoria (las series MINSAL de IRA/neumonias se
+  // detienen en 2023, pero el anio no se asume: se lee de la respuesta).
+  function ultimoAnioSerie(
+    series: Record<string, Array<[number, number]>> | undefined,
+  ): string | null {
+    const anios = Object.keys(series ?? {})
+      .map(Number)
+      .filter((n) => Number.isFinite(n))
+      .sort((a, b) => b - a);
+    return anios.length > 0 ? String(anios[0]) : null;
+  }
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const root = document.querySelector<HTMLElement>('[data-ficha]');
+  const codigo = root?.dataset.codigo ?? 'SV-SS';
+
+  const botonImprimir =
+    document.querySelector<HTMLButtonElement>('[data-imprimir]');
+  const textoImprimir = document.querySelector<HTMLElement>(
+    '[data-imprimir-texto]',
+  );
+  const selectorDepto = document.getElementById(
+    'selector-departamento',
+  ) as HTMLSelectElement | null;
+
+  selectorDepto?.addEventListener('change', (e) => {
+    const val = (e.target as HTMLSelectElement).value;
+    if (val && val !== codigo) {
+      window.location.href = `/analisis/ficha/${val}`;
+    }
+  });
+
+  botonImprimir?.addEventListener('click', () => {
+    if (!botonImprimir.disabled) {
+      window.print();
+    }
+  });
+
+  // Renderizar fecha de impresion/generacion
+  const fechaEl = document.querySelector<HTMLElement>('[data-fecha-impresion]');
+  if (fechaEl) {
+    fechaEl.textContent = new Date().toLocaleString('es-SV', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  }
+
+  // Patron de impresion antes/despues de imprimir
+  window.addEventListener('beforeprint', () => {
+    document
+      .querySelectorAll<HTMLDetailsElement>('[data-ficha-details]')
+      .forEach((d) => {
+        if (!d.open) d.dataset.plegadoAntesDeImprimir = '1';
+        d.open = true;
+      });
+  });
+  window.addEventListener('afterprint', () => {
+    document
+      .querySelectorAll<HTMLDetailsElement>('[data-ficha-details]')
+      .forEach((d) => {
+        if (d.dataset.plegadoAntesDeImprimir === '1') {
+          d.open = false;
+          delete d.dataset.plegadoAntesDeImprimir;
+        }
+      });
+  });
+
+  // Generador de SVG para curvas temporales
+  function renderSvgCurva(
+    contenedor: HTMLElement,
+    puntos: { x: number; y: number }[],
+    banda?: { x: number; yMin: number; yMax: number }[],
+    mediana?: { x: number; y: number }[],
+    rangoY?: [number, number],
+  ) {
+    if (!puntos.length && !banda?.length) {
+      contenedor.innerHTML =
+        '<p class="text-ink-muted text-xs p-2">Sin datos disponibles para graficar.</p>';
+      return;
+    }
+
+    const ANCHO = 560;
+    const ALTO = 140;
+    const MARGEN = { top: 12, right: 16, bottom: 24, left: 36 };
+    const wUtil = ANCHO - MARGEN.left - MARGEN.right;
+    const hUtil = ALTO - MARGEN.top - MARGEN.bottom;
+
+    const todosY = [
+      ...puntos.map((p) => p.y),
+      ...(banda ? banda.flatMap((b) => [b.yMin, b.yMax]) : []),
+      ...(mediana ? mediana.map((m) => m.y) : []),
+    ].filter((v) => typeof v === 'number' && !Number.isNaN(v));
+
+    const minVal = rangoY ? rangoY[0] : Math.min(...todosY, 0);
+    const maxVal = rangoY ? rangoY[1] : Math.max(...todosY, 0.01);
+    const rangoVal = maxVal - minVal || 1;
+
+    const escalaX = (semana: number) =>
+      MARGEN.left + ((semana - 1) / 52) * wUtil;
+    const escalaY = (val: number) =>
+      MARGEN.top + hUtil - ((val - minVal) / rangoVal) * hUtil;
+
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
+    svg.setAttribute('class', 'w-full h-full');
+    svg.setAttribute('preserveAspectRatio', 'none');
+
+    // Eje X lineas de referencia
+    [1, 13, 26, 39, 52].forEach((semana) => {
+      const x = escalaX(semana);
+      const linea = document.createElementNS(SVG_NS, 'line');
+      linea.setAttribute('x1', String(x));
+      linea.setAttribute('x2', String(x));
+      linea.setAttribute('y1', String(MARGEN.top));
+      linea.setAttribute('y2', String(MARGEN.top + hUtil));
+      linea.setAttribute('stroke', '#e5e7eb');
+      linea.setAttribute('stroke-dasharray', '2,2');
+      svg.appendChild(linea);
+
+      const texto = document.createElementNS(SVG_NS, 'text');
+      texto.setAttribute('x', String(x));
+      texto.setAttribute('y', String(ALTO - 6));
+      texto.setAttribute('font-size', '9');
+      texto.setAttribute('fill', '#6b7280');
+      texto.setAttribute('text-anchor', 'middle');
+      texto.textContent = `SE${semana}`;
+      svg.appendChild(texto);
+    });
+
+    // Banda P25-P75
+    if (banda && banda.length > 1) {
+      const puntosSuperiores = banda.map(
+        (b) => `${escalaX(b.x)},${escalaY(b.yMax)}`,
+      );
+      const puntosInferiores = [...banda]
+        .reverse()
+        .map((b) => `${escalaX(b.x)},${escalaY(b.yMin)}`);
+      const poligono = document.createElementNS(SVG_NS, 'polygon');
+      poligono.setAttribute(
+        'points',
+        [...puntosSuperiores, ...puntosInferiores].join(' '),
+      );
+      poligono.setAttribute('fill', '#93c5fd');
+      poligono.setAttribute('fill-opacity', '0.35');
+      svg.appendChild(poligono);
+    }
+
+    // Linea de mediana historica
+    if (mediana && mediana.length > 1) {
+      const puntosMediana = mediana
+        .map((m) => `${escalaX(m.x)},${escalaY(m.y)}`)
+        .join(' ');
+      const polyMed = document.createElementNS(SVG_NS, 'polyline');
+      polyMed.setAttribute('points', puntosMediana);
+      polyMed.setAttribute('fill', 'none');
+      polyMed.setAttribute('stroke', '#3b82f6');
+      polyMed.setAttribute('stroke-width', '1.5');
+      polyMed.setAttribute('stroke-dasharray', '3,3');
+      svg.appendChild(polyMed);
+    }
+
+    // Linea real del ano
+    if (puntos.length > 1) {
+      const puntosStr = puntos
+        .map((p) => `${escalaX(p.x)},${escalaY(p.y)}`)
+        .join(' ');
+      const poly = document.createElementNS(SVG_NS, 'polyline');
+      poly.setAttribute('points', puntosStr);
+      poly.setAttribute('fill', 'none');
+      poly.setAttribute('stroke', '#1d4ed8');
+      poly.setAttribute('stroke-width', '2');
+      poly.setAttribute('stroke-linecap', 'round');
+      poly.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(poly);
+
+      puntos.forEach((p) => {
+        const circ = document.createElementNS(SVG_NS, 'circle');
+        circ.setAttribute('cx', String(escalaX(p.x)));
+        circ.setAttribute('cy', String(escalaY(p.y)));
+        circ.setAttribute('r', '2');
+        circ.setAttribute('fill', '#1d4ed8');
+        svg.appendChild(circ);
+      });
+    }
+
+    contenedor.innerHTML = '';
+    contenedor.appendChild(svg);
+  }
+
+  // Cada carga se aborta a los 10 s: una peticion colgada dejaria el gate de
+  // impresion deshabilitado para siempre. El rechazo lo absorbe allSettled y la
+  // seccion muestra "dato no disponible".
+  const TIMEOUT_MS = 10_000;
+  async function traer<T>(url: string): Promise<T> {
+    const control = new AbortController();
+    const reloj = setTimeout(() => control.abort(), TIMEOUT_MS);
+    try {
+      const r = await fetch(url, { signal: control.signal });
+      if (!r.ok) throw new Error(String(r.status));
+      return (await r.json()) as T;
+    } finally {
+      clearTimeout(reloj);
+    }
+  }
+
+  // El anio del corte climatico (M1/M2) no es un literal: los endpoints de
+  // clima ya responden para el anio en curso (ADR 0018). Se pide el anio
+  // calendario y, si todavia no tiene observaciones ERA5 (primeras semanas de
+  // enero), se cae al anterior. El rotulo usa el `anio` que devuelve la
+  // respuesta, no una constante.
+  const ANIO_ACTUAL = new Date().getFullYear();
+  // La presion epidemiologica (M3) si se detiene en 2023: los boletines MINSAL
+  // no llegan mas alla. El rotulo lo deja explicito para no confundirlo con la
+  // fecha de generacion de la hoja.
+  const ANIO_MINSAL = 2023;
+
+  const promesaTemporal = (async (): Promise<RespuestaM1M2> => {
+    const actual = await traer<RespuestaM1M2>(
+      `${API_BASE}/api/v1/temporal/${codigo}?anio=${ANIO_ACTUAL}`,
+    );
+    if (encontrarUltimaSemanaM1M2(actual.semanas)) return actual;
+    try {
+      const previo = await traer<RespuestaM1M2>(
+        `${API_BASE}/api/v1/temporal/${codigo}?anio=${ANIO_ACTUAL - 1}`,
+      );
+      if (encontrarUltimaSemanaM1M2(previo.semanas)) return previo;
+    } catch {
+      // Se queda con la respuesta del anio en curso.
+    }
+    return actual;
+  })();
+
+  const promesaPresion = traer<RespuestaPresion>(
+    `${API_BASE}/api/v1/presion/temporal/${codigo}?anio=${ANIO_MINSAL}`,
+  );
+
+  const promesaIra = traer<RespuestaSerieRespiratoria>(
+    `${API_BASE}/api/ira/temporal/${codigo}`,
+  );
+
+  const promesaNeumonias = traer<RespuestaSerieRespiratoria>(
+    `${API_BASE}/api/neumonias/temporal/${codigo}`,
+  );
+
+  const promesaAlertas = traer<PayloadAlertasRespuesta>(
+    `${API_BASE}/api/alertas`,
+  );
+
+  // Ejecucion concurrente con gate de impresion
+  Promise.allSettled([
+    promesaTemporal,
+    promesaPresion,
+    promesaIra,
+    promesaNeumonias,
+    promesaAlertas,
+  ]).then(([resTemp, resPres, resIra, resNeum, resAlertas]) => {
+    let temporalData: RespuestaM1M2 | null = null;
+    let presionData: RespuestaPresion | null = null;
+
+    // Procesar M1 / M2
+    const corteClima =
+      document.querySelector<HTMLElement>('[data-corte-clima]');
+    if (resTemp.status === 'fulfilled') {
+      temporalData = resTemp.value;
+      const anioClima = temporalData.anio;
+      document
+        .querySelectorAll<HTMLElement>('[data-anio-clima]')
+        .forEach((el) => {
+          el.textContent = String(anioClima);
+        });
+      pintarAviso(
+        '[data-m1-aviso]',
+        temporalData.aviso,
+        AVISO_DEFECTO_IDONEIDAD,
+      );
+      pintarAviso(
+        '[data-m2-aviso]',
+        temporalData.aviso,
+        AVISO_DEFECTO_IDONEIDAD,
+      );
+      const ult = encontrarUltimaSemanaM1M2(temporalData.semanas);
+      if (ult) {
+        if (corteClima)
+          corteClima.textContent = `SE${String(ult.semana_epi).padStart(2, '0')} · ${anioClima}`;
+
+        const m1Val = document.querySelector<HTMLElement>('[data-m1-valor]');
+        const m1Sem = document.querySelector<HTMLElement>('[data-m1-semana]');
+        const m1Comp = document.querySelector<HTMLElement>(
+          '[data-m1-comparativa]',
+        );
+        if (m1Val)
+          m1Val.textContent =
+            ult.iv_real !== null ? ult.iv_real.toFixed(3) : 'Sin dato';
+        if (m1Sem) m1Sem.textContent = `SE${ult.semana_epi}`;
+        if (m1Comp) {
+          m1Comp.textContent =
+            ult.mediana_baseline !== null
+              ? `Mediana histórica: ${ult.mediana_baseline.toFixed(3)} (P25–P75: ${ult.p25_baseline?.toFixed(3)}–${ult.p75_baseline?.toFixed(3)})`
+              : 'Sin baseline suficiente';
+        }
+
+        const m2Val = document.querySelector<HTMLElement>('[data-m2-valor]');
+        const m2Sem = document.querySelector<HTMLElement>('[data-m2-semana]');
+        const m2Lect = document.querySelector<HTMLElement>('[data-m2-lectura]');
+        if (m2Val) m2Val.textContent = formatearSigma(ult.anomaly_sigma);
+        if (m2Sem) m2Sem.textContent = `SE${ult.semana_epi}`;
+        if (m2Lect) {
+          m2Lect.textContent =
+            ult.anomaly_sigma !== null
+              ? 'Desviación continua frente a la propia historia del departamento.'
+              : 'Sin datos para estimar anomalía.';
+        }
+      }
+
+      // Dibujar graficas M1 y M2
+      const contenedorG1 = document.getElementById('grafica-m1');
+      if (contenedorG1) {
+        const puntosIv = temporalData.semanas
+          .filter((s) => s.iv_real !== null)
+          .map((s) => ({ x: s.semana_epi, y: s.iv_real! }));
+        const bandaIv = temporalData.semanas
+          .filter((s) => s.p25_baseline !== null && s.p75_baseline !== null)
+          .map((s) => ({
+            x: s.semana_epi,
+            yMin: s.p25_baseline!,
+            yMax: s.p75_baseline!,
+          }));
+        const medIv = temporalData.semanas
+          .filter((s) => s.mediana_baseline !== null)
+          .map((s) => ({ x: s.semana_epi, y: s.mediana_baseline! }));
+        renderSvgCurva(contenedorG1, puntosIv, bandaIv, medIv);
+      }
+
+      const contenedorG2 = document.getElementById('grafica-m2');
+      if (contenedorG2) {
+        const puntosSigma = temporalData.semanas
+          .filter((s) => s.anomaly_sigma !== null)
+          .map((s) => ({ x: s.semana_epi, y: s.anomaly_sigma! }));
+        renderSvgCurva(
+          contenedorG2,
+          puntosSigma,
+          undefined,
+          undefined,
+          [-3, 3],
+        );
+      }
+    } else {
+      if (corteClima) corteClima.textContent = 'No disponible';
+      const m1Val = document.querySelector<HTMLElement>('[data-m1-valor]');
+      const m2Val = document.querySelector<HTMLElement>('[data-m2-valor]');
+      if (m1Val) m1Val.textContent = 'No disponible';
+      if (m2Val) m2Val.textContent = 'No disponible';
+      const g1 = document.getElementById('grafica-m1');
+      const g2 = document.getElementById('grafica-m2');
+      if (g1)
+        g1.innerHTML =
+          '<p class="text-ink-muted text-xs p-2" role="status">Dato no disponible en este momento.</p>';
+      if (g2)
+        g2.innerHTML =
+          '<p class="text-ink-muted text-xs p-2" role="status">Dato no disponible en este momento.</p>';
+    }
+
+    // Procesar M3
+    const corteProb = document.querySelector<HTMLElement>(
+      '[data-corte-probable]',
+    );
+    const corteConf = document.querySelector<HTMLElement>(
+      '[data-corte-confirmado]',
+    );
+    if (resPres.status === 'fulfilled') {
+      presionData = resPres.value;
+      const anioMinsal = presionData.anio;
+      pintarAviso(
+        '[data-m3-prob-aviso]',
+        presionData.aviso,
+        AVISO_DEFECTO_PRESION,
+      );
+      pintarAviso(
+        '[data-m3-conf-aviso]',
+        presionData.aviso,
+        AVISO_DEFECTO_PRESION,
+      );
+      const ultProb = encontrarUltimaSemanaPresion(
+        presionData.semanas,
+        'probable',
+      );
+      if (ultProb) {
+        if (corteProb)
+          corteProb.textContent = `SE${String(ultProb.semana_epi).padStart(2, '0')} · ${anioMinsal} (últimos datos MINSAL)`;
+        const pVal = document.querySelector<HTMLElement>(
+          '[data-m3-prob-valor]',
+        );
+        const pSem = document.querySelector<HTMLElement>(
+          '[data-m3-prob-semana]',
+        );
+        const pCasos = document.querySelector<HTMLElement>(
+          '[data-m3-prob-casos]',
+        );
+        const pCat = document.querySelector<HTMLElement>('[data-m3-prob-cat]');
+        if (pVal)
+          pVal.textContent = formatearPercentil(ultProb.detalle.percentil);
+        if (pSem) pSem.textContent = `SE${ultProb.semana_epi}`;
+        if (pCasos) {
+          pCasos.textContent = `${ultProb.detalle.casos_observados ?? 0} casos observados · ${formatearCategoria(ultProb.detalle.categoria)}`;
+        }
+        if (pCat && ultProb.detalle.categoria) {
+          pCat.textContent = ultProb.detalle.categoria.toUpperCase();
+        }
+      }
+
+      const ultConf = encontrarUltimaSemanaPresion(
+        presionData.semanas,
+        'confirmado',
+      );
+      if (ultConf) {
+        if (corteConf)
+          corteConf.textContent = `SE${String(ultConf.semana_epi).padStart(2, '0')} · ${anioMinsal} (últimos datos MINSAL)`;
+        const cVal = document.querySelector<HTMLElement>(
+          '[data-m3-conf-valor]',
+        );
+        const cSem = document.querySelector<HTMLElement>(
+          '[data-m3-conf-semana]',
+        );
+        const cCasos = document.querySelector<HTMLElement>(
+          '[data-m3-conf-casos]',
+        );
+        const cCat = document.querySelector<HTMLElement>('[data-m3-conf-cat]');
+        if (cVal)
+          cVal.textContent = formatearPercentil(ultConf.detalle.percentil);
+        if (cSem) cSem.textContent = `SE${ultConf.semana_epi}`;
+        if (cCasos) {
+          cCasos.textContent = `${ultConf.detalle.casos_observados ?? 0} casos confirmados · ${formatearCategoria(ultConf.detalle.categoria)}`;
+        }
+        if (cCat && ultConf.detalle.categoria) {
+          cCat.textContent = ultConf.detalle.categoria.toUpperCase();
+        }
+      }
+    } else {
+      if (corteProb) corteProb.textContent = 'No disponible';
+      if (corteConf) corteConf.textContent = 'No disponible';
+      const pVal = document.querySelector<HTMLElement>('[data-m3-prob-valor]');
+      const cVal = document.querySelector<HTMLElement>('[data-m3-conf-valor]');
+      if (pVal) pVal.textContent = 'No disponible';
+      if (cVal) cVal.textContent = 'No disponible';
+      const pCasos = document.querySelector<HTMLElement>(
+        '[data-m3-prob-casos]',
+      );
+      const cCasos = document.querySelector<HTMLElement>(
+        '[data-m3-conf-casos]',
+      );
+      if (pCasos) pCasos.textContent = 'Dato no disponible en este momento.';
+      if (cCasos) cCasos.textContent = 'Dato no disponible en este momento.';
+    }
+
+    // Tabla de semanas recientes combinando M1, M2 y M3
+    const tablaCuerpo = document.getElementById('tabla-semanas-cuerpo');
+    if (tablaCuerpo) {
+      if (temporalData || presionData) {
+        const semanasTemp = temporalData?.semanas ?? [];
+        const semanasPres = presionData?.semanas ?? [];
+        const mapaTemp = new Map(semanasTemp.map((s) => [s.semana_epi, s]));
+        const mapaPres = new Map(semanasPres.map((s) => [s.semana_epi, s]));
+
+        // Union de semanas de ambas fuentes: si M1/M2 falla pero M3 responde
+        // (o al reves) la tabla igual lista las filas de la fuente disponible,
+        // con "—" en las columnas de la que falto.
+        const semanas = Array.from(
+          new Set<number>([...mapaTemp.keys(), ...mapaPres.keys()]),
+        ).sort((a, b) => a - b);
+        const ultimasSemanas = semanas.slice(-8);
+        if (ultimasSemanas.length > 0) {
+          tablaCuerpo.innerHTML = '';
+          ultimasSemanas.forEach((semana) => {
+            const st = mapaTemp.get(semana);
+            const sp = mapaPres.get(semana);
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-border/60 hover:bg-bg/40';
+            tr.innerHTML = `
+              <td class="p-1.5 font-semibold">SE${String(semana).padStart(2, '0')}</td>
+              <td class="p-1.5">${st && st.iv_real !== null ? st.iv_real.toFixed(3) : '—'}</td>
+              <td class="p-1.5">${st && st.mediana_baseline !== null ? st.mediana_baseline.toFixed(3) : '—'}</td>
+              <td class="p-1.5">${st && st.anomaly_sigma !== null ? formatearSigma(st.anomaly_sigma) : '—'}</td>
+              <td class="p-1.5">${sp?.probable.casos_observados ?? '—'}</td>
+              <td class="p-1.5">${formatearPercentil(sp?.probable.percentil)}</td>
+              <td class="p-1.5">${sp?.confirmado.casos_observados ?? '—'}</td>
+              <td class="p-1.5">${formatearPercentil(sp?.confirmado.percentil)}</td>
+            `;
+            tablaCuerpo.appendChild(tr);
+          });
+        } else {
+          const anioTabla = temporalData?.anio ?? presionData?.anio ?? '';
+          tablaCuerpo.innerHTML = `<tr><td colspan="8" class="p-2 text-center text-ink-muted">Sin semanas registradas para ${anioTabla}.</td></tr>`;
+        }
+      } else {
+        tablaCuerpo.innerHTML =
+          '<tr><td colspan="8" class="p-2 text-center text-ink-muted" role="status">Dato no disponible en este despliegue.</td></tr>';
+      }
+    }
+
+    // Procesar IRA y Neumonias
+    const corteResp = document.querySelector<HTMLElement>(
+      '[data-corte-respiratorio]',
+    );
+    if (resIra.status === 'fulfilled' && resIra.value) {
+      const iraData = resIra.value;
+      pintarAviso('[data-ira-aviso]', iraData.aviso, AVISO_DEFECTO_IRA);
+      const anioIra = ultimoAnioSerie(iraData.series);
+      const serie = anioIra ? (iraData.series?.[anioIra] ?? []) : [];
+      const total = serie.reduce((acc, curr) => acc + (curr[1] || 0), 0);
+      const ultSem = serie.length > 0 ? serie[serie.length - 1] : null;
+
+      const iraConteo =
+        document.querySelector<HTMLElement>('[data-ira-conteo]');
+      const iraSemana =
+        document.querySelector<HTMLElement>('[data-ira-semana]');
+      const iraDetalle =
+        document.querySelector<HTMLElement>('[data-ira-detalle]');
+      if (iraConteo) iraConteo.textContent = total.toLocaleString('es-SV');
+      if (iraSemana)
+        iraSemana.textContent = anioIra
+          ? `acumulado ${anioIra} (${serie.length} semanas notificadas)`
+          : 'sin serie disponible';
+      if (ultSem && corteResp)
+        corteResp.textContent = `SE${String(ultSem[0]).padStart(2, '0')} · ${anioIra} (últimos datos MINSAL)`;
+      if (iraDetalle) {
+        iraDetalle.textContent = anioIra
+          ? `${serie.length} semanas registradas en boletines MINSAL durante ${anioIra}.`
+          : 'Sin semanas registradas en la serie de IRA.';
+      }
+    } else {
+      const iraDetalle =
+        document.querySelector<HTMLElement>('[data-ira-detalle]');
+      if (iraDetalle)
+        iraDetalle.textContent = 'Datos de IRA no disponibles en este momento.';
+      if (corteResp) corteResp.textContent = 'No disponible';
+    }
+
+    if (
+      resNeum.status === 'fulfilled' &&
+      resNeum.value &&
+      resNeum.value.disponible !== false
+    ) {
+      const neumData = resNeum.value;
+      pintarAviso(
+        '[data-neumonias-aviso]',
+        neumData.aviso,
+        AVISO_DEFECTO_NEUMONIAS,
+      );
+      const anioNeum = ultimoAnioSerie(neumData.series);
+      const serie = anioNeum ? (neumData.series?.[anioNeum] ?? []) : [];
+      const total = serie.reduce((acc, curr) => acc + (curr[1] || 0), 0);
+
+      const neumConteo = document.querySelector<HTMLElement>(
+        '[data-neumonias-conteo]',
+      );
+      const neumSemana = document.querySelector<HTMLElement>(
+        '[data-neumonias-semana]',
+      );
+      const neumDetalle = document.querySelector<HTMLElement>(
+        '[data-neumonias-detalle]',
+      );
+      if (neumConteo) neumConteo.textContent = total.toLocaleString('es-SV');
+      if (neumSemana)
+        neumSemana.textContent = anioNeum
+          ? `acumulado ${anioNeum} (${serie.length} semanas notificadas)`
+          : 'sin serie disponible';
+      if (neumDetalle) {
+        neumDetalle.textContent = anioNeum
+          ? `${serie.length} semanas de neumonías registradas en ${anioNeum}.`
+          : 'Sin semanas registradas en la serie de neumonías.';
+      }
+    } else {
+      const neumConteo = document.querySelector<HTMLElement>(
+        '[data-neumonias-conteo]',
+      );
+      const neumDetalle = document.querySelector<HTMLElement>(
+        '[data-neumonias-detalle]',
+      );
+      if (neumConteo) neumConteo.textContent = 'No disponible';
+      if (neumDetalle) {
+        const motivo =
+          resNeum.status === 'fulfilled' && resNeum.value?.motivo
+            ? resNeum.value.motivo
+            : 'Datos de neumonías no disponibles en este despliegue.';
+        neumDetalle.textContent = motivo;
+      }
+    }
+
+    // Procesar Alertas y Prevencion citada
+    const prevCarga = document.querySelector<HTMLElement>(
+      '[data-prevencion-carga]',
+    );
+    const prevLista = document.querySelector<HTMLElement>(
+      '[data-prevencion-lista]',
+    );
+    const corteAlertas = document.querySelector<HTMLElement>(
+      '[data-corte-alertas]',
+    );
+
+    if (resAlertas.status === 'fulfilled' && resAlertas.value) {
+      const payload = resAlertas.value;
+      if (corteAlertas)
+        corteAlertas.textContent =
+          payload.ultima_revision || 'Revisión oficial';
+      if (prevCarga) prevCarga.hidden = true;
+      pintarAviso(
+        '[data-prevencion-aviso]',
+        payload.aviso,
+        AVISO_DEFECTO_PREVENCION,
+      );
+
+      // Filtrar alertas activas
+      const activas = (payload.alertas || []).filter((a) => a.activa);
+      if (activas.length > 0 && prevLista) {
+        prevLista.innerHTML = '';
+        activas.forEach((alerta) => {
+          const caja = document.createElement('div');
+          caja.className =
+            'rounded-lg border border-border bg-surface p-3 print:border-black space-y-2';
+
+          // Todo campo de la alerta se escapa antes de entrar al DOM como
+          // markup: /api/alertas se escribe por POST/PATCH autenticado
+          // (ADR 0015), asi que su contenido no es de confianza. Se reusa el
+          // mismo par escapeHtml / renderTextoAccionable de /alertas.
+          let bloquesClinicos = '';
+          if (alerta.signos_alarma) {
+            bloquesClinicos += `
+              <div class="mt-1">
+                <strong class="font-semibold text-ink print:text-black">Signos de alarma para consulta:</strong>
+                <div class="text-ink-muted print:text-black mt-0.5 space-y-1">${renderTextoAccionable(alerta.signos_alarma)}</div>
+              </div>
+            `;
+          }
+          if (alerta.acciones_comunitarias) {
+            bloquesClinicos += `
+              <div class="mt-1">
+                <strong class="font-semibold text-ink print:text-black">Acciones comunitarias prioritarias:</strong>
+                <div class="text-ink-muted print:text-black mt-0.5 space-y-1">${renderTextoAccionable(alerta.acciones_comunitarias)}</div>
+              </div>
+            `;
+          }
+          if (alerta.contacto_vigilancia) {
+            bloquesClinicos += `
+              <div class="mt-1 text-[10px] text-ink-muted print:text-black">
+                <strong>Ruta de notificación:</strong> ${escapeHtml(alerta.contacto_vigilancia)}
+              </div>
+            `;
+          }
+
+          caja.innerHTML = `
+            <div class="flex items-center justify-between gap-1">
+              <span class="font-semibold text-ink print:text-black text-xs">${escapeHtml(alerta.titulo)}</span>
+              <span class="rounded bg-secondary/30 px-1.5 py-0.5 text-[10px] font-medium">${escapeHtml(alerta.tipo).toUpperCase()}</span>
+            </div>
+            <div class="text-ink-muted print:text-black text-xs leading-relaxed space-y-1">${renderTextoAccionable(alerta.indicaciones || alerta.contexto || '')}</div>
+            ${bloquesClinicos}
+            <div class="border-t border-border/60 pt-1.5 text-[10px] text-ink-muted print:text-black">
+              <strong>Fuente citada:</strong> ${escapeHtml(alerta.fuente)} · Emitida: ${escapeHtml(alerta.vigente_desde)}
+            </div>
+          `;
+          prevLista.appendChild(caja);
+        });
+      } else if (prevLista) {
+        prevLista.innerHTML = `
+          <div class="col-span-full rounded-lg border border-border bg-surface p-3 text-ink-muted print:text-black text-xs">
+            Sin alertas de campo vigentes para este departamento.
+          </div>
+        `;
+      }
+    } else {
+      if (corteAlertas) corteAlertas.textContent = 'No disponible';
+      if (prevCarga) prevCarga.hidden = true;
+      if (prevLista) {
+        prevLista.innerHTML = `
+          <div class="col-span-full rounded-lg border border-secondary bg-secondary/20 p-3 text-ink print:text-black text-xs" role="status">
+            Dato no disponible en este momento.
+          </div>
+        `;
+      }
+    }
+
+    // Gate de impresion: habilitar el boton y marcar el contenedor
+    if (botonImprimir) {
+      botonImprimir.disabled = false;
+      botonImprimir.removeAttribute('aria-disabled');
+    }
+    if (textoImprimir) {
+      textoImprimir.textContent = 'Imprimir ficha';
+    }
+    root?.setAttribute('data-cargado', '1');
+  });
+</script>
+
+<style>
+  /* Reglas de impresion para hoja de campo */
+  @media print {
+    /* Solo el footer del Layout (hijo directo de body); el footer institucional
+       propio de la ficha va anidado en main > article y SI se imprime. */
+    :global(header[class*='sticky']),
+    :global(nav[aria-label='Navegación principal']),
+    :global(body > footer),
+    .print\:hidden,
+    [data-no-imprimir] {
+      display: none !important;
+    }
+
+    :global(body) {
+      background-color: #ffffff !important;
+      color: #000000 !important;
+      font-size: 10pt !important;
+      line-height: 1.25 !important;
+    }
+
+    main {
+      max-width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    [data-seccion-ficha] {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      border: 1px solid #777777 !important;
+      box-shadow: none !important;
+      margin-bottom: 0.5rem !important;
+      padding: 0.5rem !important;
+      background: #ffffff !important;
+    }
+
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+  }
+</style>

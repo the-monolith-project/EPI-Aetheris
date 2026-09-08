@@ -24,14 +24,9 @@ from collections import defaultdict
 ANIOS_IRA = [2018, 2019, 2021, 2022, 2023]  # 2020 ausente del corpus, ver AGENTS.md
 
 AVISO_HONESTIDAD_IRA = (
-    "Infección Respiratoria Aguda (IRA), boletines MINSAL 2018-2023 (sin 2020, mismo "
-    "motivo que dengue: colapso real de vigilancia durante covid). Capa 100% DESCRIPTIVA -- "
-    "conteo semanal 'notificado' por departamento, sin desagregación probable/confirmado ni "
-    "confirmación de laboratorio declarada (ADR 0011). No hay índice de idoneidad, anomalía ni "
-    "presión relativa calculados para IRA -- esas fórmulas están cerradas solo para dengue. "
-    "Los huecos (semanas sin fila) son ausencias reales de la fuente -- boletines de vacaciones, "
-    "tablas publicadas como imagen, o correcciones retroactivas excluidas -- nunca ceros ni "
-    "valores interpolados."
+    "Infección Respiratoria Aguda (IRA), boletines MINSAL 2018-2023 (sin 2020). "
+    "Conteo semanal notificado por departamento, sin desagregación probable/confirmado. "
+    "Los huecos (semanas sin fila) son ausencias reales de la fuente, nunca ceros interpolados."
 )
 
 

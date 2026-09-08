@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from datetime import date
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
@@ -58,6 +59,15 @@ class ConstantesIdoneidadTest(unittest.TestCase):
         self.assertEqual(api_iv.R0, ing_iv.R0)
         self.assertEqual(api_iv.K, ing_iv.K)
         self.assertEqual(api_iv.ANIOS_CLIMA, ing_iv.ANIOS_CLIMA)
+
+    def test_anios_clima_llega_al_anio_en_curso(self):
+        anio_actual = date.today().year
+        esperado = list(range(2014, anio_actual + 1))
+        self.assertEqual(api_iv.ANIOS_CLIMA, esperado)
+        self.assertEqual(ing_iv.ANIOS_CLIMA, esperado)
+        self.assertEqual(api_iv.ANIOS_CLIMA[0], 2014)
+        self.assertEqual(api_iv.ANIOS_CLIMA[-1], anio_actual)
+        self.assertGreaterEqual(anio_actual, 2024)
 
     def test_c_norm_coincide(self):
         self.assertAlmostEqual(api_iv.C_NORM, ing_iv.C_NORM, places=12)
@@ -140,11 +150,12 @@ class SerieIvTest(unittest.TestCase):
 
 class ZScoreLeaveOneOutTest(unittest.TestCase):
     def test_baseline_y_sigma_coinciden_con_el_detalle_del_script(self):
-        # Corpus 2014-2024, semana exacta, sin ventana de vecinas.
-        # 2022 semana 10 es un outlier; 2023 semana 10 tiene pool degenerado
-        # (todos iguales salvo el anio excluido, que no entra).
+        # Pool = ANIOS_CLIMA (crece hasta el anio en curso, ADR 0018),
+        # semana exacta, sin ventana de vecinas. 2022 semana 10 es un
+        # outlier; 2023 semana 10 tiene pool degenerado (todos iguales
+        # salvo el anio excluido, que no entra).
         serie: dict[int, dict[int, float]] = {}
-        for anio in range(2014, 2025):
+        for anio in api_iv.ANIOS_CLIMA:
             serie[anio] = {
                 10: 0.10 + 0.01 * (anio - 2014),
                 20: 0.50,

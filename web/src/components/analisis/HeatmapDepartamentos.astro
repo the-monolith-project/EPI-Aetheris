@@ -54,9 +54,11 @@
   } from '../../lib/analisis-state';
   import { colorPresion, gradienteCss, RAMPA_PRESION } from '../../lib/colores';
   import { vincularMarcasPlot } from '../../lib/plot-interacciones';
-  import type {
-    FiltrosAnalisis,
-    PresionAnalitica,
+  import {
+    esAnioAnalisisDengue,
+    notaAnioSoloClima,
+    type FiltrosAnalisis,
+    type PresionAnalitica,
   } from '../../lib/tipos-analisis';
 
   interface CeldaHeatmap {
@@ -92,6 +94,12 @@
     const idRevision = ++revision;
     if (resumen)
       resumen.textContent = `Cargando ${filtros.anio}, serie ${filtros.serie}…`;
+
+    if (!esAnioAnalisisDengue(filtros.anio)) {
+      contenedor.replaceChildren();
+      if (resumen) resumen.textContent = notaAnioSoloClima(filtros.anio);
+      return;
+    }
 
     try {
       const datos = await obtenerDatasetAnalitico(filtros.anio);

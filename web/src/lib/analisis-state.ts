@@ -1,8 +1,4 @@
-import {
-  ANIOS_ANALISIS_DENGUE,
-  type AnioAnalisisDengue,
-  type FiltrosAnalisis,
-} from './tipos-analisis';
+import { aniosClimaPresentacion, type FiltrosAnalisis } from './tipos-analisis';
 
 export const EVENTO_FILTROS_ANALISIS = 'epi:filters-changed';
 
@@ -22,8 +18,8 @@ function limitarSemana(valor: number): number {
   return Math.min(53, Math.max(1, Math.trunc(valor)));
 }
 
-function esAnioDisponible(valor: number): valor is AnioAnalisisDengue {
-  return ANIOS_ANALISIS_DENGUE.includes(valor as AnioAnalisisDengue);
+function esAnioDisponible(valor: number): boolean {
+  return aniosClimaPresentacion().includes(valor);
 }
 
 function clonarEstado(valor: FiltrosAnalisis): FiltrosAnalisis {
@@ -70,7 +66,7 @@ function leerEstadoDesdeUrl(): Partial<FiltrosAnalisis> {
   const departamento = parametros.get('dept');
   const comparar = parametros.get('compare');
   const modoMinsal = parametros.get('minsal');
-  if (anio !== null) cambios.anio = Number(anio) as AnioAnalisisDengue;
+  if (anio !== null) cambios.anio = Number(anio);
   if (semana !== null) cambios.semana = Number(semana);
   if (semanaDesde !== null) cambios.semanaDesde = Number(semanaDesde);
   if (semanaHasta !== null) cambios.semanaHasta = Number(semanaHasta);
