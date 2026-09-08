@@ -1182,21 +1182,28 @@ const { codigo, nombre } = departamento;
       if (temporalData || presionData) {
         const semanasTemp = temporalData?.semanas ?? [];
         const semanasPres = presionData?.semanas ?? [];
+        const mapaTemp = new Map(semanasTemp.map((s) => [s.semana_epi, s]));
         const mapaPres = new Map(semanasPres.map((s) => [s.semana_epi, s]));
 
-        // Mostrar las ultimas 8 semanas con dato
-        const ultimasSemanas = semanasTemp.slice(-8);
+        // Union de semanas de ambas fuentes: si M1/M2 falla pero M3 responde
+        // (o al reves) la tabla igual lista las filas de la fuente disponible,
+        // con "—" en las columnas de la que falto.
+        const semanas = Array.from(
+          new Set<number>([...mapaTemp.keys(), ...mapaPres.keys()]),
+        ).sort((a, b) => a - b);
+        const ultimasSemanas = semanas.slice(-8);
         if (ultimasSemanas.length > 0) {
           tablaCuerpo.innerHTML = '';
-          ultimasSemanas.forEach((st) => {
-            const sp = mapaPres.get(st.semana_epi);
+          ultimasSemanas.forEach((semana) => {
+            const st = mapaTemp.get(semana);
+            const sp = mapaPres.get(semana);
             const tr = document.createElement('tr');
             tr.className = 'border-b border-border/60 hover:bg-bg/40';
             tr.innerHTML = `
-              <td class="p-1.5 font-semibold">SE${String(st.semana_epi).padStart(2, '0')}</td>
-              <td class="p-1.5">${st.iv_real !== null ? st.iv_real.toFixed(3) : '—'}</td>
-              <td class="p-1.5">${st.mediana_baseline !== null ? st.mediana_baseline.toFixed(3) : '—'}</td>
-              <td class="p-1.5">${formatearSigma(st.anomaly_sigma)}</td>
+              <td class="p-1.5 font-semibold">SE${String(semana).padStart(2, '0')}</td>
+              <td class="p-1.5">${st && st.iv_real !== null ? st.iv_real.toFixed(3) : '—'}</td>
+              <td class="p-1.5">${st && st.mediana_baseline !== null ? st.mediana_baseline.toFixed(3) : '—'}</td>
+              <td class="p-1.5">${st && st.anomaly_sigma !== null ? formatearSigma(st.anomaly_sigma) : '—'}</td>
               <td class="p-1.5">${sp?.probable.casos_observados ?? '—'}</td>
               <td class="p-1.5">${formatearPercentil(sp?.probable.percentil)}</td>
               <td class="p-1.5">${sp?.confirmado.casos_observados ?? '—'}</td>
@@ -1411,9 +1418,11 @@ const { codigo, nombre } = departamento;
 <style>
   /* Reglas de impresion para hoja de campo */
   @media print {
+    /* Solo el footer del Layout (hijo directo de body); el footer institucional
+       propio de la ficha va anidado en main > article y SI se imprime. */
     :global(header[class*='sticky']),
     :global(nav[aria-label='Navegación principal']),
-    :global(footer),
+    :global(body > footer),
     .print\:hidden,
     [data-no-imprimir] {
       display: none !important;

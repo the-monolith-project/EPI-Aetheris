@@ -260,6 +260,63 @@ test.describe('Ficha departamental imprimible', () => {
     await expect(page.locator('[data-m1-valor]')).toHaveText('0.246');
   });
 
+  test('la tabla usa la union de semanas: M3 solo no dispara "sin semanas"', async ({
+    page,
+  }) => {
+    // M1/M2 falla, M3 responde: la tabla debe listar las semanas de M3.
+    await page.route('**/api/v1/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Fallo simulado' }),
+      }),
+    );
+    await page.route('**/api/v1/presion/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_PRESION),
+      }),
+    );
+    await page.route('**/api/ira/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_IRA),
+      }),
+    );
+    await page.route('**/api/neumonias/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_NEUMONIAS),
+      }),
+    );
+    await page.route('**/api/alertas*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_ALERTAS),
+      }),
+    );
+
+    await page.goto('/analisis/ficha/SV-SS');
+    await expect(page.locator('[data-ficha]')).toHaveAttribute(
+      'data-cargado',
+      '1',
+      { timeout: 15_000 },
+    );
+
+    const filas = page.locator('#tabla-semanas-cuerpo tr');
+    await expect(filas).toHaveCount(1);
+    await expect(filas.first()).toContainText('SE50');
+    // Columna M1 (Iv) cae a "—", columna percentil probable trae el dato de M3.
+    await expect(filas.first()).toContainText('P78.5');
+    await expect(page.locator('#tabla-semanas-cuerpo')).not.toContainText(
+      'Sin semanas registradas',
+    );
+  });
+
   test('enlace desde /analisis hacia la ficha departamental', async ({
     page,
   }) => {
