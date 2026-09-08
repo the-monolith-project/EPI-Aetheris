@@ -3,6 +3,7 @@ export const EVENTO_LAYOUT_ANALISIS = 'epi:analysis-layout-changed';
 export const PANELES_ANALITICOS = [
   { id: 'mapa', etiqueta: 'Mapa departamental' },
   { id: 'presion', etiqueta: 'Presión por semana' },
+  { id: 'serie', etiqueta: 'Serie del departamento' },
   { id: 'temporadas', etiqueta: 'Comparación de temporadas' },
   { id: 'departamentos', etiqueta: 'Comparación de departamentos' },
   { id: 'calendario', etiqueta: 'Calendario epidémico' },
@@ -57,8 +58,8 @@ const PRESETS: Record<
     tamanos: { mapa: 'grande', presion: 'grande', departamentos: 'grande' },
   },
   temporal: {
-    panelesVisibles: ['temporadas', 'calendario'],
-    tamanos: { temporadas: 'grande', calendario: 'grande' },
+    panelesVisibles: ['serie', 'temporadas', 'calendario'],
+    tamanos: { serie: 'grande', temporadas: 'grande', calendario: 'grande' },
   },
   clima: {
     panelesVisibles: ['mapa', 'clima'],
@@ -73,6 +74,7 @@ const PRESETS: Record<
 const TAMANOS_PREDETERMINADOS: Record<PanelAnalitico, TamanoPanel> = {
   mapa: 'mediano',
   presion: 'grande',
+  serie: 'grande',
   temporadas: 'grande',
   departamentos: 'grande',
   calendario: 'grande',

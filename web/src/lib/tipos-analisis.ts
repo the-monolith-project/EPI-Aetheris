@@ -75,6 +75,43 @@ export interface DatasetAnaliticoDengue {
   };
 }
 
+/** Semana de `GET /api/v1/temporal/{codigo}` — Iv real del año contra su
+ *  banda histórica leave-one-out y el Z-score continuo (M1 y M2). */
+export interface SemanaSerieIdoneidad {
+  semana_epi: number;
+  iv_real: number | null;
+  p25_baseline: number | null;
+  mediana_baseline: number | null;
+  p75_baseline: number | null;
+  anomaly_sigma: number | null;
+}
+
+export interface SerieTemporalIdoneidad {
+  departamento_codigo: string;
+  departamento_nombre: string;
+  anio: number;
+  semanas: SemanaSerieIdoneidad[];
+  aviso: string;
+}
+
+/** Semana de `GET /api/v1/presion/temporal/{codigo}` — percentil de casos
+ *  observados contra la propia historia del departamento (M3), por serie.
+ *  `probable`/`confirmado` reusan `PresionAnalitica`: `percentil` va de 0 a
+ *  100 (o `null` si el baseline es insuficiente o falta la observación). */
+export interface SemanaSeriePresion {
+  semana_epi: number;
+  probable: PresionAnalitica;
+  confirmado: PresionAnalitica;
+}
+
+export interface SerieTemporalPresion {
+  departamento_codigo: string;
+  departamento_nombre: string;
+  anio: number;
+  semanas: SemanaSeriePresion[];
+  aviso: string;
+}
+
 export interface CasoNacionalSemanal {
   semana_inicio: string;
   anio: number;

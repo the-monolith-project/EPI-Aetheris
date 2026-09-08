@@ -6,6 +6,8 @@ import type {
   IntegridadVigilancia,
   ProcedenciaAnalitica,
   RespuestaIraDepartamental,
+  SerieTemporalIdoneidad,
+  SerieTemporalPresion,
 } from './tipos-analisis';
 
 const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -17,6 +19,8 @@ let cacheCasosNacionales: Promise<CasoNacionalSemanal[]> | null = null;
 let cacheIraDepartamental: Promise<RespuestaIraDepartamental> | null = null;
 let cacheIntegridad: Promise<IntegridadVigilancia> | null = null;
 const cacheProcedencia = new Map<string, Promise<ProcedenciaAnalitica>>();
+const cacheSerieIdoneidad = new Map<string, Promise<SerieTemporalIdoneidad>>();
+const cacheSeriePresion = new Map<string, Promise<SerieTemporalPresion>>();
 
 function cargarDataset(
   anio: AnioAnalisisDengue,
@@ -137,6 +141,82 @@ export function obtenerIraDepartamental(): Promise<RespuestaIraDepartamental> {
       });
   }
   return cacheIraDepartamental;
+}
+
+function tieneSemanas(datos: unknown): boolean {
+  return (
+    !!datos &&
+    typeof datos === 'object' &&
+    Array.isArray((datos as { semanas?: unknown }).semanas)
+  );
+}
+
+/** Serie del año contra la banda histórica de Iv (M1) y la anomalía (M2)
+ *  de un departamento. `codigo` es ISO 3166-2:SV (ej. 'SV-SS'). */
+export function obtenerSerieIdoneidad(
+  codigo: string,
+  anio: number,
+): Promise<SerieTemporalIdoneidad> {
+  const clave = `${codigo}:${anio}`;
+  let solicitud = cacheSerieIdoneidad.get(clave);
+  if (!solicitud) {
+    solicitud = fetch(
+      `${API_BASE}/api/v1/temporal/${encodeURIComponent(codigo)}?anio=${anio}`,
+    )
+      .then(async (respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error(
+            `No se pudo cargar la serie de idoneidad (${respuesta.status}).`,
+          );
+        }
+        const datos: unknown = await respuesta.json();
+        if (!tieneSemanas(datos)) {
+          throw new Error(
+            'La serie de idoneidad no tiene el contrato esperado.',
+          );
+        }
+        return datos as SerieTemporalIdoneidad;
+      })
+      .catch((error) => {
+        cacheSerieIdoneidad.delete(clave);
+        throw error;
+      });
+    cacheSerieIdoneidad.set(clave, solicitud);
+  }
+  return solicitud;
+}
+
+/** Serie del percentil de presión epidemiológica relativa (M3), probable y
+ *  confirmado, de un departamento para `anio`. */
+export function obtenerSeriePresion(
+  codigo: string,
+  anio: number,
+): Promise<SerieTemporalPresion> {
+  const clave = `${codigo}:${anio}`;
+  let solicitud = cacheSeriePresion.get(clave);
+  if (!solicitud) {
+    solicitud = fetch(
+      `${API_BASE}/api/v1/presion/temporal/${encodeURIComponent(codigo)}?anio=${anio}`,
+    )
+      .then(async (respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error(
+            `No se pudo cargar la serie de presión (${respuesta.status}).`,
+          );
+        }
+        const datos: unknown = await respuesta.json();
+        if (!tieneSemanas(datos)) {
+          throw new Error('La serie de presión no tiene el contrato esperado.');
+        }
+        return datos as SerieTemporalPresion;
+      })
+      .catch((error) => {
+        cacheSeriePresion.delete(clave);
+        throw error;
+      });
+    cacheSeriePresion.set(clave, solicitud);
+  }
+  return solicitud;
 }
 
 export function obtenerProcedenciaAnalitica(

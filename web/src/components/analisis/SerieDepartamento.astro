@@ -1,0 +1,380 @@
+<article
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+>
+  <header>
+    <h3 class="font-sans text-base font-semibold text-ink">
+      Serie del departamento
+    </h3>
+    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+      Los tres módulos descriptivos del departamento activo, semana a semana:
+      presión epidemiológica relativa (M3), idoneidad biofísica contra su banda
+      histórica (M1) y anomalía climática (M2). Cada uno compara al departamento
+      con su propia historia; ninguno reparte un nivel de riesgo.
+    </p>
+  </header>
+
+  <div id="serie-departamento-grafica" class="mt-4 flex flex-col gap-5" hidden>
+    <div
+      id="serie-presion"
+      class="min-h-[220px]"
+      role="region"
+      aria-label="Percentil de presión epidemiológica relativa por semana para el departamento activo"
+    >
+    </div>
+    <div
+      id="serie-idoneidad"
+      class="min-h-[220px]"
+      role="region"
+      aria-label="Idoneidad biofísica por semana contra la banda histórica del departamento activo"
+    >
+    </div>
+    <div
+      id="serie-anomalia"
+      class="min-h-[200px]"
+      role="region"
+      aria-label="Anomalía climática continua por semana para el departamento activo"
+    >
+    </div>
+  </div>
+
+  <p
+    id="serie-departamento-resumen"
+    class="mt-3 font-sans text-xs text-ink-muted"
+    role="status"
+  >
+  </p>
+  <p
+    id="serie-departamento-aviso"
+    class="mt-2 font-sans text-[11px] leading-relaxed text-ink-muted"
+  >
+  </p>
+</article>
+
+<script>
+  import {
+    obtenerSerieIdoneidad,
+    obtenerSeriePresion,
+  } from '../../lib/analisis-api';
+  import {
+    obtenerFiltrosAnalisis,
+    suscribirFiltrosAnalisis,
+  } from '../../lib/analisis-state';
+  import {
+    esAnioAnalisisDengue,
+    notaAnioSoloClima,
+  } from '../../lib/tipos-analisis';
+  import type {
+    FiltrosAnalisis,
+    SemanaSerieIdoneidad,
+    SemanaSeriePresion,
+  } from '../../lib/tipos-analisis';
+
+  const COLOR_ACENTO = 'var(--color-accent)';
+  const COLOR_CONFIRMADO = '#2171b5';
+  const COLOR_CONTEXTO = '#9ca3af';
+  const COLOR_BANDA = 'var(--color-secondary)';
+
+  const marco = document.getElementById('serie-departamento-grafica');
+  const nodoPresion = document.getElementById('serie-presion');
+  const nodoIdoneidad = document.getElementById('serie-idoneidad');
+  const nodoAnomalia = document.getElementById('serie-anomalia');
+  const resumen = document.getElementById('serie-departamento-resumen');
+  const avisoNodo = document.getElementById('serie-departamento-aviso');
+
+  let revision = 0;
+  let filtrosActuales = obtenerFiltrosAnalisis();
+  type PlotNs = typeof import('@observablehq/plot');
+  type Grafica = ReturnType<PlotNs['plot']>;
+  let Plot: PlotNs | null = null;
+
+  function ejeSemana(filtros: FiltrosAnalisis) {
+    return {
+      domain: [filtros.semanaDesde, filtros.semanaHasta] as [number, number],
+      label: 'Semana epidemiológica',
+      tickFormat: (valor: number) => `SE${String(valor).padStart(2, '0')}`,
+      ticks: 10,
+    };
+  }
+
+  function estiloPlot() {
+    return { background: 'transparent', color: 'var(--color-ink-muted)' };
+  }
+
+  function enRango(semana: number, filtros: FiltrosAnalisis): boolean {
+    return semana >= filtros.semanaDesde && semana <= filtros.semanaHasta;
+  }
+
+  function hayValores(valores: Array<number | null | undefined>): boolean {
+    return valores.some((valor) => valor !== null && valor !== undefined);
+  }
+
+  function marcadorSemana(P: PlotNs, filtros: FiltrosAnalisis) {
+    return P.ruleX([filtros.semana], {
+      stroke: 'var(--color-ink)',
+      strokeOpacity: 0.4,
+      strokeDasharray: '3,3',
+    });
+  }
+
+  function graficaPresion(
+    P: PlotNs,
+    semanas: SemanaSeriePresion[],
+    filtros: FiltrosAnalisis,
+    ancho: number,
+  ) {
+    const datos = semanas
+      .filter((s) => enRango(s.semana_epi, filtros))
+      .map((s) => ({
+        semana_epi: s.semana_epi,
+        probable: s.probable.percentil,
+        confirmado: s.confirmado.percentil,
+      }));
+    if (
+      !hayValores([
+        ...datos.map((s) => s.probable),
+        ...datos.map((s) => s.confirmado),
+      ])
+    ) {
+      return null;
+    }
+    return P.plot({
+      width: ancho,
+      height: 210,
+      marginLeft: 52,
+      marginBottom: 40,
+      x: ejeSemana(filtros),
+      y: {
+        label: 'Percentil frente a su historia (0–100)',
+        domain: [0, 100],
+        grid: true,
+      },
+      style: estiloPlot(),
+      marks: [
+        P.ruleY([50, 75], {
+          stroke: COLOR_CONTEXTO,
+          strokeOpacity: 0.5,
+          strokeDasharray: '2,3',
+        }),
+        P.line(datos, {
+          x: 'semana_epi',
+          y: 'probable',
+          stroke: COLOR_ACENTO,
+          strokeWidth: 2.5,
+        }),
+        P.line(datos, {
+          x: 'semana_epi',
+          y: 'confirmado',
+          stroke: COLOR_CONFIRMADO,
+          strokeWidth: 2,
+        }),
+        P.dot(
+          datos.filter((s) => s.probable !== null),
+          {
+            x: 'semana_epi',
+            y: 'probable',
+            fill: COLOR_ACENTO,
+            r: 2.5,
+            title: (s: (typeof datos)[number]) =>
+              `SE${String(s.semana_epi).padStart(2, '0')} · probable p${
+                s.probable ?? '—'
+              } · confirmado p${s.confirmado ?? '—'}`,
+          },
+        ),
+        marcadorSemana(P, filtros),
+        P.frame({ stroke: 'var(--color-border)' }),
+      ],
+    });
+  }
+
+  function graficaIdoneidad(
+    P: PlotNs,
+    semanas: SemanaSerieIdoneidad[],
+    filtros: FiltrosAnalisis,
+    ancho: number,
+  ) {
+    const datos = semanas.filter((s) => enRango(s.semana_epi, filtros));
+    if (!hayValores(datos.map((s) => s.iv_real))) return null;
+    const banda = datos.filter(
+      (s) => s.p25_baseline !== null && s.p75_baseline !== null,
+    );
+    return P.plot({
+      width: ancho,
+      height: 210,
+      marginLeft: 52,
+      marginBottom: 40,
+      x: ejeSemana(filtros),
+      y: { label: 'Iv (0–1)', grid: true, zero: true },
+      style: estiloPlot(),
+      marks: [
+        P.areaY(banda, {
+          x: 'semana_epi',
+          y1: 'p25_baseline',
+          y2: 'p75_baseline',
+          fill: COLOR_BANDA,
+          fillOpacity: 0.55,
+        }),
+        P.line(banda, {
+          x: 'semana_epi',
+          y: 'mediana_baseline',
+          stroke: COLOR_CONTEXTO,
+          strokeWidth: 1.25,
+          strokeDasharray: '4,3',
+        }),
+        P.line(datos, {
+          x: 'semana_epi',
+          y: 'iv_real',
+          stroke: COLOR_ACENTO,
+          strokeWidth: 2.5,
+        }),
+        P.dot(
+          datos.filter((s) => s.iv_real !== null),
+          {
+            x: 'semana_epi',
+            y: 'iv_real',
+            fill: COLOR_ACENTO,
+            r: 2.5,
+            title: (s: SemanaSerieIdoneidad) =>
+              `SE${String(s.semana_epi).padStart(2, '0')} · Iv ${
+                s.iv_real !== null ? s.iv_real.toFixed(3) : '—'
+              } · banda ${
+                s.p25_baseline !== null ? s.p25_baseline.toFixed(3) : '—'
+              }–${s.p75_baseline !== null ? s.p75_baseline.toFixed(3) : '—'}`,
+          },
+        ),
+        marcadorSemana(P, filtros),
+        P.frame({ stroke: 'var(--color-border)' }),
+      ],
+    });
+  }
+
+  function graficaAnomalia(
+    P: PlotNs,
+    semanas: SemanaSerieIdoneidad[],
+    filtros: FiltrosAnalisis,
+    ancho: number,
+  ) {
+    const datos = semanas.filter((s) => enRango(s.semana_epi, filtros));
+    if (!hayValores(datos.map((s) => s.anomaly_sigma))) return null;
+    return P.plot({
+      width: ancho,
+      height: 190,
+      marginLeft: 52,
+      marginBottom: 40,
+      x: ejeSemana(filtros),
+      y: { label: 'σ respecto a la historia', grid: true, zero: true },
+      style: estiloPlot(),
+      marks: [
+        P.areaY(datos, {
+          x: 'semana_epi',
+          y: 'anomaly_sigma',
+          fill: COLOR_ACENTO,
+          fillOpacity: 0.18,
+        }),
+        P.line(datos, {
+          x: 'semana_epi',
+          y: 'anomaly_sigma',
+          stroke: COLOR_ACENTO,
+          strokeWidth: 2,
+        }),
+        P.ruleY([0], { stroke: 'var(--color-ink)', strokeOpacity: 0.35 }),
+        marcadorSemana(P, filtros),
+        P.frame({ stroke: 'var(--color-border)' }),
+      ],
+    });
+  }
+
+  function pintar(
+    nodo: HTMLElement | null,
+    grafica: Grafica | null,
+    etiquetaVacia: string,
+  ): void {
+    if (!nodo) return;
+    if (grafica) {
+      nodo.replaceChildren(grafica);
+      return;
+    }
+    const vacio = document.createElement('p');
+    vacio.className = 'font-sans text-xs text-ink-muted';
+    vacio.textContent = etiquetaVacia;
+    nodo.replaceChildren(vacio);
+  }
+
+  async function renderizar(filtros: FiltrosAnalisis): Promise<void> {
+    if (!marco || !resumen) return;
+    const idRevision = ++revision;
+
+    if (!filtros.departamento) {
+      marco.hidden = true;
+      resumen.textContent =
+        'Seleccione un departamento en los filtros o en el mapa.';
+      if (avisoNodo) avisoNodo.textContent = '';
+      return;
+    }
+
+    marco.hidden = false;
+    resumen.textContent = 'Cargando series del departamento…';
+
+    if (!Plot) Plot = await import('@observablehq/plot');
+    if (idRevision !== revision || !Plot) return;
+    const P = Plot;
+
+    const [resPresion, resIdoneidad] = await Promise.allSettled([
+      obtenerSeriePresion(filtros.departamento, filtros.anio),
+      obtenerSerieIdoneidad(filtros.departamento, filtros.anio),
+    ]);
+    if (idRevision !== revision) return;
+
+    const ancho = Math.max(marco.clientWidth || 0, 320);
+    const presion = resPresion.status === 'fulfilled' ? resPresion.value : null;
+    const idoneidad =
+      resIdoneidad.status === 'fulfilled' ? resIdoneidad.value : null;
+
+    pintar(
+      nodoPresion,
+      presion ? graficaPresion(P, presion.semanas, filtros, ancho) : null,
+      resPresion.status === 'rejected'
+        ? 'No fue posible cargar la presión epidemiológica.'
+        : 'Sin presión epidemiológica para este año (los casos MINSAL se detienen en 2023).',
+    );
+    pintar(
+      nodoIdoneidad,
+      idoneidad ? graficaIdoneidad(P, idoneidad.semanas, filtros, ancho) : null,
+      resIdoneidad.status === 'rejected'
+        ? 'No fue posible cargar la idoneidad biofísica.'
+        : 'Sin idoneidad biofísica para este departamento y año.',
+    );
+    pintar(
+      nodoAnomalia,
+      idoneidad ? graficaAnomalia(P, idoneidad.semanas, filtros, ancho) : null,
+      resIdoneidad.status === 'rejected'
+        ? 'No fue posible cargar la anomalía climática.'
+        : 'Sin anomalía climática para este departamento y año.',
+    );
+
+    const nombre =
+      idoneidad?.departamento_nombre ??
+      presion?.departamento_nombre ??
+      filtros.departamento;
+    resumen.textContent = `${nombre} · año ${filtros.anio} · rango SE${String(
+      filtros.semanaDesde,
+    ).padStart(2, '0')}–SE${String(filtros.semanaHasta).padStart(2, '0')}.`;
+
+    if (avisoNodo) {
+      const partes: string[] = [];
+      if (!esAnioAnalisisDengue(filtros.anio)) {
+        partes.push(notaAnioSoloClima(filtros.anio));
+      }
+      if (idoneidad?.aviso) partes.push(idoneidad.aviso);
+      if (presion?.aviso) partes.push(presion.aviso);
+      avisoNodo.textContent = partes.join(' · ');
+    }
+  }
+
+  suscribirFiltrosAnalisis((filtros) => {
+    filtrosActuales = filtros;
+    void renderizar(filtros);
+  });
+  if (marco) {
+    new ResizeObserver(() => void renderizar(filtrosActuales)).observe(marco);
+  }
+</script>
