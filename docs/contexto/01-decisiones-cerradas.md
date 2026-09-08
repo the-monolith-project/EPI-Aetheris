@@ -2,6 +2,17 @@
 
 > Todo lo marcado aquí está **cerrado / no negociable**. Respételo salvo instrucción explícita del usuario reabriéndolo. Para lo que sigue sin resolver, ver `02-decisiones-abiertas.md`. Para la evidencia empírica detrás de las decisiones de fuentes de datos, ver `03-fuentes-de-datos.md`.
 
+## Alertas operables (cerrado 2026-09-07)
+
+ADR 0015, migración `db/migrations/0011_alertas_etiquetas_y_contenido_clinico.sql`, `POST`/`PATCH /api/alertas`, páginas `/alertas/archivo` y `/alertas/nueva`.
+
+- Las alertas siguen siendo **decisiones humanas**. No se derivan de M1/M2/M3 ni del clasificador retirado. No hay `DELETE`.
+- Escritura autenticada con secreto de entorno `ALERTAS_TOKEN` (Bearer + `secrets.compare_digest`). Sin token configurado → 503 y no escribe; cabecera ausente o token incorrecto → 401 (mismo código, no se distinguen). El token no se versiona (`render.yaml` `sync: false`, `.env.example` vacío).
+- `GET /api/alertas` sin parámetros extra no cambia: `activa=TRUE` y `etiqueta IS NULL`. Filtros opcionales `desde`/`hasta`/`incluir_inactivas`/`incluir_etiquetadas` se combinan con AND. Portada y service worker no piden `incluir_etiquetadas`. `SHELL_MINIMO` permanece `['/', '/alertas']`.
+- `etiqueta`: `NULL` (producción) | `test` | `simulacro` | `historica`. Una fila etiquetada renderizada lleva el rótulo `ALERTA DE PRUEBA — NO ACTUAR SOBRE ESTA INFORMACIÓN`.
+- Contenido clínico: UPDATE por `tipo` desde documentos públicos citados. Respiratorio deja `signos_alarma` y `criterios_referencia` en `NULL` (VIGEPES no es guía de manejo). `contacto_vigilancia` es la ruta SIBASI/VIGEPES-01, **sin teléfono ni correo**. `AVISO_HONESTIDAD_ALERTAS` no cambia.
+- Superficie de escritura hace más urgente el issue #61; #61 y #72 no se resuelven aquí.
+
 ## Enfoque dual panorama/análisis (cerrado 2026-09-07)
 
 ADR 0014, migración `db/migrations/0010_alertas_campos_clinicos.sql`, página `/analisis`, `web/public/sw.js`.
@@ -10,7 +21,7 @@ ADR 0014, migración `db/migrations/0010_alertas_campos_clinicos.sql`, página `
 - La portada ofrece dos puertas ("Personal de salud" → `/alertas`, "Investigación y datos" → `/analisis`) que son **enlaces normales, sin estado persistido**, más una tira de alertas vigentes que se oculta sola si el backend no responde.
 - Los cinco campos clínicos de `alertas` (`definicion_caso`, `signos_alarma`, `criterios_referencia`, `que_notificar`, `contacto_vigilancia`) son **contenedores opcionales**: la API expone siempre la clave, el valor puede ser `null`, y la vista omite el bloque vacío. El contenido lo redacta y carga el equipo con fuente MINSAL/OPS atribuida — texto clínico y datos de contacto reales no se inventan.
 - El cache offline es **network-first para `GET /api/alertas`** (una alerta ya apagada tiene consecuencia clínica; la red siempre gana) y stale-while-revalidate para el shell. Toda respuesta servida desde cache se marca con `_desde_cache: true` en el cuerpo JSON —no en una cabecera: la API es de otro origen y el navegador filtra por CORS las cabeceras propias— y la vista muestra el sello "sin conexión — mostrando lo último guardado". El sello no es opcional. `_desde_cache` lo pone el service worker; el backend nunca lo emite. Al desplegar hay que subir `VERSION` en `sw.js`.
-- **Sin superficie de escritura nueva.** No hay formulario de feedback propio ni `POST` de alertas; el feedback sigue por GitHub Issues vía `/sugerencias`.
+- **Sin formulario de feedback propio.** El feedback sigue por GitHub Issues vía `/sugerencias`. El `POST` de alertas quedó fuera de este ADR y se abre en ADR 0015 (token de entorno, sin tabla de usuarios).
 - Ninguna vista se titula "hoy" ni "esta semana": la ventana cargada llega hasta 2023 y `regiones.nivel_admin = 2` (municipio) sigue reservado sin filas.
 
 ## Alertas de campo humanas (cerrado 2026-09-06)
@@ -19,7 +30,7 @@ ADR 0013, migración `db/migrations/0009_alertas_de_campo.sql`, `GET /api/alerta
 
 - Una alerta es una **decisión humana persistida** (tipo, nivel, título, contexto, indicaciones, fuente, autor, vigencia, `activa`). No se calcula desde M1/M2/M3, el canal endémico ni el clasificador retirado.
 - Valores controlados: `tipo` = `dengue` | `respiratorio`; `nivel` = `informativo` | `atencion` | `intensificacion`. El equipo los asigna al emitir; no se recalculan.
-- Vista pública: solo `activa = TRUE`, filtro opcional `tipo`. Sin autenticación ni `POST`/`PUT` de administración en este alcance. La demo de Expotécnica se siembra en la propia migración, no regenerando `seed_datos_reales.sql` (ADR 0010).
+- Vista pública por defecto: solo `activa = TRUE` (y, desde ADR 0015, `etiqueta IS NULL`), filtro opcional `tipo`. La demo de Expotécnica se siembra en la propia migración, no regenerando `seed_datos_reales.sql` (ADR 0010). La creación HTTP autenticada y el archivo por fecha ya no están fuera de alcance: ver ADR 0015.
 - Copy descriptivo. El aviso de honestidad de `/alertas` es estatuto visible, no tiempo real ni lineamiento MINSAL.
 
 ## Ingesta respiratoria: Neumonías + vigilancia virológica (cerrado 2026-08-28)

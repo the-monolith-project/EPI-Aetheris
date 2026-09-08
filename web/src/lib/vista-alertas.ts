@@ -40,6 +40,9 @@ export function textoSignificadoNivel(nivel: string): string {
   return esNivelAlerta(nivel) ? SIGNIFICADO_NIVEL[nivel] : '';
 }
 
+export const ROTULO_ALERTA_PRUEBA =
+  'ALERTA DE PRUEBA — NO ACTUAR SOBRE ESTA INFORMACIÓN';
+
 export interface AlertaPublica {
   id: number;
   tipo: TipoAlerta;
@@ -52,6 +55,7 @@ export interface AlertaPublica {
   vigente_desde: string;
   vigente_hasta: string | null;
   activa: boolean;
+  etiqueta?: string | null;
   // Campos clínicos opcionales (ADR 0014). El equipo los redacta a mano con
   // fuente MINSAL/OPS; null = el bloque no se muestra.
   signos_alarma?: string | null;
@@ -98,8 +102,10 @@ export function formatearFechaIso(iso: string | null | undefined): string {
 export function vistaDeAlertas(
   alertas: AlertaPublica[],
   ultimaRevisionIso: string | null,
+  textoVacio?: string,
 ): VistaAlertas {
   if (alertas.length === 0) {
+    if (textoVacio) return { tipo: 'vacio', texto: textoVacio };
     const fecha = formatearFechaIso(ultimaRevisionIso) || '—';
     return { tipo: 'vacio', texto: textoEstadoVacio(fecha) };
   }
@@ -154,6 +160,29 @@ export function textoVigencia(alerta: AlertaPublica): string {
   return `Vigencia: desde ${desde} (sin fecha de cierre)`;
 }
 
+export function alertaEstaVigente(
+  alerta: AlertaPublica,
+  hoyIso?: string,
+): boolean {
+  if (!alerta.activa) return false;
+  if (!alerta.vigente_hasta) return true;
+  const hoy = hoyIso ?? new Date().toISOString().slice(0, 10);
+  return alerta.vigente_hasta.slice(0, 10) >= hoy;
+}
+
+export function textoNoVigente(
+  alerta: AlertaPublica,
+  hoyIso?: string,
+): string | null {
+  if (alertaEstaVigente(alerta, hoyIso)) return null;
+  const fin = alerta.vigente_hasta || alerta.vigente_desde;
+  return `NO VIGENTE — venció el ${formatearFechaIso(fin)}`;
+}
+
+export function esAlertaEtiquetada(alerta: AlertaPublica): boolean {
+  return typeof alerta.etiqueta === 'string' && alerta.etiqueta.trim() !== '';
+}
+
 function pintarTarjeta(alerta: AlertaPublica, esNueva = false): HTMLElement {
   const articulo = document.createElement('article');
   articulo.className =
@@ -162,6 +191,31 @@ function pintarTarjeta(alerta: AlertaPublica, esNueva = false): HTMLElement {
   articulo.setAttribute('data-tipo', alerta.tipo);
   articulo.setAttribute('data-nivel', alerta.nivel);
   articulo.id = `alerta-${alerta.id}`;
+  if (esAlertaEtiquetada(alerta)) {
+    articulo.setAttribute('data-alerta-etiqueta', String(alerta.etiqueta));
+  }
+  if (!alertaEstaVigente(alerta)) {
+    articulo.setAttribute('data-alerta-no-vigente-tarjeta', '');
+  }
+
+  if (esAlertaEtiquetada(alerta)) {
+    const avisoPrueba = document.createElement('p');
+    avisoPrueba.setAttribute('data-alerta-prueba', '');
+    avisoPrueba.className =
+      'mb-4 rounded-xl border-2 border-secondary bg-secondary px-3 py-2 font-sans text-sm font-bold uppercase tracking-wide text-secondary-ink';
+    avisoPrueba.textContent = ROTULO_ALERTA_PRUEBA;
+    articulo.appendChild(avisoPrueba);
+  }
+
+  const avisoNoVigente = textoNoVigente(alerta);
+  if (avisoNoVigente) {
+    const avisoVencida = document.createElement('p');
+    avisoVencida.setAttribute('data-alerta-no-vigente', '');
+    avisoVencida.className =
+      'mb-4 rounded-xl border-2 border-ink px-3 py-2 font-sans text-sm font-bold uppercase tracking-wide text-ink';
+    avisoVencida.textContent = avisoNoVigente;
+    articulo.appendChild(avisoVencida);
+  }
 
   const tipo = ETIQUETAS_TIPO[alerta.tipo] ?? alerta.tipo;
   const nivel = esNivelAlerta(alerta.nivel)
@@ -357,6 +411,7 @@ export function aplicarVistaAlertas(
   root: HTMLElement,
   payload: PayloadAlertas,
   nuevas: Set<number> = new Set(),
+  textoVacio?: string,
 ): void {
   const carga = root.querySelector<HTMLElement>('[data-alertas-carga]');
   const error = root.querySelector<HTMLElement>('[data-alertas-error]');
@@ -365,7 +420,11 @@ export function aplicarVistaAlertas(
   if (carga) carga.hidden = true;
   if (error) error.hidden = true;
 
-  const vista = vistaDeAlertas(payload.alertas, payload.ultima_revision);
+  const vista = vistaDeAlertas(
+    payload.alertas,
+    payload.ultima_revision,
+    textoVacio,
+  );
   if (vista.tipo === 'vacio') {
     if (vacio) {
       vacio.hidden = false;
