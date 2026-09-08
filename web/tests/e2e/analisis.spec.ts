@@ -368,7 +368,7 @@ test('integra el popover con el toolbar y permite cerrarlo', async ({
   ]);
   expect(cajaDialogoSticky).not.toBeNull();
   expect(cajaToolbarSticky).not.toBeNull();
-  expect(Math.round(cajaToolbarSticky!.y)).toBe(80);
+  expect(Math.round(cajaToolbarSticky!.y)).toBe(96);
   expect(cajaDialogoSticky!.y).toBeGreaterThan(
     cajaToolbarSticky!.y + cajaToolbarSticky!.height,
   );

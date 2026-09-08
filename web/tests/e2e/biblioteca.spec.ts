@@ -65,7 +65,9 @@ test('/biblioteca lista los documentos por titulo del frontmatter', async ({
   ).toHaveText('Biblioteca');
 
   for (const doc of docs) {
-    const tarjeta = page.locator(`a[href="/biblioteca/${doc.slug}"]`);
+    const tarjeta = page
+      .locator('main')
+      .locator(`a[href="/biblioteca/${doc.slug}"]`);
     await expect(tarjeta).toBeVisible();
     await expect(tarjeta.getByRole('heading')).toHaveText(doc.titulo);
     await expect(tarjeta).toContainText(doc.descripcion);
