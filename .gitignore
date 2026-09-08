@@ -65,7 +65,9 @@ DOCKER.mdar
 
 #temporales
 referencias_no_trakear/
+# Indicaciones/planes de trabajo para agentes de código — no se versionan.
 INDICACIONES_ALERTAS.md
+PLAN_ALERTAS_OPERABLES.md
 # Documentos legacy que no se versionan (síntesis históricas superadas por
 # docs/contexto/ y por AGENTS.md — se conservan localmente si hacen falta).
 CAMBIO_DE_ORIENTACION_CAMINO_ANCHO.md
