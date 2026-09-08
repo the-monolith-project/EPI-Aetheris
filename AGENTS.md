@@ -167,6 +167,8 @@ No presentes su salida como:
 * recomendación médica;
 * descubrimiento epidemiológico novedoso.
 
+Eso aplica a la *salida de los módulos y del clasificador*. Es distinto —y sí está permitido— mostrar material informativo de prevención tomado literalmente de una fuente oficial publicada (OPS/OMS, MINSAL) con su cita: tarjetas tipo "elimine criaderos, revise depósitos de agua". No se redacta consejo clínico propio ni se generan recomendaciones automáticas por nivel de riesgo.
+
 El aporte principal del proyecto es de ingeniería de software: reproducibilidad, integración, despliegue y acceso abierto.
 
 ### Costos y dependencias
@@ -499,7 +501,7 @@ EPI-Aetheris es un sistema de vigilancia epidemiológica **descriptiva** (piloto
 
 - **El clasificador predictivo está retirado** (pivote "Camino Ancho", cerrado 2026-08-18 — `docs/rescate-prediccion/informe-cierre-rescate-prediccion.md`). El código entrenado (`entrenar_clasificador.py` y afines) se conserva como referencia histórica: **no lo extiendas ni presentes su salida como predicción en vivo.**
 - El proyecto es descriptivo, no predictivo: "qué está pasando y qué tan inusual es contra su propia historia", nunca "qué va a pasar".
-- El aporte es de **ingeniería de software** (sistema libre, contenedorizado, reproducible), no de novedad epidemiológica ni un oráculo médico.
+- El aporte es de **ingeniería de software** (sistema libre, contenedorizado, reproducible), no de novedad epidemiológica ni un oráculo médico (esto no impide mostrar guías de prevención públicas citadas).
 - Modelo de dominio **agnóstico a enfermedad y región**: `tipos_evento` y `regiones` son catálogos, no columnas fijas.
 
 ### Módulos Camino Ancho

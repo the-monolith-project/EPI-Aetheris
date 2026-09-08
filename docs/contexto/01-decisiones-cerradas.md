@@ -192,7 +192,7 @@ Se adopta `epiweeks` (PyPI, cálculo CDC/MMWR que PAHO adopta) en vez de recalcu
 
 ## Restricciones éticas y de honestidad (NO NEGOCIABLES)
 
-- Herramienta de priorización complementaria, nunca oráculo médico ni diagnóstico — la interfaz nunca afirma certezas.
+- Herramienta de priorización complementaria, nunca oráculo médico ni diagnóstico — la interfaz nunca afirma certezas ni emite criterio clínico propio. Sí puede mostrar recomendaciones de prevención **ya publicadas por autoridades de salud** (OPS/OMS, MINSAL) citando la fuente: reproducir una guía pública existente no es diagnosticar ni predecir. Lo vedado es que el sistema *redacte* indicaciones clínicas propias o las derive automáticamente de M1–M4 o del clasificador retirado.
 - Métricas y márgenes de error siempre visibles en el dashboard, nunca ocultos.
 - Validación retrospectiva honesta, mostrando fallos además de aciertos.
 - Solo datos agregados públicos (sin datos personales) — sin problema de privacidad, así debe permanecer.
