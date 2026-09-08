@@ -101,3 +101,86 @@ def test_casos_departamentales_tiene_umbral_pesado(client_con_limite):
     ]
     assert codigos.count(429) >= 2
     assert 429 not in codigos[:2]
+
+
+# --- Umbral de escritura (POST/PATCH /api/alertas) ---------------------------
+# El chequeo de rate limit corre antes del handler: no hace falta token
+# valido ni BD. Un POST sin Authorization que recibe 429 (y no 401/503)
+# es exactamente la senal de que el decorador corto la rafaga.
+
+CUERPO_ALERTA_MINIMO = {
+    "tipo": "dengue",
+    "nivel": "informativo",
+    "titulo": "prueba",
+    "contexto": "prueba",
+    "indicaciones": "prueba",
+    "fuente": "prueba",
+    "autor": "prueba",
+    "vigente_desde": "2023-01-01",
+}
+
+
+@pytest.fixture
+def client_con_limite_escritura(monkeypatch):
+    """Rate limiting activo, escritura mas estricta que el global."""
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "true")
+    monkeypatch.setenv("RATE_LIMIT_DEFAULT", "10/minute")
+    monkeypatch.setenv("RATE_LIMIT_HEAVY", "30/minute")
+    monkeypatch.setenv("RATE_LIMIT_WRITE", "2/minute")
+
+    import api.main
+    importlib.reload(api.main)
+    try:
+        yield TestClient(api.main.app)
+    finally:
+        monkeypatch.undo()
+        importlib.reload(api.main)
+
+
+def test_post_alertas_respeta_umbral_de_escritura(client_con_limite_escritura):
+    codigos = [
+        client_con_limite_escritura.post(
+            "/api/alertas", json=CUERPO_ALERTA_MINIMO
+        ).status_code
+        for _ in range(4)
+    ]
+    assert 429 not in codigos[:2]
+    assert 429 in codigos[2:]
+
+
+def test_umbral_de_escritura_es_mas_estricto_que_el_global(
+    client_con_limite_escritura,
+):
+    post_codigos = [
+        client_con_limite_escritura.post(
+            "/api/alertas", json=CUERPO_ALERTA_MINIMO
+        ).status_code
+        for _ in range(3)
+    ]
+    assert post_codigos[2] == 429
+    assert client_con_limite_escritura.get("/openapi.json").status_code == 200
+
+
+def test_patch_alertas_respeta_umbral_de_escritura(client_con_limite_escritura):
+    codigos = [
+        client_con_limite_escritura.patch(
+            "/api/alertas/1", json={"activa": False}
+        ).status_code
+        for _ in range(4)
+    ]
+    assert 429 not in codigos[:2]
+    assert 429 in codigos[2:]
+
+
+def test_429_de_escritura_conserva_cabeceras_cors(client_con_limite_escritura):
+    origin = "http://localhost:4321"
+    respuesta = None
+    for _ in range(4):
+        respuesta = client_con_limite_escritura.post(
+            "/api/alertas",
+            json=CUERPO_ALERTA_MINIMO,
+            headers={"Origin": origin},
+        )
+    assert respuesta is not None
+    assert respuesta.status_code == 429
+    assert respuesta.headers.get("access-control-allow-origin") == origin
