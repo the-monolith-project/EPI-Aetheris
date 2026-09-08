@@ -53,6 +53,7 @@ from .neumonias import (
     cargar_neumonias_departamento_temporal,
 )
 from .cobertura import AVISO_COBERTURA, cargar_cobertura
+from .vigilancia import construir_integridad
 from .respiratorios import (
     AVISO_HONESTIDAD_VIRUS,
     listar_virus,
@@ -1181,9 +1182,46 @@ def respiratorios_semana(anio: int, semana: int, response: Response):
     }
 
 
+@app.get("/api/v1/vigilancia/integridad")
+@limiter.limit(RATE_LIMIT_HEAVY)
+def vigilancia_integridad(
+    request: Request,
+    response: Response,
+    week: int | None = None,
+    year: int | None = None,
+):
+    """Integridad de la vigilancia (Módulo 4): completitud geográfica,
+    cuadre aritmético del boletín y antigüedad por serie. Capa DESCRIPTIVA
+    de la calidad del dato -- ver AVISO_HONESTIDAD_VIGILANCIA.
+
+    `week` y `year` van juntos (vista por semana para el mapa). Sin
+    parámetros: resumen anual de completitud + antigüedad por serie.
+    Nada se persiste; se calcula on-request desde tablas existentes.
+    """
+    if (week is None) != (year is None):
+        raise HTTPException(
+            status_code=422,
+            detail="Los parámetros 'week' y 'year' deben enviarse juntos.",
+        )
+    if week is not None and not (1 <= week <= 53):
+        raise HTTPException(
+            status_code=422,
+            detail="El parámetro 'week' debe estar entre 1 y 53.",
+        )
+
+    try:
+        with _conexion() as conn:
+            cuerpo = construir_integridad(conn, week=week, year=year)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
+    _cache_control(response, CACHE_TTL_COMPUTO)
+    return cuerpo
+
+
 @app.get("/api/respiratorios/cobertura")
 def respiratorios_cobertura(response: Response):
-    """Semanas con dato en Postgres + notas de la exploración. No es M4."""
+    """Semanas con dato en Postgres + notas de la exploración. Distinto de M4."""
     try:
         with _conexion() as conn:
             cobertura = cargar_cobertura(conn)

@@ -1,14 +1,10 @@
 ---
-// Panel de auditoría del dato: hechos reales y verificables sobre la
-// cobertura/calidad de las fuentes, no una puntuación de confianza (M4 no
-// tiene fórmula aprobada todavía -- ver AGENTS.md, "Open decisiones"). Todo
-// el contenido de esta tarjeta es estático porque son hechos documentados
-// del proyecto, no algo que se recalcule por request. Layout inspirado en el
-// panel oscuro "Auditoría del dato" de
-// referencias_no_trakear/boceto_dashboard_pre-camino-ancho_DESACTUALIZADO.png
-// -- el contenido de ESE boceto (margen de error de un modelo en vivo) no se
-// usa, viola el estatuto del pivote; esto es honestidad de cobertura, no una
-// métrica de un clasificador.
+// Panel de auditoría del dato. Los hechos que no son métrica (ventana,
+// exclusión de 2020) siguen siendo estáticos. Completitud anual y
+// antigüedad por serie las produce M4 (GET /api/v1/vigilancia/integridad)
+// y se rellenan en el cliente. No es un índice compuesto ni un score de
+// confianza: son tres métricas separadas; aquí se muestran las dos que
+// tienen sentido como resumen (completitud anual y antigüedad).
 ---
 
 <section aria-label="Auditoría del dato" class="rounded-2xl bg-deep p-5 sm:p-6">
@@ -16,7 +12,7 @@
     Auditoría del dato
   </p>
 
-  <dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
     <div class="rounded-xl border border-white/10 bg-white/5 p-3">
       <dt class="font-sans text-[11px] font-medium text-deep-ink-muted">
         Ventana de datos
@@ -41,12 +37,101 @@
     </div>
     <div class="rounded-xl border border-white/10 bg-white/5 p-3">
       <dt class="font-sans text-[11px] font-medium text-deep-ink-muted">
-        Cobertura real MINSAL
+        Completitud geográfica MINSAL
       </dt>
-      <dd class="mt-1 font-sans text-sm leading-relaxed text-deep-ink">
-        Aproximadamente 49 de 52 semanas por año. Los huecos se concentran en
-        semanas festivas y en boletines que no incluyen una tabla departamental.
+      <dd
+        id="auditoria-completitud"
+        class="mt-1 font-sans text-sm leading-relaxed text-deep-ink"
+      >
+        Cargando semanas con los 14 departamentos…
+      </dd>
+    </div>
+    <div class="rounded-xl border border-white/10 bg-white/5 p-3">
+      <dt class="font-sans text-[11px] font-medium text-deep-ink-muted">
+        Antigüedad del dato
+      </dt>
+      <dd
+        id="auditoria-antiguedad"
+        class="mt-1 font-sans text-sm leading-relaxed text-deep-ink"
+      >
+        Cargando semanas desde la última observación de cada serie…
       </dd>
     </div>
   </dl>
 </section>
+
+<script>
+  import { obtenerIntegridadVigilancia } from '../lib/analisis-api';
+
+  const ETIQUETAS_SERIE: Record<string, string> = {
+    dengue_minsal_departamental: 'dengue MINSAL departamental',
+    dengue_opendengue_nacional: 'dengue OpenDengue nacional',
+    clima: 'clima',
+    ira: 'IRA',
+    neumonias: 'neumonías',
+    virus_respiratorios: 'virus respiratorios',
+  };
+
+  const nodoCompletitud = document.getElementById('auditoria-completitud');
+  const nodoAntiguedad = document.getElementById('auditoria-antiguedad');
+
+  function textoCompletitud(
+    resumen: {
+      anio: number;
+      probable: {
+        semanas_completas: number;
+        semanas_con_dato: number;
+        semanas_nominales: number;
+      };
+    }[],
+  ): string {
+    if (resumen.length === 0) {
+      return 'Sin filas departamentales de dengue MINSAL para calcular completitud.';
+    }
+    const partes = resumen.map((fila) => {
+      const celda = fila.probable;
+      return `${fila.anio}: ${celda.semanas_completas} de ${celda.semanas_nominales}`;
+    });
+    return (
+      `Semanas con los 14 departamentos (serie probable): ${partes.join(' · ')}. ` +
+      'Los huecos se concentran en semanas festivas y en boletines sin tabla departamental.'
+    );
+  }
+
+  function textoAntiguedad(
+    antiguedad: Record<
+      string,
+      {
+        ultima_anio: number | null;
+        ultima_semana_epi: number | null;
+        semanas: number | null;
+      }
+    >,
+  ): string {
+    const partes = Object.entries(ETIQUETAS_SERIE).map(([clave, etiqueta]) => {
+      const celda = antiguedad[clave];
+      if (!celda || celda.semanas === null || celda.ultima_anio === null) {
+        return `${etiqueta}: sin filas`;
+      }
+      const se = String(celda.ultima_semana_epi).padStart(2, '0');
+      return `${etiqueta}: ${celda.semanas} sem. (última SE${se}/${celda.ultima_anio})`;
+    });
+    return partes.join(' · ');
+  }
+
+  async function pintar() {
+    if (!nodoCompletitud || !nodoAntiguedad) return;
+    try {
+      const datos = await obtenerIntegridadVigilancia();
+      nodoCompletitud.textContent = textoCompletitud(datos.resumen_anual ?? []);
+      nodoAntiguedad.textContent = textoAntiguedad(datos.antiguedad);
+    } catch {
+      nodoCompletitud.textContent =
+        'No se pudo calcular la completitud geográfica en este momento.';
+      nodoAntiguedad.textContent =
+        'No se pudo calcular la antigüedad de las series en este momento.';
+    }
+  }
+
+  void pintar();
+</script>

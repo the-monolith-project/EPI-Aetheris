@@ -52,8 +52,8 @@ Cuatro módulos:
 1. **Idoneidad biofísica (`Iv`)** — implementado el 18–19 de agosto de 2026.
 2. **Anomalía climática continua** (Z-score leave-one-out) — implementado el mismo tramo, sin alerta binaria.
 3. **Presión epidemiológica relativa** — fórmula cerrada el 21 de agosto de 2026 e implementada (percentil leave-one-out, series probable/confirmado separadas).
-4. **Confianza de vigilancia** — sin fórmula aprobada; el selector del mapa lo deja como capa no disponible.
+4. **Integridad de la vigilancia** — fórmula cerrada el 8 de septiembre de 2026 (tres métricas, sin índice compuesto) e implementada.
 
-Nada de M1–M3 se persiste: se calcula al consultar la API. El mapa sigue mostrando casos MINSAL desacumulados como capa descriptiva. En septiembre se suman el observatorio respiratorio (IRA, neumonías, vigilancia viral), las alertas de campo humanas (luego operables con token de escritura, sin tabla de usuarios) y la arquitectura de información de dos caras.
+Nada de M1–M4 se persiste: se calcula al consultar la API. El mapa sigue mostrando casos MINSAL desacumulados como capa descriptiva. En septiembre se suman el observatorio respiratorio (IRA, neumonías, vigilancia viral), las alertas de campo humanas (luego operables con token de escritura, sin tabla de usuarios) y la arquitectura de información de dos caras.
 
 Esa es la trayectoria: una meta ambiciosa, un protocolo que no dejó elegir el resultado después de verlo, y un producto que describe lo que los datos ya muestran.

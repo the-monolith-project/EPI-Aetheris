@@ -53,9 +53,17 @@ Responde qué tan alta es la presión de casos **ya observados** en un departame
 
 **Qué no hace.** No predice, no usa clima y no produce alerta binaria. Un percentil alto describe lo ya ocurrido frente a la historia observada del departamento.
 
-## M4 — Confianza de vigilancia
+## M4 — Integridad de la vigilancia
 
-Placeholder en el selector de capas del mapa, deshabilitado. **No implementado**: no hay fórmula aprobada. El equipo no inventa un puntaje de confianza opaco. La dirección planteada (cobertura de unidades notificadoras, completitud del boletín, disponibilidad de clima) sigue abierta.
+Tres hechos verificables sobre la calidad del dato, **sin combinarlos en un índice**:
+
+- **Completitud geográfica:** cuántos de los 14 departamentos tienen fila esa semana (y cuántas semanas de cada año están completas).
+- **Cuadre del boletín:** si la suma departamental coincide con el total nacional publicado en el mismo PDF, y por cuánto difiere cuando no.
+- **Antigüedad:** semanas desde la última observación de cada serie (dengue MINSAL, OpenDengue, clima, IRA, neumonías, virus). Explica el corte de 2023 sin esconderlo. No es el retraso entre el caso y la publicación del boletín: esa fecha no está en la base.
+
+**Endpoint.** `GET /api/v1/vigilancia/integridad`. Capa del mapa "Integridad de la vigilancia".
+
+**Qué no hace.** No afirma transmisión ni riesgo. Un departamento sin color no es un departamento seguro: es un departamento sin fila esa semana.
 
 ## Mapa departamental descriptivo (dengue)
 

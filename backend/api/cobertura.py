@@ -1,7 +1,7 @@
 """
 Lectura de cobertura de la ingesta respiratoria.
 
-No es M4 (confianza de vigilancia): no hay fórmula aprobada. Solo cuenta
+No es M4 (integridad de vigilancia, `backend/api/vigilancia.py`). Solo cuenta
 semanas con fila en Postgres y adjunta las notas ya documentadas en la
 exploración de 264 PDF. Hueco ≠ cero.
 """

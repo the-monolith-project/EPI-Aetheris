@@ -2,13 +2,7 @@
 
 > A diferencia de `01-decisiones-cerradas.md`, nada de esto está resuelto. No invente una respuesta para avanzar una tarea que dependa de un punto de aquí — pregunte al usuario. Cuando algo de esta lista se cierre, muévalo a `01-decisiones-cerradas.md` y bórrelo de aquí; no lo deje duplicado en ambos.
 
-## A. Fórmulas de M3 (presión epidemiológica relativa) y M4 (confianza de vigilancia)
-
-**Reemplaza el punto A anterior** ("parámetros de la etiqueta de riesgo alto/medio/bajo"), que quedó sin objeto tras el pivote "Camino Ancho" (2026-08-18, ver `01-decisiones-cerradas.md`) — no hay clasificador en producción que esos parámetros puedan seguir alimentando. El historial completo de esos parámetros (ventana ±1, años base leave-one-year-out, piso de suficiencia, corte P75/P90, techo de 21 features) se conserva sin reescribir en `01-decisiones-cerradas.md` porque **M3 probablemente reutiliza la misma lógica de canal endémico por percentil** — pero eso es una hipótesis de trabajo, no una decisión: nadie ha confirmado formalmente que M3 hereda esos valores en vez de fijar los suyos.
-
-- **M3 — presión epidemiológica relativa.** Sin fórmula aprobada. Preguntas concretas sin resolver: ¿compara casos observados contra un percentil histórico (como el canal endémico retirado) o contra otra referencia (media móvil, mediana simple)? ¿Reutiliza `VENTANA=1`/años base/piso de suficiencia ya validados para el canal endémico nacional, o se recalculan para el nivel al que M3 vaya a operar (nacional, departamental, o ambos)? ¿Se expresa como percentil, como variación porcentual contra la mediana histórica, o como ambas cosas a la vez (la propuesta de producto que motivó este pivote sugiere mostrar las dos)? Ninguna de estas se resuelve por inferencia de lo que hacía el clasificador retirado — hay que preguntar.
-- **M4 — confianza de vigilancia.** Sin fórmula aprobada. La dirección planteada evita un score opaco y prefiere campos verificables (cobertura de unidades notificadoras, completitud de la tabla departamental del boletín, disponibilidad de clima esa semana) — pero qué campos exactamente, cómo se combinan (si se combinan) y de dónde sale la cifra de "% de unidades notificadoras" de forma sistemática (los boletines la traen de forma inconsistente, no en todos) sigue sin definirse.
-- **Dónde viven M3/M4.** M1/M2 se calculan on-demand sin persistir nada (`GET /api/v1/spatial/current`, `GET /api/v1/temporal/{departamento_codigo}`) — no hay tabla nueva ni cambio de esquema. Si M3/M4 siguen el mismo patrón o necesitan persistencia (por ejemplo, si el cálculo de percentil es costoso de repetir por request) no está decidido.
+*(Punto A — fórmulas de M3 y M4 — cerrado 2026-09-08, ADR 0019 para M4; M3 ya cerrado 2026-08-21. Movido a `01-decisiones-cerradas.md`; la numeración salta de A a C a propósito, no reordenada.)*
 
 *(Punto B — atribución de fuente climática — cerrado 2026-08-10, ADR 0006. Movido a `01-decisiones-cerradas.md`; la numeración salta de A a C a propósito, no reordenada.)*
 
@@ -28,11 +22,9 @@ Este punto preguntaba cómo comunicar que el clasificador retirado no podía ver
 
 **Cerrado en parte (A1, ADR 0018, 2026-09-08) para la capa climática:** M1/M2 se extienden hasta el año en curso; el aviso de idoneidad y el panel de auditoría declaran que eso es condición biofísica, no incidencia, y que el reanálisis ERA5 tiene ~5 días de rezago. No cierra el refresco recurrente (A2).
 
-Queda abierta la pregunta análoga para **M3** (presión epidemiológica relativa): si compara contra casos recientes, depende de una fuente departamental que no existe automatizada después de 2023 — cómo comunicar esa limitación en la interfaz de presión sigue sin definir. Ver punto A.
+La analogía para Camino Ancho —la fuente departamental se detiene en 2023— ahora tiene una cifra en M4 (`antiguedad`, semanas desde la última SE con dato, ADR 0019). Queda abierta la pregunta análoga para **M3** (presión epidemiológica relativa): si compara contra casos recientes, depende de esa misma fuente departamental que no existe automatizada después de 2023 — cómo comunicar esa limitación en la interfaz de presión sigue sin definir, y si hace falta un texto de producto específico además de la cifra de M4. Ver punto A.
 
-## G. Dónde vive la salida de M3/M4
-
-M1/M2 ya están resueltos: se calculan on-demand, nada persistido, sin cambio de esquema (`GET /api/v1/spatial/current`, `GET /api/v1/temporal/{departamento_codigo}`). Si M3/M4 siguen el mismo patrón o requieren una tabla nueva no está decidido — ver punto A.
+*(Punto G — dónde vive la salida de M3/M4 — cerrado 2026-09-08. M3 y M4 se calculan on-request, nada persistido, sin cambio de esquema, igual que M1/M2. M4: `GET /api/v1/vigilancia/integridad`, ADR 0019. Movido a `01-decisiones-cerradas.md`.)*
 
 ## H. Semántica acumulada de Probable/Confirmado MINSAL — resuelta operativamente, pero sin objeto de clasificador que desbloquear
 
