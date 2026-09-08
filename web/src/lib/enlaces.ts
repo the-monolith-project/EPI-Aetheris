@@ -1,4 +1,4 @@
-/** Ruta prevista del doc de Sensibilidad cuando mergee feat-biblioteca.
- *  No usar todavía como href: docs/biblioteca/ aún no existe en esta rama.
- *  TODO: reconciliar con feat-biblioteca. */
-export const RUTA_SENSIBILIDAD = '/biblioteca/sensibilidad-y-honestidad';
+/** Doc canónico de Sensibilidad y honestidad en la Biblioteca (ADR 0016).
+ *  Existe desde que mergeó feat-biblioteca (docs/biblioteca/05-sensibilidad-y-honestidad.md).
+ *  Es el hogar donde se argumentan a fondo los deslindes; enlazar aquí en vez de repetir disclaimers. */
+export const RUTA_SENSIBILIDAD = '/biblioteca/05-sensibilidad-y-honestidad';
