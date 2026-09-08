@@ -3,10 +3,11 @@ import json
 import os
 import threading
 from contextlib import contextmanager
+from datetime import date
 from pathlib import Path
 
 import joblib
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -60,7 +61,12 @@ from .respiratorios import (
 )
 from .alertas import (
     TIPOS_ALERTA,
+    AlertaCrear,
+    AlertaParche,
+    comprobar_token_escritura,
     consultar_alertas_publicas,
+    crear_alerta,
+    parchear_alerta,
 )
 
 # Artefactos de la tarjeta 23/24 -- generados por
@@ -150,7 +156,7 @@ if "*" in cors_origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST", "PATCH", "HEAD", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -1191,15 +1197,42 @@ def respiratorios_cobertura(response: Response):
 
 
 # ---------------------------------------------------------------------------
-# Alertas de campo (ADR 0013). Decisiones humanas persistidas: no se
-# calculan desde M1–M3 ni desde el clasificador retirado. Solo lectura.
+# Alertas de campo (ADR 0013, ADR 0015). Decisiones humanas persistidas:
+# no se calculan desde M1–M3 ni desde el clasificador retirado.
+# GET público por defecto: activa=TRUE y etiqueta IS NULL. POST/PATCH
+# exigen Bearer contra ALERTAS_TOKEN. Sin DELETE.
 # ---------------------------------------------------------------------------
 
 
+def _autorizar_escritura_alertas(authorization: str | None) -> None:
+    error = comprobar_token_escritura(authorization)
+    if error is not None:
+        codigo, detalle = error
+        raise HTTPException(status_code=codigo, detail=detalle)
+
+
+def _alertas_http_error(exc: BaseException) -> None:
+    status = 503 if _es_fallo_conexion(exc) else 500
+    raise HTTPException(
+        status_code=status,
+        detail="Error de conexión a la base de datos",
+    )
+
+
 @app.get("/api/alertas")
-def alertas_publicas(response: Response, tipo: str | None = None):
-    """Lista alertas con activa=TRUE. Filtro opcional `tipo` (dengue |
-    respiratorio). Sin alta ni edición por HTTP."""
+def alertas_publicas(
+    response: Response,
+    tipo: str | None = None,
+    desde: date | None = None,
+    hasta: date | None = None,
+    incluir_inactivas: bool = False,
+    incluir_etiquetadas: bool = False,
+):
+    """Lista alertas. Sin parámetros extra: activa=TRUE y etiqueta IS NULL.
+
+    Filtros opcionales combinados con AND: tipo, desde/hasta (solapamiento
+    de vigencia), incluir_inactivas, incluir_etiquetadas.
+    """
     if tipo is not None and tipo not in TIPOS_ALERTA:
         raise HTTPException(
             status_code=422,
@@ -1207,16 +1240,70 @@ def alertas_publicas(response: Response, tipo: str | None = None):
         )
     try:
         with _conexion() as conn:
-            cuerpo = consultar_alertas_publicas(conn, tipo=tipo)
+            cuerpo = consultar_alertas_publicas(
+                conn,
+                tipo=tipo,
+                desde=desde,
+                hasta=hasta,
+                incluir_inactivas=incluir_inactivas,
+                incluir_etiquetadas=incluir_etiquetadas,
+            )
     except Exception as exc:
         # Contrato propio ({aviso, ultima_revision, alertas}); no se degrada
         # a {disponible:false} como los endpoints respiratorios. Solo se
         # distingue fallo de conexión (503) del resto (500).
-        status = 503 if _es_fallo_conexion(exc) else 500
-        raise HTTPException(
-            status_code=status,
-            detail="Error de conexión a la base de datos",
-        )
+        _alertas_http_error(exc)
 
     _cache_control(response, CACHE_TTL_ALERTAS)
     return cuerpo
+
+
+@app.post("/api/alertas", status_code=201)
+def alertas_crear(
+    cuerpo: AlertaCrear,
+    response: Response,
+    authorization: str | None = Header(default=None),
+):
+    """Crea una alerta redactada por el equipo. Exige Bearer ALERTAS_TOKEN."""
+    _autorizar_escritura_alertas(authorization)
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        with _conexion() as conn:
+            creada = crear_alerta(conn, cuerpo)
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        _alertas_http_error(exc)
+    return creada
+
+
+@app.patch("/api/alertas/{alerta_id}")
+def alertas_parchear(
+    alerta_id: int,
+    cuerpo: AlertaParche,
+    response: Response,
+    authorization: str | None = Header(default=None),
+):
+    """Edita una alerta. Como mínimo puede poner activa=false. Sin DELETE."""
+    _autorizar_escritura_alertas(authorization)
+    response.headers["Cache-Control"] = "no-store"
+    if not cuerpo.model_dump(exclude_unset=True):
+        raise HTTPException(
+            status_code=422,
+            detail="El cuerpo debe incluir al menos un campo a modificar.",
+        )
+    try:
+        with _conexion() as conn:
+            actualizada = parchear_alerta(conn, alerta_id, cuerpo)
+            if actualizada is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No existe una alerta con id {alerta_id}.",
+                )
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        _alertas_http_error(exc)
+    return actualizada

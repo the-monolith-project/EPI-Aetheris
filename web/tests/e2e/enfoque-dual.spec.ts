@@ -150,15 +150,99 @@ test('los campos clínicos en null no dejan bloques vacíos en la tarjeta', asyn
     '1',
     { timeout: 15_000 },
   );
-  // Las filas demo (migración 0009) llegan sin los campos de la 0010.
+  await page.locator('[data-alertas]').evaluate((el) => {
+    const pintar = (
+      el as HTMLElement & {
+        pintarAlertas?: (payload: {
+          aviso: string;
+          ultima_revision: string;
+          alertas: Array<Record<string, unknown>>;
+        }) => void;
+      }
+    ).pintarAlertas;
+    if (!pintar) throw new Error('pintarAlertas no está en el contenedor');
+    pintar({
+      aviso: '',
+      ultima_revision: '2026-09-07',
+      alertas: [
+        {
+          id: 9100,
+          tipo: 'dengue',
+          nivel: 'informativo',
+          titulo: 'Sin bloques clínicos',
+          contexto: 'No usar.',
+          indicaciones: '- No actuar.',
+          fuente: 'suite e2e',
+          autor: 'suite',
+          vigente_desde: '2026-09-01',
+          vigente_hasta: null,
+          activa: true,
+          signos_alarma: null,
+          criterios_referencia: null,
+          que_notificar: null,
+          definicion_caso: null,
+          contacto_vigilancia: null,
+        },
+      ],
+    });
+  });
   await expect(page.locator('[data-alerta-clinico]')).toHaveCount(0);
-  // La tarjeta sigue completa pese a eso.
   await expect(
     page.locator('[data-alerta]').first().locator('[data-alerta-indicaciones]'),
   ).toBeVisible();
   await expect(
     page.locator('[data-alerta]').first().locator('[data-alerta-compartir]'),
   ).toBeVisible();
+
+  // Alerta respiratoria con el patrón clínico de la migración 0011:
+  // definicion_caso y que_notificar con texto, signos_alarma y
+  // criterios_referencia en null. Se inyecta con pintarAlertas para no
+  // acoplar la suite a que 0011 esté aplicada en la base del preview.
+  await page.locator('[data-alertas]').evaluate((el) => {
+    const pintar = (
+      el as HTMLElement & {
+        pintarAlertas?: (payload: {
+          aviso: string;
+          ultima_revision: string;
+          alertas: Array<Record<string, unknown>>;
+        }) => void;
+      }
+    ).pintarAlertas;
+    if (!pintar) throw new Error('pintarAlertas no está en el contenedor');
+    pintar({
+      aviso: '',
+      ultima_revision: '2026-09-07',
+      alertas: [
+        {
+          id: 9101,
+          tipo: 'respiratorio',
+          nivel: 'atencion',
+          titulo: 'Con definición de caso',
+          contexto: 'No usar.',
+          indicaciones: '- No actuar.',
+          fuente: 'suite e2e',
+          autor: 'suite',
+          vigente_desde: '2026-09-01',
+          vigente_hasta: null,
+          activa: true,
+          signos_alarma: null,
+          criterios_referencia: null,
+          que_notificar: 'Notificación individual e inmediata.',
+          definicion_caso: 'Enfermedad respiratoria aguda febril.',
+          contacto_vigilancia: null,
+        },
+      ],
+    });
+  });
+  await expect(
+    page.locator('[data-alerta-clinico="signos_alarma"]'),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('[data-alerta-clinico="criterios_referencia"]'),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('[data-alerta-clinico="definicion_caso"]'),
+  ).toHaveCount(1);
 });
 
 test('/alertas abre sin conexión desde el cache del service worker', async ({

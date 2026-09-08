@@ -1,4 +1,7 @@
-"""Pruebas HTTP de GET /api/alertas. Se omiten si Postgres no responde."""
+"""Pruebas HTTP de /api/alertas (GET público, POST/PATCH autenticados).
+
+Se omiten si Postgres no responde.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +10,10 @@ import os
 import re
 import sys
 import unittest
+from datetime import date
 from pathlib import Path
+from unittest.mock import patch
+from uuid import uuid4
 
 from dotenv import load_dotenv
 
@@ -25,6 +31,9 @@ from api.alertas import (  # noqa: E402
     consultar_alertas_publicas,
     listar_alertas_activas,
 )
+
+TOKEN_DUMMY = "dummy-alertas-token-test-no-secreto"
+PREFIJO_FIXTURE = "TEST-ALERTAS-OPERABLES-"
 from api.main import _conexion, app  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -115,6 +124,70 @@ class AlertasApiTest(unittest.TestCase):
         if not _db_disponible():
             raise unittest.SkipTest("Postgres no disponible")
         self.client = TestClient(app)
+
+    def tearDown(self):
+        if not _db_disponible():
+            return
+        with _conexion() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM alertas WHERE titulo LIKE %s",
+                    (PREFIJO_FIXTURE + "%",),
+                )
+            conn.commit()
+
+    def _titulo_fixture(self, sufijo: str) -> str:
+        return f"{PREFIJO_FIXTURE}{sufijo}-{uuid4().hex[:8]}"
+
+    def _insertar(self, **campos) -> int:
+        titulo = campos.pop("titulo", None) or self._titulo_fixture("fila")
+        valores = {
+            "tipo": "dengue",
+            "nivel": "informativo",
+            "titulo": titulo,
+            "contexto": "Contexto de prueba para filtros de alertas.",
+            "indicaciones": "- No actuar: fila de prueba.",
+            "fuente": "Prueba automatizada, no usar en campo.",
+            "autor": "suite de tests",
+            "vigente_desde": date(2026, 9, 1),
+            "vigente_hasta": None,
+            "activa": True,
+            "etiqueta": None,
+        }
+        valores.update(campos)
+        columnas = list(valores.keys())
+        placeholders = ", ".join(["%s"] * len(columnas))
+        with _conexion() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    INSERT INTO alertas ({", ".join(columnas)})
+                    VALUES ({placeholders})
+                    RETURNING id
+                    """,
+                    tuple(valores[c] for c in columnas),
+                )
+                (ident,) = cur.fetchone()
+            conn.commit()
+        return int(ident)
+
+    def _contar_titulo(self, titulo: str) -> int:
+        with _conexion() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT count(*) FROM alertas WHERE titulo = %s",
+                    (titulo,),
+                )
+                (n,) = cur.fetchone()
+        return int(n)
+
+    def _titulos(self, params=None) -> set[str]:
+        r = self.client.get("/api/alertas", params=params)
+        self.assertEqual(r.status_code, 200)
+        return {a["titulo"] for a in r.json()["alertas"]}
+
+    def _auth(self, token: str = TOKEN_DUMMY) -> dict:
+        return {"Authorization": f"Bearer {token}"}
 
     def test_lista_incluye_alertas_activas_sembradas(self):
         r = self.client.get("/api/alertas")
@@ -218,6 +291,207 @@ class AlertasApiTest(unittest.TestCase):
         r = self.client.get("/api/alertas", params={"tipo": "otro"})
         self.assertEqual(r.status_code, 422)
 
-    def test_no_hay_alta_por_http(self):
-        r = self.client.post("/api/alertas", json={"titulo": "no"})
+    def test_etiqueta_test_ausente_del_get_por_defecto(self):
+        titulo = self._titulo_fixture("test")
+        self._insertar(titulo=titulo, etiqueta="test")
+        self.assertNotIn(titulo, self._titulos())
+
+    def test_etiquetadas_aparecen_con_flag_y_traen_etiqueta(self):
+        titulo_test = self._titulo_fixture("test-flag")
+        titulo_sim = self._titulo_fixture("simulacro")
+        self._insertar(titulo=titulo_test, etiqueta="test")
+        self._insertar(titulo=titulo_sim, etiqueta="simulacro")
+        r = self.client.get(
+            "/api/alertas", params={"incluir_etiquetadas": True}
+        )
+        self.assertEqual(r.status_code, 200)
+        por_titulo = {a["titulo"]: a for a in r.json()["alertas"]}
+        self.assertIn(titulo_test, por_titulo)
+        self.assertEqual(por_titulo[titulo_test]["etiqueta"], "test")
+        self.assertIn(titulo_sim, por_titulo)
+        self.assertEqual(por_titulo[titulo_sim]["etiqueta"], "simulacro")
+        self.assertNotIn(titulo_test, self._titulos())
+        self.assertNotIn(titulo_sim, self._titulos())
+
+    def test_post_sin_authorization_401_no_inserta(self):
+        titulo = self._titulo_fixture("post-sin-auth")
+        cuerpo = {
+            "tipo": "dengue",
+            "nivel": "informativo",
+            "titulo": titulo,
+            "contexto": "x",
+            "indicaciones": "y",
+            "fuente": "z",
+            "autor": "suite",
+            "vigente_desde": "2026-09-07",
+        }
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": TOKEN_DUMMY}):
+            r = self.client.post("/api/alertas", json=cuerpo)
+        self.assertEqual(r.status_code, 401)
+        self.assertEqual(self._contar_titulo(titulo), 0)
+
+    def test_post_token_invalido_401_no_inserta(self):
+        titulo = self._titulo_fixture("post-token-malo")
+        cuerpo = {
+            "tipo": "dengue",
+            "nivel": "informativo",
+            "titulo": titulo,
+            "contexto": "x",
+            "indicaciones": "y",
+            "fuente": "z",
+            "autor": "suite",
+            "vigente_desde": "2026-09-07",
+        }
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": TOKEN_DUMMY}):
+            r = self.client.post(
+                "/api/alertas", json=cuerpo, headers=self._auth("token-incorrecto")
+            )
+        self.assertEqual(r.status_code, 401)
+        self.assertEqual(self._contar_titulo(titulo), 0)
+
+    def test_post_token_valido_inserta_y_sale_en_get(self):
+        titulo = self._titulo_fixture("post-ok")
+        cuerpo = {
+            "tipo": "dengue",
+            "nivel": "informativo",
+            "titulo": titulo,
+            "contexto": "Contexto de alta autenticada.",
+            "indicaciones": "- Revisar vigencia.",
+            "fuente": "Prueba automatizada",
+            "autor": "suite de tests",
+            "vigente_desde": "2026-09-07",
+        }
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": TOKEN_DUMMY}):
+            r = self.client.post(
+                "/api/alertas", json=cuerpo, headers=self._auth()
+            )
+        self.assertEqual(r.status_code, 201)
+        creado = r.json()
+        self.assertIn("id", creado)
+        self.assertEqual(creado["titulo"], titulo)
+        self.assertIn(titulo, self._titulos())
+
+    def test_patch_desactiva_y_sigue_en_archivo(self):
+        titulo = self._titulo_fixture("patch-activa")
+        ident = self._insertar(titulo=titulo, activa=True)
+        self.assertIn(titulo, self._titulos())
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": TOKEN_DUMMY}):
+            r = self.client.patch(
+                f"/api/alertas/{ident}",
+                json={"activa": False},
+                headers=self._auth(),
+            )
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(r.json()["activa"])
+        self.assertNotIn(titulo, self._titulos())
+        self.assertIn(
+            titulo, self._titulos(params={"incluir_inactivas": True})
+        )
+
+    def test_patch_sin_authorization_401_no_modifica(self):
+        titulo = self._titulo_fixture("patch-sin-auth")
+        ident = self._insertar(titulo=titulo, activa=True)
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": TOKEN_DUMMY}):
+            r = self.client.patch(
+                f"/api/alertas/{ident}", json={"activa": False}
+            )
+        self.assertEqual(r.status_code, 401)
+        self.assertIn(titulo, self._titulos())
+
+    def test_patch_sin_alertas_token_503(self):
+        titulo = self._titulo_fixture("patch-503")
+        ident = self._insertar(titulo=titulo, activa=True)
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": ""}):
+            r = self.client.patch(
+                f"/api/alertas/{ident}",
+                json={"activa": False},
+                headers=self._auth(),
+            )
+        self.assertEqual(r.status_code, 503)
+        self.assertIn(titulo, self._titulos())
+
+    def test_filtros_inactiva_y_etiquetada_son_and(self):
+        titulo = self._titulo_fixture("and-flags")
+        self._insertar(titulo=titulo, activa=False, etiqueta="test")
+        self.assertNotIn(titulo, self._titulos())
+        self.assertNotIn(
+            titulo, self._titulos(params={"incluir_inactivas": True})
+        )
+        self.assertNotIn(
+            titulo, self._titulos(params={"incluir_etiquetadas": True})
+        )
+        self.assertIn(
+            titulo,
+            self._titulos(
+                params={
+                    "incluir_inactivas": True,
+                    "incluir_etiquetadas": True,
+                }
+            ),
+        )
+
+    def test_escritura_sin_alertas_token_503(self):
+        titulo = self._titulo_fixture("post-503")
+        cuerpo = {
+            "tipo": "dengue",
+            "nivel": "informativo",
+            "titulo": titulo,
+            "contexto": "x",
+            "indicaciones": "y",
+            "fuente": "z",
+            "autor": "suite",
+            "vigente_desde": "2026-09-07",
+        }
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": ""}):
+            r = self.client.post(
+                "/api/alertas", json=cuerpo, headers=self._auth()
+            )
+        self.assertEqual(r.status_code, 503)
+        self.assertEqual(self._contar_titulo(titulo), 0)
+
+    def test_post_cuerpo_malformado_422(self):
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": TOKEN_DUMMY}):
+            r = self.client.post(
+                "/api/alertas", json={"titulo": "no"}, headers=self._auth()
+            )
+        self.assertEqual(r.status_code, 422)
+
+    def test_delete_no_existe(self):
+        r = self.client.delete("/api/alertas/1")
         self.assertEqual(r.status_code, 405)
+
+    def test_contenido_clinico_citado_por_tipo(self):
+        r = self.client.get("/api/alertas")
+        self.assertEqual(r.status_code, 200)
+        por_tipo = {}
+        for alerta in r.json()["alertas"]:
+            por_tipo.setdefault(alerta["tipo"], alerta)
+        dengue = por_tipo["dengue"]
+        self.assertIn("VIGEPES", dengue["definicion_caso"])
+        self.assertIn("Dengue sin signos de alarma", dengue["definicion_caso"])
+        self.assertIn("Dolor abdominal intenso", dengue["signos_alarma"])
+        self.assertIn("Se sugiere hospitalizar", dengue["criterios_referencia"])
+        self.assertIn("VIGEPES-01", dengue["que_notificar"])
+        self.assertIn("SIBASI", dengue["contacto_vigilancia"])
+        self.assertIn("VIGEPES-01", dengue["contacto_vigilancia"])
+        self.assertNotIn("@", dengue["contacto_vigilancia"])
+        self.assertNotIn("[PENDIENTE]", dengue["contacto_vigilancia"])
+        self.assertNotRegex(dengue["contacto_vigilancia"], r"\+503")
+        self.assertNotRegex(
+            dengue["contacto_vigilancia"].lower(), r"tel[eé]fono"
+        )
+        self.assertNotRegex(dengue["contacto_vigilancia"].lower(), r"correo")
+
+        r_resp = self.client.get(
+            "/api/alertas", params={"tipo": "respiratorio"}
+        )
+        self.assertEqual(r_resp.status_code, 200)
+        resp = r_resp.json()["alertas"][0]
+        self.assertIn("Neumonías", resp["definicion_caso"])
+        self.assertIn("VIGEPES", resp["definicion_caso"])
+        self.assertIn("IRAGI", resp["que_notificar"])
+        self.assertIsNone(resp["signos_alarma"])
+        self.assertIsNone(resp["criterios_referencia"])
+        self.assertIn("SIBASI", resp["contacto_vigilancia"])
+        self.assertNotIn("@", resp["contacto_vigilancia"])
+        self.assertNotIn("[PENDIENTE]", resp["contacto_vigilancia"])

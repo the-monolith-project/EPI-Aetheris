@@ -7,6 +7,11 @@
 > campos clínicos opcionales a `alertas` y caching offline con sello de
 > frescura. Migración: `db/migrations/0010_alertas_campos_clinicos.sql`.
 
+**Nota de estado (2026-09-07):** La consecuencia "la API de alertas sigue
+siendo de solo lectura" queda superada por ADR 0015. El resto de este
+ADR (enfoque dual, campos clínicos como contenedores, service worker)
+sigue vigente.
+
 ## Contexto
 
 El piloto tiene dos usos que no se parecen:

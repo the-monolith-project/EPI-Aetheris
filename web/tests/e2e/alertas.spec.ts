@@ -1,11 +1,14 @@
 import { expect, test } from '@playwright/test';
 
 import {
+  ROTULO_ALERTA_PRUEBA,
   renderTextoAccionable,
   SIGNIFICADO_NIVEL,
   textoEstadoVacio,
+  textoNoVigente,
   textoSignificadoNivel,
   vistaDeAlertas,
+  type AlertaPublica,
 } from '../../src/lib/vista-alertas';
 
 const AVISO =
@@ -163,9 +166,7 @@ test('dengue y respiratorio enlazan a /alertas filtrado; la tarjeta vuelve al m�
   const tarjetaResp = page.locator('[data-alerta][data-tipo="respiratorio"]');
   await expect(tarjetaResp).toBeVisible();
   await expect(tarjetaResp).toContainText(TITULO_RESPIRATORIO);
-  await expect(
-    tarjetaResp.locator('[data-alerta-indicaciones]'),
-  ).toContainText(
+  await expect(tarjetaResp.locator('[data-alerta-indicaciones]')).toContainText(
     'Usar oximetría de pulso en todo paciente con dificultad respiratoria; documentar SatO2.',
   );
   await expect(
@@ -177,4 +178,102 @@ test('dengue y respiratorio enlazan a /alertas filtrado; la tarjeta vuelve al m�
   await expect(
     tarjetaResp.locator('[data-enlace-modulo="respiratorio"]'),
   ).toHaveAttribute('href', '/respiratorio');
+});
+
+const alertaBase: AlertaPublica = {
+  id: 9001,
+  tipo: 'dengue',
+  nivel: 'informativo',
+  titulo: 'Fila de prueba para rótulo',
+  contexto: 'No usar.',
+  indicaciones: '- No actuar.',
+  fuente: 'suite e2e',
+  autor: 'suite',
+  vigente_desde: '2026-08-01',
+  vigente_hasta: '2026-08-31',
+  activa: false,
+  etiqueta: null,
+};
+
+test('shipped renderer: labeled row shows prueba marker; expired row shows NO VIGENTE', () => {
+  expect(ROTULO_ALERTA_PRUEBA).toBe(
+    'ALERTA DE PRUEBA — NO ACTUAR SOBRE ESTA INFORMACIÓN',
+  );
+  expect(textoNoVigente(alertaBase)).toBe('NO VIGENTE — venció el 31/08/2026');
+  expect(
+    textoNoVigente({
+      ...alertaBase,
+      activa: true,
+      vigente_hasta: null,
+      etiqueta: 'test',
+    }),
+  ).toBeNull();
+});
+
+test('labeled row in the DOM shows ALERTA DE PRUEBA', async ({ page }) => {
+  await page.goto('/alertas');
+  await expect(page.locator('[data-alertas]')).toHaveAttribute(
+    'data-cargado',
+    '1',
+    { timeout: 15_000 },
+  );
+  await page.locator('[data-alertas]').evaluate((el, rotulo) => {
+    const pintar = (
+      el as HTMLElement & {
+        pintarAlertas?: (payload: {
+          aviso: string;
+          ultima_revision: string;
+          alertas: AlertaPublica[];
+        }) => void;
+      }
+    ).pintarAlertas;
+    if (!pintar) throw new Error('pintarAlertas no está en el contenedor');
+    pintar({
+      aviso: '',
+      ultima_revision: '2026-09-07',
+      alertas: [
+        {
+          id: 9001,
+          tipo: 'dengue',
+          nivel: 'informativo',
+          titulo: 'Fila etiquetada inyectada',
+          contexto: 'No usar.',
+          indicaciones: '- No actuar.',
+          fuente: 'suite e2e',
+          autor: 'suite',
+          vigente_desde: '2026-09-01',
+          vigente_hasta: null,
+          activa: true,
+          etiqueta: 'test',
+        },
+      ],
+    });
+    if (!el.textContent?.includes(rotulo)) {
+      throw new Error('el renderer no pintó el rótulo de prueba');
+    }
+  }, ROTULO_ALERTA_PRUEBA);
+  const tarjeta = page.locator('[data-alerta][data-alerta-etiqueta="test"]');
+  await expect(tarjeta).toContainText(ROTULO_ALERTA_PRUEBA);
+  await expect(tarjeta.locator('[data-alerta-prueba]')).toHaveText(
+    ROTULO_ALERTA_PRUEBA,
+  );
+});
+
+test('archive non-vigente row shows NO VIGENTE', async ({ page }) => {
+  await page.goto('/alertas/archivo');
+  await expect(page.locator('[data-alertas]')).toHaveAttribute(
+    'data-cargado',
+    '1',
+    { timeout: 15_000 },
+  );
+  const inactiva = page.locator('[data-alerta]').filter({
+    hasText: TITULO_INACTIVA,
+  });
+  await expect(inactiva).toBeVisible();
+  await expect(inactiva.locator('[data-alerta-no-vigente]')).toContainText(
+    'NO VIGENTE',
+  );
+  await expect(inactiva.locator('[data-alerta-no-vigente]')).toContainText(
+    '31/08/2026',
+  );
 });
