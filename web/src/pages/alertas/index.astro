@@ -2,6 +2,8 @@
 import Layout from '../../layouts/Layout.astro';
 import {
   AVISO_HONESTIDAD_ALERTAS,
+  AVISO_HONESTIDAD_ALERTAS_CLINICO,
+  AVISO_HONESTIDAD_ALERTAS_INTRO,
   ETIQUETAS_NIVEL,
   NIVELES_ALERTA,
   SIGNIFICADO_NIVEL,
@@ -18,7 +20,7 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
       <p
         class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
       >
-        Alertas de campo · redacción humana · datos históricos
+        Alertas de campo · equipo de vigilancia
       </p>
       <h1
         class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
@@ -30,15 +32,8 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
         class="mt-4 rounded-2xl border border-border bg-surface p-4 font-sans text-sm leading-relaxed text-ink"
       >
         <p>
-          Herramienta académica en desarrollo (INSAMT, Equipo 4). Las alertas y
-          sus indicaciones las redacta manualmente el equipo de vigilancia del
-          proyecto a partir de datos públicos históricos (MINSAL, OpenDengue,
-          Open-Meteo).{' '}
-          <strong
-            >No sustituyen los lineamientos oficiales del MINSAL ni el criterio
-            clínico.</strong
-          >{' '}
-          No son tiempo real. La coexistencia temporal de eventos no demuestra causalidad.
+          {AVISO_HONESTIDAD_ALERTAS_INTRO}{' '}
+          <strong>{AVISO_HONESTIDAD_ALERTAS_CLINICO}</strong>
         </p>
       </aside>
       <p class="sr-only">{AVISO_HONESTIDAD_ALERTAS}</p>

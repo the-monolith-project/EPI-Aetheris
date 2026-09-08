@@ -4,30 +4,29 @@ import Layout from '../layouts/Layout.astro';
 // Índice de las herramientas descriptivas (ADR 0014). Existe para que la
 // puerta de entrada del sitio pueda ser el panorama sin que las dos vistas
 // de análisis pierdan un lugar propio y estable en la navegación. No calcula
-// nada: solo enruta y repite el estatuto (descriptivo, nunca predictivo).
+// nada: solo enruta; el estatuto vive en el footer y en la Biblioteca.
 
 const HERRAMIENTAS = [
   {
     href: '/dengue',
     titulo: 'Dengue',
-    estado: 'Camino Ancho completo',
+    estado: 'Capas descriptivas completas',
     texto:
-      'Mapa departamental con las tres capas activas: idoneidad biofísica (M1), anomalía climática frente a la propia historia del departamento (M2) y presión epidemiológica relativa como percentil (M3). Incluye el clasificador piloto retirado, marcado como referencia histórica.',
+      'Mapa departamental con las tres capas activas: idoneidad biofísica (M1), anomalía climática frente a la propia historia del departamento (M2) y presión epidemiológica relativa como percentil (M3). Incluye el archivo histórico del clasificador piloto.',
   },
   {
     href: '/respiratorio',
     titulo: 'Respiratorio',
-    estado: 'Sin capas Camino Ancho',
+    estado: 'Series notificadas, sin capas climáticas',
     texto:
       'Neumonías e infección respiratoria aguda (IRA) notificadas por departamento (ADR 0011), más vigilancia laboratorial nacional de virus (muestras y detecciones). Cada serie conserva su unidad.',
   },
 ];
 
 const COMO_LEER = [
-  'Cada departamento se compara contra su propia historia, nunca contra los demás ni contra un promedio nacional.',
-  'Ninguna capa asigna un nivel de riesgo ni anticipa un brote. Son descripciones de lo ya publicado.',
+  'Cada departamento se compara contra su propia historia.',
+  'Cada capa describe lo ya publicado: un percentil, un conteo, una anomalía.',
   'Las series son históricas, no de tiempo real: el dato más reciente cargado no es el de esta semana.',
-  'La coexistencia temporal de dos series no demuestra que una cause la otra.',
 ];
 ---
 
@@ -48,8 +47,8 @@ const COMO_LEER = [
         Análisis
       </h1>
       <p class="mt-3 font-sans text-base leading-relaxed text-ink-muted">
-        Las dos vistas descriptivas del sistema. Si lo que buscás es qué hacer
-        hoy en la unidad de salud, la sección de
+        Las dos vistas descriptivas del sistema. Para lo que está vigente y las
+        indicaciones para la unidad, la sección de
         <a
           href="/alertas"
           class="font-medium text-accent underline underline-offset-2"

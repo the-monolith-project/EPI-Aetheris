@@ -88,7 +88,8 @@ class VirusApiTest(unittest.TestCase):
         cuerpo = r.json()
         self.assertEqual(cuerpo["unidad"], "conteo")
         self.assertEqual(cuerpo["metrica"], "detecciones")
-        self.assertIn("causalidad", cuerpo["aviso"])
+        self.assertIn("MINSAL", cuerpo["aviso"])
+        self.assertNotIn("causalidad", cuerpo["aviso"].lower())
 
     def test_temporal_serie_inexistente_404(self):
         r = self.client.get(
@@ -118,7 +119,8 @@ class VirusApiTest(unittest.TestCase):
         cuerpo = r.json()
         self.assertIn("neumonias", cuerpo)
         self.assertNotIn("score", cuerpo)
-        self.assertIn("M4", cuerpo["aviso"])
+        self.assertIn("52", cuerpo["aviso"])
+        self.assertNotIn("M4", cuerpo["aviso"])
 
 
 class HeatmapNeumoniasTest(unittest.TestCase):

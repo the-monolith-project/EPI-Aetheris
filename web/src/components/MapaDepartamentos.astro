@@ -505,8 +505,7 @@
     etiqueta: 'Idoneidad biofísica (Iv)',
     disponible: true,
     aviso:
-      'Resume qué tan favorables son las condiciones ambientales para el vector en la semana ' +
-      'seleccionada, en una escala de 0 a 1. No estima casos ni probabilidad de brote.',
+      'Resume qué tan favorables son las condiciones ambientales para el vector, de 0 a 1.',
     tituloLeyenda: 'Idoneidad biofísica (Iv, 0-1)',
     rampa: RAMPA_IV,
     sinDatoColor: SIN_DATO,
@@ -556,9 +555,8 @@
     etiqueta: 'Anomalía climática (continua)',
     disponible: true,
     aviso:
-      'Muestra cuánto se apartan las condiciones ambientales de la referencia histórica del ' +
-      'mismo departamento y semana. Se expresa en desviaciones estándar y no funciona como un ' +
-      'umbral de alerta.',
+      'Se expresa en desviaciones estándar frente a la referencia histórica del mismo ' +
+      'departamento y semana.',
     tituloLeyenda: 'Anomalía climática (σ respecto al promedio histórico)',
     rampa: RAMPA_ANOMALIA,
     sinDatoColor: SIN_DATO,
@@ -676,7 +674,7 @@
       disponible: true,
       aviso:
         `Compara los casos ${serie} observados con la historia del mismo departamento y periodo. ` +
-        'Un valor alto indica una observación relativamente inusual, no una predicción.',
+        'Un valor alto indica qué tan inusual es lo observado frente a la historia del propio departamento.',
       tituloLeyenda: `Presión relativa (${serie}, frente a P50/P75 de su referencia histórica)`,
       rampa: RAMPA_PRESION,
       sinDatoColor: SIN_DATO,
@@ -713,8 +711,7 @@
     etiqueta: 'Índice de confianza de vigilancia (próximamente)',
     disponible: false,
     aviso:
-      'Fórmula todavía no definida en el equipo. Busca hacer visible dónde la vigilancia ' +
-      'departamental es más escasa. Esta capa permanece deshabilitada hasta contar con un método aprobado.',
+      'En desarrollo. Va a mostrar dónde la cobertura de vigilancia departamental es más escasa.',
     tituloLeyenda: '',
     rampa: [],
     sinDatoColor: SIN_DATO,

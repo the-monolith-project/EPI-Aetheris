@@ -11,7 +11,10 @@ test.describe('observatorio respiratorio', () => {
       page.getByRole('heading', { name: /Observatorio respiratorio/i }),
     ).toBeVisible();
     await expect(page.locator('body')).not.toContainText('La Influenza causó');
-    await expect(page.locator('main')).toContainText('sin predicción');
+    await expect(page.locator('main')).toContainText(
+      'Observatorio respiratorio · MINSAL',
+    );
+    await expect(page.locator('main')).not.toContainText('sin predicción');
 
     const cobertura = page.locator('[data-cobertura]');
     await expect(cobertura).toContainText('MINSAL', { timeout: 15_000 });

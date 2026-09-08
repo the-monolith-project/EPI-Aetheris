@@ -81,17 +81,14 @@ MODELO_PATH = INGESTION_DIR / "data" / "interim" / "modelo" / "clasificador_ries
 METRICAS_MODELO_PATH = INGESTION_DIR / "data" / "interim" / "modelo" / "metricas_modelo.json"
 
 AVISO_HONESTIDAD_RIESGO_NACIONAL = (
-    "Esta clasificación es a nivel NACIONAL, entrenada sobre la serie agregada de "
-    "El Salvador (pivote 'Opción C'). No representa riesgo por departamento -- el mapa "
-    "no debe interpretarse como si cada departamento tuviera este nivel de riesgo "
-    "individualmente. La coropleta departamental del mapa es una capa DESCRIPTIVA "
-    "aparte (volumen de casos MINSAL, no riesgo) -- estos datos todavía no alimentan "
-    "ningún clasificador."
+    "Clasificación entrenada sobre la serie nacional agregada de El Salvador. "
+    "El mapa departamental es una capa descriptiva aparte (volumen de casos MINSAL); "
+    "estos datos no alimentan ningún clasificador."
 )
 
 app = FastAPI(
     title="EPI-Aetheris API",
-    description="API para ingesta, predicción y consulta de datos epidemiológicos",
+    description="API para ingesta, análisis y consulta de datos epidemiológicos descriptivos",
     version="0.1.0"
 )
 
@@ -531,11 +528,9 @@ def riesgo_nacional(
 
 
 AVISO_HONESTIDAD_CASOS_DEPARTAMENTALES = (
-    "Capa DESCRIPTIVA -- casos probables/confirmados desacumulados de boletines MINSAL "
-    "(2018-2023, con huecos reales entre boletines). No es una clasificación de riesgo: "
-    "el color representa volumen de casos acumulado en la ventana cargada, no un nivel de "
-    "riesgo por departamento. El clasificador de esta primera entrega es nacional (ver "
-    "/api/riesgo-nacional) -- estos datos NO alimentan ningún modelo todavía."
+    "Casos probables y confirmados desacumulados de boletines MINSAL "
+    "(2018-2023, con huecos entre boletines). El color representa volumen "
+    "acumulado en la ventana cargada."
 )
 
 
@@ -615,15 +610,11 @@ def casos_departamentales(request: Request, response: Response):
 # ---------------------------------------------------------------------------
 
 AVISO_HONESTIDAD_IDONEIDAD = (
-    "Índice de idoneidad biofísica (Iv) para el vector Aedes aegypti, calculado a partir de "
-    "clima ERA5-Land/ERA5 (temperatura, precipitación acumulada a 2 semanas, humedad relativa). "
-    "NO es una predicción de casos ni una alerta -- una validación empírica retrospectiva "
-    "(docs/experimentos/experimento-validacion-leadtime-camino-ancho.md) encontró que este índice NO anticipa "
-    "de forma medible y consistente el ascenso real de casos, así que esa tesis fue retirada. "
-    "El componente de humedad relativa (f_H) es una estimación propia del equipo, sin cita "
-    "bibliográfica. El 'anomaly_sigma' es un Z-score continuo contra el histórico del propio "
-    "departamento/semana -- no implica alerta ni umbral alguno; un valor alto no es, por sí "
-    "mismo, evidencia de brote."
+    "Índice de idoneidad biofísica (Iv) para Aedes aegypti, a partir de clima ERA5-Land "
+    "(temperatura, precipitación a 2 semanas, humedad). Una validación retrospectiva "
+    "mostró que no anticipa de forma consistente el ascenso de casos, así que se usa "
+    "solo como descriptor climático, no como alerta. El componente de humedad es una "
+    "estimación propia del equipo."
 )
 
 
@@ -699,16 +690,11 @@ def idoneidad_espacial_actual(request: Request, response: Response, week: int, y
 # ---------------------------------------------------------------------------
 
 AVISO_HONESTIDAD_PRESION = (
-    "Presión epidemiológica relativa: percentil del conteo de casos observado "
-    "(MINSAL, desacumulado) dentro de la historia del propio departamento "
-    "(años base 2018, 2019, 2021, 2022, 2023 -- 2020 excluido por colapso real de "
-    "vigilancia durante covid, no por baja transmisión; ventana ±1 semana, "
-    "leave-one-out). Es 100% DESCRIPTIVO: dice qué tan inusual es lo ya observado "
-    "contra su propia historia, NO predice nada, NO es una alerta ni un nivel de "
-    "riesgo. Los cortes P50/P75 son deliberadamente sensibles (decisión del equipo): "
-    "'alta' puede aparecer en semanas de años de baja transmisión. 'probable' y "
-    "'confirmado' son series separadas y no comparables entre sí. Los huecos "
-    "(null + nota) reflejan límites reales de la fuente MINSAL, no errores."
+    "Percentil del conteo observado (MINSAL, desacumulado) dentro de la historia "
+    "del propio departamento (años base 2018, 2019, 2021-2023; ventana ±1 semana, "
+    "leave-one-out). Los cortes P50/P75 son deliberadamente sensibles: 'alta' puede "
+    "aparecer en años de baja transmisión. 'probable' y 'confirmado' son series "
+    "separadas."
 )
 
 

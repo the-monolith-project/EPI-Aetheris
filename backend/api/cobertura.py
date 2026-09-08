@@ -47,9 +47,8 @@ NOTAS_IRA = {
 }
 
 AVISO_COBERTURA = (
-    "Cobertura descriptiva de lo cargado y de lo que la exploración encontró "
-    "en 264 boletines MINSAL. No es un índice de confianza de vigilancia (M4): "
-    "esa fórmula no está aprobada. Semanas sin fila son huecos, nunca ceros."
+    "Semanas con dato en la base frente a 52 nominales, más lo documentado "
+    "por la exploración de 264 PDF. Semanas sin fila son huecos, nunca ceros."
 )
 
 
