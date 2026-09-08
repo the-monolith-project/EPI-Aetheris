@@ -484,6 +484,7 @@ La estructura existente es la fuente de verdad:
 ```text
 docs/
 ├── adr/
+├── biblioteca/                     # documentos públicos de /biblioteca (síntesis, no copia de docs/)
 ├── contexto/
 ├── clasificador-retirado/          # clasificador retirado: corridas, auditorías y entrenamientos/
 ├── experimentos/                   # experimentos descartados (multipaís, ONI, ventana climática)
