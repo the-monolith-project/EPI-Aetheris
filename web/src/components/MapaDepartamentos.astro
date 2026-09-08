@@ -233,6 +233,7 @@
   } from '../lib/analisis-state';
   import {
     ANIOS_ANALISIS_DENGUE,
+    esAnioAnalisisDengue,
     type AnioAnalisisDengue,
   } from '../lib/tipos-analisis';
   import { escapeHtml } from '../utils/security';
@@ -393,7 +394,13 @@
       const anios: readonly AnioAnalisisDengue[] =
         filtros.modoMinsal === 'historico'
           ? ANIOS_ANALISIS_DENGUE
-          : [filtros.anio];
+          : esAnioAnalisisDengue(filtros.anio)
+            ? [filtros.anio]
+            : [];
+      if (anios.length === 0) {
+        detallesMinsal = new Map();
+        return new Map();
+      }
       const datasets = await Promise.all(
         anios.map((anio) => obtenerDatasetAnalitico(anio)),
       );
@@ -450,11 +457,7 @@
 
   // ---------------------------------------------------------------------
   // Capas 2 y 3: idoneidad biofísica (Iv) y anomalía climática continua --
-  // ambas vienen del mismo endpoint espacial, GET /api/v1/spatial/current.
-  // El backend todavía no está mergeado (equipo en paralelo); el fetch se
-  // aísla en una sola función con caché de un único intento, y el parseo de
-  // nombres de campo vive en un único lugar para que un cambio de contrato
-  // sea un ajuste de una línea.
+  // GET /api/v1/spatial/current (no el dataset de dengue, que corta en 2023).
   // ---------------------------------------------------------------------
 
   interface DatoEspacial {
@@ -476,16 +479,26 @@
     if (!cacheEspacial) {
       cacheEspacial = (async () => {
         try {
-          const datos = await obtenerDatasetAnalitico(ANIO_ESPACIAL);
+          const resp = await fetch(
+            `${API_BASE}/api/v1/spatial/current?week=${SEMANA_ESPACIAL}&year=${ANIO_ESPACIAL}`,
+          );
+          if (!resp.ok) return null;
+          const cuerpo: {
+            departamentos?: Array<{
+              codigo: string;
+              iv: number | null;
+              anomaly_sigma: number | null;
+            }>;
+          } = await resp.json();
           const mapa = new Map<string, DatoEspacial>();
-          for (const departamento of datos.departamentos) {
-            const fila = departamento.semanas.find(
-              (semana) => semana.semana_epi === SEMANA_ESPACIAL,
-            );
-            mapa.set(departamento.codigo, {
-              codigo: departamento.codigo,
-              iv: fila?.iv ?? undefined,
-              anomalia_sigma: fila?.anomaly_sigma ?? undefined,
+          for (const fila of cuerpo.departamentos ?? []) {
+            mapa.set(fila.codigo, {
+              codigo: fila.codigo,
+              iv: typeof fila.iv === 'number' ? fila.iv : undefined,
+              anomalia_sigma:
+                typeof fila.anomaly_sigma === 'number'
+                  ? fila.anomaly_sigma
+                  : undefined,
             });
           }
           detallesEspacial = mapa;
@@ -629,6 +642,10 @@
     if (!cachePresion) {
       cachePresion = (async () => {
         try {
+          if (!esAnioAnalisisDengue(ANIO_ESPACIAL)) {
+            detallesPresion = new Map();
+            return new Map();
+          }
           const datos = await obtenerDatasetAnalitico(ANIO_ESPACIAL);
           const mapa = new Map<string, DatoPresion>();
           for (const departamento of datos.departamentos) {

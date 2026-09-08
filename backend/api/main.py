@@ -629,12 +629,9 @@ def idoneidad_espacial_actual(request: Request, response: Response, week: int, y
     idoneidad.py: esa tesis fue retirada tras validación empírica).
 
     El baseline de anomaly_sigma es leave-one-out sobre ANIOS_CLIMA (2014
-    hasta el año calendario en curso; ADR 0018 AMPLIAR -- los años nuevos
-    entran al pool y recalculan los sigma de 2018-2023). Excluye el propio
-    año pedido de su baseline, misma semana exacta, sin ventana de semanas
-    vecinas -- igual método que validar_leadtime_camino_ancho.py.
-    Departamentos con menos de 3 años de baseline disponible devuelven
-    anomaly_sigma=null, no un valor inventado.
+    hasta el año en curso; ADR 0018). Excluye el propio año pedido, misma
+    semana exacta, sin ventana de semanas vecinas. Departamentos con menos
+    de 3 años de baseline disponible devuelven anomaly_sigma=null.
     """
     if not (1 <= week <= 53):
         raise HTTPException(status_code=422, detail="El parámetro 'week' debe estar entre 1 y 53.")

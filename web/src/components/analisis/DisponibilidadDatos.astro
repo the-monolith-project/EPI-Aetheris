@@ -48,7 +48,11 @@
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { vincularMarcasPlot } from '../../lib/plot-interacciones';
-  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+  import {
+    esAnioAnalisisDengue,
+    notaAnioSoloClima,
+    type FiltrosAnalisis,
+  } from '../../lib/tipos-analisis';
 
   interface CeldaDisponibilidad {
     codigo: string;
@@ -74,6 +78,12 @@
     if (!contenedor) return;
     const idRevision = ++revision;
     if (resumen) resumen.textContent = 'Cargando cobertura semanal…';
+    if (!esAnioAnalisisDengue(filtros.anio)) {
+      contenedor.replaceChildren();
+      if (resumen) resumen.textContent = notaAnioSoloClima(filtros.anio);
+      return;
+    }
+
     try {
       const dataset = await obtenerDatasetAnalitico(filtros.anio);
       if (idRevision !== revision) return;

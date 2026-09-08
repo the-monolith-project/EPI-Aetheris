@@ -470,3 +470,23 @@ test('la vista dengue no presenta violaciones automáticas WCAG A o AA', async (
     .analyze();
   expect(resultados.violations).toEqual([]);
 });
+
+test('capa de idoneidad usa aviso biofísico y admite año climático 2025', async ({
+  page,
+}) => {
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+  await page.locator('#mapa-boton-iv').click();
+  await expect(page.locator('#mapa-aviso')).toContainText(
+    'condición biofísica',
+  );
+  await abrirFiltros(page);
+  await expect(page.locator('#analisis-anio option[value="2025"]')).toHaveCount(
+    1,
+  );
+  await page.locator('#analisis-anio').selectOption('2025');
+  await expect(page).toHaveURL(/year=2025/);
+  await expect(page.locator('#heatmap-resumen')).toContainText(
+    'se detienen en 2023',
+  );
+});

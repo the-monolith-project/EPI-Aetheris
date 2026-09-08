@@ -41,7 +41,11 @@
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { vincularMarcasPlot } from '../../lib/plot-interacciones';
-  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+  import {
+    esAnioAnalisisDengue,
+    notaAnioSoloClima,
+    type FiltrosAnalisis,
+  } from '../../lib/tipos-analisis';
 
   interface PuntoScatter {
     codigo: string;
@@ -76,6 +80,12 @@
     const idRevision = ++revision;
     if (resumen)
       resumen.textContent = `Cargando ${filtros.anio}, SE${String(filtros.semana).padStart(2, '0')}…`;
+
+    if (!esAnioAnalisisDengue(filtros.anio)) {
+      contenedor.replaceChildren();
+      if (resumen) resumen.textContent = notaAnioSoloClima(filtros.anio);
+      return;
+    }
 
     try {
       const datos = await obtenerDatasetAnalitico(filtros.anio);

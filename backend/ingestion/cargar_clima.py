@@ -233,10 +233,25 @@ def fecha_fin_archivo(anio_fin: int, hoy: date | None = None) -> date:
     return min(date(anio_fin, 12, 31), tope)
 
 
+def rango_archivo(
+    anio_inicio: int, anio_fin: int, hoy: date | None = None
+) -> tuple[date, date]:
+    """(fecha_inicio, fecha_fin) listo para el archive; error si queda invertido."""
+    inicio = date(anio_inicio, 1, 1)
+    fin = fecha_fin_archivo(anio_fin, hoy=hoy)
+    if inicio > fin:
+        raise ValueError(
+            f"Rango invertido para el archive ERA5: {inicio.isoformat()} > "
+            f"{fin.isoformat()}. Ajusta --anio-inicio/--anio-fin."
+        )
+    return inicio, fin
+
+
 def cargar(anio_inicio: int, anio_fin: int) -> int:
     deptos = leer_departamentos()
-    fecha_inicio = date(anio_inicio, 1, 1).isoformat()
-    fecha_fin = fecha_fin_archivo(anio_fin).isoformat()
+    inicio, fin = rango_archivo(anio_inicio, anio_fin)
+    fecha_inicio = inicio.isoformat()
+    fecha_fin = fin.isoformat()
 
     if date.fromisoformat(fecha_fin) < date(anio_fin, 12, 31):
         print(

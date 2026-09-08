@@ -13,6 +13,7 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 INGESTION_DIR = BACKEND_DIR / "ingestion"
+REPO_ROOT = BACKEND_DIR.parent
 sys.path.insert(0, str(BACKEND_DIR))
 sys.path.insert(0, str(INGESTION_DIR))
 
@@ -34,6 +35,17 @@ class FechaFinArchivoTest(unittest.TestCase):
         hoy = date(2026, 9, 8)
         self.assertEqual(loader.fecha_fin_archivo(2027, hoy=hoy), hoy)
 
+    def test_rango_invertido_si_el_inicio_queda_despues_de_hoy(self):
+        hoy = date(2026, 9, 8)
+        with self.assertRaises(ValueError):
+            loader.rango_archivo(2027, 2027, hoy=hoy)
+
+    def test_rango_del_anio_en_curso_empieza_en_enero_y_corta_hoy(self):
+        hoy = date(2026, 9, 8)
+        inicio, fin = loader.rango_archivo(2026, 2026, hoy=hoy)
+        self.assertEqual(inicio, date(2026, 1, 1))
+        self.assertEqual(fin, hoy)
+
     def test_default_de_anio_fin_es_el_anio_en_curso(self):
         self.assertEqual(loader.ANIO_FIN_DEFAULT, date.today().year)
 
@@ -44,6 +56,22 @@ class AniosClimaTest(unittest.TestCase):
         self.assertEqual(api_iv.ANIOS_CLIMA[-1], date.today().year)
         self.assertEqual(
             api_iv.ANIOS_CLIMA, list(range(2014, date.today().year + 1))
+        )
+
+
+class MapaCapaClimaTest(unittest.TestCase):
+    def test_iv_y_anomalia_pegan_a_spatial_current(self):
+        fuente = (
+            REPO_ROOT / "web/src/components/MapaDepartamentos.astro"
+        ).read_text(encoding="utf-8")
+        self.assertIn("/api/v1/spatial/current", fuente)
+        self.assertIn("week=${SEMANA_ESPACIAL}", fuente)
+        self.assertIn("year=${ANIO_ESPACIAL}", fuente)
+        self.assertNotIn(
+            "obtenerDatasetAnalitico(ANIO_ESPACIAL)",
+            fuente.split("async function obtenerDatosEspaciales")[1].split(
+                "async function obtenerDatosPresion"
+            )[0],
         )
 
 

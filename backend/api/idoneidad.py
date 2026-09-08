@@ -35,11 +35,8 @@ from datetime import date
 TMIN, TMAX = 16.0, 38.0
 R0, K = 30.0, 0.1
 
-# Corpus climatico usado como baseline leave-one-out del Modulo 2
-# (mismo rango que validar_leadtime_camino_ancho.py: ANIOS_CLIMA).
-# AMPLIAR (coordinador 2026-09-08, ADR 0018): los anios nuevos entran al
-# pool; mediana y sigma de 2018-2023 se recalculan. Congelar 2014-2024
-# habria ignorado clima reciente a proposito.
+# Pool leave-one-out hasta el año en curso (ADR 0018). Misma lista que
+# validar_leadtime_camino_ancho.py: ANIOS_CLIMA.
 ANIO_CLIMA_INICIO = 2014
 ANIOS_CLIMA = list(range(ANIO_CLIMA_INICIO, date.today().year + 1))
 
