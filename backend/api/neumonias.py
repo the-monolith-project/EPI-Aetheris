@@ -12,11 +12,9 @@ from collections import defaultdict
 ANIOS_NEUMONIAS = [2018, 2019, 2021, 2022, 2023]
 
 AVISO_HONESTIDAD_NEUMONIAS = (
-    "Neumonías, boletines MINSAL 2018-2023 (sin 2020 en el corpus). Capa DESCRIPTIVA "
-    "-- conteo semanal 'notificado' por departamento, sin split probable/confirmado "
-    "(ADR 0011). No hay idoneidad, anomalía ni presión calculadas para neumonías. "
-    "Los huecos son ausencias reales de la fuente (vacaciones, tabla-imagen, "
-    "correcciones retroactivas excluidas), nunca ceros interpolados. Fuente: MINSAL PDF."
+    "Neumonías, boletines MINSAL 2018-2023 (sin 2020). Conteo semanal notificado "
+    "por departamento, sin split probable/confirmado. Los huecos son ausencias "
+    "reales de la fuente, nunca ceros interpolados."
 )
 
 

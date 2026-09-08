@@ -1,5 +1,10 @@
-export const AVISO_HONESTIDAD_ALERTAS =
-  'Herramienta académica en desarrollo (INSAMT, Equipo 4). Las alertas y sus indicaciones las redacta manualmente el equipo de vigilancia del proyecto a partir de datos públicos históricos (MINSAL, OpenDengue, Open-Meteo). No sustituyen los lineamientos oficiales del MINSAL ni el criterio clínico. No son tiempo real. La coexistencia temporal de eventos no demuestra causalidad.';
+export const AVISO_HONESTIDAD_ALERTAS_INTRO =
+  'Alertas redactadas por el equipo de vigilancia del proyecto (INSAMT, Equipo 4) a partir de datos públicos históricos (MINSAL, OpenDengue, Open-Meteo).';
+
+export const AVISO_HONESTIDAD_ALERTAS_CLINICO =
+  'No reemplazan los lineamientos del MINSAL ni el criterio clínico.';
+
+export const AVISO_HONESTIDAD_ALERTAS = `${AVISO_HONESTIDAD_ALERTAS_INTRO} ${AVISO_HONESTIDAD_ALERTAS_CLINICO}`;
 
 export const TIPOS_ALERTA = ['dengue', 'respiratorio'] as const;
 export type TipoAlerta = (typeof TIPOS_ALERTA)[number];

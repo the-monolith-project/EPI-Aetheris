@@ -9,7 +9,7 @@ interface Props {
 
 const {
   title = 'EPI-Aetheris',
-  descripcion = 'Vigilancia epidemiológica descriptiva de dengue e IRA en El Salvador. Datos públicos, software libre y reproducible. No es un diagnóstico ni un pronóstico.',
+  descripcion = 'Vigilancia epidemiológica descriptiva de dengue e IRA en El Salvador, sobre datos públicos. Software libre y reproducible.',
 } = Astro.props;
 
 // API pública real -- FastAPI genera /docs (Swagger UI) gratis a partir de
@@ -144,10 +144,10 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
     <footer class="mt-12 bg-deep">
       <div class="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 lg:px-12">
         <p class="font-sans text-xs leading-relaxed text-deep-ink-muted">
-          Datos públicos agregados (MINSAL, OpenDengue, Open-Meteo) &middot;
-          software libre y reproducible. Esta herramienta es una ayuda de
-          priorización, no un diagnóstico ni un pronóstico. Ninguna capa asigna
-          un nivel de riesgo departamental.
+          Ayuda de priorización sobre datos públicos agregados (MINSAL,
+          OpenDengue, Open-Meteo); no reemplaza los lineamientos del MINSAL ni
+          el criterio clínico. Las capas describen cada departamento contra su
+          propia historia, no asignan un nivel de riesgo.
         </p>
         <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-sans text-xs">
           <a

@@ -20,7 +20,7 @@ EPI-Aetheris es un sistema **open-source, contenedorizado y desplegable a costo 
 
 ## El problema
 
-El dengue es endémico en El Salvador. La respuesta institucional es mayoritariamente reactiva pese a que existe correlación científicamente documentada entre incidencia y clima (temperatura, lluvia, humedad) con semanas de rezago. Falta una herramienta local, desplegable y gratuita que cruce casos con clima para anticipar riesgo. Público objetivo: unidades de epidemiología y tomadores de decisión que priorizan fumigación, campañas y recursos.
+El dengue es endémico en El Salvador. La respuesta institucional es mayoritariamente reactiva pese a que existe correlación científicamente documentada entre incidencia y clima (temperatura, lluvia, humedad) con semanas de rezago. Falta una herramienta local, desplegable y gratuita que cruce casos con clima de forma sistemática. Público objetivo: unidades de epidemiología y tomadores de decisión que priorizan fumigación, campañas y recursos.
 
 ## Marco metodológico (TMP-STC)
 

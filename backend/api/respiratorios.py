@@ -10,11 +10,9 @@ from __future__ import annotations
 from collections import defaultdict
 
 AVISO_HONESTIDAD_VIRUS = (
-    "Vigilancia centinela/laboratorial MINSAL, nivel NACIONAL: muestras analizadas, "
+    "Vigilancia centinela/laboratorial MINSAL, nivel nacional: muestras analizadas, "
     "detecciones por virus y positividad publicada por la fuente. No son casos "
-    "clínicos ni se desagregan por departamento -- no hay mapa. La positividad no se "
-    "recalcula. SARS-CoV-2 aparece como 'covid_19' solo en 2023. Huecos = semanas "
-    "sin fila. Coexistencia temporal con IRA/Neumonías no demuestra causalidad."
+    "clínicos ni se desagregan por departamento. Huecos = semanas sin fila."
 )
 
 

@@ -169,6 +169,8 @@ No presentes su salida como:
 
 Eso aplica a la *salida de los módulos y del clasificador*. Es distinto —y sí está permitido— mostrar material informativo de prevención tomado literalmente de una fuente oficial publicada (OPS/OMS, MINSAL) con su cita: tarjetas tipo "elimine criaderos, revise depósitos de agua". No se redacta consejo clínico propio ni se generan recomendaciones automáticas por nivel de riesgo.
 
+**Redacción de producto:** el copy de cara al usuario se escribe en voz afirmativa — primero qué es y qué aporta, después el límite. Cada salvedad ("no es diagnóstico", "no es clasificación de riesgo", "sin predicción", "coexistencia ≠ causalidad") se declara una sola vez, en su hogar canónico (footer, panel de alertas, Biblioteca), no en cada pantalla. El rigor se muestra con métricas y fuentes visibles, no repitiendo disclaimers.
+
 El aporte principal del proyecto es de ingeniería de software: reproducibilidad, integración, despliegue y acceso abierto.
 
 ### Costos y dependencias

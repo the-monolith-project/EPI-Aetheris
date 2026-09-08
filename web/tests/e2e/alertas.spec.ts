@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import {
+  AVISO_HONESTIDAD_ALERTAS,
   ROTULO_ALERTA_PRUEBA,
   renderTextoAccionable,
   SIGNIFICADO_NIVEL,
@@ -10,9 +11,6 @@ import {
   vistaDeAlertas,
   type AlertaPublica,
 } from '../../src/lib/vista-alertas';
-
-const AVISO =
-  'Herramienta académica en desarrollo (INSAMT, Equipo 4). Las alertas y sus indicaciones las redacta manualmente el equipo de vigilancia del proyecto a partir de datos públicos históricos (MINSAL, OpenDengue, Open-Meteo). No sustituyen los lineamientos oficiales del MINSAL ni el criterio clínico. No son tiempo real. La coexistencia temporal de eventos no demuestra causalidad.';
 
 const TITULO_DENGUE =
   'Casos probables de dengue por encima de años comparables en 2023';
@@ -59,7 +57,9 @@ test('/alertas muestra aviso verbatim, campos de una alerta sembrada y sin copy 
   page,
 }) => {
   await page.goto('/alertas');
-  await expect(page.locator('[data-aviso-honestidad]')).toContainText(AVISO);
+  await expect(page.locator('[data-aviso-honestidad]')).toContainText(
+    AVISO_HONESTIDAD_ALERTAS,
+  );
   await expect(page.locator('[data-alertas]')).toHaveAttribute(
     'data-cargado',
     '1',

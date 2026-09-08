@@ -17,11 +17,9 @@ NIVELES_ALERTA = ("informativo", "atencion", "intensificacion")
 ETIQUETAS_ALERTA = ("test", "simulacro", "historica")
 
 AVISO_HONESTIDAD_ALERTAS = (
-    "Herramienta académica en desarrollo (INSAMT, Equipo 4). Las alertas y sus "
-    "indicaciones las redacta manualmente el equipo de vigilancia del proyecto a "
-    "partir de datos públicos históricos (MINSAL, OpenDengue, Open-Meteo). No "
-    "sustituyen los lineamientos oficiales del MINSAL ni el criterio clínico. No "
-    "son tiempo real. La coexistencia temporal de eventos no demuestra causalidad."
+    "Alertas redactadas por el equipo de vigilancia del proyecto (INSAMT, Equipo 4) "
+    "a partir de datos públicos históricos (MINSAL, OpenDengue, Open-Meteo). No "
+    "reemplazan los lineamientos del MINSAL ni el criterio clínico."
 )
 
 _COLUMNAS = (
