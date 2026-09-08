@@ -75,20 +75,24 @@ export interface PayloadAlertasRespuesta {
   alertas: AlertaRespuesta[];
 }
 
+// Reservas SOLO para cuando la respuesta del endpoint no llega (fallo de red).
+// Son copia literal de los AVISO_HONESTIDAD_* del backend (backend/api/main.py,
+// ira.py, neumonias.py, alertas.py); no se redactan ni se resumen aquí. Si el
+// endpoint responde, la ficha usa el campo `aviso` de esa respuesta.
 export const AVISO_DEFECTO_IDONEIDAD =
-  'Índice de idoneidad biofísica del vector (Iv, 0 a 1) y anomalía continua calculados a partir de temperatura y precipitación ERA5-Land (Open-Meteo). Capa descriptiva: describe condiciones meteorológicas históricas favorables al vector, no predice casos futuros.';
+  'Índice de idoneidad biofísica (Iv) para Aedes aegypti, a partir de clima ERA5-Land (temperatura, precipitación a 2 semanas, humedad). Describe condición ambiental, no incidencia ni riesgo: los casos MINSAL y la presión epidemiológica se detienen en 2023, y el reanálisis ERA5 llega hasta unos 5 días antes de hoy. Una validación retrospectiva mostró que no anticipa de forma consistente el ascenso de casos; el componente de humedad es una estimación propia del equipo.';
 
 export const AVISO_DEFECTO_PRESION =
-  'La presión epidemiológica relativa compara el conteo de la semana seleccionada contra los mismos períodos de años históricos comparables (percentil leave-one-out con ventana de ±1 semana). No predice casos futuros ni constituye un umbral de alerta automática.';
+  "Percentil del conteo observado (MINSAL, desacumulado) dentro de la historia del propio departamento (años base 2018, 2019, 2021-2023; ventana ±1 semana, leave-one-out). Los cortes P50/P75 son deliberadamente sensibles: 'alta' puede aparecer en años de baja transmisión. 'probable' y 'confirmado' son series separadas.";
 
 export const AVISO_DEFECTO_IRA =
-  'Serie semanal de Infección Respiratoria Aguda (IRA) notificada en unidades del MINSAL (2018-2023, excluyendo 2020). Capa descriptiva agregada por departamento; las semanas sin dato corresponden a boletines no publicados o con tablas ilegibles en la fuente original.';
+  'Infección Respiratoria Aguda (IRA), boletines MINSAL 2018-2023 (sin 2020). Conteo semanal notificado por departamento, sin desagregación probable/confirmado. Los huecos (semanas sin fila) son ausencias reales de la fuente, nunca ceros interpolados.';
 
 export const AVISO_DEFECTO_NEUMONIAS =
-  'Serie semanal de Neumonías notificadas en unidades del MINSAL (2018-2023, excluyendo 2020). Capa descriptiva agregada por departamento.';
+  'Neumonías, boletines MINSAL 2018-2023 (sin 2020). Conteo semanal notificado por departamento, sin split probable/confirmado. Los huecos son ausencias reales de la fuente, nunca ceros interpolados.';
 
 export const AVISO_DEFECTO_PREVENCION =
-  'Material informativo de prevención y manejo vectorial reproducido literalmente a partir de fuentes oficiales públicas (OPS/OMS, MINSAL). No constituye consejo clínico personalizado ni sustituye la atención médica directa.';
+  'Alertas redactadas por el equipo de vigilancia del proyecto (INSAMT, Equipo 4) a partir de datos públicos históricos (MINSAL, OpenDengue, Open-Meteo). No reemplazan los lineamientos del MINSAL ni el criterio clínico.';
 
 export function encontrarUltimaSemanaM1M2(
   semanas: SemanaM1M2[],

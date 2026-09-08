@@ -227,7 +227,7 @@ const { codigo, nombre } = departamento;
             1. Estado de la última semana disponible (M1, M2, M3)
           </h2>
           <span class="font-sans text-xs text-ink-muted print:text-black"
-            >Módulos descriptivos Camino Ancho</span
+            >Módulos descriptivos M1–M3</span
           >
         </div>
 
@@ -321,8 +321,7 @@ const { codigo, nombre } = departamento;
               data-m2-aviso
               class="mt-2 border-t border-border/60 pt-1.5 font-sans text-[10px] leading-tight text-ink-muted print:text-black"
             >
-              Serie continua leave-one-out; sin umbral ni alerta binaria de
-              brote.
+              {AVISO_DEFECTO_IDONEIDAD}
             </p>
           </div>
 
@@ -412,7 +411,7 @@ const { codigo, nombre } = departamento;
               data-m3-conf-aviso
               class="mt-2 border-t border-border/60 pt-1.5 font-sans text-[10px] leading-tight text-ink-muted print:text-black"
             >
-              Serie separada de probables; cortes P50 y P75 sobre años base.
+              {AVISO_DEFECTO_PRESION}
             </p>
           </div>
         </div>
@@ -429,7 +428,9 @@ const { codigo, nombre } = departamento;
           <h2
             class="font-sans text-sm font-bold uppercase tracking-wide text-ink print:text-black"
           >
-            2. Series históricas y bandas de referencia (2023)
+            2. Series históricas y bandas de referencia (<span data-anio-clima
+              >—</span
+            >)
           </h2>
           <span class="font-sans text-xs text-ink-muted print:text-black"
             >Evolución semanal vs histórico</span
@@ -449,7 +450,7 @@ const { codigo, nombre } = departamento;
               </h3>
               <span
                 class="font-sans text-[10px] text-ink-muted print:text-black"
-                >Línea: 2023 · Sombra: P25–P75</span
+                >Línea: <span data-anio-clima>—</span> · Sombra: P25–P75</span
               >
             </div>
             <div
@@ -489,7 +490,8 @@ const { codigo, nombre } = departamento;
           <h3
             class="font-sans text-xs font-semibold text-ink print:text-black mb-1.5"
           >
-            Observaciones recientes de 2023 (últimas semanas registradas)
+            Observaciones recientes de <span data-anio-clima>—</span> (últimas semanas
+            registradas)
           </h3>
           <table
             class="w-full border-collapse font-sans text-xs text-ink print:text-black"
@@ -577,6 +579,7 @@ const { codigo, nombre } = departamento;
               </p>
             </div>
             <p
+              data-ira-aviso
               class="mt-2 border-t border-border/60 pt-1 text-[10px] text-ink-muted print:text-black"
             >
               {AVISO_DEFECTO_IRA}
@@ -616,6 +619,7 @@ const { codigo, nombre } = departamento;
               </p>
             </div>
             <p
+              data-neumonias-aviso
               class="mt-2 border-t border-border/60 pt-1 text-[10px] text-ink-muted print:text-black"
             >
               {AVISO_DEFECTO_NEUMONIAS}
@@ -654,6 +658,7 @@ const { codigo, nombre } = departamento;
         </div>
 
         <p
+          data-prevencion-aviso
           class="mt-3 border-t border-border/60 pt-2 font-sans text-[10px] text-ink-muted print:text-black leading-relaxed"
         >
           {AVISO_DEFECTO_PREVENCION}
@@ -683,11 +688,50 @@ const { codigo, nombre } = departamento;
     formatearSigma,
     formatearPercentil,
     formatearCategoria,
+    AVISO_DEFECTO_IDONEIDAD,
+    AVISO_DEFECTO_PRESION,
+    AVISO_DEFECTO_IRA,
+    AVISO_DEFECTO_NEUMONIAS,
+    AVISO_DEFECTO_PREVENCION,
     type RespuestaM1M2,
     type RespuestaPresion,
     type RespuestaSerieRespiratoria,
     type PayloadAlertasRespuesta,
   } from '../../../lib/ficha-departamental';
+  import {
+    escapeHtml,
+    renderTextoAccionable,
+  } from '../../../lib/vista-alertas';
+
+  // Rellena un slot de aviso con el texto `aviso` que ya trae la respuesta del
+  // endpoint (los AVISO_HONESTIDAD_* canonicos del backend). La constante local
+  // solo actua de reserva si la respuesta no lo incluye.
+  function pintarAviso(
+    selector: string,
+    avisoRespuesta: string | null | undefined,
+    reserva: string,
+  ): void {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el) return;
+    const texto =
+      typeof avisoRespuesta === 'string' && avisoRespuesta.trim().length > 0
+        ? avisoRespuesta.trim()
+        : reserva;
+    el.textContent = texto;
+  }
+
+  // Devuelve, como string, el anio mas reciente presente en el objeto `series`
+  // de una respuesta respiratoria (las series MINSAL de IRA/neumonias se
+  // detienen en 2023, pero el anio no se asume: se lee de la respuesta).
+  function ultimoAnioSerie(
+    series: Record<string, Array<[number, number]>> | undefined,
+  ): string | null {
+    const anios = Object.keys(series ?? {})
+      .map(Number)
+      .filter((n) => Number.isFinite(n))
+      .sort((a, b) => b - a);
+    return anios.length > 0 ? String(anios[0]) : null;
+  }
 
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const root = document.querySelector<HTMLElement>('[data-ficha]');
@@ -867,39 +911,64 @@ const { codigo, nombre } = departamento;
     contenedor.appendChild(svg);
   }
 
-  // Promesas de datos en paralelo
-  const promesaTemporal = fetch(
-    `${API_BASE}/api/v1/temporal/${codigo}?anio=2023`,
-  ).then((r) => {
-    if (!r.ok) throw new Error(String(r.status));
-    return r.json() as Promise<RespuestaM1M2>;
-  });
-
-  const promesaPresion = fetch(
-    `${API_BASE}/api/v1/presion/temporal/${codigo}?anio=2023`,
-  ).then((r) => {
-    if (!r.ok) throw new Error(String(r.status));
-    return r.json() as Promise<RespuestaPresion>;
-  });
-
-  const promesaIra = fetch(`${API_BASE}/api/ira/temporal/${codigo}`).then(
-    (r) => {
+  // Cada carga se aborta a los 10 s: una peticion colgada dejaria el gate de
+  // impresion deshabilitado para siempre. El rechazo lo absorbe allSettled y la
+  // seccion muestra "dato no disponible".
+  const TIMEOUT_MS = 10_000;
+  async function traer<T>(url: string): Promise<T> {
+    const control = new AbortController();
+    const reloj = setTimeout(() => control.abort(), TIMEOUT_MS);
+    try {
+      const r = await fetch(url, { signal: control.signal });
       if (!r.ok) throw new Error(String(r.status));
-      return r.json() as Promise<RespuestaSerieRespiratoria>;
-    },
+      return (await r.json()) as T;
+    } finally {
+      clearTimeout(reloj);
+    }
+  }
+
+  // El anio del corte climatico (M1/M2) no es un literal: los endpoints de
+  // clima ya responden para el anio en curso (ADR 0018). Se pide el anio
+  // calendario y, si todavia no tiene observaciones ERA5 (primeras semanas de
+  // enero), se cae al anterior. El rotulo usa el `anio` que devuelve la
+  // respuesta, no una constante.
+  const ANIO_ACTUAL = new Date().getFullYear();
+  // La presion epidemiologica (M3) si se detiene en 2023: los boletines MINSAL
+  // no llegan mas alla. El rotulo lo deja explicito para no confundirlo con la
+  // fecha de generacion de la hoja.
+  const ANIO_MINSAL = 2023;
+
+  const promesaTemporal = (async (): Promise<RespuestaM1M2> => {
+    const actual = await traer<RespuestaM1M2>(
+      `${API_BASE}/api/v1/temporal/${codigo}?anio=${ANIO_ACTUAL}`,
+    );
+    if (encontrarUltimaSemanaM1M2(actual.semanas)) return actual;
+    try {
+      const previo = await traer<RespuestaM1M2>(
+        `${API_BASE}/api/v1/temporal/${codigo}?anio=${ANIO_ACTUAL - 1}`,
+      );
+      if (encontrarUltimaSemanaM1M2(previo.semanas)) return previo;
+    } catch {
+      // Se queda con la respuesta del anio en curso.
+    }
+    return actual;
+  })();
+
+  const promesaPresion = traer<RespuestaPresion>(
+    `${API_BASE}/api/v1/presion/temporal/${codigo}?anio=${ANIO_MINSAL}`,
   );
 
-  const promesaNeumonias = fetch(
-    `${API_BASE}/api/neumonias/temporal/${codigo}`,
-  ).then((r) => {
-    if (!r.ok) throw new Error(String(r.status));
-    return r.json() as Promise<RespuestaSerieRespiratoria>;
-  });
+  const promesaIra = traer<RespuestaSerieRespiratoria>(
+    `${API_BASE}/api/ira/temporal/${codigo}`,
+  );
 
-  const promesaAlertas = fetch(`${API_BASE}/api/alertas`).then((r) => {
-    if (!r.ok) throw new Error(String(r.status));
-    return r.json() as Promise<PayloadAlertasRespuesta>;
-  });
+  const promesaNeumonias = traer<RespuestaSerieRespiratoria>(
+    `${API_BASE}/api/neumonias/temporal/${codigo}`,
+  );
+
+  const promesaAlertas = traer<PayloadAlertasRespuesta>(
+    `${API_BASE}/api/alertas`,
+  );
 
   // Ejecucion concurrente con gate de impresion
   Promise.allSettled([
@@ -917,10 +986,26 @@ const { codigo, nombre } = departamento;
       document.querySelector<HTMLElement>('[data-corte-clima]');
     if (resTemp.status === 'fulfilled') {
       temporalData = resTemp.value;
+      const anioClima = temporalData.anio;
+      document
+        .querySelectorAll<HTMLElement>('[data-anio-clima]')
+        .forEach((el) => {
+          el.textContent = String(anioClima);
+        });
+      pintarAviso(
+        '[data-m1-aviso]',
+        temporalData.aviso,
+        AVISO_DEFECTO_IDONEIDAD,
+      );
+      pintarAviso(
+        '[data-m2-aviso]',
+        temporalData.aviso,
+        AVISO_DEFECTO_IDONEIDAD,
+      );
       const ult = encontrarUltimaSemanaM1M2(temporalData.semanas);
       if (ult) {
         if (corteClima)
-          corteClima.textContent = `SE${String(ult.semana_epi).padStart(2, '0')} / 2023`;
+          corteClima.textContent = `SE${String(ult.semana_epi).padStart(2, '0')} · ${anioClima}`;
 
         const m1Val = document.querySelector<HTMLElement>('[data-m1-valor]');
         const m1Sem = document.querySelector<HTMLElement>('[data-m1-semana]');
@@ -1008,13 +1093,24 @@ const { codigo, nombre } = departamento;
     );
     if (resPres.status === 'fulfilled') {
       presionData = resPres.value;
+      const anioMinsal = presionData.anio;
+      pintarAviso(
+        '[data-m3-prob-aviso]',
+        presionData.aviso,
+        AVISO_DEFECTO_PRESION,
+      );
+      pintarAviso(
+        '[data-m3-conf-aviso]',
+        presionData.aviso,
+        AVISO_DEFECTO_PRESION,
+      );
       const ultProb = encontrarUltimaSemanaPresion(
         presionData.semanas,
         'probable',
       );
       if (ultProb) {
         if (corteProb)
-          corteProb.textContent = `SE${String(ultProb.semana_epi).padStart(2, '0')} / 2023`;
+          corteProb.textContent = `SE${String(ultProb.semana_epi).padStart(2, '0')} · ${anioMinsal} (últimos datos MINSAL)`;
         const pVal = document.querySelector<HTMLElement>(
           '[data-m3-prob-valor]',
         );
@@ -1042,7 +1138,7 @@ const { codigo, nombre } = departamento;
       );
       if (ultConf) {
         if (corteConf)
-          corteConf.textContent = `SE${String(ultConf.semana_epi).padStart(2, '0')} / 2023`;
+          corteConf.textContent = `SE${String(ultConf.semana_epi).padStart(2, '0')} · ${anioMinsal} (últimos datos MINSAL)`;
         const cVal = document.querySelector<HTMLElement>(
           '[data-m3-conf-valor]',
         );
@@ -1109,8 +1205,8 @@ const { codigo, nombre } = departamento;
             tablaCuerpo.appendChild(tr);
           });
         } else {
-          tablaCuerpo.innerHTML =
-            '<tr><td colspan="8" class="p-2 text-center text-ink-muted">Sin semanas registradas en 2023.</td></tr>';
+          const anioTabla = temporalData?.anio ?? presionData?.anio ?? '';
+          tablaCuerpo.innerHTML = `<tr><td colspan="8" class="p-2 text-center text-ink-muted">Sin semanas registradas para ${anioTabla}.</td></tr>`;
         }
       } else {
         tablaCuerpo.innerHTML =
@@ -1124,13 +1220,11 @@ const { codigo, nombre } = departamento;
     );
     if (resIra.status === 'fulfilled' && resIra.value) {
       const iraData = resIra.value;
-      const serie2023 = iraData.series?.['2023'] ?? [];
-      const total2023 = serie2023.reduce(
-        (acc, curr) => acc + (curr[1] || 0),
-        0,
-      );
-      const ultSem =
-        serie2023.length > 0 ? serie2023[serie2023.length - 1] : null;
+      pintarAviso('[data-ira-aviso]', iraData.aviso, AVISO_DEFECTO_IRA);
+      const anioIra = ultimoAnioSerie(iraData.series);
+      const serie = anioIra ? (iraData.series?.[anioIra] ?? []) : [];
+      const total = serie.reduce((acc, curr) => acc + (curr[1] || 0), 0);
+      const ultSem = serie.length > 0 ? serie[serie.length - 1] : null;
 
       const iraConteo =
         document.querySelector<HTMLElement>('[data-ira-conteo]');
@@ -1138,14 +1232,17 @@ const { codigo, nombre } = departamento;
         document.querySelector<HTMLElement>('[data-ira-semana]');
       const iraDetalle =
         document.querySelector<HTMLElement>('[data-ira-detalle]');
-      if (iraConteo) iraConteo.textContent = total2023.toLocaleString('es-SV');
-      if (iraSemana && ultSem) {
-        iraSemana.textContent = `total notificado (última SE${ultSem[0]})`;
-        if (corteResp)
-          corteResp.textContent = `SE${String(ultSem[0]).padStart(2, '0')} / 2023`;
-      }
+      if (iraConteo) iraConteo.textContent = total.toLocaleString('es-SV');
+      if (iraSemana)
+        iraSemana.textContent = anioIra
+          ? `acumulado ${anioIra} (${serie.length} semanas notificadas)`
+          : 'sin serie disponible';
+      if (ultSem && corteResp)
+        corteResp.textContent = `SE${String(ultSem[0]).padStart(2, '0')} · ${anioIra} (últimos datos MINSAL)`;
       if (iraDetalle) {
-        iraDetalle.textContent = `${serie2023.length} semanas registradas en boletines MINSAL durante 2023.`;
+        iraDetalle.textContent = anioIra
+          ? `${serie.length} semanas registradas en boletines MINSAL durante ${anioIra}.`
+          : 'Sin semanas registradas en la serie de IRA.';
       }
     } else {
       const iraDetalle =
@@ -1161,13 +1258,14 @@ const { codigo, nombre } = departamento;
       resNeum.value.disponible !== false
     ) {
       const neumData = resNeum.value;
-      const serie2023 = neumData.series?.['2023'] ?? [];
-      const total2023 = serie2023.reduce(
-        (acc, curr) => acc + (curr[1] || 0),
-        0,
+      pintarAviso(
+        '[data-neumonias-aviso]',
+        neumData.aviso,
+        AVISO_DEFECTO_NEUMONIAS,
       );
-      const ultSem =
-        serie2023.length > 0 ? serie2023[serie2023.length - 1] : null;
+      const anioNeum = ultimoAnioSerie(neumData.series);
+      const serie = anioNeum ? (neumData.series?.[anioNeum] ?? []) : [];
+      const total = serie.reduce((acc, curr) => acc + (curr[1] || 0), 0);
 
       const neumConteo = document.querySelector<HTMLElement>(
         '[data-neumonias-conteo]',
@@ -1178,12 +1276,15 @@ const { codigo, nombre } = departamento;
       const neumDetalle = document.querySelector<HTMLElement>(
         '[data-neumonias-detalle]',
       );
-      if (neumConteo)
-        neumConteo.textContent = total2023.toLocaleString('es-SV');
-      if (neumSemana && ultSem)
-        neumSemana.textContent = `total notificado (última SE${ultSem[0]})`;
+      if (neumConteo) neumConteo.textContent = total.toLocaleString('es-SV');
+      if (neumSemana)
+        neumSemana.textContent = anioNeum
+          ? `acumulado ${anioNeum} (${serie.length} semanas notificadas)`
+          : 'sin serie disponible';
       if (neumDetalle) {
-        neumDetalle.textContent = `${serie2023.length} semanas de neumonías registradas en 2023.`;
+        neumDetalle.textContent = anioNeum
+          ? `${serie.length} semanas de neumonías registradas en ${anioNeum}.`
+          : 'Sin semanas registradas en la serie de neumonías.';
       }
     } else {
       const neumConteo = document.querySelector<HTMLElement>(
@@ -1219,6 +1320,11 @@ const { codigo, nombre } = departamento;
         corteAlertas.textContent =
           payload.ultima_revision || 'Revisión oficial';
       if (prevCarga) prevCarga.hidden = true;
+      pintarAviso(
+        '[data-prevencion-aviso]',
+        payload.aviso,
+        AVISO_DEFECTO_PREVENCION,
+      );
 
       // Filtrar alertas activas
       const activas = (payload.alertas || []).filter((a) => a.activa);
@@ -1229,12 +1335,16 @@ const { codigo, nombre } = departamento;
           caja.className =
             'rounded-lg border border-border bg-surface p-3 print:border-black space-y-2';
 
+          // Todo campo de la alerta se escapa antes de entrar al DOM como
+          // markup: /api/alertas se escribe por POST/PATCH autenticado
+          // (ADR 0015), asi que su contenido no es de confianza. Se reusa el
+          // mismo par escapeHtml / renderTextoAccionable de /alertas.
           let bloquesClinicos = '';
           if (alerta.signos_alarma) {
             bloquesClinicos += `
               <div class="mt-1">
                 <strong class="font-semibold text-ink print:text-black">Signos de alarma para consulta:</strong>
-                <p class="text-ink-muted print:text-black whitespace-pre-line mt-0.5">${alerta.signos_alarma}</p>
+                <div class="text-ink-muted print:text-black mt-0.5 space-y-1">${renderTextoAccionable(alerta.signos_alarma)}</div>
               </div>
             `;
           }
@@ -1242,27 +1352,27 @@ const { codigo, nombre } = departamento;
             bloquesClinicos += `
               <div class="mt-1">
                 <strong class="font-semibold text-ink print:text-black">Acciones comunitarias prioritarias:</strong>
-                <p class="text-ink-muted print:text-black whitespace-pre-line mt-0.5">${alerta.acciones_comunitarias}</p>
+                <div class="text-ink-muted print:text-black mt-0.5 space-y-1">${renderTextoAccionable(alerta.acciones_comunitarias)}</div>
               </div>
             `;
           }
           if (alerta.contacto_vigilancia) {
             bloquesClinicos += `
               <div class="mt-1 text-[10px] text-ink-muted print:text-black">
-                <strong>Ruta de notificación:</strong> ${alerta.contacto_vigilancia}
+                <strong>Ruta de notificación:</strong> ${escapeHtml(alerta.contacto_vigilancia)}
               </div>
             `;
           }
 
           caja.innerHTML = `
             <div class="flex items-center justify-between gap-1">
-              <span class="font-semibold text-ink print:text-black text-xs">${alerta.titulo}</span>
-              <span class="rounded bg-secondary/30 px-1.5 py-0.5 text-[10px] font-medium">${alerta.tipo.toUpperCase()}</span>
+              <span class="font-semibold text-ink print:text-black text-xs">${escapeHtml(alerta.titulo)}</span>
+              <span class="rounded bg-secondary/30 px-1.5 py-0.5 text-[10px] font-medium">${escapeHtml(alerta.tipo).toUpperCase()}</span>
             </div>
-            <p class="text-ink-muted print:text-black text-xs leading-relaxed whitespace-pre-line">${alerta.indicaciones || alerta.contexto}</p>
+            <div class="text-ink-muted print:text-black text-xs leading-relaxed space-y-1">${renderTextoAccionable(alerta.indicaciones || alerta.contexto || '')}</div>
             ${bloquesClinicos}
             <div class="border-t border-border/60 pt-1.5 text-[10px] text-ink-muted print:text-black">
-              <strong>Fuente citada:</strong> ${alerta.fuente} · Emitida: ${alerta.vigente_desde}
+              <strong>Fuente citada:</strong> ${escapeHtml(alerta.fuente)} · Emitida: ${escapeHtml(alerta.vigente_desde)}
             </div>
           `;
           prevLista.appendChild(caja);
@@ -1270,7 +1380,7 @@ const { codigo, nombre } = departamento;
       } else if (prevLista) {
         prevLista.innerHTML = `
           <div class="col-span-full rounded-lg border border-border bg-surface p-3 text-ink-muted print:text-black text-xs">
-            No hay alertas activas de campo en este momento. Aplican los lineamientos generales de prevención y control vectorial emitidos por el MINSAL y la OPS/OMS.
+            Sin alertas de campo vigentes para este departamento.
           </div>
         `;
       }
@@ -1302,6 +1412,7 @@ const { codigo, nombre } = departamento;
   /* Reglas de impresion para hoja de campo */
   @media print {
     :global(header[class*='sticky']),
+    :global(nav),
     :global(footer),
     .print\:hidden,
     [data-no-imprimir] {
