@@ -93,7 +93,7 @@ Service worker escrito a mano (`web/public/sw.js`), sin dependencias. El shell u
 ## Pipeline de datos
 
 - Descarga de **264 PDF** de boletines MINSAL (2018–2023, 2020 no descargado), validados por firma de bytes `%PDF`.
-- Parser de tablas departamentales: dos familias de esquema, detectadas **por documento** (presencia de la columna de tasa), nunca por rango de año. Probable/confirmado son acumulados desde SE1; se desacumulan por diferencias. Huecos y correcciones retroactivas no se reparte ni se fabrican.
+- Parser de tablas departamentales: dos familias de esquema, detectadas **por documento** (presencia de la columna de tasa), nunca por rango de año. Probable/confirmado son acumulados desde SE1; se desacumulan por diferencias. Huecos y correcciones retroactivas no se reparten ni se fabrican.
 - Bitácora `boletines_procesados` (ADR 0004, 0007): `ok`, `ausencia_esperada`, `sin_texto_extraible`, `revision_manual`, `error`, `pendiente`.
 - Carga de OpenDengue nacional (`clasificacion = 'total'`, ADR 0005) y de Open-Meteo (ERA5-Land + ERA5, ADR 0006).
 - Semanas epidemiológicas PAHO/CDC (MMWR) vía la librería `epiweeks`.
