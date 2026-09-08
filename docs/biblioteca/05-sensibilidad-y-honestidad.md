@@ -21,7 +21,7 @@ No es:
 
 La interfaz no debe afirmar que un color del mapa "es" un brote, ni que un percentil alto "anticipa" un ascenso. Un valor de M1, M2 o M3 describe el clima o los casos **ya observados**. Quien prioriza fumigación, camas o campañas lo hace con ese contexto más el juicio del personal de salud — no sustituyendo ese juicio.
 
-El coordinador precisó el 7 de septiembre de 2026 el borde fino de esta regla. **Sí está permitido** mostrar recomendaciones de prevención **ya publicadas** por OPS/OMS o MINSAL, citando la fuente: tarjetas del tipo "elimine criaderos, revise depósitos de agua". Reproducir una guía pública no es diagnosticar ni predecir. **No está permitido** que el sistema *redacte* indicaciones clínicas propias, ni que las derive automáticamente del nivel de M1–M3, de M4 (inexistente) o del clasificador retirado.
+El coordinador precisó el 7 de septiembre de 2026 el borde fino de esta regla. **Sí está permitido** mostrar recomendaciones de prevención **ya publicadas** por OPS/OMS o MINSAL, citando la fuente: tarjetas del tipo "elimine criaderos, revise depósitos de agua". Reproducir una guía pública no es diagnosticar ni predecir. **No está permitido** que el sistema *redacte* indicaciones clínicas propias, ni que las derive automáticamente del nivel de M1–M3, de M4 o del clasificador retirado. M4 describe calidad del dato (completitud, cuadre, antigüedad), no transmisión.
 
 Los campos clínicos de una alerta de campo (`definicion_caso`, `signos_alarma`, `criterios_referencia`, `que_notificar`, `contacto_vigilancia`) son contenedores. Los llena el equipo con transcripción atribuida. Inventar un número de teléfono o un criterio de referencia para que la tarjeta "se vea completa" sería la peor versión de esa función.
 

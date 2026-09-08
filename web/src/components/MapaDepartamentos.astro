@@ -9,9 +9,9 @@
 // Ninguna de las capas es salida del clasificador de riesgo (ese vive en
 // MetricasModelo.astro, a nivel nacional). Todas son descriptivas: volumen
 // de casos MINSAL, idoneidad biofísica, anomalía climática continua,
-// presión epidemiológica relativa (M3, dos series separadas), y una capa
-// todavía no implementada (índice de confianza de vigilancia) que se
-// muestra deshabilitada ("próximamente") en vez de inventar una fórmula.
+// presión epidemiológica relativa (M3, dos series separadas), e integridad
+// de la vigilancia (M4: presencia de dato / hueco / boletín que no cuadra).
+// M4 no es un semáforo de riesgo ni un índice compuesto.
 //
 // La capa de anomalía climática es deliberadamente NO un semáforo de
 // alerta -- este proyecto retiró un diseño de alerta binaria porque se
@@ -724,21 +724,89 @@
   const capaPresionProbable = definirCapaPresion('probable');
   const capaPresionConfirmado = definirCapaPresion('confirmado');
 
+  // ---------------------------------------------------------------------
+  // Capa 6: integridad de la vigilancia (M4). Tres hechos por separado;
+  // el color del mapa solo codifica presencia / hueco / boletín que no
+  // cuadra. Sin índice compuesto y sin paleta de semáforo de riesgo.
+  // GET /api/v1/vigilancia/integridad?week=&year=
+  // ---------------------------------------------------------------------
+
+  interface IntegridadSemana {
+    completitud?: {
+      probable: {
+        departamentos: { codigo: string; presente: boolean }[];
+      };
+      confirmado: {
+        departamentos: { codigo: string; presente: boolean }[];
+      };
+    };
+    cuadre?: { cuadra: boolean | null };
+  }
+
+  let cacheConfianza: Promise<IntegridadSemana | null> | null = null;
+
+  async function obtenerIntegridadSemana(): Promise<IntegridadSemana | null> {
+    if (!cacheConfianza) {
+      cacheConfianza = (async () => {
+        try {
+          const resp = await fetch(
+            `${API_BASE}/api/v1/vigilancia/integridad?week=${SEMANA_ESPACIAL}&year=${ANIO_ESPACIAL}`,
+          );
+          if (!resp.ok) return null;
+          return (await resp.json()) as IntegridadSemana;
+        } catch {
+          return null;
+        }
+      })();
+    }
+    return cacheConfianza;
+  }
+
+  const ESTADO_SIN_DATO = 0;
+  const ESTADO_PRESENTE = 1;
+  const ESTADO_NO_CUADRA = 2;
+  const RAMPA_CONFIANZA = ['#d4d4d8', '#5b7c99', '#c4a35a'];
+
   const capaConfianza: DefinicionCapa = {
     id: 'confianza',
-    etiqueta: 'Índice de confianza de vigilancia (próximamente)',
-    disponible: false,
+    etiqueta: 'Integridad de la vigilancia',
+    disponible: true,
     aviso:
-      'En desarrollo. Va a mostrar dónde la cobertura de vigilancia departamental es más escasa.',
-    tituloLeyenda: '',
-    rampa: [],
+      'El color indica si ese departamento tiene fila esa semana, si falta el dato, o si el ' +
+      'boletín no cuadra aritméticamente. No es un nivel de riesgo ni un índice de confianza opaco.',
+    tituloLeyenda: 'Calidad del dato (semana seleccionada)',
+    rampa: RAMPA_CONFIANZA,
     sinDatoColor: SIN_DATO,
     async cargarValores() {
-      return null;
+      const datos = await obtenerIntegridadSemana();
+      if (!datos?.completitud) return null;
+      const serie = obtenerFiltrosAnalisis().serie;
+      const cuadra = datos.cuadre?.cuadra;
+      const valores = new Map<string, number | undefined>();
+      for (const departamento of datos.completitud[serie].departamentos) {
+        if (!departamento.presente) {
+          valores.set(departamento.codigo, ESTADO_SIN_DATO);
+        } else if (cuadra === false) {
+          valores.set(departamento.codigo, ESTADO_NO_CUADRA);
+        } else {
+          valores.set(departamento.codigo, ESTADO_PRESENTE);
+        }
+      }
+      return valores;
     },
-    calcularCortes: () => [],
-    etiquetasLeyenda: () => [],
-    tooltipValor: () => 'sin dato',
+    calcularCortes: () => [0.5, 1.5],
+    etiquetasLeyenda: () => [
+      'sin dato esta semana',
+      'dato presente',
+      'el boletín no cuadra',
+    ],
+    tooltipValor(valor) {
+      if (valor === ESTADO_SIN_DATO) return 'sin dato esta semana';
+      if (valor === ESTADO_NO_CUADRA)
+        return 'dato presente — el boletín no cuadra';
+      if (valor === ESTADO_PRESENTE) return 'dato presente';
+      return 'sin dato';
+    },
   };
 
   const CAPAS: DefinicionCapa[] = [
@@ -1320,6 +1388,7 @@
         ANIO_ESPACIAL = filtros.anio;
         cacheEspacial = null;
         cachePresion = null;
+        cacheConfianza = null;
         (
           [
             'minsal_volumen',
@@ -1327,12 +1396,14 @@
             'anomalia',
             'presion_probable',
             'presion_confirmado',
+            'confianza',
           ] as IdCapa[]
         ).forEach((id) => cacheValoresPorCapa.delete(id));
       }
 
       if (cambioSerie || cambioModoMinsal) {
         cacheValoresPorCapa.delete('minsal_volumen');
+        cacheValoresPorCapa.delete('confianza');
       }
 
       if (

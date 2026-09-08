@@ -191,6 +191,24 @@ test('aplica vistas del workspace sin alterar los filtros epidemiológicos', asy
   await expect(page.locator('#analisis-semana')).toHaveValue('31');
 });
 
+test('activa la capa de integridad de vigilancia y muestra su aviso', async ({
+  page,
+}) => {
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+
+  const boton = page.locator('#mapa-boton-confianza');
+  await expect(boton).toBeEnabled();
+  await expect(boton).toHaveText('Integridad de la vigilancia');
+  await boton.click();
+  await expect(page.locator('#mapa-aviso')).toContainText(
+    'No es un nivel de riesgo ni un índice de confianza opaco',
+  );
+  await expect(page.locator('#mapa-leyenda')).toContainText(
+    'el boletín no cuadra',
+  );
+});
+
 test('optimiza la vista general y conserva el layout responsive', async ({
   page,
 }) => {

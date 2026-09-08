@@ -125,3 +125,27 @@ export interface RespuestaIraDepartamental {
   departamentos: DepartamentoIRA[];
   aviso: string;
 }
+
+export interface CompletitudAnual {
+  semanas_completas: number;
+  semanas_con_dato: number;
+  semanas_nominales: number;
+}
+
+export interface ResumenAnualIntegridad {
+  anio: number;
+  probable: CompletitudAnual;
+  confirmado: CompletitudAnual;
+}
+
+export interface AntiguedadSerie {
+  ultima_anio: number | null;
+  ultima_semana_epi: number | null;
+  semanas: number | null;
+}
+
+export interface IntegridadVigilancia {
+  aviso: string;
+  antiguedad: Record<string, AntiguedadSerie>;
+  resumen_anual?: ResumenAnualIntegridad[];
+}

@@ -6,6 +6,15 @@
 
 ADR 0018. `ANIOS_CLIMA` llega al año calendario en curso (las dos copias, API e ingestión de lead-time). El pool leave-one-out de anomalía **amplía**: los años nuevos entran al baseline y **recalculan mediana y σ de 2018–2023 ya publicados**. El rezago ERA5 de ~5 días se declara, no se rellena con pronóstico. M3, dataset analítico de dengue, IRA y neumonías siguen anclados a 2023. El refresco semanal (A2) no está decidido.
 
+## Integridad de la vigilancia (M4) y cierre de las fórmulas M3/M4 (cerrado 2026-09-08)
+
+ADR 0019, `backend/api/vigilancia.py`, `GET /api/v1/vigilancia/integridad`, capa `'confianza'` del mapa.
+
+- **Tres métricas, sin número compuesto:** `completitud` (n/14 departamentos con fila esa semana-serie), `cuadre` (expone `validacion_cuadra` y la discrepancia ya almacenada en `boletines_procesados`; M4 no recalcula la suma) y `antiguedad` (semanas PAHO/CDC desde la última SE con dato, por serie). No es latencia de reporte: no hay fecha de publicación del boletín.
+- On-request, nada persistido, sin cambio de esquema. `week`+`year` = vista semanal; sin parámetros = resumen anual + antigüedad.
+- La rampa del mapa no es un semáforo de riesgo: solo "hay dato / falta dato / el boletín no cuadra".
+- Cierra el punto A de `02-decisiones-abiertas.md` (fórmulas de M3 y M4) y la parte de M4 del punto G. M3 ya tenía fórmula e implementación (2026-08-21); M4 queda implementado aquí.
+
 ## Alertas operables (cerrado 2026-09-07)
 
 ADR 0015, migración `db/migrations/0011_alertas_etiquetas_y_contenido_clinico.sql`, `POST`/`PATCH /api/alertas`, páginas `/alertas/archivo` y `/alertas/nueva`.
@@ -67,10 +76,10 @@ Evidencia: `docs/exploraciones-respiratorias/exploracion-neumonias-boletines-min
 
 - **M1 — Idoneidad biofísica (`Iv`).** Implementado (`backend/api/idoneidad.py`, mismas fórmulas y constantes ya validadas en `backend/ingestion/validar_leadtime_camino_ancho.py`): `f_T` forma Brière (Tmin=16°C, Tmax=38°C, constante de normalización resuelta numéricamente, no publicada), `f_R` logística sobre precipitación acumulada a 2 semanas (R0=30 mm/semana, k=0.1), `f_H` rampa lineal — **estimación propia del equipo, no citada**, el documento fuente solo pedía "penaliza humedad bajo 50%" sin fórmula.
 - **M2 — Anomalía climática continua.** Implementado, mismo archivo. Z-score leave-one-out de `Iv` por (departamento, semana), línea base desde 2014 hasta el año calendario en curso (ADR 0018: el pool **amplía**; mediana y σ de 2018–2023 se mueven al entrar años nuevos), expuesto como **serie continua únicamente** — sin alerta binaria, sin regla de dos semanas consecutivas, sin lenguaje de "temporada adelantada" ni lead time. Retirado deliberadamente tras el hallazgo de que Z≥1,5 se cruza en el 100 % de los años evaluados y no discrimina nada por sí solo.
-- **M3 — Presión epidemiológica relativa.** No implementado. Sin fórmula aprobada — ver `02-decisiones-abiertas.md`.
-- **M4 — Confianza de vigilancia.** No implementado. Sin fórmula aprobada — ver `02-decisiones-abiertas.md`.
+- **M3 — Presión epidemiológica relativa.** Implementado después del pivote (`backend/api/presion.py`, fórmula cerrada 2026-08-21). Ver `docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md`.
+- **M4 — Integridad de la vigilancia.** Implementado después del pivote (`backend/api/vigilancia.py`, fórmula cerrada 2026-09-08, ADR 0019). Tres métricas separadas (`completitud`, `cuadre`, `antiguedad`); ver sección "Integridad de la vigilancia" al inicio de este archivo.
 
-**Endpoints (sin cambio de esquema, nada persistido, cálculo on-demand):** `GET /api/v1/spatial/current?week=&year=` y `GET /api/v1/temporal/{departamento_codigo}?anio=`, ninguno de los dos incluye `lead_time_weeks`, `estimated_transmission_window_start` ni `season_shift_alert` (retirados a propósito). El selector de capas del mapa (`web/src/components/MapaDepartamentos.astro`) tiene botones funcionales para M1/M2 contra ese contrato, y botones deshabilitados de "capa no disponible todavía" para M3/M4.
+**Endpoints (sin cambio de esquema, nada persistido, cálculo on-demand):** `GET /api/v1/spatial/current?week=&year=` y `GET /api/v1/temporal/{departamento_codigo}?anio=`, ninguno de los dos incluye `lead_time_weeks`, `estimated_transmission_window_start` ni `season_shift_alert` (retirados a propósito). El selector de capas del mapa (`web/src/components/MapaDepartamentos.astro`) tiene botones funcionales para M1/M2, las dos series de M3 y la integridad de vigilancia (M4).
 
 **Lo que NO queda invalidado por este pivote:** la metodología de canal endémico por percentil (`backend/ingestion/corrida_canal_endemico_nacional.py`) sigue siendo válida como **comparación histórica descriptiva** — el informe de cierre la conserva explícitamente para ese uso. Lo que se retira es presentar la salida de un modelo climático como alerta de riesgo. Cualquier lectura de percentil o anomalía debe describir lo ya ocurrido frente a su propia historia, nunca pronosticar lo que va a pasar.
 
@@ -157,7 +166,7 @@ El predictor es **únicamente clima rezagado**; los casos MINSAL tienen un solo 
 
 ## Etiqueta de riesgo alto/medio/bajo — método (cerrado 2026-08-05), corte de percentil (cerrado 2026-08-15) — histórico, la etiqueta ya no se produce en producción
 
-> Esta sección documenta el método usado por el clasificador retirado (ver "Pivote 'Camino Ancho'" arriba). La lógica de canal endémico por percentil descrita aquí sigue siendo la base plausible de M3 (presión epidemiológica relativa), pero M3 no tiene fórmula ni parámetros aprobados todavía — no asumir que estos valores (P75/P90, ventana ±1, años base) se heredan automáticamente sin que alguien lo decida explícitamente para M3.
+> Esta sección documenta el método usado por el clasificador retirado (ver "Pivote 'Camino Ancho'" arriba). La lógica de canal endémico por percentil descrita aquí alimentó M3, cuya fórmula propia (P50/P75, ventana ±1, años base 2018/2019/2021/2022/2023) quedó cerrada el 2026-08-21 — no son estos P75/P90.
 
 Se construye por **canal endémico** (percentil histórico dentro de cada departamento), nunca por umbral de incidencia poblacional. Motivo decisivo: el denominador poblacional de la ventana quedó invalidado por el Censo 2024 (~5% de sobrestimación nacional, error departamental no cuantificable) — un error ahí caería en la **variable objetivo**, no en un predictor, volviendo ininterpretables las métricas. La incidencia se conserva solo como métrica de contexto, nunca como etiqueta.
 
@@ -165,7 +174,7 @@ Dos criterios de método fijados (no debatibles): el año etiquetado nunca puede
 
 **Corte de percentil — cerrado 2026-08-15 (coordinador): P75/P90.** Decisión explícita del coordinador, tomada con conocimiento de que **no** es el esquema que reproduce el canal endémico clásico OPS/PAHO de 4 zonas ya corrido y verificado sobre la serie nacional (`backend/ingestion/corrida_canal_endemico_4zonas.py`, ver más abajo) — ese, con cortes P25/P50/P75 colapsados a 3 clases, es matemáticamente idéntico a **P50/P75** (0 discrepancias en 250 celdas). P75/P90 es un esquema distinto y más conservador, elegido en vez del fiel a OPS/PAHO porque evita el sobre-etiquetado que P50/P75 mostraba en una semana de 2021 (año de baja transmisión). **No presentar este corte como "el método OPS/PAHO" en el informe** — es una elección propia del equipo, informada por ese estándar pero no idéntica a él; el corte que sí lo reproduce (P50/P75) queda documentado como alternativa descartada, no como el elegido.
 
-Parámetros que siguen abiertos como decisión formal de proyecto (variable base, ventana de semanas vecinas, esquema de años base, piso de suficiencia, techo de columnas) — ver `02-decisiones-abiertas.md`, punto A. La mayoría ya corre con un valor fijo en el pipeline nacional de producción (tarjetas 23-24); el punto A detalla cuáles y por qué eso no equivale a un cierre.
+Los parámetros de esta etiqueta (clasificador retirado) quedaron sin objeto el 2026-08-18. Los de M3 se cerraron el 2026-08-21; los de M4, el 2026-09-08 (ADR 0019). El punto A de `02-decisiones-abiertas.md` ya no está abierto.
 
 ## Criterio de éxito, línea base y margen de error (cerrado 2026-08-09) — histórico, criterio que llevó al cierre de la predicción
 
