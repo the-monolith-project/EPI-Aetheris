@@ -1,5 +1,5 @@
 ---
-import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
+import { aniosClimaPresentacion } from '../lib/tipos-analisis';
 ---
 
 <div id="analisis-filtros-popover" hidden>
@@ -48,7 +48,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
             class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal tabular-nums text-ink"
           >
             {
-              ANIOS_ANALISIS_DENGUE.map((anio) => (
+              aniosClimaPresentacion().map((anio) => (
                 <option value={anio} selected={anio === 2023}>
                   {anio}
                 </option>
@@ -238,10 +238,11 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
     restablecerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../lib/analisis-state';
-  import type {
-    AnioAnalisisDengue,
-    ModoMinsal,
-    SerieEpidemiologica,
+  import {
+    esAnioAnalisisDengue,
+    type AnioAnalisisDengue,
+    type ModoMinsal,
+    type SerieEpidemiologica,
   } from '../lib/tipos-analisis';
 
   const selectAnio = document.getElementById(
@@ -350,12 +351,15 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
     }
   }
 
-  async function cargarDepartamentos(anio: AnioAnalisisDengue) {
+  async function cargarDepartamentos(anio: number) {
     const idCarga = ++cargaActual;
+    const anioCatalogo: AnioAnalisisDengue = esAnioAnalisisDengue(anio)
+      ? anio
+      : 2023;
     if (estadoCarga)
       estadoCarga.textContent = `Cargando departamentos para ${anio}…`;
     try {
-      const datos = await obtenerDatasetAnalitico(anio);
+      const datos = await obtenerDatasetAnalitico(anioCatalogo);
       if (idCarga !== cargaActual) return;
       if (selectDepartamento) {
         selectDepartamento.replaceChildren(
@@ -373,8 +377,11 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
         );
       }
       sincronizarControles();
-      if (estadoCarga)
-        estadoCarga.textContent = `${datos.departamentos.length} departamentos disponibles para ${anio}.`;
+      if (estadoCarga) {
+        estadoCarga.textContent = esAnioAnalisisDengue(anio)
+          ? `${datos.departamentos.length} departamentos disponibles para ${anio}.`
+          : `${datos.departamentos.length} departamentos. El año ${anio} solo tiene capa climática; los casos MINSAL se detienen en 2023.`;
+      }
     } catch {
       if (idCarga !== cargaActual) return;
       if (estadoCarga)
@@ -384,7 +391,7 @@ import { ANIOS_ANALISIS_DENGUE } from '../lib/tipos-analisis';
   }
 
   selectAnio?.addEventListener('change', () => {
-    const anio = Number(selectAnio.value) as AnioAnalisisDengue;
+    const anio = Number(selectAnio.value);
     actualizarFiltrosAnalisis({ anio });
     cargarDepartamentos(anio);
   });

@@ -28,15 +28,17 @@ from __future__ import annotations
 import math
 import statistics
 from collections import defaultdict
+from datetime import date
 
 # --- Modulo 1: idoneidad biofisica (Iv) --------------------------------
 
 TMIN, TMAX = 16.0, 38.0
 R0, K = 30.0, 0.1
 
-# Corpus climatico completo usado como baseline leave-one-out del Modulo 2
-# (mismo rango que validar_leadtime_camino_ancho.py: ANIOS_CLIMA).
-ANIOS_CLIMA = list(range(2014, 2025))  # 2014-2024
+# Pool leave-one-out hasta el año en curso (ADR 0018). Misma lista que
+# validar_leadtime_camino_ancho.py: ANIOS_CLIMA.
+ANIO_CLIMA_INICIO = 2014
+ANIOS_CLIMA = list(range(ANIO_CLIMA_INICIO, date.today().year + 1))
 
 VARIABLES_REQUERIDAS = ("temp_media", "precipitation_sum", "humedad_relativa_media")
 

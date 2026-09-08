@@ -611,10 +611,11 @@ def casos_departamentales(request: Request, response: Response):
 
 AVISO_HONESTIDAD_IDONEIDAD = (
     "Índice de idoneidad biofísica (Iv) para Aedes aegypti, a partir de clima ERA5-Land "
-    "(temperatura, precipitación a 2 semanas, humedad). Una validación retrospectiva "
-    "mostró que no anticipa de forma consistente el ascenso de casos, así que se usa "
-    "solo como descriptor climático, no como alerta. El componente de humedad es una "
-    "estimación propia del equipo."
+    "(temperatura, precipitación a 2 semanas, humedad). Describe condición ambiental, "
+    "no incidencia ni riesgo: los casos MINSAL y la presión epidemiológica se detienen "
+    "en 2023, y el reanálisis ERA5 llega hasta unos 5 días antes de hoy. Una validación "
+    "retrospectiva mostró que no anticipa de forma consistente el ascenso de casos; el "
+    "componente de humedad es una estimación propia del equipo."
 )
 
 
@@ -627,11 +628,10 @@ def idoneidad_espacial_actual(request: Request, response: Response, week: int, y
     binaria (ver AVISO_HONESTIDAD_IDONEIDAD y docstring del módulo
     idoneidad.py: esa tesis fue retirada tras validación empírica).
 
-    El baseline de anomaly_sigma es leave-one-out sobre el corpus climático
-    completo 2014-2024 (excluye el propio año pedido de su baseline), misma
-    semana exacta, sin ventana de semanas vecinas -- igual método que
-    validar_leadtime_camino_ancho.py. Departamentos con menos de 3 años de
-    baseline disponible devuelven anomaly_sigma=null, no un valor inventado.
+    El baseline de anomaly_sigma es leave-one-out sobre ANIOS_CLIMA (2014
+    hasta el año en curso; ADR 0018). Excluye el propio año pedido, misma
+    semana exacta, sin ventana de semanas vecinas. Departamentos con menos
+    de 3 años de baseline disponible devuelven anomaly_sigma=null.
     """
     if not (1 <= week <= 53):
         raise HTTPException(status_code=422, detail="El parámetro 'week' debe estar entre 1 y 53.")

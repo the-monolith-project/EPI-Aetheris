@@ -41,7 +41,11 @@
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { vincularMarcasPlot } from '../../lib/plot-interacciones';
-  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+  import {
+    esAnioAnalisisDengue,
+    notaAnioSoloClima,
+    type FiltrosAnalisis,
+  } from '../../lib/tipos-analisis';
 
   interface PuntoDepartamento {
     codigo: string;
@@ -71,6 +75,12 @@
     }
     if (marcoGrafica) marcoGrafica.hidden = false;
     if (resumen) resumen.textContent = 'Cargando comparación departamental…';
+
+    if (!esAnioAnalisisDengue(filtros.anio)) {
+      if (marcoGrafica) marcoGrafica.hidden = true;
+      if (resumen) resumen.textContent = notaAnioSoloClima(filtros.anio);
+      return;
+    }
 
     try {
       const dataset = await obtenerDatasetAnalitico(filtros.anio);

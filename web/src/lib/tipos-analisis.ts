@@ -4,8 +4,29 @@ export type AnioAnalisisDengue = (typeof ANIOS_ANALISIS_DENGUE)[number];
 export type SerieEpidemiologica = 'probable' | 'confirmado';
 export type ModoMinsal = 'semana' | 'ytd' | 'historico';
 
+export function esAnioAnalisisDengue(
+  valor: number,
+): valor is AnioAnalisisDengue {
+  return (ANIOS_ANALISIS_DENGUE as readonly number[]).includes(valor);
+}
+
+/** Años pintables en M1/M2. No amplía el dataset de dengue (ADR 0018). */
+export function aniosClimaPresentacion(hoy: Date = new Date()): number[] {
+  const fin = hoy.getFullYear();
+  const anios: number[] = [];
+  for (let anio = 2018; anio <= fin; anio += 1) anios.push(anio);
+  return anios;
+}
+
+export function notaAnioSoloClima(anio: number): string {
+  return (
+    `El año ${anio} no tiene casos MINSAL departamentales. ` +
+    'Idoneidad y anomalía (clima) sí cubren este año; la presión epidemiológica se detiene en 2023.'
+  );
+}
+
 export interface FiltrosAnalisis {
-  anio: AnioAnalisisDengue;
+  anio: number;
   semana: number;
   semanaDesde: number;
   semanaHasta: number;
