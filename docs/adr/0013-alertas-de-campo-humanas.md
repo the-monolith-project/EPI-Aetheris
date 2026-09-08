@@ -7,6 +7,10 @@
 > clasificador retirado. Migración:
 > `db/migrations/0009_alertas_de_campo.sql`.
 
+**Nota de estado (2026-09-07):** Parcialmente superado por ADR 0015
+(2026-09-07): la creación autenticada y el archivo por fecha ya no
+están fuera de alcance. El cuerpo de este ADR se conserva intacto.
+
 ## Contexto
 
 La página `/alertas` es el puente entre quien revisa los módulos de

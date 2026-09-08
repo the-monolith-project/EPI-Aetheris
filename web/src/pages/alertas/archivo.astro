@@ -1,0 +1,169 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const tipoPedido = Astro.url.searchParams.get('tipo');
+const desdePedido = Astro.url.searchParams.get('desde') ?? '';
+const hastaPedido = Astro.url.searchParams.get('hasta') ?? '';
+const filtroDengue = tipoPedido === 'dengue';
+const filtroRespiratorio = tipoPedido === 'respiratorio';
+---
+
+<Layout title="EPI-Aetheris — Archivo de alertas">
+  <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+    <header class="mb-8 max-w-3xl">
+      <p
+        class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+      >
+        Archivo · lo emitido, no solo lo vigente
+      </p>
+      <h1
+        class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
+      >
+        Archivo de alertas
+      </h1>
+      <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+        Consulta qué se emitió y cuándo. Una alerta vencida o apagada no se ve
+        igual que una vigente: lleva el texto
+        <strong>NO VIGENTE</strong>. Esta página no se usa como material de
+        decisión offline.
+      </p>
+      <p class="mt-2 font-sans text-sm">
+        <a
+          href="/alertas"
+          class="font-medium text-accent underline underline-offset-2"
+          >Volver a alertas vigentes</a
+        >
+      </p>
+    </header>
+
+    <form
+      method="get"
+      action="/alertas/archivo"
+      class="mb-6 flex flex-wrap items-end gap-3 font-sans text-sm"
+      data-archivo-filtros
+    >
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold text-ink">Tipo</span>
+        <select
+          name="tipo"
+          class="rounded-lg border border-border bg-surface px-3 py-1.5"
+        >
+          <option value="" selected={!tipoPedido}>Todos</option>
+          <option value="dengue" selected={filtroDengue}>Dengue</option>
+          <option value="respiratorio" selected={filtroRespiratorio}
+            >Respiratorio</option
+          >
+        </select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold text-ink">Desde</span>
+        <input
+          type="date"
+          name="desde"
+          value={desdePedido}
+          class="rounded-lg border border-border bg-surface px-3 py-1.5"
+        />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold text-ink">Hasta</span>
+        <input
+          type="date"
+          name="hasta"
+          value={hastaPedido}
+          class="rounded-lg border border-border bg-surface px-3 py-1.5"
+        />
+      </label>
+      <button
+        type="submit"
+        class="rounded-full border border-accent bg-accent px-4 py-1.5 font-medium text-accent-ink"
+      >
+        Filtrar
+      </button>
+    </form>
+
+    <div data-alertas data-archivo>
+      <p
+        data-alertas-carga
+        class="font-sans text-sm text-ink-muted"
+        role="status"
+      >
+        Cargando archivo…
+      </p>
+      <p
+        data-alertas-error
+        hidden
+        class="rounded-lg border border-secondary bg-secondary/25 p-3 font-sans text-sm text-ink"
+        role="status"
+      >
+        No se pudo cargar el archivo de alertas.
+      </p>
+      <p
+        data-alertas-vacio
+        hidden
+        class="rounded-2xl border border-border bg-surface p-5 font-sans text-sm leading-relaxed text-ink"
+        role="status"
+      >
+        No hay alertas en el rango seleccionado.
+      </p>
+      <div data-alertas-lista class="flex flex-col gap-4"></div>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import {
+    aplicarVistaAlertas,
+    type PayloadAlertas,
+    type PintarAlertas,
+  } from '../../lib/vista-alertas';
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const root = document.querySelector<HTMLElement>('[data-alertas]');
+
+  if (root) {
+    const pintar: PintarAlertas = (payload) => {
+      aplicarVistaAlertas(
+        root,
+        payload,
+        new Set(),
+        'No hay alertas en el rango seleccionado.',
+      );
+    };
+    (root as HTMLElement & { pintarAlertas?: PintarAlertas }).pintarAlertas =
+      pintar;
+
+    const params = new URLSearchParams(window.location.search);
+    const tipo = params.get('tipo');
+    const consulta = new URLSearchParams();
+    consulta.set('incluir_inactivas', 'true');
+    if (tipo === 'dengue' || tipo === 'respiratorio') {
+      consulta.set('tipo', tipo);
+    }
+    const desde = params.get('desde');
+    const hasta = params.get('hasta');
+    if (desde) consulta.set('desde', desde);
+    if (hasta) consulta.set('hasta', hasta);
+
+    fetch(`${API_BASE}/api/alertas?${consulta.toString()}`)
+      .then(async (respuesta) => {
+        if (!respuesta.ok) throw new Error(String(respuesta.status));
+        const datos: unknown = await respuesta.json();
+        if (
+          !datos ||
+          typeof datos !== 'object' ||
+          !Array.isArray((datos as PayloadAlertas).alertas)
+        ) {
+          throw new Error('contrato');
+        }
+        pintar(datos as PayloadAlertas);
+      })
+      .catch(() => {
+        const carga = root.querySelector<HTMLElement>('[data-alertas-carga]');
+        const error = root.querySelector<HTMLElement>('[data-alertas-error]');
+        if (carga) carga.hidden = true;
+        if (error) error.hidden = false;
+        root.setAttribute('data-cargado', '1');
+        root.setAttribute('data-estado', 'error');
+      });
+  }
+</script>

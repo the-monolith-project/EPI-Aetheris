@@ -1,0 +1,329 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="EPI-Aetheris — Nueva alerta">
+  <main class="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
+    <header class="mb-6">
+      <p
+        class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
+      >
+        Operadores · no enlazado en la navegación
+      </p>
+      <h1
+        class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink"
+      >
+        Emitir alerta de campo
+      </h1>
+      <aside
+        data-aviso-formulario
+        class="mt-4 rounded-2xl border-2 border-secondary bg-secondary/20 p-4 font-sans text-sm leading-relaxed text-ink"
+      >
+        <p>
+          <strong
+            >Lo que se escriba aquí lo va a leer un médico en terreno.</strong
+          >
+          No sustituye los lineamientos oficiales del MINSAL ni el criterio clínico.
+          La fuente del dato es obligatoria. No inventes teléfonos, correos ni texto
+          clínico sin cita.
+        </p>
+      </aside>
+    </header>
+
+    <form data-form-alerta class="flex flex-col gap-4 font-sans text-sm">
+      <fieldset class="rounded-2xl border border-border bg-surface p-4">
+        <legend class="px-1 font-semibold">Autenticación</legend>
+        <label class="mt-2 flex flex-col gap-1">
+          <span>Token de escritura (ALERTAS_TOKEN)</span>
+          <input
+            type="password"
+            name="token"
+            data-alerta-token
+            autocomplete="off"
+            required
+            class="rounded-lg border border-border bg-bg px-3 py-2"
+          />
+        </label>
+        <label class="mt-3 flex items-start gap-2">
+          <input type="checkbox" data-alerta-recordar-token class="mt-1" />
+          <span
+            >Recordar el token en este navegador. Sin esta casilla no se guarda.
+            Podés cerrar sesión después.</span
+          >
+        </label>
+        <button
+          type="button"
+          data-alerta-cerrar-sesion
+          class="mt-3 rounded-full border border-border px-3 py-1.5"
+        >
+          Cerrar sesión (olvidar token)
+        </button>
+      </fieldset>
+
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Tipo</span>
+        <select
+          name="tipo"
+          required
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        >
+          <option value="dengue">dengue</option>
+          <option value="respiratorio">respiratorio</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Nivel</span>
+        <select
+          name="nivel"
+          required
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        >
+          <option value="informativo">informativo</option>
+          <option value="atencion">atencion</option>
+          <option value="intensificacion">intensificacion</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Etiqueta (vacío = producción)</span>
+        <select
+          name="etiqueta"
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        >
+          <option value="">ninguna</option>
+          <option value="test">test</option>
+          <option value="simulacro">simulacro</option>
+          <option value="historica">historica</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Título</span>
+        <input
+          name="titulo"
+          required
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Contexto</span>
+        <textarea
+          name="contexto"
+          required
+          rows="4"
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        ></textarea>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Indicaciones</span>
+        <textarea
+          name="indicaciones"
+          required
+          rows="5"
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        ></textarea>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Fuente (obligatoria)</span>
+        <input
+          name="fuente"
+          required
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Autor</span>
+        <input
+          name="autor"
+          required
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Vigente desde</span>
+        <input
+          type="date"
+          name="vigente_desde"
+          required
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Vigente hasta (opcional)</span>
+        <input
+          type="date"
+          name="vigente_hasta"
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Definición de caso (opcional)</span>
+        <textarea
+          name="definicion_caso"
+          rows="3"
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        ></textarea>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Signos de alarma (opcional)</span>
+        <textarea
+          name="signos_alarma"
+          rows="3"
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        ></textarea>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Criterios de referencia (opcional)</span>
+        <textarea
+          name="criterios_referencia"
+          rows="3"
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        ></textarea>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Qué notificar (opcional)</span>
+        <textarea
+          name="que_notificar"
+          rows="3"
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        ></textarea>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-semibold">Contacto de vigilancia (opcional)</span>
+        <textarea
+          name="contacto_vigilancia"
+          rows="3"
+          class="rounded-lg border border-border bg-surface px-3 py-2"
+        ></textarea>
+      </label>
+
+      <button
+        type="submit"
+        class="rounded-full bg-accent px-5 py-2 font-semibold text-accent-ink"
+      >
+        Publicar alerta
+      </button>
+      <p
+        data-form-estado
+        class="font-sans text-sm text-ink-muted"
+        role="status"
+      >
+      </p>
+    </form>
+  </main>
+</Layout>
+
+<script>
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const CLAVE_TOKEN = 'epi-aetheris:alertas-token';
+  const form = document.querySelector<HTMLFormElement>('[data-form-alerta]');
+  const inputToken = document.querySelector<HTMLInputElement>(
+    '[data-alerta-token]',
+  );
+  const recordar = document.querySelector<HTMLInputElement>(
+    '[data-alerta-recordar-token]',
+  );
+  const cerrar = document.querySelector<HTMLButtonElement>(
+    '[data-alerta-cerrar-sesion]',
+  );
+  const estado = document.querySelector<HTMLElement>('[data-form-estado]');
+
+  try {
+    const guardado = window.localStorage.getItem(CLAVE_TOKEN);
+    if (guardado && inputToken) {
+      inputToken.value = guardado;
+      if (recordar) recordar.checked = true;
+    }
+  } catch {
+    // Sin almacenamiento el formulario sigue usable.
+  }
+
+  cerrar?.addEventListener('click', () => {
+    try {
+      window.localStorage.removeItem(CLAVE_TOKEN);
+    } catch {
+      /* ignore */
+    }
+    if (inputToken) inputToken.value = '';
+    if (recordar) recordar.checked = false;
+    if (estado) estado.textContent = 'Token olvidado en este navegador.';
+  });
+
+  form?.addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    if (!form || !inputToken) return;
+    const datos = new FormData(form);
+    const token = inputToken.value.trim();
+    const opcional = (clave: string): string | null => {
+      const valor = String(datos.get(clave) ?? '').trim();
+      return valor === '' ? null : valor;
+    };
+    const cuerpo = {
+      tipo: String(datos.get('tipo') ?? ''),
+      nivel: String(datos.get('nivel') ?? ''),
+      titulo: String(datos.get('titulo') ?? '').trim(),
+      contexto: String(datos.get('contexto') ?? '').trim(),
+      indicaciones: String(datos.get('indicaciones') ?? '').trim(),
+      fuente: String(datos.get('fuente') ?? '').trim(),
+      autor: String(datos.get('autor') ?? '').trim(),
+      vigente_desde: String(datos.get('vigente_desde') ?? ''),
+      vigente_hasta: opcional('vigente_hasta'),
+      etiqueta: opcional('etiqueta'),
+      definicion_caso: opcional('definicion_caso'),
+      signos_alarma: opcional('signos_alarma'),
+      criterios_referencia: opcional('criterios_referencia'),
+      que_notificar: opcional('que_notificar'),
+      contacto_vigilancia: opcional('contacto_vigilancia'),
+    };
+
+    if (recordar?.checked) {
+      try {
+        window.localStorage.setItem(CLAVE_TOKEN, token);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      try {
+        window.localStorage.removeItem(CLAVE_TOKEN);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (estado) estado.textContent = 'Enviando…';
+    fetch(`${API_BASE}/api/alertas`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(cuerpo),
+    })
+      .then(async (respuesta) => {
+        const payload: unknown = await respuesta.json().catch(() => null);
+        if (!respuesta.ok) {
+          throw new Error(
+            `${respuesta.status}${payload ? ` ${JSON.stringify(payload)}` : ''}`,
+          );
+        }
+        const id =
+          payload &&
+          typeof payload === 'object' &&
+          'id' in payload &&
+          typeof (payload as { id: unknown }).id === 'number'
+            ? (payload as { id: number }).id
+            : null;
+        if (estado) {
+          estado.textContent = id
+            ? `Alerta creada (id ${id}).`
+            : 'Alerta creada.';
+        }
+        if (id) {
+          window.location.assign(`/alertas#alerta-${id}`);
+        }
+      })
+      .catch((error: unknown) => {
+        if (estado) {
+          estado.textContent = `No se pudo crear: ${String(error)}`;
+        }
+      });
+  });
+</script>
