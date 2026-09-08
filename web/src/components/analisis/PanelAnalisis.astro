@@ -9,6 +9,7 @@ import MapaDepartamentos from '../MapaDepartamentos.astro';
 import PerfilCalidadDatos from './PerfilCalidadDatos.astro';
 import ScatterClimaPresion from './ScatterClimaPresion.astro';
 import SelectorPaneles from './SelectorPaneles.astro';
+import SerieDepartamento from './SerieDepartamento.astro';
 import ToolbarAnalisis from './ToolbarAnalisis.astro';
 ---
 
@@ -62,6 +63,9 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
           <ComparacionDepartamentos />
         </div>
       </div>
+    </div>
+    <div data-panel-workspace="serie" class="relative min-w-0" hidden>
+      <SerieDepartamento />
     </div>
     <div data-panel-workspace="calendario" class="relative min-w-0" hidden>
       <CalendarioEpidemico />

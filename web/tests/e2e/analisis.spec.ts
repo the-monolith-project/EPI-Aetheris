@@ -505,6 +505,40 @@ test('capa de idoneidad usa aviso biofísico y admite año climático 2025', asy
   await page.locator('#analisis-anio').selectOption('2025');
   await expect(page).toHaveURL(/year=2025/);
   await expect(page.locator('#heatmap-resumen')).toContainText(
-    'se detienen en 2023',
+    'se detiene en 2023',
   );
+});
+
+test('el panel "Serie del departamento" dibuja los tres módulos del departamento activo', async ({
+  page,
+}) => {
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+
+  const panel = page.locator('[data-panel-workspace="serie"]');
+
+  // Arranca oculto; se activa desde el selector de paneles.
+  await page.locator('#analisis-paneles-boton').click();
+  await page.locator('input[data-selector-panel][value="serie"]').check();
+  await expect(panel).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // Sin departamento, el panel pide seleccionar uno.
+  await expect(page.locator('#serie-departamento-resumen')).toContainText(
+    'Seleccione un departamento',
+  );
+
+  // Al elegir un departamento, se dibujan las tres gráficas.
+  const sanSalvador = page.locator('[data-departamento="SV-SS"]').first();
+  await sanSalvador.focus();
+  await sanSalvador.press('Enter');
+
+  await expect(page.locator('#serie-departamento-resumen')).toContainText(
+    'San Salvador',
+    { timeout: 15_000 },
+  );
+  await expect(page.locator('#serie-presion svg')).toBeVisible();
+  await expect(page.locator('#serie-idoneidad svg')).toBeVisible();
+  await expect(page.locator('#serie-anomalia svg')).toBeVisible();
+  await expect(page.locator('#serie-departamento-aviso')).not.toBeEmpty();
 });
