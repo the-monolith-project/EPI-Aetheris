@@ -279,4 +279,121 @@ test.describe('Ficha departamental imprimible', () => {
     await expect(page).toHaveURL(/\/analisis\/ficha\/SV-SS/);
     await expect(page.locator('h1')).toContainText('San Salvador');
   });
+
+  test('reusa el aviso de la respuesta y escapa el contenido de las alertas', async ({
+    page,
+  }) => {
+    await page.route('**/api/v1/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_TEMPORAL),
+      }),
+    );
+    await page.route('**/api/v1/presion/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_PRESION),
+      }),
+    );
+    await page.route('**/api/ira/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_IRA),
+      }),
+    );
+    await page.route('**/api/neumonias/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_NEUMONIAS),
+      }),
+    );
+    await page.route('**/api/alertas*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ...MOCK_ALERTAS,
+          alertas: [
+            {
+              ...MOCK_ALERTAS.alertas[0],
+              titulo: 'Control vectorial <img src=x onerror=alert(1)>',
+              indicaciones: '- Tapar recipientes <script>alert(2)</script>',
+            },
+          ],
+        }),
+      }),
+    );
+
+    const errores: string[] = [];
+    page.on('pageerror', (e) => errores.push(String(e)));
+    page.on('dialog', (d) => {
+      errores.push('dialog');
+      void d.dismiss();
+    });
+
+    await page.goto('/analisis/ficha/SV-SS');
+    await expect(page.locator('[data-ficha]')).toHaveAttribute(
+      'data-cargado',
+      '1',
+      { timeout: 15_000 },
+    );
+
+    // El aviso de M1 es el `aviso` de la respuesta, no una constante redactada.
+    await expect(page.locator('[data-m1-aviso]')).toHaveText(
+      'Capa descriptiva de idoneidad biofísica.',
+    );
+
+    // El markup malicioso de la alerta aparece como texto, no como nodo.
+    await expect(page.locator('#seccion-prevencion-cuerpo')).toContainText(
+      '<img src=x onerror=alert(1)>',
+    );
+    await expect(page.locator('#seccion-prevencion-cuerpo img')).toHaveCount(0);
+    expect(errores).toEqual([]);
+  });
+
+  test('sin alertas vigentes muestra un contenedor neutro sin texto de salud', async ({
+    page,
+  }) => {
+    const responder =
+      (cuerpo: unknown): Parameters<typeof page.route>[1] =>
+      (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(cuerpo),
+        });
+    await page.route(
+      '**/api/v1/presion/temporal/SV-SS*',
+      responder(MOCK_PRESION),
+    );
+    await page.route('**/api/v1/temporal/SV-SS*', responder(MOCK_TEMPORAL));
+    await page.route('**/api/ira/temporal/SV-SS*', responder(MOCK_IRA));
+    await page.route(
+      '**/api/neumonias/temporal/SV-SS*',
+      responder(MOCK_NEUMONIAS),
+    );
+    await page.route('**/api/alertas*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...MOCK_ALERTAS, alertas: [] }),
+      }),
+    );
+
+    await page.goto('/analisis/ficha/SV-SS');
+    await expect(page.locator('[data-ficha]')).toHaveAttribute(
+      'data-cargado',
+      '1',
+      { timeout: 15_000 },
+    );
+
+    const cuerpo = page.locator('#seccion-prevencion-cuerpo');
+    await expect(cuerpo).toContainText('Sin alertas de campo vigentes');
+    await expect(cuerpo).not.toContainText('lineamientos generales');
+    await expect(cuerpo).not.toContainText('OPS/OMS');
+  });
 });

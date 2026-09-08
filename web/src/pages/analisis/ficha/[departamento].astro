@@ -1412,7 +1412,7 @@ const { codigo, nombre } = departamento;
   /* Reglas de impresion para hoja de campo */
   @media print {
     :global(header[class*='sticky']),
-    :global(nav),
+    :global(nav[aria-label='Navegación principal']),
     :global(footer),
     .print\:hidden,
     [data-no-imprimir] {
