@@ -294,3 +294,66 @@ test('/alertas abre sin conexión desde el cache del service worker', async ({
   await expect(page.locator('[data-alerta]').first()).toBeVisible();
   await context.unroute('**/api/alertas*');
 });
+
+test('el footer reestructurado expone las cuatro secciones y el aviso de sensibilidad', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const navFooter = page.locator('nav[aria-label="Pie de página"]');
+  // El nav usa `class="contents"` (no genera caja propia); se comprueba que
+  // está en el DOM y luego se afirma sobre sus enlaces, que sí resuelven.
+  await expect(navFooter).toBeAttached();
+
+  // Tramo 2: El proyecto
+  await expect(navFooter.getByRole('link', { name: 'Qué es' })).toHaveAttribute(
+    'href',
+    '/biblioteca/01-que-es',
+  );
+  await expect(
+    navFooter.getByRole('link', { name: 'Aviso de sensibilidad' }),
+  ).toHaveAttribute('href', '/biblioteca/05-sensibilidad-y-honestidad');
+  await expect(
+    navFooter.getByRole('link', { name: 'Arquitectura y reproducibilidad' }),
+  ).toHaveAttribute('href', '/biblioteca/06-arquitectura-y-reproducibilidad');
+  await expect(
+    navFooter.getByRole('link', { name: 'Código en GitHub' }),
+  ).toHaveAttribute(
+    'href',
+    'https://github.com/the-monolith-project/EPI-Aetheris',
+  );
+
+  // Tramo 3: Datos y método
+  await expect(
+    navFooter.getByRole('link', { name: 'Fuentes de datos' }),
+  ).toHaveAttribute('href', '/biblioteca/04-fuentes-de-datos');
+  await expect(
+    navFooter.getByRole('link', { name: 'Módulos M1–M3' }),
+  ).toHaveAttribute('href', '/biblioteca/03-funciones');
+  await expect(
+    navFooter.getByRole('link', { name: 'Licencias de datos' }),
+  ).toHaveAttribute('href', 'https://open-meteo.com/en/license');
+
+  // Tramo 4: Vigilancia
+  await expect(
+    navFooter.getByRole('link', { name: 'Alertas de campo' }),
+  ).toHaveAttribute('href', '/alertas');
+  await expect(
+    navFooter.getByRole('link', { name: 'Análisis por departamento' }),
+  ).toHaveAttribute('href', '/analisis');
+  await expect(
+    navFooter.getByRole('link', { name: 'Decisiones y trayectoria' }),
+  ).toHaveAttribute('href', '/biblioteca/02-historia');
+  await expect(
+    navFooter.getByRole('link', { name: 'Sugerencias (GitHub Issues)' }),
+  ).toHaveAttribute('href', '/sugerencias');
+
+  // Tira inferior de deslinde
+  const footer = page.locator('footer');
+  await expect(footer).toContainText(
+    'Proyecto académico · El Salvador · 2026.',
+  );
+  await expect(footer).toContainText(
+    'Ayuda de priorización sobre datos públicos agregados de MINSAL, OpenDengue y Open-Meteo, bajo licencia GPL-3.0',
+  );
+  await expect(footer).toContainText('GPL-3.0 · 2026');
+});

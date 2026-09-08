@@ -89,7 +89,7 @@ test.describe('observatorio respiratorio', () => {
 
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      heatmap.getByRole('button', { name: /Exportar CSV/i }).click(),
+      heatmap.getByRole('button', { name: /Exportar.*CSV/i }).click(),
     ]);
     const tmp = test.info().outputPath('neumonias-heatmap.csv');
     await download.saveAs(tmp);
