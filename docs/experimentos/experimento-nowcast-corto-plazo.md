@@ -276,17 +276,27 @@ año, WIS agrupado natural, WIS agrupado log), y pasa el criterio firmado. La fr
 sin precedente (visible al recortar a 2016+) es una limitación estructural conocida del modelo de
 árboles, no un fallo del marco.
 
-**El titular positivo depende de que 2014–2015 sean casos de dengue en una base comparable a
-2016+.** El loader de OpenDengue solo se verificó contra MINSAL para 2018 y 2022; 2014–2015 están
-~2× por encima del nivel posterior. Si esa diferencia fuera un cambio de definición de caso y no
-transmisión real, el titular honesto sería la fila 2016+ (mixta). Verificar antes de comunicar
-nada.
+**2014–2015 verificado (2026-09-09): transmisión real, base comparable a 2016+.** Toda la serie
+2014–2024 viene de la misma fuente (PAHO PLISA) con la misma definición (`case_definition_standardised
+= "Total"`, dominada por sospechosos) — no hay cambio en 2016. Los `Total` cargados coinciden con los
+sospechosos de MINSAL (boletín SE52-2015: 53.290 / 50.144). No es contaminación por chikungunya
+(MINSAL lo contó aparte: 167.957 casos en 2014). Prueba decisiva: los confirmados de dengue de 2014
+(~15.900) por sí solos superan el `Total` completo de 2016, 2017 y 2018 — ningún reetiquetado
+produce esa caída. **Caveat a declarar:** la intensidad de vigilancia fue mayor en 2014–2015 (alerta
+nacional de arbovirosis durante la llegada del chikungunya, tamizaje masivo de síndrome febril), lo
+que infla algo los niveles de esos dos años frente al valle 2016–2018 — es efecto de ascertainment,
+no de definición, y no explica la magnitud de la caída. Detalle y fuentes:
+`docs/experimentos/verificacion-dengue-2014-2015.local.md`.
+
+Con esto, el titular positivo (fila 2014+) se sostiene. El pico 2014–15 es load-bearing para el
+modelo, así que el caveat de ascertainment se reporta junto al resultado.
 
 ### Qué falta antes de cualquier uso (decisión 5)
 
-1. **Verificar 2014–2015 contra MINSAL/OPS** — de esto depende cuál fila es el resultado real.
+1. ~~Verificar 2014–2015 contra MINSAL/OPS~~ — **hecho 2026-09-09**, ver arriba. 2014+ es la ventana
+   principal; 2016+ queda como chequeo de robustez.
 2. **Segunda confirmación independiente** (otro periodo de prueba, u otra persona reproduciendo el
-   pipeline) — requisito firmado, aún pendiente.
+   pipeline) — requisito firmado, en curso (subagente, 2026-09-09).
 3. **Calibración de intervalos**: ensanchar la incertidumbre (cobertura al 50 % corre en ~0.40).
 4. **Regla de historia mínima**: formalizar el tope de magnitud del modelo de árboles y el criterio
    de "precedente comparable en entrenamiento" antes de exponer cualquier cifra.
