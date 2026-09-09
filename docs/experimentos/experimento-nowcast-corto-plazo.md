@@ -115,12 +115,20 @@ decisión pendiente. Los años previos al primero de prueba forman el entrenamie
 Se corre **primero solo los baselines** y se escribe su WIS en el reporte. Recién con ese número
 fijado se corre el primer modelo:
 
-- **Regresión cuantílica por gradient boosting** (LightGBM objetivo `quantile`, un modelo por
-  cuantil, o `quantile` con `alpha` barrido — sin tuning contra prueba, profundidad y hojas fijas
-  en valores conservadores declarados en el script).
-- **Features:** rezagos autorregresivos de `log1p(y)` en `t, t−1, …, t−8`; media móvil de 4 y 8
-  semanas; armónicos estacionales `sin/cos(2πk·semana/52)` para `k ∈ {1,2,3}`; clima nacional
-  rezagado (disponible en `t`); ONI rezagado; año calendario como covariable de tendencia.
+- **Regresión cuantílica por gradient boosting**, un modelo por cuantil, sin tuning contra
+  prueba, con la config fija del script (ver "Enmiendas": `HistGradientBoostingRegressor`).
+- **Features (tal como las computa el script — esta lista manda sobre cualquier descripción
+  previa):**
+  - 8 rezagos autorregresivos de `log1p(y)`: `z[t], z[t−1], …, z[t−7]`.
+  - media móvil de `z` a 4 y a 8 semanas (`z[t−3..t]`, `z[t−7..t]`).
+  - `momentum = z[t] − z[t−4]`.
+  - armónicos estacionales `sin/cos(2πk·doy/365.25)` para `k ∈ {1,2,3}`, con `doy` = día del año
+    de la fecha de inicio de la **semana objetivo** `t+h` (día del año, no semana/52, para no
+    romperse en años de 53 semanas).
+  - clima nacional (media de los 14 departamentos), media móvil a 4 semanas al origen `t`, para
+    las 7 variables.
+  - ONI al origen `t`.
+  - año calendario de la semana objetivo, como covariable de tendencia.
 - Nada de features derivadas de M1–M4.
 
 Si el primer modelo no supera los baselines, el experimento cierra con resultado negativo y se
@@ -291,16 +299,43 @@ no de definición, y no explica la magnitud de la caída. Detalle y fuentes:
 Con esto, el titular positivo (fila 2014+) se sostiene. El pico 2014–15 es load-bearing para el
 modelo, así que el caveat de ascertainment se reporta junto al resultado.
 
+### Segunda confirmación independiente (2026-09-09)
+
+Reimplementación desde cero del WIS, el forward-chaining y los baselines
+(`backend/ingestion/nowcast_segunda_confirmacion.py`, rama `experimento/nowcast-segunda-confirmacion`).
+Detalle: `docs/experimentos/nowcast-segunda-confirmacion.md`.
+
+- **Paridad exacta:** las 8 filas de la tabla de arriba se reproducen a la décima en las 4
+  métricas, con el mismo veredicto por fila. Prueba unitaria del WIS (identidad degenerada) pasó.
+  No hay bug en la fórmula ni en la partición temporal.
+- **Robusto a la cadencia de reajuste:** 1 / 2 / 4 semanas mueven el WIS agrupado < 3 %, sin
+  cambio de veredicto. La cadencia de 2 semanas del original no era load-bearing.
+- **Robusto a held-out terminal:** entrenando solo hasta 2022 sin reajuste, el modelo recorta el
+  WIS 40–55 % en 2023–2024 fuera de muestra, en las dos ventanas y los 4 horizontes.
+- **El corte 2014+/2016+ no es artefacto** de partición ni de cadencia: aparece igual en rolling
+  origin semanal y en el diagnóstico directo de saturación.
+- **Matiz nuevo:** el evento que separa 2014+ (robusto) de 2016+ (frágil) es **n = 1** — un solo
+  año (2019) con un solo brote grande. La conclusión sobre robustez ante brotes sin precedente
+  tiene soporte empírico de un caso; conviene una segunda ventana o serie donde probar ese
+  mecanismo antes de darlo por establecido.
+- **Matiz sobre la saturación:** bajo 2016+ el modelo sí extrapola algo por encima del máximo de
+  entrenamiento (q0.99 llega a 7.68, el boosting aditivo estira la cola), pero la mediana y el
+  grueso saturan y el WIS natural explota. La conclusión operativa no cambia.
+
+**Veredicto de la confirmación: el resultado 2014+ se sostiene, con matices.**
+
 ### Qué falta antes de cualquier uso (decisión 5)
 
-1. ~~Verificar 2014–2015 contra MINSAL/OPS~~ — **hecho 2026-09-09**, ver arriba. 2014+ es la ventana
-   principal; 2016+ queda como chequeo de robustez.
-2. **Segunda confirmación independiente** (otro periodo de prueba, u otra persona reproduciendo el
-   pipeline) — requisito firmado, en curso (subagente, 2026-09-09).
+1. ~~Verificar 2014–2015 contra MINSAL/OPS~~ — **hecho 2026-09-09**. 2014+ es la ventana principal;
+   2016+ queda como chequeo de robustez.
+2. ~~Segunda confirmación independiente~~ — **hecha 2026-09-09**, ver arriba. Sin grietas en el
+   pipeline; 2014+ se sostiene con matices.
 3. **Calibración de intervalos**: ensanchar la incertidumbre (cobertura al 50 % corre en ~0.40).
 4. **Regla de historia mínima**: formalizar el tope de magnitud del modelo de árboles y el criterio
    de "precedente comparable en entrenamiento" antes de exponer cualquier cifra.
-5. Nada de esto entra a la UI ni al pitch sin decisión explícita de Eduardo.
+5. **Probar el mecanismo de fragilidad en una segunda serie/ventana** (matiz de la confirmación:
+   hoy el soporte es un único año).
+6. Nada de esto entra a la UI ni al pitch sin decisión explícita de Eduardo.
 
 ## Relación con el estado del proyecto
 
