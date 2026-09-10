@@ -345,18 +345,17 @@ const { variante = 'completo' } = Astro.props;
         ['50%', mid],
         ['100%', ext],
       ] as [string, number][]) {
-        g.appendChild(
-          el('stop', {
-            offset: off,
-            'stop-color': 'var(--color-accent)',
-            'stop-opacity': op,
-          }),
-        );
+        // stop-color no resuelve var() como atributo de presentación en varios
+        // navegadores (cae a negro y la banda se ve gris): va por style.
+        const stop = el('stop', { offset: off });
+        (stop as SVGStopElement).style.stopColor = 'var(--color-accent)';
+        (stop as SVGStopElement).style.stopOpacity = String(op);
+        g.appendChild(stop);
       }
       return g;
     };
-    defs.appendChild(mkGrad(gid50, 0.08, 0.32));
-    defs.appendChild(mkGrad(gid95, 0.03, 0.16));
+    defs.appendChild(mkGrad(gid50, 0.18, 0.38));
+    defs.appendChild(mkGrad(gid95, 0.08, 0.2));
 
     // glow tenue para la mediana de la predicción
     const glowId = `${uid}-glow`;
@@ -571,28 +570,34 @@ const { variante = 'completo' } = Astro.props;
     };
     aplicarRevelado(iniciarOculto ? 0 : 1);
 
-    // caja de zoom: últimas ~10 semanas observadas + todo el abanico, ajustada
-    // a la razón de aspecto del viewBox base para que no haya letterbox.
+    // caja de zoom: últimas ~13 semanas observadas + el abanico, ajustada a la
+    // razón de aspecto del viewBox base para que no haya letterbox.
     const vbBase: [number, number, number, number] = [0, 0, ancho, alto];
-    let yLo = e.y(casoAncla);
-    let yHi = e.y(casoAncla);
+    let zx = e.x(Math.max(0, tAncla - 13)) - 8;
+    let zw = e.x(tMax) + 16 - zx;
+    // rango vertical: nos ceñimos a la banda del 50 % + mediana + ancla (mucho
+    // más estrecho que el 95 %), con margen. Las colas del 95 % pueden sangrar
+    // fuera del encuadre: es una vista "héroe" del abanico, no un recorte exacto.
+    let b50lo = e.y(casoAncla);
+    let b50hi = e.y(casoAncla);
     for (const p of fan) {
-      yLo = Math.min(yLo, e.y(p.b95[1]));
-      yHi = Math.max(yHi, e.y(p.b95[0]));
+      b50hi = Math.min(b50hi, e.y(p.b50[1]), e.y(p.med));
+      b50lo = Math.max(b50lo, e.y(p.b50[0]), e.y(p.med));
     }
-    let zx = e.x(Math.max(0, tAncla - 14)) - 8;
-    let zw = e.x(tMax) + 18 - zx;
-    let zy = yLo - 32;
-    let zh = yHi + 32 - zy;
+    let zy = b50hi - 46;
+    let zh = b50lo + 46 - zy;
     const razon = ancho / alto;
     if (zw / zh > razon) {
+      // más ancho que alto: crecemos alto (mantiene el zoom horizontal fuerte).
       const nh = zw / razon;
       zy -= (nh - zh) / 2;
       zh = nh;
     } else {
-      const nw = zh * razon;
-      zx -= (nw - zw) / 2;
-      zw = nw;
+      // más alto que ancho: recortamos alto en vez de ensanchar (ensanchar
+      // mataba el zoom). Centrado en el mismo eje.
+      const nh = zw / razon;
+      zy += (zh - nh) / 2;
+      zh = nh;
     }
     const vbZoom: [number, number, number, number] = [zx, zy, zw, zh];
     const ponerVb = (v: number[]) =>
