@@ -169,7 +169,7 @@ No presentes su salida como:
 
 Eso aplica a la *salida de los módulos y del clasificador*. Es distinto —y sí está permitido— mostrar material informativo de prevención tomado literalmente de una fuente oficial publicada (OPS/OMS, MINSAL) con su cita: tarjetas tipo "elimine criaderos, revise depósitos de agua". No se redacta consejo clínico propio ni se generan recomendaciones automáticas por nivel de riesgo.
 
-**Redacción de producto:** el copy de cara al usuario se escribe en voz afirmativa — primero qué es y qué aporta, después el límite. Cada salvedad ("no es diagnóstico", "no es clasificación de riesgo", "sin predicción", "coexistencia ≠ causalidad") se declara una sola vez, en su hogar canónico (footer, panel de alertas, Biblioteca), no en cada pantalla. El rigor se muestra con métricas y fuentes visibles, no repitiendo disclaimers.
+**Redacción de producto:** el copy de cara al usuario se escribe en voz afirmativa — primero qué es y qué aporta, después el límite. Cada salvedad ("no es diagnóstico", "no es clasificación de riesgo de brote", "la estimación a corto plazo parte de la última semana observada y tiene alcance declarado", "coexistencia ≠ causalidad") se declara una sola vez, en su hogar canónico (footer, panel de alertas, Biblioteca — `docs/biblioteca/05-sensibilidad-y-honestidad.md`), no en cada pantalla. El rigor se muestra con métricas y fuentes visibles, no repitiendo disclaimers.
 
 El aporte principal del proyecto es de ingeniería de software: reproducibilidad, integración, despliegue y acceso abierto.
 
@@ -518,8 +518,9 @@ Referencia rápida. El detalle vive en `docs/`; aquí solo lo que conviene tener
 
 EPI-Aetheris es un sistema de vigilancia epidemiológica **descriptiva** (piloto: dengue e IRA en El Salvador). Ingesta casos históricos y predictores ambientales, los alinea por semana epidemiológica y los expone vía FastAPI + mapa Leaflet.
 
-- **El clasificador predictivo está retirado** (pivote "Camino Ancho", cerrado 2026-08-18 — `docs/rescate-prediccion/informe-cierre-rescate-prediccion.md`). El código entrenado (`entrenar_clasificador.py` y afines) se conserva como referencia histórica: **no lo extiendas ni presentes su salida como predicción en vivo.**
-- El proyecto es descriptivo, no predictivo: "qué está pasando y qué tan inusual es contra su propia historia", nunca "qué va a pasar".
+- **El clasificador de riesgo de brote interanual está retirado** (pivote "Camino Ancho", cerrado 2026-08-18 — `docs/rescate-prediccion/informe-cierre-rescate-prediccion.md`). El código entrenado (`entrenar_clasificador.py` y afines) se conserva como referencia histórica: **no lo extiendas ni presentes su salida como predicción en vivo.**
+- **Excepción acotada — estimación de horizonte corto** (autorizada por Eduardo el 2026-09-09): la página de dengue expone una estimación estadística del conteo nacional de casos a 1–8 semanas desde la última semana observada, con intervalo calibrado. Es un modelo distinto (conteo con intervalo, no clase de riesgo), validado con WIS + confirmación independiente y con su alcance declarado (`docs/experimentos/experimento-nowcast-corto-plazo.md`). No es una reactivación del clasificador retirado. Artefacto: `backend/ingestion/nowcast_estimacion_dengue.py` → `backend/api/datos/nowcast_dengue.json`; endpoint `GET /api/nowcast-dengue`. Nada de lenguaje de "predicción de brote" en el copy: es "estimación a corto plazo".
+- El proyecto es descriptivo, con una única capa de estimación a corto plazo acotada: "qué está pasando y qué tan inusual es contra su propia historia", y una extrapolación de la serie a pocas semanas con su incertidumbre — nunca "va a haber un brote".
 - El aporte es de **ingeniería de software** (sistema libre, contenedorizado, reproducible), no de novedad epidemiológica ni un oráculo médico (esto no impide mostrar guías de prevención públicas citadas).
 - Modelo de dominio **agnóstico a enfermedad y región**: `tipos_evento` y `regiones` son catálogos, no columnas fijas.
 
@@ -571,7 +572,7 @@ Las trampas empíricas —MINSAL (el año impreso en el PDF no es fiable; dos fa
 
 ### Decisiones abiertas
 
-`docs/contexto/02-decisiones-abiertas.md` es la fuente. No resuelvas unilateralmente: las coordenadas departamentales para Open-Meteo, si la exclusión de 2020 gobierna la ingesta, y si algún clasificador se reactiva (la línea predictiva está cerrada — no la resucites sin instrucción explícita). M4 (fórmula y dónde vive) quedó cerrado el 2026-09-08, ADR 0018.
+`docs/contexto/02-decisiones-abiertas.md` es la fuente. No resuelvas unilateralmente: las coordenadas departamentales para Open-Meteo, si la exclusión de 2020 gobierna la ingesta, y si el clasificador de riesgo de brote interanual se reactiva (esa línea está cerrada — no la resucites sin instrucción explícita; la estimación de horizonte corto autorizada el 2026-09-09 es una línea separada y acotada, no esa reapertura). M4 (fórmula y dónde vive) quedó cerrado el 2026-09-08, ADR 0018.
 
 ### Comandos
 

@@ -186,3 +186,68 @@ export interface IntegridadVigilancia {
   antiguedad: Record<string, AntiguedadSerie>;
   resumen_anual?: ResumenAnualIntegridad[];
 }
+
+// --- Estimación de horizonte corto de dengue (GET /api/nowcast-dengue) --------
+// Artefacto precomputado por backend/ingestion/nowcast_estimacion_dengue.py.
+// No es clasificación de riesgo ni aviso epidemiológico; ver
+// docs/biblioteca/05-sensibilidad-y-honestidad.md.
+
+export interface PuntoObservadoNowcast {
+  fecha: string;
+  casos: number;
+}
+
+export interface EstimacionHorizonte {
+  h: number;
+  fecha: string;
+  anio: number;
+  semana: number;
+  cuantiles: number[];
+  mediana: number;
+  banda_50: [number, number];
+  banda_95: [number, number];
+}
+
+export interface PuntoBacktestNowcast {
+  fecha: string;
+  anio: number;
+  observado: number;
+  mediana: number;
+  banda_50: [number, number];
+  banda_95: [number, number];
+}
+
+export interface DesempenoNowcast {
+  horizonte: number;
+  baseline: string;
+  wis_modelo: number;
+  wis_baseline: number;
+  reduccion_wis: number;
+  skill_medio_por_anio: number;
+  skill_por_anio: Record<string, number>;
+  anios_ganados: number;
+  n_anios: number;
+  cobertura_50: number;
+  cobertura_95: number;
+}
+
+export interface NowcastDengue {
+  disponible: boolean;
+  motivo?: string;
+  aviso: string;
+  generado?: string;
+  fuente_serie?: string;
+  metodo?: string;
+  alcance_historia_desde?: number;
+  ancla?: { fecha: string; anio: number; semana: number; casos: number };
+  horizontes?: number[];
+  observado?: PuntoObservadoNowcast[];
+  estimacion?: EstimacionHorizonte[];
+  backtest?: {
+    horizonte: number;
+    anios: number[];
+    puntos: PuntoBacktestNowcast[];
+  };
+  desempeno?: DesempenoNowcast;
+  nota_alcance?: string;
+}

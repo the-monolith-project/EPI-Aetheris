@@ -303,7 +303,7 @@ modelo, así que el caveat de ascertainment se reporta junto al resultado.
 
 Reimplementación desde cero del WIS, el forward-chaining y los baselines
 (`backend/ingestion/nowcast_segunda_confirmacion.py`, rama `experimento/nowcast-segunda-confirmacion`).
-Detalle: `docs/experimentos/nowcast-segunda-confirmacion.md`.
+El resumen de esa corrida queda aquí abajo.
 
 - **Paridad exacta:** las 8 filas de la tabla de arriba se reproducen a la décima en las 4
   métricas, con el mismo veredicto por fila. Prueba unitaria del WIS (identidad degenerada) pasó.

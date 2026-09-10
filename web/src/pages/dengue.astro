@@ -5,6 +5,12 @@ import MetricasModelo from '../components/MetricasModelo.astro';
 import ResumenNacional from '../components/ResumenNacional.astro';
 import AuditoriaDatos from '../components/AuditoriaDatos.astro';
 import PanelAnalisis from '../components/analisis/PanelAnalisis.astro';
+import PanelNowcastDengue from '../components/nowcast/PanelNowcastDengue.astro';
+
+const TABS = [
+  { id: 'vigilancia', etiqueta: 'Vigilancia' },
+  { id: 'estimacion', etiqueta: 'Estimación a corto plazo' },
+];
 ---
 
 <Layout title="EPI-Aetheris — Dengue">
@@ -17,28 +23,125 @@ import PanelAnalisis from '../components/analisis/PanelAnalisis.astro';
         >¿Alerta activa? →</a
       >
     </p>
-    <div id="resumen" class="scroll-mt-24">
-      <PanelAnalisis />
+
+    <div
+      role="tablist"
+      aria-label="Vistas de dengue"
+      class="flex flex-wrap gap-1 border-b border-border"
+      data-tabs
+    >
+      {
+        TABS.map((t, i) => (
+          <button
+            type="button"
+            role="tab"
+            id={`tab-${t.id}`}
+            aria-controls={`panel-${t.id}`}
+            aria-selected={i === 0 ? 'true' : 'false'}
+            tabindex={i === 0 ? '0' : '-1'}
+            data-tab={t.id}
+            class="-mb-px rounded-t-lg border-b-2 px-3 py-2 font-sans text-sm font-medium transition-colors aria-selected:border-accent aria-selected:text-ink border-transparent text-ink-muted hover:text-ink"
+          >
+            {t.etiqueta}
+          </button>
+        ))
+      }
     </div>
 
-    <section aria-labelledby="contexto-panel-titulo" class="mt-8 scroll-mt-24">
-      <h2
-        id="contexto-panel-titulo"
-        class="font-display text-xl font-semibold text-ink"
-      >
-        Contexto y cobertura
-      </h2>
-      <div class="mt-4 flex flex-col gap-4">
-        <ResumenNacional />
-        <AuditoriaDatos />
+    <section
+      id="panel-vigilancia"
+      role="tabpanel"
+      aria-labelledby="tab-vigilancia"
+      tabindex="0"
+      class="mt-6"
+    >
+      <div id="resumen" class="scroll-mt-24">
+        <PanelAnalisis />
+      </div>
+
+      <div class="mt-8">
+        <PanelNowcastDengue variante="compacto" />
+      </div>
+
+      <section aria-labelledby="contexto-panel-titulo" class="mt-8 scroll-mt-24">
+        <h2
+          id="contexto-panel-titulo"
+          class="font-display text-xl font-semibold text-ink"
+        >
+          Contexto y cobertura
+        </h2>
+        <div class="mt-4 flex flex-col gap-4">
+          <ResumenNacional />
+          <AuditoriaDatos />
+        </div>
+      </section>
+
+      <div id="curva" class="mt-8 scroll-mt-24">
+        <CurvaEpidemicaNacional />
+      </div>
+      <div id="historico" class="mt-6 scroll-mt-24">
+        <MetricasModelo />
       </div>
     </section>
 
-    <div id="curva" class="mt-8 scroll-mt-24">
-      <CurvaEpidemicaNacional />
-    </div>
-    <div id="historico" class="mt-6 scroll-mt-24">
-      <MetricasModelo />
-    </div>
+    <section
+      id="panel-estimacion"
+      role="tabpanel"
+      aria-labelledby="tab-estimacion"
+      tabindex="0"
+      class="mt-6"
+      hidden
+    >
+      <PanelNowcastDengue variante="completo" />
+    </section>
   </main>
 </Layout>
+
+<script>
+  const tablist = document.querySelector<HTMLElement>('[data-tabs]');
+  if (tablist) {
+    const tabs = Array.from(
+      tablist.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+    );
+
+    function activar(id: string, foco = false) {
+      for (const t of tabs) {
+        const sel = t.dataset.tab === id;
+        t.setAttribute('aria-selected', sel ? 'true' : 'false');
+        t.tabIndex = sel ? 0 : -1;
+        const panel = document.getElementById(`panel-${t.dataset.tab}`);
+        if (panel) panel.hidden = !sel;
+        if (sel && foco) t.focus();
+      }
+      if (history.replaceState) {
+        const url = new URL(location.href);
+        if (id === tabs[0].dataset.tab) url.searchParams.delete('t');
+        else url.searchParams.set('t', id);
+        history.replaceState(null, '', url);
+      }
+    }
+
+    tablist.addEventListener('click', (ev) => {
+      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>(
+        '[role="tab"]',
+      );
+      if (btn?.dataset.tab) activar(btn.dataset.tab);
+    });
+
+    tablist.addEventListener('keydown', (ev) => {
+      const i = tabs.findIndex(
+        (t) => t.getAttribute('aria-selected') === 'true',
+      );
+      if (i < 0) return;
+      let j = i;
+      if (ev.key === 'ArrowRight') j = (i + 1) % tabs.length;
+      else if (ev.key === 'ArrowLeft') j = (i - 1 + tabs.length) % tabs.length;
+      else return;
+      ev.preventDefault();
+      activar(tabs[j].dataset.tab as string, true);
+    });
+
+    const inicial = new URLSearchParams(location.search).get('t');
+    if (inicial && tabs.some((t) => t.dataset.tab === inicial)) activar(inicial);
+  }
+</script>

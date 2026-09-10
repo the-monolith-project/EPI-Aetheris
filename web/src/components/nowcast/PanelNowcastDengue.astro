@@ -1,0 +1,575 @@
+---
+// Estimación de casos de dengue a corto plazo (GET /api/nowcast-dengue).
+// Artefacto precomputado por backend/ingestion/nowcast_estimacion_dengue.py:
+// método del experimento firmado (docs/experimentos/experimento-nowcast-corto-plazo.md)
+// más la calibración de intervalos CQR-r. NO es clasificación de riesgo de brote
+// ni un aviso epidemiológico -- ver docs/biblioteca/05-sensibilidad-y-honestidad.md.
+//
+// La estimación se extiende desde la ÚLTIMA SEMANA OBSERVADA de la serie, no
+// desde la fecha de hoy: OpenDengue va varios meses detrás del tiempo real. El
+// panel muestra siempre esa fecha de anclaje.
+//
+// Prop `variante`:
+//   - 'compacto'  -> solo el abanico hacia adelante + una línea de desempeño.
+//   - 'completo'  -> además el backtest 2019/2021-2024 y el detalle por año.
+
+interface Props {
+  variante?: 'compacto' | 'completo';
+}
+const { variante = 'completo' } = Astro.props;
+---
+
+<section
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+  data-nowcast
+  data-variante={variante}
+>
+  <div class="flex items-start gap-3">
+    <span
+      class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+      aria-hidden="true"></span>
+    <div>
+      <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+        Estimación de casos a corto plazo
+      </h2>
+      <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
+        Proyección estadística del conteo nacional de dengue para las próximas 1
+        a 8 semanas, con intervalo de incertidumbre, a partir de la última
+        semana observada.
+      </p>
+    </div>
+  </div>
+
+  <div
+    data-nowcast-cuerpo
+    class="mt-4"
+    role="status"
+  >
+    <div data-estado aria-hidden="true">
+      <div class="skeleton h-56 w-full sm:h-64"></div>
+      <div class="skeleton mt-3 h-3 w-2/5"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { obtenerNowcastDengue } from '../../lib/analisis-api';
+  import type {
+    EstimacionHorizonte,
+    NowcastDengue,
+    PuntoBacktestNowcast,
+    PuntoObservadoNowcast,
+  } from '../../lib/tipos-analisis';
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderErrorFuente,
+    renderSinDato,
+  } from '../estado-async';
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const fmtNum = new Intl.NumberFormat('es-SV', { maximumFractionDigits: 0 });
+  const fmtFecha = new Intl.DateTimeFormat('es-SV', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const OBS_VENTANA = 60; // semanas observadas de contexto en el abanico
+
+  function fecha(iso: string): Date {
+    return new Date(`${iso}T00:00:00`);
+  }
+
+  function el(
+    nombre: string,
+    attrs: Record<string, string | number> = {},
+  ): SVGElement {
+    const nodo = document.createElementNS(SVG_NS, nombre);
+    for (const [k, v] of Object.entries(attrs)) nodo.setAttribute(k, String(v));
+    return nodo;
+  }
+
+  interface Escalas {
+    x: (t: number) => number;
+    y: (v: number) => number;
+    ancho: number;
+    alto: number;
+    margen: { arriba: number; abajo: number; izq: number; der: number };
+  }
+
+  function crearSvg(ancho: number, alto: number, etiqueta: string): SVGSVGElement {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${ancho} ${alto}`);
+    svg.setAttribute('class', 'w-full');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', etiqueta);
+    return svg;
+  }
+
+  function ejeY(svg: SVGSVGElement, e: Escalas, maxV: number) {
+    const niveles = [0, maxV / 2, maxV];
+    for (const n of niveles) {
+      const y = e.y(n);
+      svg.appendChild(
+        el('line', {
+          x1: e.margen.izq,
+          x2: e.ancho - e.margen.der,
+          y1: y,
+          y2: y,
+          stroke: 'var(--color-border)',
+          'stroke-width': 1,
+        }),
+      );
+      const txt = el('text', {
+        x: e.margen.izq - 8,
+        y: y + 3,
+        'text-anchor': 'end',
+        'font-family': 'var(--font-sans)',
+        'font-size': 9,
+        fill: 'var(--color-ink-muted)',
+      });
+      (txt as SVGTextElement).style.fontVariantNumeric = 'tabular-nums';
+      txt.textContent = fmtNum.format(Math.round(n));
+      svg.appendChild(txt);
+    }
+  }
+
+  function bandaPath(
+    e: Escalas,
+    puntos: { t: number; lo: number; hi: number }[],
+  ): string {
+    const arriba = puntos.map((p) => `${e.x(p.t)},${e.y(p.hi)}`);
+    const abajo = puntos
+      .slice()
+      .reverse()
+      .map((p) => `${e.x(p.t)},${e.y(p.lo)}`);
+    return `M${arriba.join(' L')} L${abajo.join(' L')} Z`;
+  }
+
+  function linea(
+    e: Escalas,
+    puntos: { t: number; v: number }[],
+    color: string,
+    ancho: number,
+    guiones?: string,
+  ): SVGElement {
+    const pl = el('polyline', {
+      points: puntos.map((p) => `${e.x(p.t)},${e.y(p.v)}`).join(' '),
+      fill: 'none',
+      stroke: color,
+      'stroke-width': ancho,
+      'stroke-linejoin': 'round',
+      'stroke-linecap': 'round',
+    });
+    if (guiones) pl.setAttribute('stroke-dasharray', guiones);
+    return pl;
+  }
+
+  // --- abanico hacia adelante ------------------------------------------------
+
+  function dibujarAbanico(
+    cont: HTMLElement,
+    observado: PuntoObservadoNowcast[],
+    estimacion: EstimacionHorizonte[],
+    anclaFecha: string,
+  ) {
+    const ancho = 720;
+    const alto = 300;
+    const margen = { arriba: 16, abajo: 30, izq: 42, der: 12 };
+
+    const obs = observado.slice(-OBS_VENTANA);
+    const t0 = fecha(obs[0].fecha).getTime();
+    const dia = 86_400_000;
+    const semana = 7 * dia;
+    const tEje = (d: Date) => (d.getTime() - t0) / semana;
+
+    const serieObs = obs.map((p) => ({ t: tEje(fecha(p.fecha)), v: p.casos }));
+    const tAncla = tEje(fecha(anclaFecha));
+    const casoAncla = obs[obs.length - 1].casos;
+
+    const fan = estimacion.map((e) => ({
+      t: tEje(fecha(e.fecha)),
+      med: e.mediana,
+      b50: e.banda_50,
+      b95: e.banda_95,
+    }));
+    // el abanico arranca pegado al último punto observado
+    const anclaPunto = { t: tAncla, med: casoAncla, b50: [casoAncla, casoAncla] as [number, number], b95: [casoAncla, casoAncla] as [number, number] };
+    const fanDesdeAncla = [anclaPunto, ...fan];
+
+    const tMax = fan[fan.length - 1].t;
+    const maxV =
+      Math.max(
+        ...serieObs.map((p) => p.v),
+        ...fan.map((p) => p.b95[1]),
+      ) * 1.08;
+
+    const areaX = ancho - margen.izq - margen.der;
+    const areaY = alto - margen.arriba - margen.abajo;
+    const e: Escalas = {
+      ancho,
+      alto,
+      margen,
+      x: (t) => margen.izq + (t / tMax) * areaX,
+      y: (v) => alto - margen.abajo - (v / (maxV || 1)) * areaY,
+    };
+
+    const svg = crearSvg(
+      ancho,
+      alto,
+      `Casos de dengue observados por semana y estimación para las próximas 8 semanas desde el ${fmtFecha.format(fecha(anclaFecha))}`,
+    );
+    ejeY(svg, e, maxV);
+
+    // banda 95 y 50 del abanico
+    svg.appendChild(
+      el('path', {
+        d: bandaPath(
+          e,
+          fanDesdeAncla.map((p) => ({ t: p.t, lo: p.b95[0], hi: p.b95[1] })),
+        ),
+        fill: 'var(--color-accent)',
+        'fill-opacity': 0.1,
+        stroke: 'none',
+      }),
+    );
+    svg.appendChild(
+      el('path', {
+        d: bandaPath(
+          e,
+          fanDesdeAncla.map((p) => ({ t: p.t, lo: p.b50[0], hi: p.b50[1] })),
+        ),
+        fill: 'var(--color-accent)',
+        'fill-opacity': 0.22,
+        stroke: 'none',
+      }),
+    );
+
+    // línea observada
+    svg.appendChild(linea(e, serieObs, 'var(--color-accent)', 1.9));
+    // mediana estimada (punteada), desde el ancla
+    svg.appendChild(
+      linea(
+        e,
+        fanDesdeAncla.map((p) => ({ t: p.t, v: p.med })),
+        'var(--color-accent)',
+        1.9,
+        '3 3',
+      ),
+    );
+
+    // marca de anclaje
+    svg.appendChild(
+      el('line', {
+        x1: e.x(tAncla),
+        x2: e.x(tAncla),
+        y1: margen.arriba,
+        y2: alto - margen.abajo,
+        stroke: 'var(--color-ink-muted)',
+        'stroke-width': 1,
+        'stroke-dasharray': '2 2',
+      }),
+    );
+    svg.appendChild(
+      el('circle', {
+        cx: e.x(tAncla),
+        cy: e.y(casoAncla),
+        r: 3,
+        fill: 'var(--color-accent)',
+        stroke: 'var(--color-surface)',
+        'stroke-width': 1.5,
+      }),
+    );
+
+    // etiquetas de año en el eje X
+    const aniosVistos = new Set<number>();
+    for (const p of obs) {
+      const d = fecha(p.fecha);
+      const a = d.getFullYear();
+      if (aniosVistos.has(a)) continue;
+      aniosVistos.add(a);
+      const x = e.x(tEje(d));
+      const txt = el('text', {
+        x,
+        y: alto - 8,
+        'font-family': 'var(--font-sans)',
+        'font-size': 10,
+        fill: 'var(--color-ink-muted)',
+      });
+      (txt as SVGTextElement).style.fontVariantNumeric = 'tabular-nums';
+      txt.textContent = String(a);
+      svg.appendChild(txt);
+    }
+
+    cont.replaceChildren(svg);
+  }
+
+  // --- backtest -------------------------------------------------------------
+
+  function dibujarBacktest(cont: HTMLElement, puntos: PuntoBacktestNowcast[]) {
+    const ancho = 720;
+    const alto = 240;
+    const margen = { arriba: 16, abajo: 30, izq: 42, der: 12 };
+
+    const t0 = fecha(puntos[0].fecha).getTime();
+    const semana = 7 * 86_400_000;
+    const tEje = (iso: string) => (fecha(iso).getTime() - t0) / semana;
+    const tMax = tEje(puntos[puntos.length - 1].fecha);
+
+    const maxV =
+      Math.max(
+        ...puntos.map((p) => Math.max(p.observado, p.banda_95[1])),
+      ) * 1.08;
+
+    const areaX = ancho - margen.izq - margen.der;
+    const areaY = alto - margen.arriba - margen.abajo;
+    const e: Escalas = {
+      ancho,
+      alto,
+      margen,
+      x: (t) => margen.izq + (t / tMax) * areaX,
+      y: (v) => alto - margen.abajo - (v / (maxV || 1)) * areaY,
+    };
+
+    const svg = crearSvg(
+      ancho,
+      alto,
+      'Validación: casos observados frente a la estimación a cuatro semanas en las temporadas de prueba',
+    );
+    ejeY(svg, e, maxV);
+
+    // segmentar por año para no unir a través de los huecos (2020 excluido)
+    const porAnio = new Map<number, PuntoBacktestNowcast[]>();
+    for (const p of puntos) {
+      const arr = porAnio.get(p.anio) ?? [];
+      arr.push(p);
+      porAnio.set(p.anio, arr);
+    }
+
+    for (const [, arr] of porAnio) {
+      svg.appendChild(
+        el('path', {
+          d: bandaPath(
+            e,
+            arr.map((p) => ({
+              t: tEje(p.fecha),
+              lo: p.banda_50[0],
+              hi: p.banda_50[1],
+            })),
+          ),
+          fill: 'var(--color-accent)',
+          'fill-opacity': 0.18,
+          stroke: 'none',
+        }),
+      );
+      svg.appendChild(
+        linea(
+          e,
+          arr.map((p) => ({ t: tEje(p.fecha), v: p.mediana })),
+          'var(--color-accent)',
+          1.6,
+          '3 3',
+        ),
+      );
+      svg.appendChild(
+        linea(
+          e,
+          arr.map((p) => ({ t: tEje(p.fecha), v: p.observado })),
+          'var(--color-ink)',
+          1.7,
+        ),
+      );
+    }
+
+    const aniosVistos = new Set<number>();
+    for (const p of puntos) {
+      if (aniosVistos.has(p.anio)) continue;
+      aniosVistos.add(p.anio);
+      const x = e.x(tEje(p.fecha));
+      const txt = el('text', {
+        x,
+        y: alto - 8,
+        'font-family': 'var(--font-sans)',
+        'font-size': 10,
+        fill: 'var(--color-ink-muted)',
+      });
+      (txt as SVGTextElement).style.fontVariantNumeric = 'tabular-nums';
+      txt.textContent = String(p.anio);
+      svg.appendChild(txt);
+    }
+
+    cont.replaceChildren(svg);
+  }
+
+  // --- helpers de layout HTML ---------------------------------------------
+
+  function chip(texto: string, fuerte = false): HTMLElement {
+    const s = document.createElement('span');
+    s.className = fuerte
+      ? 'inline-flex items-center rounded-full bg-accent/12 px-2.5 py-1 font-sans text-xs font-semibold text-accent'
+      : 'inline-flex items-center rounded-full border border-border px-2.5 py-1 font-sans text-xs text-ink-muted';
+    s.textContent = texto;
+    return s;
+  }
+
+  function bloque(titulo: string): HTMLElement {
+    const h = document.createElement('h3');
+    h.className =
+      'mt-6 font-sans text-sm font-semibold text-ink';
+    h.textContent = titulo;
+    return h;
+  }
+
+  function leyenda(items: [string, string][]): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className =
+      'mt-2 flex flex-wrap gap-x-4 gap-y-1 font-sans text-[11px] text-ink-muted';
+    for (const [color, texto] of items) {
+      const it = document.createElement('span');
+      it.className = 'inline-flex items-center gap-1.5';
+      const sw = document.createElement('span');
+      sw.className = 'inline-block h-2 w-4 rounded-sm';
+      sw.style.background = color;
+      it.append(sw, document.createTextNode(texto));
+      wrap.appendChild(it);
+    }
+    return wrap;
+  }
+
+  function render(cont: HTMLElement, datos: NowcastDengue, completo: boolean) {
+    if (
+      !datos.ancla ||
+      !datos.observado?.length ||
+      !datos.estimacion?.length ||
+      !datos.desempeno
+    ) {
+      renderSinDato(cont, 'La estimación no está disponible todavía.');
+      return;
+    }
+    const d = datos.desempeno;
+    cont.replaceChildren();
+
+    // abanico
+    const contAbanico = document.createElement('div');
+    contAbanico.className =
+      'overflow-x-auto rounded-xl border border-border bg-bg p-3 sm:p-4';
+    cont.appendChild(contAbanico);
+    dibujarAbanico(contAbanico, datos.observado, datos.estimacion, datos.ancla.fecha);
+
+    cont.appendChild(
+      leyenda([
+        ['var(--color-accent)', 'observado'],
+        ['color-mix(in srgb, var(--color-accent) 22%, transparent)', 'rango 50 %'],
+        ['color-mix(in srgb, var(--color-accent) 10%, transparent)', 'rango 95 %'],
+      ]),
+    );
+
+    const nota = document.createElement('p');
+    nota.className = 'mt-3 font-sans text-xs leading-relaxed text-ink-muted';
+    nota.textContent = `La estimación parte de la última semana observada (${fmtFecha.format(fecha(datos.ancla.fecha))}, ${fmtNum.format(datos.ancla.casos)} casos). La fuente pública se actualiza con retraso; no es una lectura de la semana en curso.`;
+    cont.appendChild(nota);
+
+    // desempeño
+    const chips = document.createElement('div');
+    chips.className = 'mt-4 flex flex-wrap gap-2';
+    const pct = Math.round(d.reduccion_wis * 100);
+    chips.append(
+      chip(`${pct > 0 ? '−' : '+'}${Math.abs(pct)} % de error frente a la persistencia`, true),
+      chip(`mejor en ${d.anios_ganados} de ${d.n_anios} temporadas de prueba`),
+      chip(`horizonte de referencia: ${d.horizonte} semanas`),
+    );
+    cont.appendChild(chips);
+
+    if (completo) {
+      cont.appendChild(bloque('Cómo se comportó en las temporadas de prueba'));
+      const p = document.createElement('p');
+      p.className = 'mt-1 font-sans text-xs leading-relaxed text-ink-muted';
+      p.textContent =
+        'Validación temporal sin fuga: en cada semana de 2019 y 2021–2024 el modelo solo vio datos anteriores. Línea oscura, lo observado; línea punteada y banda, la estimación a cuatro semanas.';
+      cont.appendChild(p);
+
+      if (datos.backtest?.puntos?.length) {
+        const contBt = document.createElement('div');
+        contBt.className =
+          'mt-3 overflow-x-auto rounded-xl border border-border bg-bg p-3 sm:p-4';
+        cont.appendChild(contBt);
+        dibujarBacktest(contBt, datos.backtest.puntos);
+        cont.appendChild(
+          leyenda([
+            ['var(--color-ink)', 'observado'],
+            ['color-mix(in srgb, var(--color-accent) 60%, transparent)', 'estimación (mediana)'],
+            ['color-mix(in srgb, var(--color-accent) 18%, transparent)', 'rango 50 %'],
+          ]),
+        );
+      }
+
+      // detalle por año
+      const anios = Object.keys(d.skill_por_anio);
+      if (anios.length) {
+        const tabla = document.createElement('div');
+        tabla.className =
+          'mt-4 grid gap-2 sm:grid-cols-5';
+        for (const a of anios) {
+          const celda = document.createElement('div');
+          celda.className =
+            'rounded-lg border border-border bg-bg px-3 py-2 text-center';
+          const v = d.skill_por_anio[a];
+          celda.innerHTML = '';
+          const anioEl = document.createElement('div');
+          anioEl.className = 'font-sans text-xs text-ink-muted';
+          anioEl.textContent = a;
+          const valEl = document.createElement('div');
+          valEl.className =
+            'mt-0.5 font-sans text-sm font-semibold tabular-nums ' +
+            (v > 0 ? 'text-accent' : 'text-ink');
+          valEl.textContent = `${v > 0 ? '−' : '+'}${Math.abs(Math.round(v * 100))} %`;
+          celda.append(anioEl, valEl);
+          tabla.appendChild(celda);
+        }
+        cont.appendChild(tabla);
+        const leyendaTabla = document.createElement('p');
+        leyendaTabla.className =
+          'mt-2 font-sans text-[11px] leading-relaxed text-ink-muted';
+        leyendaTabla.textContent =
+          'Reducción del error de intervalo (WIS) respecto a la persistencia, por temporada.';
+        cont.appendChild(leyendaTabla);
+      }
+
+      if (datos.nota_alcance) {
+        const alc = document.createElement('p');
+        alc.className =
+          'mt-5 rounded-lg border border-secondary bg-secondary/20 p-3 font-sans text-xs leading-relaxed text-ink';
+        alc.textContent = datos.nota_alcance;
+        cont.appendChild(alc);
+      }
+    }
+
+    const pie = document.createElement('p');
+    pie.className = 'mt-4 font-sans text-xs leading-relaxed text-ink-muted';
+    pie.innerHTML =
+      'Estimación estadística del conteo de casos, no una clasificación de riesgo de brote ni un aviso epidemiológico. ' +
+      '<a class="text-accent underline underline-offset-2" href="/biblioteca/05-sensibilidad-y-honestidad">Alcance y método</a>.';
+    cont.appendChild(pie);
+  }
+
+  async function iniciar() {
+    const secciones = document.querySelectorAll<HTMLElement>('[data-nowcast]');
+    for (const sec of secciones) {
+      const cont = sec.querySelector<HTMLElement>('[data-nowcast-cuerpo]');
+      if (!cont) continue;
+      const completo = sec.dataset.variante !== 'compacto';
+      try {
+        const datos = await obtenerNowcastDengue();
+        if (esNoDisponible(datos)) {
+          renderSinDato(cont, motivoNoDisponible(datos));
+          continue;
+        }
+        render(cont, datos, completo);
+      } catch {
+        renderErrorFuente(cont, () => void iniciar());
+      }
+    }
+  }
+
+  iniciar();
+</script>

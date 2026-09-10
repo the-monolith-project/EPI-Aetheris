@@ -1,6 +1,6 @@
 ---
 titulo: "Sensibilidad y honestidad"
-descripcion: "Deslindes del sistema: no diagnostica, no predice, solo datos agregados, métricas visibles y un aporte de ingeniería — no de novedad epidemiológica."
+descripcion: "Deslindes del sistema: no diagnostica, no clasifica riesgo de brote, solo datos agregados y una estimación de horizonte corto con alcance declarado, métricas visibles y un aporte de ingeniería — no de novedad epidemiológica."
 orden: 5
 categoria: "Datos y método"
 ---
@@ -14,12 +14,25 @@ EPI-Aetheris es una herramienta de **vigilancia descriptiva**. Cruza series púb
 No es:
 
 - un **diagnóstico** de un paciente;
-- un **pronóstico** de la semana que viene;
+- una **clasificación de riesgo de brote** (alto/medio/bajo) ni un aviso de que se acerca un brote;
 - una **certeza clínica**;
 - una **recomendación médica** redactada por el sistema;
 - un **descubrimiento epidemiológico** nuevo.
 
 La interfaz no debe afirmar que un color del mapa "es" un brote, ni que un percentil alto "anticipa" un ascenso. Un valor de M1, M2 o M3 describe el clima o los casos **ya observados**. Quien prioriza fumigación, camas o campañas lo hace con ese contexto más el juicio del personal de salud — no sustituyendo ese juicio.
+
+## Estimación de casos a corto plazo
+
+Desde septiembre de 2026 la página de dengue incluye una **estimación estadística de horizonte corto**: a partir de la última semana observada de la serie nacional (OpenDengue), proyecta el conteo de casos de las siguientes 1 a 8 semanas con un intervalo de incertidumbre calibrado.
+
+Qué es y qué no es:
+
+- Es una **extrapolación de la propia serie de casos** —con estacionalidad y clima como apoyo—, no una lectura de transmisión ni un juicio clínico. No dice "habrá brote"; dice "si la serie se comporta como su historia, el conteo de la semana t+k caerá con probabilidad P en tal rango".
+- Se extiende **desde la última semana observada, no desde la fecha de hoy**. La fuente pública va varios meses detrás del tiempo real; el gráfico muestra la fecha de anclaje.
+- Su **alcance está declarado**: el método sólo mantiene ventaja sobre una extrapolación ingenua (persistencia) cuando el historial de entrenamiento ya contiene una temporada de brote grande. Sin ese precedente no aporta y no se debe usar.
+- Su **desempeño está a la vista**: en validación temporal sin fuga sobre 2019 y 2021–2024 reduce el error de intervalo (WIS) frente a la persistencia en las cinco temporadas de prueba. El número y el protocolo acompañan a la estimación y se documentan en `docs/experimentos/experimento-nowcast-corto-plazo.md`, que incluye una segunda confirmación independiente (reimplementación desde cero de las métricas y la validación).
+
+Esto es distinto del clasificador de riesgo de brote que se retiró (sección siguiente): otro objetivo —conteo con intervalo, no clase alto/medio/bajo—, otra validación —WIS y confirmación independiente— y un alcance explícito en vez de una promesa general. No es una reactivación de aquel modelo.
 
 El coordinador precisó el 7 de septiembre de 2026 el borde fino de esta regla. **Sí está permitido** mostrar recomendaciones de prevención **ya publicadas** por OPS/OMS o MINSAL, citando la fuente: tarjetas del tipo "elimine criaderos, revise depósitos de agua". Reproducir una guía pública no es diagnosticar ni predecir. **No está permitido** que el sistema *redacte* indicaciones clínicas propias, ni que las derive automáticamente del nivel de M1–M3, de M4 o del clasificador retirado. M4 describe calidad del dato (completitud, cuadre, antigüedad), no transmisión.
 
