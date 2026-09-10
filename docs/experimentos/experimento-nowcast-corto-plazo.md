@@ -324,13 +324,82 @@ Detalle: `docs/experimentos/nowcast-segunda-confirmacion.md`.
 
 **Veredicto de la confirmación: el resultado 2014+ se sostiene, con matices.**
 
+### Calibración de intervalos (2026-09-09)
+
+Script: `backend/ingestion/experimento_nowcast_calibracion.py` (reutiliza toda la máquina del
+original; solo lectura de Postgres; sin dependencia nueva). Salida en
+`data/interim/nowcast_calibracion/` (gitignored).
+
+**Precisión sobre el punto de partida:** el criterio *firmado* pide cobertura al 50 % en
+[0.35, 0.65] y al 95 % en [0.85, 0.99]. El modelo sin calibrar ya cumple ambas en las cuatro
+celdas de 2014+ (cob50 0.40–0.52, cob95 0.92–0.95). Calibrar **no era necesario para cumplir**;
+el pendiente venía de la observación de que los intervalos corren estrechos respecto al nominal
+(0.40 vs 0.50 al 50 % a h=4 y h=8). Esta sección mide qué cuesta apretarlos.
+
+Tres variantes, misma pasada, todas con reajuste cada 2 semanas y los 52 pares con objetivo más
+reciente reservados como conjunto de calibración:
+
+- **sin_calibrar** — el modelo tal cual, ajustado con todos los pares (referencia).
+- **cqr_r** — conformal escalado (Romano et al. 2019, variante "r"): la conformidad y la
+  corrección son *multiplicativas* sobre el semiancho del intervalo, estable ante
+  heterocedasticidad. El score se winsoriza al p90 y el factor se topa en 4.0 porque con
+  n_cal = 52 el score crudo lo domina una sola semana de brote (sin esos topes el WIS explota a
+  ~1e12). Consecuencia: para los pares 90 / 95 / 98 % la corrección colapsa al mismo factor, así
+  que **cqr_r es un heurístico, no conformal estricto, en los intervalos externos**.
+- **inflado_global** — un escalar único sobre `(q − mediana)`, ajustado en calibración para que
+  el intervalo 80 % dé el nominal. Comparación ingenua.
+
+Resultados (WIS natural agrupado; veredicto = criterio firmado + no quedar peor en WIS agrupado):
+
+| Ventana | h | variante | WIS | skill/año | años | cob50 | cob95 | veredicto |
+|---|---|---|---|---|---|---|---|---|
+| 2014+ | 1 | sin_calibrar | 33.7 | +0.31 | 5/5 | 0.52 | 0.95 | CUMPLE |
+| 2014+ | 1 | cqr_r | 35.6 | +0.28 | 5/5 | 0.58 | 0.92 | CUMPLE |
+| 2014+ | 1 | inflado_global | 36.1 | +0.24 | 5/5 | 0.53 | 0.97 | CUMPLE |
+| 2014+ | 2 | sin_calibrar | 38.3 | +0.31 | 5/5 | 0.46 | 0.95 | CUMPLE |
+| 2014+ | 2 | cqr_r | 37.9 | +0.29 | 5/5 | 0.60 | 0.91 | CUMPLE |
+| 2014+ | 2 | inflado_global | 38.6 | +0.25 | 5/5 | 0.58 | 0.96 | CUMPLE |
+| 2014+ | 4 | sin_calibrar | 53.1 | +0.33 | 5/5 | 0.42 | 0.94 | CUMPLE |
+| 2014+ | 4 | cqr_r | 56.6 | +0.29 | 5/5 | 0.55 | 0.88 | CUMPLE |
+| 2014+ | 4 | inflado_global | 58.8 | +0.21 | 5/5 | 0.55 | 0.96 | CUMPLE |
+| 2014+ | 8 | sin_calibrar | 75.1 | +0.37 | 5/5 | 0.40 | 0.92 | CUMPLE |
+| 2014+ | 8 | cqr_r | 78.8 | +0.35 | 5/5 | 0.57 | 0.88 | CUMPLE |
+| 2014+ | 8 | inflado_global | 88.3 | +0.19 | 4/5 | 0.54 | 0.99 | CUMPLE |
+| 2016+ | 4 | sin_calibrar | 78.2 | +0.23 | 4/5 | 0.38 | 0.85 | NO CUMPLE |
+| 2016+ | 4 | cqr_r | 90.8 | +0.04 | 2/5 | 0.55 | 0.85 | NO CUMPLE |
+| 2016+ | 4 | inflado_global | 105.8 | −0.46 | 2/5 | 0.56 | 0.88 | NO CUMPLE |
+
+(2016+ h=1/2/8 igual: calibrar tira el skill a ≤ 0 y baja a 2/5 años. Tabla completa en los JSON.)
+
+**Lectura:**
+
+1. **En 2014+, `cqr_r` arregla el intervalo estrecho a costo aceptable.** Lleva cob50 de
+   0.40–0.52 a 0.55–0.60 (nominal 0.50) en los cuatro horizontes, mantiene cob95 dentro de la
+   banda firmada (0.88–0.92), no cambia ningún veredicto (5/5 años, CUMPLE) y el skill medio
+   cede solo 0.02–0.05. El WIS sube 3–5 puntos (~5–7 %); a h=2 incluso baja. Cob95 queda por
+   debajo del nominal (0.88 a h=4/8) — coherente con que cqr_r es heurístico en las colas.
+2. **`inflado_global` también corrige la cobertura, pero cuesta 2–3× más y de forma ciega al
+   régimen.** Compra el ensanchamiento sobre todo en los años tranquilos: a h=4 el skill de 2021
+   (año de baja incidencia) cae de +0.36 a +0.01 y el de 2022 de +0.15 a +0.10, mientras 2019
+   casi no se mueve. A h=8 pierde un año (4/5). Un escalar único no distingue "semana de valle"
+   de "semana de brote". Se descarta.
+3. **En 2016+ cualquier calibración es catastrófica.** Con una ventana de calibración de 52
+   semanas sin brote previo, el conjunto de calibración no representa el régimen del año de
+   prueba: el skill se va a ≤ 0 y se pierden dos años. Es el mismo mecanismo de fragilidad ya
+   documentado — en esa ventana el modelo no se debe usar, calibrado o no.
+
+**Recomendación:** adoptar `cqr_r` como capa de intervalos únicamente en el régimen 2014+
+(historia con brote grande precedente). Cierra el pendiente 3: el intervalo estrecho tiene
+arreglo y el arreglo no rompe el resultado. Sigue sin autorizar nada en la UI.
+
 ### Qué falta antes de cualquier uso (decisión 5)
 
 1. ~~Verificar 2014–2015 contra MINSAL/OPS~~ — **hecho 2026-09-09**. 2014+ es la ventana principal;
    2016+ queda como chequeo de robustez.
 2. ~~Segunda confirmación independiente~~ — **hecha 2026-09-09**, ver arriba. Sin grietas en el
    pipeline; 2014+ se sostiene con matices.
-3. **Calibración de intervalos**: ensanchar la incertidumbre (cobertura al 50 % corre en ~0.40).
+3. ~~Calibración de intervalos~~ — **hecha 2026-09-09**, ver arriba. `cqr_r` lleva la cobertura
+   al 50 % de ~0.40 a ~0.55 sin cambiar el veredicto en 2014+; en 2016+ calibrar rompe todo.
 4. **Regla de historia mínima**: formalizar el tope de magnitud del modelo de árboles y el criterio
    de "precedente comparable en entrenamiento" antes de exponer cualquier cifra.
 5. **Probar el mecanismo de fragilidad en una segunda serie/ventana** (matiz de la confirmación:
