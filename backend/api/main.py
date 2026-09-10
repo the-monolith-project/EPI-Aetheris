@@ -531,17 +531,17 @@ def riesgo_nacional(
 NOWCAST_DENGUE_PATH = Path(__file__).parent / "datos" / "nowcast_dengue.json"
 
 AVISO_HONESTIDAD_NOWCAST_DENGUE = (
-    "Estimacion estadistica de horizonte corto sobre la serie nacional agregada "
+    "Prediccion estadistica de horizonte corto sobre la serie nacional agregada "
     "de dengue (OpenDengue). Se extiende desde la ultima semana observada, no "
     "desde la fecha actual: la fuente publica va varios meses detras del tiempo "
-    "real. No es una clasificacion de riesgo ni un aviso epidemiologico."
+    "real."
 )
 
 
 @app.get("/api/nowcast-dengue")
 @limiter.limit(RATE_LIMIT_HEAVY)
 def nowcast_dengue(request: Request, response: Response):
-    """Artefacto de estimacion de horizonte corto de dengue, precomputado por
+    """Artefacto de prediccion de horizonte corto de dengue, precomputado por
     backend/ingestion/nowcast_estimacion_dengue.py (metodo del experimento
     firmado + calibracion CQR-r). Se sirve tal cual desde el JSON versionado;
     no recalcula nada por request. Si el archivo falta -- despliegue sin el
@@ -551,7 +551,7 @@ def nowcast_dengue(request: Request, response: Response):
         _cache_control(response, CACHE_TTL_COMPUTO)
         return {
             "disponible": False,
-            "motivo": "El artefacto de estimacion de horizonte corto no esta generado en este despliegue.",
+            "motivo": "El artefacto de prediccion de horizonte corto no esta generado en este despliegue.",
             "aviso": AVISO_HONESTIDAD_NOWCAST_DENGUE,
         }
     datos = json.loads(NOWCAST_DENGUE_PATH.read_text(encoding="utf-8"))

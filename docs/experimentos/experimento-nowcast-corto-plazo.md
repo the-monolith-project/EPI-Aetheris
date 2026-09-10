@@ -187,6 +187,10 @@ POSTGRES_HOST=localhost ../.venv/bin/python experimento_nowcast_corto_plazo.py -
    no repetir la vara que la Vía 2 no alcanzó (3/5 → no adoptada). Ver "Enmiendas".
 5. **Qué habilita un positivo.** Un positivo **no** autoriza lenguaje de predicción en el producto;
    exige una segunda confirmación independiente antes de cualquier exposición en la UI.
+   *(Actualización 2026-09-09: la segunda confirmación se completó — ver abajo — y Eduardo levantó
+   el veto a la palabra "predicción": existía por la creencia inicial de que ni un proto-predictor
+   era viable, que el experimento refutó. La UI de `/dengue` expone la predicción; ver
+   `docs/biblioteca/05-sensibilidad-y-honestidad.md` y `docs/contexto/02-decisiones-abiertas.md`.)*
 
 ## Enmiendas al documento firmado
 

@@ -1,11 +1,11 @@
 ---
-// Estimación de casos de dengue a corto plazo (GET /api/nowcast-dengue).
+// Predicción de casos de dengue a corto plazo (GET /api/nowcast-dengue).
 // Artefacto precomputado por backend/ingestion/nowcast_estimacion_dengue.py:
 // método del experimento firmado (docs/experimentos/experimento-nowcast-corto-plazo.md)
-// más la calibración de intervalos CQR-r. NO es clasificación de riesgo de brote
-// ni un aviso epidemiológico -- ver docs/biblioteca/05-sensibilidad-y-honestidad.md.
+// más la calibración de intervalos CQR-r. Detalle de método y validación en
+// docs/biblioteca/05-sensibilidad-y-honestidad.md.
 //
-// La estimación se extiende desde la ÚLTIMA SEMANA OBSERVADA de la serie, no
+// La predicción se extiende desde la ÚLTIMA SEMANA OBSERVADA de la serie, no
 // desde la fecha de hoy: OpenDengue va varios meses detrás del tiempo real. El
 // panel muestra siempre esa fecha de anclaje.
 //
@@ -30,10 +30,10 @@ const { variante = 'completo' } = Astro.props;
       aria-hidden="true"></span>
     <div>
       <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
-        Estimación de casos a corto plazo
+        Predicción de casos a corto plazo
       </h2>
       <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
-        Proyección estadística del conteo nacional de dengue para las próximas 1
+        Predicción estadística del conteo nacional de dengue para las próximas 1
         a 8 semanas, con intervalo de incertidumbre, a partir de la última
         semana observada.
       </p>
@@ -217,7 +217,7 @@ const { variante = 'completo' } = Astro.props;
     const svg = crearSvg(
       ancho,
       alto,
-      `Casos de dengue observados por semana y estimación para las próximas 8 semanas desde el ${fmtFecha.format(fecha(anclaFecha))}`,
+      `Casos de dengue observados por semana y predicción para las próximas 8 semanas desde el ${fmtFecha.format(fecha(anclaFecha))}`,
     );
     ejeY(svg, e, maxV);
 
@@ -334,7 +334,7 @@ const { variante = 'completo' } = Astro.props;
     const svg = crearSvg(
       ancho,
       alto,
-      'Validación: casos observados frente a la estimación a cuatro semanas en las temporadas de prueba',
+      'Validación: casos observados frente a la predicción a cuatro semanas en las temporadas de prueba',
     );
     ejeY(svg, e, maxV);
 
@@ -443,7 +443,7 @@ const { variante = 'completo' } = Astro.props;
       !datos.estimacion?.length ||
       !datos.desempeno
     ) {
-      renderSinDato(cont, 'La estimación no está disponible todavía.');
+      renderSinDato(cont, 'La predicción no está disponible todavía.');
       return;
     }
     const d = datos.desempeno;
@@ -466,7 +466,7 @@ const { variante = 'completo' } = Astro.props;
 
     const nota = document.createElement('p');
     nota.className = 'mt-3 font-sans text-xs leading-relaxed text-ink-muted';
-    nota.textContent = `La estimación parte de la última semana observada (${fmtFecha.format(fecha(datos.ancla.fecha))}, ${fmtNum.format(datos.ancla.casos)} casos). La fuente pública se actualiza con retraso; no es una lectura de la semana en curso.`;
+    nota.textContent = `La predicción parte de la última semana observada de la serie pública (${fmtFecha.format(fecha(datos.ancla.fecha))}, ${fmtNum.format(datos.ancla.casos)} casos), que se actualiza con retraso.`;
     cont.appendChild(nota);
 
     // desempeño
@@ -485,7 +485,7 @@ const { variante = 'completo' } = Astro.props;
       const p = document.createElement('p');
       p.className = 'mt-1 font-sans text-xs leading-relaxed text-ink-muted';
       p.textContent =
-        'Validación temporal sin fuga: en cada semana de 2019 y 2021–2024 el modelo solo vio datos anteriores. Línea oscura, lo observado; línea punteada y banda, la estimación a cuatro semanas.';
+        'Validación temporal sin fuga: en cada semana de 2019 y 2021–2024 el modelo solo vio datos anteriores. Línea oscura, lo observado; línea punteada y banda, la predicción a cuatro semanas.';
       cont.appendChild(p);
 
       if (datos.backtest?.puntos?.length) {
@@ -497,7 +497,7 @@ const { variante = 'completo' } = Astro.props;
         cont.appendChild(
           leyenda([
             ['var(--color-ink)', 'observado'],
-            ['color-mix(in srgb, var(--color-accent) 60%, transparent)', 'estimación (mediana)'],
+            ['color-mix(in srgb, var(--color-accent) 60%, transparent)', 'predicción (mediana)'],
             ['color-mix(in srgb, var(--color-accent) 18%, transparent)', 'rango 50 %'],
           ]),
         );
@@ -535,20 +535,13 @@ const { variante = 'completo' } = Astro.props;
         cont.appendChild(leyendaTabla);
       }
 
-      if (datos.nota_alcance) {
-        const alc = document.createElement('p');
-        alc.className =
-          'mt-5 rounded-lg border border-secondary bg-secondary/20 p-3 font-sans text-xs leading-relaxed text-ink';
-        alc.textContent = datos.nota_alcance;
-        cont.appendChild(alc);
-      }
     }
 
     const pie = document.createElement('p');
     pie.className = 'mt-4 font-sans text-xs leading-relaxed text-ink-muted';
     pie.innerHTML =
-      'Estimación estadística del conteo de casos, no una clasificación de riesgo de brote ni un aviso epidemiológico. ' +
-      '<a class="text-accent underline underline-offset-2" href="/biblioteca/05-sensibilidad-y-honestidad">Alcance y método</a>.';
+      'Predicción estadística del conteo nacional de casos de dengue. ' +
+      '<a class="text-accent underline underline-offset-2" href="/biblioteca/05-sensibilidad-y-honestidad">Método y validación</a>.';
     cont.appendChild(pie);
   }
 
