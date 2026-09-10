@@ -161,17 +161,31 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
       : 'contents';
   }
 
-  function cerrarMenus(): void {
-    document
-      .querySelectorAll<HTMLElement>('[data-menu-panel]')
-      .forEach((menu) => {
-        menu.hidden = true;
-      });
-    document
-      .querySelectorAll<HTMLButtonElement>('[data-boton-menu-panel]')
-      .forEach((boton) => {
-        boton.setAttribute('aria-expanded', 'false');
-      });
+  function cerrarMenus(devolverFoco = false): void {
+    const menus = document.querySelectorAll<HTMLElement>('[data-menu-panel]');
+    const botones = document.querySelectorAll<HTMLButtonElement>(
+      '[data-boton-menu-panel]',
+    );
+
+    let menuAbiertoId: string | null = null;
+
+    menus.forEach((menu) => {
+      if (!menu.hidden) {
+        menuAbiertoId = menu.dataset.menuPanel ?? null;
+      }
+      menu.hidden = true;
+    });
+
+    botones.forEach((boton) => {
+      boton.setAttribute('aria-expanded', 'false');
+      if (
+        devolverFoco &&
+        menuAbiertoId &&
+        boton.dataset.botonMenuPanel === menuAbiertoId
+      ) {
+        boton.focus();
+      }
+    });
   }
 
   paneles.forEach((panel) => {
@@ -184,6 +198,7 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
     boton.type = 'button';
     boton.dataset.botonMenuPanel = id;
     boton.setAttribute('aria-label', `Opciones de ${etiqueta}`);
+    boton.setAttribute('aria-haspopup', 'menu');
     boton.setAttribute('aria-expanded', 'false');
     boton.setAttribute('aria-controls', menuId);
     boton.className =
@@ -231,7 +246,7 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
   });
 
   document.addEventListener('keydown', (evento) => {
-    if (evento.key === 'Escape') cerrarMenus();
+    if (evento.key === 'Escape') cerrarMenus(true);
   });
   document.addEventListener('click', (evento) => {
     if (

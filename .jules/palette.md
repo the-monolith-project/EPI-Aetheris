@@ -16,3 +16,6 @@
 ## 2026-09-05 - Range Sliders Accessibility
 **Learning:** Multiple range sliders (e.g., dual thumbs for min/max) inside a single wrapping `<label>` tag lack individual context for screen readers. The wrapper text becomes an ambiguous group label.
 **Action:** Always add explicit `aria-label` attributes to each `<input type="range">` when multiple inputs share the same visible label to distinguish their specific functions (e.g., 'Semana inicial' vs 'Semana final').
+## 2026-09-10 - Popovers, Menus, and Focus Management
+**Learning:** Custom popovers and dropdown menus without explicit `aria-haspopup` attributes (`dialog` or `menu`) prevent screen readers from announcing that a button controls a complex interactive overlay. Furthermore, closing these overlays via the Escape key without returning keyboard focus to the triggering button completely breaks keyboard navigation flow.
+**Action:** Always add `aria-haspopup="dialog"` (for complex panels with multiple controls) or `aria-haspopup="menu"` (for simple lists of actions) to buttons that open overlays. When implementing custom 'Escape' key handlers to close these overlays, ensure the function explicitly calls `.focus()` on the originating button to preserve the user's place in the tab order.
