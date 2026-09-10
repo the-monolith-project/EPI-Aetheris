@@ -14,6 +14,15 @@ const TABS = [
 ---
 
 <Layout title="EPI-Aetheris — Dengue">
+  {/* Modo presentación para grabar el video de la demo (?demo=1, ?demo=lento).
+     Se activa lo antes posible para minimizar el parpadeo del header. */}
+  <script is:inline>
+    try {
+      if (new URLSearchParams(location.search).has('demo')) {
+        document.documentElement.classList.add('demo-presentacion');
+      }
+    } catch (_) {}
+  </script>
   <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
     <p class="mb-6 font-sans text-sm">
       <a
@@ -145,3 +154,77 @@ const TABS = [
     if (inicial && tabs.some((t) => t.dataset.tab === inicial)) activar(inicial);
   }
 </script>
+
+<script>
+  // ITEM 10: transición de entrada del panel al activar una pestaña. No toca
+  // activar() ni el manejo de ?t=; solo observa cuándo un tabpanel deja de
+  // estar oculto y le aplica una clase de animación (fade + leve subida).
+  const paneles = document.querySelectorAll<HTMLElement>('[role="tabpanel"]');
+  if (paneles.length) {
+    const observador = new MutationObserver((mutaciones) => {
+      for (const m of mutaciones) {
+        const el = m.target as HTMLElement;
+        if (m.attributeName === 'hidden' && !el.hidden) {
+          el.classList.remove('panel-transicion');
+          void el.offsetWidth;
+          el.classList.add('panel-transicion');
+        }
+      }
+    });
+    for (const p of paneles) {
+      observador.observe(p, { attributes: true, attributeFilter: ['hidden'] });
+    }
+  }
+</script>
+
+<style is:global>
+  /* ITEM 1: modo presentación (solo /dengue, solo con ?demo). Sin la clase
+     en <html> la página queda idéntica. */
+  html.demo-presentacion body > header,
+  html.demo-presentacion body > footer {
+    display: none !important;
+  }
+  html.demo-presentacion body > main {
+    max-width: none !important;
+    padding: 1.5rem 3rem 2rem !important;
+  }
+  html.demo-presentacion body > main > p:has(a[data-enlace-alertas]) {
+    display: none !important;
+  }
+  html.demo-presentacion [data-tabs] {
+    display: none !important;
+  }
+  html.demo-presentacion #panel-prediccion:not([hidden]) {
+    margin-top: 0 !important;
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  html.demo-presentacion #panel-prediccion:not([hidden]) > * {
+    width: 100%;
+  }
+  html.demo-presentacion #panel-vigilancia {
+    margin-top: 1rem !important;
+  }
+
+  /* ITEM 10: animación de entrada del tabpanel. */
+  @keyframes panel-entra {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .panel-transicion {
+    animation: panel-entra 300ms ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .panel-transicion {
+      animation: none;
+    }
+  }
+</style>
