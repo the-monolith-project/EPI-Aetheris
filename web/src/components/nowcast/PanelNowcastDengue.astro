@@ -68,10 +68,27 @@ const { variante = 'completo' } = Astro.props;
   :global(.nc-pulso-ancla) {
     animation: nc-pulso-ancla 1.7s ease-out 2;
   }
+  /* rótulo informativo junto al ancla (solo modo demo): aparece con el pulso */
+  @keyframes nc-rotulo-ancla-in {
+    0%,
+    15% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 0.9;
+    }
+  }
+  :global(.nc-rotulo-ancla) {
+    animation: nc-rotulo-ancla-in 2s ease-out both;
+  }
   @media (prefers-reduced-motion: reduce) {
     :global(.nc-pulso-ancla) {
       animation: none;
       opacity: 0;
+    }
+    :global(.nc-rotulo-ancla) {
+      animation: none;
+      opacity: 1;
     }
   }
 </style>
@@ -130,7 +147,7 @@ const { variante = 'completo' } = Astro.props;
     return svg;
   }
 
-  function ejeY(svg: SVGSVGElement, e: Escalas, maxV: number) {
+  function ejeY(svg: SVGElement, e: Escalas, maxV: number) {
     const niveles = [0, maxV / 2, maxV];
     for (const n of niveles) {
       const y = e.y(n);
@@ -292,10 +309,22 @@ const { variante = 'completo' } = Astro.props;
     (svg as SVGSVGElement).style.aspectRatio = `${ancho} / ${alto}`;
     (svg as SVGSVGElement).style.width = '100%';
     (svg as SVGSVGElement).style.height = 'auto';
-    ejeY(svg, e, maxV);
+    // grupo "pasado": ejes viejos y tramo observado anterior al ancla. Se
+    // atenúa durante enfocar() para que el ojo caiga en el abanico.
+    const gPasado = el('g', { opacity: 1 });
+    svg.appendChild(gPasado);
+    ejeY(gPasado, e, maxV);
 
-    // línea observada -- siempre visible, no entra en el revelado
-    svg.appendChild(linea(e, serieObs, 'var(--color-accent)', 1.9));
+    // línea observada -- siempre visible, no entra en el revelado. Se parte en
+    // el borde de la caja de zoom (~14 sem antes del ancla): el tramo lejano va
+    // en gPasado (se atenúa), el cercano queda a plena opacidad.
+    const idxCorte = Math.max(0, serieObs.length - 15);
+    gPasado.appendChild(
+      linea(e, serieObs.slice(0, idxCorte + 1), 'var(--color-accent)', 1.9),
+    );
+    svg.appendChild(
+      linea(e, serieObs.slice(idxCorte), 'var(--color-accent)', 1.9),
+    );
 
     // grupo de predicción, recortado por un rect que se ensancha en el revelado
     const uid = 'nc' + Math.random().toString(36).slice(2, 9);
@@ -304,6 +333,44 @@ const { variante = 'completo' } = Astro.props;
     const clipRect = el('rect', { x: 0, y: 0, width: ancho, height: alto });
     clip.appendChild(clipRect);
     defs.appendChild(clip);
+
+    // degradado vertical para las bandas: más opaco cerca de la mediana,
+    // transparente hacia los extremos.
+    const gid50 = `${uid}-g50`;
+    const gid95 = `${uid}-g95`;
+    const mkGrad = (id: string, ext: number, mid: number) => {
+      const g = el('linearGradient', { id, x1: 0, y1: 0, x2: 0, y2: 1 });
+      for (const [off, op] of [
+        ['0%', ext],
+        ['50%', mid],
+        ['100%', ext],
+      ] as [string, number][]) {
+        g.appendChild(
+          el('stop', {
+            offset: off,
+            'stop-color': 'var(--color-accent)',
+            'stop-opacity': op,
+          }),
+        );
+      }
+      return g;
+    };
+    defs.appendChild(mkGrad(gid50, 0.08, 0.32));
+    defs.appendChild(mkGrad(gid95, 0.03, 0.16));
+
+    // glow tenue para la mediana de la predicción
+    const glowId = `${uid}-glow`;
+    const filtroGlow = el('filter', {
+      id: glowId,
+      x: '-20%',
+      y: '-50%',
+      width: '140%',
+      height: '200%',
+    });
+    filtroGlow.appendChild(
+      el('feGaussianBlur', { in: 'SourceGraphic', stdDeviation: 1.5 }),
+    );
+    defs.appendChild(filtroGlow);
     svg.appendChild(defs);
 
     const gPred = el('g', { 'clip-path': `url(#${uid})` });
@@ -313,8 +380,7 @@ const { variante = 'completo' } = Astro.props;
           e,
           fanDesdeAncla.map((p) => ({ t: p.t, lo: p.b95[0], hi: p.b95[1] })),
         ),
-        fill: 'var(--color-accent)',
-        'fill-opacity': 0.13,
+        fill: `url(#${gid95})`,
         stroke: 'none',
       }),
     );
@@ -324,22 +390,18 @@ const { variante = 'completo' } = Astro.props;
           e,
           fanDesdeAncla.map((p) => ({ t: p.t, lo: p.b50[0], hi: p.b50[1] })),
         ),
-        fill: 'var(--color-accent)',
-        'fill-opacity': 0.26,
+        fill: `url(#${gid50})`,
         stroke: 'var(--color-accent)',
         'stroke-opacity': 0.3,
         'stroke-width': 1,
       }),
     );
-    gPred.appendChild(
-      linea(
-        e,
-        fanDesdeAncla.map((p) => ({ t: p.t, v: p.med })),
-        'var(--color-accent)',
-        1.9,
-        '3 3',
-      ),
-    );
+    const medPts = fanDesdeAncla.map((p) => ({ t: p.t, v: p.med }));
+    const medGlow = linea(e, medPts, 'var(--color-accent)', 2.6, '3 3');
+    medGlow.setAttribute('filter', `url(#${glowId})`);
+    medGlow.setAttribute('opacity', '0.65');
+    gPred.appendChild(medGlow);
+    gPred.appendChild(linea(e, medPts, 'var(--color-accent)', 1.9, '3 3'));
     // puntos de horizonte (h = 1..8) sobre la mediana: hacen tangible el "1 a 8"
     for (const p of fan) {
       gPred.appendChild(
@@ -399,8 +461,36 @@ const { variante = 'completo' } = Astro.props;
     });
     lblAncla.textContent = fmtFecha.format(fecha(anclaFecha));
     svg.appendChild(lblAncla);
+    if (pulso) {
+      const lblSerie = el('text', {
+        x: e.x(tAncla) - 5,
+        y: margen.arriba + 15,
+        'text-anchor': 'end',
+        'font-family': 'var(--font-sans)',
+        'font-size': 8,
+        fill: 'var(--color-ink-muted)',
+      });
+      lblSerie.setAttribute('class', 'nc-rotulo-ancla');
+      lblSerie.textContent = 'última semana en la serie pública';
+      svg.appendChild(lblSerie);
+    }
 
-    // borde móvil que acompaña al revelado
+    // estela móvil que acompaña al revelado: varias líneas paralelas detrás del
+    // frente con opacidad decreciente, más la línea de acento en el frente.
+    const bordeTrail: SVGElement[] = [];
+    for (let i = 0; i < 4; i++) {
+      const l = el('line', {
+        x1: 0,
+        x2: 0,
+        y1: margen.arriba,
+        y2: alto - margen.abajo,
+        stroke: 'var(--color-accent)',
+        'stroke-width': 2,
+        opacity: 0,
+      });
+      bordeTrail.push(l);
+      svg.appendChild(l);
+    }
     const borde = el('line', {
       x1: 0,
       x2: 0,
@@ -411,6 +501,20 @@ const { variante = 'completo' } = Astro.props;
       opacity: 0,
     });
     svg.appendChild(borde);
+
+    // contador +1..+8 sem cerca del frente del barrido (fuera de gPred para que
+    // el clip no lo recorte).
+    const lblHoriz = el('text', {
+      x: 0,
+      y: margen.arriba + 14,
+      'text-anchor': 'middle',
+      'font-family': 'var(--font-sans)',
+      'font-size': 10,
+      'font-weight': 600,
+      fill: 'var(--color-accent)',
+      opacity: 0,
+    });
+    svg.appendChild(lblHoriz);
 
     // etiquetas de año en el eje X
     const aniosVistos = new Set<number>();
@@ -434,14 +538,36 @@ const { variante = 'completo' } = Astro.props;
 
     const xA = e.x(tAncla);
     const xF = e.x(tMax) + 6;
+    const xTope = e.x(tMax);
     const aplicarRevelado = (frac: number) => {
       const ef = easeOutCubic(frac);
       const w = xA + (xF - xA) * ef;
       clipRect.setAttribute('width', String(w));
-      const bx = Math.min(w, e.x(tMax));
+      const bx = Math.min(w, xTope);
+      const activo = ef > 0.001 && ef < 0.999;
       borde.setAttribute('x1', String(bx));
       borde.setAttribute('x2', String(bx));
-      borde.setAttribute('opacity', ef > 0.001 && ef < 0.999 ? '0.85' : '0');
+      borde.setAttribute('opacity', activo ? '0.85' : '0');
+      bordeTrail.forEach((l, i) => {
+        const tx = Math.max(xA, Math.min(xTope, bx - (i + 1) * 7));
+        l.setAttribute('x1', String(tx));
+        l.setAttribute('x2', String(tx));
+        l.setAttribute(
+          'opacity',
+          activo ? String(0.45 * (1 - (i + 1) / (bordeTrail.length + 1))) : '0',
+        );
+      });
+      let kAlcanzado = 0;
+      for (let k = 0; k < fan.length; k++) {
+        if (e.x(fan[k].t) <= w + 1) kAlcanzado = k + 1;
+      }
+      if (activo && kAlcanzado >= 1) {
+        lblHoriz.textContent = `+${kAlcanzado} sem`;
+        lblHoriz.setAttribute('x', String(Math.min(bx, xTope - 4)));
+        lblHoriz.setAttribute('opacity', '0.9');
+      } else {
+        lblHoriz.setAttribute('opacity', '0');
+      }
     };
     aplicarRevelado(iniciarOculto ? 0 : 1);
 
@@ -479,8 +605,12 @@ const { variante = 'completo' } = Astro.props;
         animar((f) => {
           const ef = easeInOutCubic(f);
           ponerVb(vbBase.map((n, i) => n + (vbZoom[i] - n) * ef));
+          gPasado.setAttribute('opacity', String(1 - 0.75 * ef));
         }, dur),
-      restablecerVista: () => ponerVb(vbBase),
+      restablecerVista: () => {
+        ponerVb(vbBase);
+        gPasado.setAttribute('opacity', '1');
+      },
     };
   }
 
@@ -635,6 +765,12 @@ const { variante = 'completo' } = Astro.props;
       completo &&
       typeof location !== 'undefined' &&
       new URLSearchParams(location.search).has('demo');
+    // ?demo=lento -> ritmo más pausado en TODA la secuencia demo.
+    const RITMO =
+      typeof location !== 'undefined' &&
+      new URLSearchParams(location.search).get('demo') === 'lento'
+        ? 1.6
+        : 1;
 
     let barra: HTMLElement | null = null;
     if (demo) {
@@ -703,7 +839,7 @@ const { variante = 'completo' } = Astro.props;
             '{n}',
             String(Math.round(c.valor * easeOutCubic(f))),
           );
-        }, 950);
+        }, 950 * RITMO);
     };
 
     const extra = document.createElement('div');
@@ -777,11 +913,40 @@ const { variante = 'completo' } = Astro.props;
       const cartel = document.createElement('div');
       cartel.className =
         'pointer-events-none absolute left-3 bottom-3 max-w-[min(92%,320px)] rounded-xl border border-accent/25 bg-surface/95 p-3 shadow-lg transition-all duration-500 opacity-0 translate-y-1 sm:left-4 sm:bottom-4';
-      cartel.innerHTML =
-        '<div class="font-sans text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Predicción · próximas 1 a 8 semanas</div>' +
-        `<div class="mt-1 font-sans text-lg font-semibold tabular-nums text-ink">≈ ${fmtNum.format(Math.min(...med))}–${fmtNum.format(Math.max(...med))} casos / semana</div>` +
-        `<div class="mt-0.5 font-sans text-xs tabular-nums text-ink-muted">rango del 50 %: ${fmtNum.format(b50lo)}–${fmtNum.format(b50hi)}</div>`;
+      const cartelEyebrow = document.createElement('div');
+      cartelEyebrow.className =
+        'font-sans text-[10px] font-semibold uppercase tracking-wide text-ink-muted';
+      const cartelEyebrowTxt = 'Predicción · próximas 1 a 8 semanas';
+      const cartelCifras = document.createElement('div');
+      cartelCifras.className =
+        'mt-1 font-sans text-lg font-semibold tabular-nums text-ink';
+      const cartelCifrasTxt = `≈ ${fmtNum.format(Math.min(...med))}–${fmtNum.format(Math.max(...med))} casos / semana`;
+      const cartelRango = document.createElement('div');
+      cartelRango.className =
+        'mt-0.5 font-sans text-xs tabular-nums text-ink-muted';
+      cartelRango.textContent = `rango del 50 %: ${fmtNum.format(b50lo)}–${fmtNum.format(b50hi)}`;
+      cartel.append(cartelEyebrow, cartelCifras, cartelRango);
       contAbanico.appendChild(cartel);
+
+      if (RITMO !== 1) {
+        cartel.style.transitionDuration = `${Math.round(500 * RITMO)}ms`;
+        chips.style.transitionDuration = `${Math.round(500 * RITMO)}ms`;
+        extra.style.transitionDuration = `${Math.round(700 * RITMO)}ms`;
+      }
+
+      // máquina de escribir: escribe `texto` en `nodo` char a char, reservando
+      // el alto para no romper el layout del cartel. Reduced-motion -> directo.
+      const escribir = (nodo: HTMLElement, texto: string, msChar: number) => {
+        nodo.textContent = texto;
+        const h = nodo.offsetHeight;
+        if (h) nodo.style.minHeight = `${h}px`;
+        nodo.textContent = '';
+        return animar((f) => {
+          nodo.textContent = texto.slice(0, Math.floor(f * texto.length));
+        }, texto.length * msChar).then(() => {
+          nodo.textContent = texto;
+        });
+      };
 
       btn?.addEventListener(
         'click',
@@ -789,13 +954,16 @@ const { variante = 'completo' } = Astro.props;
           btn.disabled = true;
           btn.classList.add('opacity-70');
           btn.textContent = 'Calculando…';
-          await espera(550);
+          await espera(550 * RITMO);
           btn.textContent = 'Predicción cargada';
-          await handleAbanico.revelar(1700);
-          await espera(280);
-          await handleAbanico.enfocar(950);
+          await handleAbanico.revelar(1700 * RITMO);
+          await espera(280 * RITMO);
+          await handleAbanico.enfocar(950 * RITMO);
           cartel.classList.remove('opacity-0', 'translate-y-1');
-          await espera(320);
+          await espera(320 * RITMO);
+          await escribir(cartelEyebrow, cartelEyebrowTxt, 24 * RITMO);
+          await escribir(cartelCifras, cartelCifrasTxt, 28 * RITMO);
+          await espera(140 * RITMO);
           chips.classList.remove('opacity-0');
           correrContadores();
           extra.classList.remove('opacity-0');
