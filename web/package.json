@@ -16,7 +16,7 @@
   "dependencies": {
     "@observablehq/plot": "^0.6.17",
     "@tailwindcss/vite": "^4.3.3",
-    "astro": "^7.1.0",
+    "astro": "^7.2.8",
     "chroma-js": "^3.2.0",
     "leaflet": "^1.9.4",
     "tailwindcss": "^4.3.3"
