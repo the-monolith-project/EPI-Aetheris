@@ -5,9 +5,24 @@ import MetricasModelo from '../components/MetricasModelo.astro';
 import ResumenNacional from '../components/ResumenNacional.astro';
 import AuditoriaDatos from '../components/AuditoriaDatos.astro';
 import PanelAnalisis from '../components/analisis/PanelAnalisis.astro';
+import PanelNowcastDengue from '../components/nowcast/PanelNowcastDengue.astro';
+
+const TABS = [
+  { id: 'vigilancia', etiqueta: 'Vigilancia' },
+  { id: 'prediccion', etiqueta: 'Predicción a corto plazo' },
+];
 ---
 
 <Layout title="EPI-Aetheris — Dengue">
+  {/* Modo presentación para grabar el video de la demo (?demo=1, ?demo=lento).
+     Se activa lo antes posible para minimizar el parpadeo del header. */}
+  <script is:inline>
+    try {
+      if (new URLSearchParams(location.search).has('demo')) {
+        document.documentElement.classList.add('demo-presentacion');
+      }
+    } catch (_) {}
+  </script>
   <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
     <p class="mb-6 font-sans text-sm">
       <a
@@ -17,28 +32,199 @@ import PanelAnalisis from '../components/analisis/PanelAnalisis.astro';
         >¿Alerta activa? →</a
       >
     </p>
-    <div id="resumen" class="scroll-mt-24">
-      <PanelAnalisis />
+
+    <div
+      role="tablist"
+      aria-label="Vistas de dengue"
+      class="flex flex-wrap gap-1 border-b border-border"
+      data-tabs
+    >
+      {
+        TABS.map((t, i) => (
+          <button
+            type="button"
+            role="tab"
+            id={`tab-${t.id}`}
+            aria-controls={`panel-${t.id}`}
+            aria-selected={i === 0 ? 'true' : 'false'}
+            tabindex={i === 0 ? '0' : '-1'}
+            data-tab={t.id}
+            class="-mb-px rounded-t-lg border-b-2 px-3 py-2 font-sans text-sm font-medium transition-colors aria-selected:border-accent aria-selected:text-ink border-transparent text-ink-muted hover:text-ink"
+          >
+            {t.etiqueta}
+          </button>
+        ))
+      }
     </div>
 
-    <section aria-labelledby="contexto-panel-titulo" class="mt-8 scroll-mt-24">
-      <h2
-        id="contexto-panel-titulo"
-        class="font-display text-xl font-semibold text-ink"
-      >
-        Contexto y cobertura
-      </h2>
-      <div class="mt-4 flex flex-col gap-4">
-        <ResumenNacional />
-        <AuditoriaDatos />
+    <section
+      id="panel-vigilancia"
+      role="tabpanel"
+      aria-labelledby="tab-vigilancia"
+      tabindex="0"
+      class="mt-6"
+    >
+      <div id="resumen" class="scroll-mt-24">
+        <PanelAnalisis />
+      </div>
+
+      <div class="mt-8">
+        <PanelNowcastDengue variante="compacto" />
+      </div>
+
+      <section aria-labelledby="contexto-panel-titulo" class="mt-8 scroll-mt-24">
+        <h2
+          id="contexto-panel-titulo"
+          class="font-display text-xl font-semibold text-ink"
+        >
+          Contexto y cobertura
+        </h2>
+        <div class="mt-4 flex flex-col gap-4">
+          <ResumenNacional />
+          <AuditoriaDatos />
+        </div>
+      </section>
+
+      <div id="curva" class="mt-8 scroll-mt-24">
+        <CurvaEpidemicaNacional />
+      </div>
+      <div id="historico" class="mt-6 scroll-mt-24">
+        <MetricasModelo />
       </div>
     </section>
 
-    <div id="curva" class="mt-8 scroll-mt-24">
-      <CurvaEpidemicaNacional />
-    </div>
-    <div id="historico" class="mt-6 scroll-mt-24">
-      <MetricasModelo />
-    </div>
+    <section
+      id="panel-prediccion"
+      role="tabpanel"
+      aria-labelledby="tab-prediccion"
+      tabindex="0"
+      class="mt-6"
+      hidden
+    >
+      <PanelNowcastDengue variante="completo" />
+    </section>
   </main>
 </Layout>
+
+<script>
+  const tablist = document.querySelector<HTMLElement>('[data-tabs]');
+  if (tablist) {
+    const tabs = Array.from(
+      tablist.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+    );
+
+    function activar(id: string, foco = false) {
+      for (const t of tabs) {
+        const sel = t.dataset.tab === id;
+        t.setAttribute('aria-selected', sel ? 'true' : 'false');
+        t.tabIndex = sel ? 0 : -1;
+        const panel = document.getElementById(`panel-${t.dataset.tab}`);
+        if (panel) panel.hidden = !sel;
+        if (sel && foco) t.focus();
+      }
+      if (history.replaceState) {
+        const url = new URL(location.href);
+        if (id === tabs[0].dataset.tab) url.searchParams.delete('t');
+        else url.searchParams.set('t', id);
+        history.replaceState(null, '', url);
+      }
+    }
+
+    tablist.addEventListener('click', (ev) => {
+      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>(
+        '[role="tab"]',
+      );
+      if (btn?.dataset.tab) activar(btn.dataset.tab);
+    });
+
+    tablist.addEventListener('keydown', (ev) => {
+      const i = tabs.findIndex(
+        (t) => t.getAttribute('aria-selected') === 'true',
+      );
+      if (i < 0) return;
+      let j = i;
+      if (ev.key === 'ArrowRight') j = (i + 1) % tabs.length;
+      else if (ev.key === 'ArrowLeft') j = (i - 1 + tabs.length) % tabs.length;
+      else return;
+      ev.preventDefault();
+      activar(tabs[j].dataset.tab as string, true);
+    });
+
+    const inicial = new URLSearchParams(location.search).get('t');
+    if (inicial && tabs.some((t) => t.dataset.tab === inicial)) activar(inicial);
+  }
+</script>
+
+<script>
+  // ITEM 10: transición de entrada del panel al activar una pestaña. No toca
+  // activar() ni el manejo de ?t=; solo observa cuándo un tabpanel deja de
+  // estar oculto y le aplica una clase de animación (fade + leve subida).
+  const paneles = document.querySelectorAll<HTMLElement>('[role="tabpanel"]');
+  if (paneles.length) {
+    const observador = new MutationObserver((mutaciones) => {
+      for (const m of mutaciones) {
+        const el = m.target as HTMLElement;
+        if (m.attributeName === 'hidden' && !el.hidden) {
+          el.classList.remove('panel-transicion');
+          void el.offsetWidth;
+          el.classList.add('panel-transicion');
+        }
+      }
+    });
+    for (const p of paneles) {
+      observador.observe(p, { attributes: true, attributeFilter: ['hidden'] });
+    }
+  }
+</script>
+
+<style is:global>
+  /* ITEM 1: modo presentación (solo /dengue, solo con ?demo). Sin la clase
+     en <html> la página queda idéntica. */
+  html.demo-presentacion body > header,
+  html.demo-presentacion body > footer {
+    display: none !important;
+  }
+  html.demo-presentacion body > main {
+    max-width: none !important;
+    padding: 1.5rem 3rem 2rem !important;
+  }
+  html.demo-presentacion body > main > p:has(a[data-enlace-alertas]) {
+    display: none !important;
+  }
+  html.demo-presentacion [data-tabs] {
+    display: none !important;
+  }
+  html.demo-presentacion #panel-prediccion:not([hidden]) {
+    margin-top: 0 !important;
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  html.demo-presentacion #panel-prediccion:not([hidden]) > * {
+    width: 100%;
+  }
+  html.demo-presentacion #panel-vigilancia {
+    margin-top: 1rem !important;
+  }
+
+  /* ITEM 10: animación de entrada del tabpanel. */
+  @keyframes panel-entra {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .panel-transicion {
+    animation: panel-entra 300ms ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .panel-transicion {
+      animation: none;
+    }
+  }
+</style>
