@@ -7,6 +7,10 @@
 # Render no lo es, y con ON_ERROR_STOP la carga hace rollback completo
 # (issue #82). El post-proceso las quita. El orden de tablas por dependencia
 # ya garantiza las FK sin desactivar triggers.
+#
+# --exclude-table=alertas: su contenido lo insertan las migraciones 0009-0011
+# (ADR 0013), igual que regiones/tipos_evento/fuentes_datos. Volcarlo aqui
+# choca contra esos INSERT al cargar (PK duplicada, ON_ERROR_STOP aborta).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -32,6 +36,7 @@ pg_dump --data-only --disable-triggers \
   --exclude-table=tipos_evento \
   --exclude-table=fuentes_datos \
   --exclude-table=schema_migrations \
+  --exclude-table='alertas*' \
   | grep -vE 'DISABLE TRIGGER ALL;|ENABLE TRIGGER ALL;' > "$tmp"
 
 if grep -E 'DISABLE TRIGGER ALL;|ENABLE TRIGGER ALL;' "$tmp" >/dev/null; then
