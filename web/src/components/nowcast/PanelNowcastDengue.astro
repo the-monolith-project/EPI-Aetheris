@@ -52,6 +52,30 @@ const { variante = 'completo' } = Astro.props;
   </div>
 </section>
 
+<style>
+  /* pulso del punto de anclaje (solo modo demo) */
+  @keyframes nc-pulso-ancla {
+    0% {
+      r: 3;
+      opacity: 0.5;
+    }
+    75%,
+    100% {
+      r: 17;
+      opacity: 0;
+    }
+  }
+  :global(.nc-pulso-ancla) {
+    animation: nc-pulso-ancla 1.7s ease-out 2;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :global(.nc-pulso-ancla) {
+      animation: none;
+      opacity: 0;
+    }
+  }
+</style>
+
 <script>
   import { obtenerNowcastDengue } from '../../lib/analisis-api';
   import type {
@@ -170,10 +194,13 @@ const { variante = 'completo' } = Astro.props;
   function easeOutCubic(t: number): number {
     return 1 - Math.pow(1 - t, 3);
   }
+  function easeInOutCubic(t: number): number {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
 
-  // Llama a aplicar(frac) de 0 a 1 sobre `dur` ms. Respeta prefers-reduced-motion
-  // (salta al estado final). Devuelve una promesa que resuelve al terminar.
-  function animarBarrido(
+  // Llama a aplicar(frac) con frac lineal de 0 a 1 sobre `dur` ms. Respeta
+  // prefers-reduced-motion (salta al estado final). Resuelve al terminar.
+  function animar(
     aplicar: (frac: number) => void,
     dur: number,
   ): Promise<void> {
@@ -188,16 +215,19 @@ const { variante = 'completo' } = Astro.props;
       const t0 = performance.now();
       const paso = (ahora: number) => {
         const frac = Math.min(1, (ahora - t0) / dur);
-        aplicar(easeOutCubic(frac));
+        aplicar(frac);
         if (frac < 1) requestAnimationFrame(paso);
         else res();
       };
       requestAnimationFrame(paso);
     });
   }
+  const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   interface AbanicoHandle {
     revelar: (dur?: number) => Promise<void>;
+    enfocar: (dur?: number) => Promise<void>;
+    restablecerVista: () => void;
   }
 
   // --- abanico hacia adelante ------------------------------------------------
@@ -207,9 +237,9 @@ const { variante = 'completo' } = Astro.props;
     observado: PuntoObservadoNowcast[],
     estimacion: EstimacionHorizonte[],
     anclaFecha: string,
-    opts: { iniciarOculto?: boolean } = {},
+    opts: { iniciarOculto?: boolean; pulso?: boolean } = {},
   ): AbanicoHandle {
-    const { iniciarOculto = false } = opts;
+    const { iniciarOculto = false, pulso = false } = opts;
     const ancho = 720;
     const alto = 300;
     const margen = { arriba: 16, abajo: 30, izq: 42, der: 12 };
@@ -256,6 +286,12 @@ const { variante = 'completo' } = Astro.props;
       alto,
       `Casos de dengue observados por semana y predicción para las próximas 8 semanas desde el ${fmtFecha.format(fecha(anclaFecha))}`,
     );
+    // alto fijo por razón de aspecto: al animar el viewBox (enfocar) la caja no
+    // reflowa, solo cambia el mapeo interno.
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    (svg as SVGSVGElement).style.aspectRatio = `${ancho} / ${alto}`;
+    (svg as SVGSVGElement).style.width = '100%';
+    (svg as SVGSVGElement).style.height = 'auto';
     ejeY(svg, e, maxV);
 
     // línea observada -- siempre visible, no entra en el revelado
@@ -278,7 +314,7 @@ const { variante = 'completo' } = Astro.props;
           fanDesdeAncla.map((p) => ({ t: p.t, lo: p.b95[0], hi: p.b95[1] })),
         ),
         fill: 'var(--color-accent)',
-        'fill-opacity': 0.1,
+        'fill-opacity': 0.13,
         stroke: 'none',
       }),
     );
@@ -289,8 +325,10 @@ const { variante = 'completo' } = Astro.props;
           fanDesdeAncla.map((p) => ({ t: p.t, lo: p.b50[0], hi: p.b50[1] })),
         ),
         fill: 'var(--color-accent)',
-        'fill-opacity': 0.22,
-        stroke: 'none',
+        'fill-opacity': 0.26,
+        stroke: 'var(--color-accent)',
+        'stroke-opacity': 0.3,
+        'stroke-width': 1,
       }),
     );
     gPred.appendChild(
@@ -302,6 +340,19 @@ const { variante = 'completo' } = Astro.props;
         '3 3',
       ),
     );
+    // puntos de horizonte (h = 1..8) sobre la mediana: hacen tangible el "1 a 8"
+    for (const p of fan) {
+      gPred.appendChild(
+        el('circle', {
+          cx: e.x(p.t),
+          cy: e.y(p.med),
+          r: 2.4,
+          fill: 'var(--color-accent)',
+          stroke: 'var(--color-bg)',
+          'stroke-width': 1,
+        }),
+      );
+    }
     svg.appendChild(gPred);
 
     // marca de anclaje
@@ -316,6 +367,18 @@ const { variante = 'completo' } = Astro.props;
         'stroke-dasharray': '2 2',
       }),
     );
+    if (pulso) {
+      const anillo = el('circle', {
+        cx: e.x(tAncla),
+        cy: e.y(casoAncla),
+        r: 3,
+        fill: 'none',
+        stroke: 'var(--color-accent)',
+        'stroke-width': 1.5,
+      });
+      anillo.setAttribute('class', 'nc-pulso-ancla');
+      svg.appendChild(anillo);
+    }
     svg.appendChild(
       el('circle', {
         cx: e.x(tAncla),
@@ -372,17 +435,53 @@ const { variante = 'completo' } = Astro.props;
     const xA = e.x(tAncla);
     const xF = e.x(tMax) + 6;
     const aplicarRevelado = (frac: number) => {
-      const w = xA + (xF - xA) * frac;
+      const ef = easeOutCubic(frac);
+      const w = xA + (xF - xA) * ef;
       clipRect.setAttribute('width', String(w));
       const bx = Math.min(w, e.x(tMax));
       borde.setAttribute('x1', String(bx));
       borde.setAttribute('x2', String(bx));
-      borde.setAttribute('opacity', frac > 0.001 && frac < 0.999 ? '0.85' : '0');
+      borde.setAttribute('opacity', ef > 0.001 && ef < 0.999 ? '0.85' : '0');
     };
     aplicarRevelado(iniciarOculto ? 0 : 1);
 
+    // caja de zoom: últimas ~10 semanas observadas + todo el abanico, ajustada
+    // a la razón de aspecto del viewBox base para que no haya letterbox.
+    const vbBase: [number, number, number, number] = [0, 0, ancho, alto];
+    let yLo = e.y(casoAncla);
+    let yHi = e.y(casoAncla);
+    for (const p of fan) {
+      yLo = Math.min(yLo, e.y(p.b95[1]));
+      yHi = Math.max(yHi, e.y(p.b95[0]));
+    }
+    let zx = e.x(Math.max(0, tAncla - 14)) - 8;
+    let zw = e.x(tMax) + 18 - zx;
+    let zy = yLo - 32;
+    let zh = yHi + 32 - zy;
+    const razon = ancho / alto;
+    if (zw / zh > razon) {
+      const nh = zw / razon;
+      zy -= (nh - zh) / 2;
+      zh = nh;
+    } else {
+      const nw = zh * razon;
+      zx -= (nw - zw) / 2;
+      zw = nw;
+    }
+    const vbZoom: [number, number, number, number] = [zx, zy, zw, zh];
+    const ponerVb = (v: number[]) =>
+      svg.setAttribute('viewBox', v.map((n) => n.toFixed(1)).join(' '));
+
     cont.replaceChildren(svg);
-    return { revelar: (dur = 1500) => animarBarrido(aplicarRevelado, dur) };
+    return {
+      revelar: (dur = 1500) => animar(aplicarRevelado, dur),
+      enfocar: (dur = 900) =>
+        animar((f) => {
+          const ef = easeInOutCubic(f);
+          ponerVb(vbBase.map((n, i) => n + (vbZoom[i] - n) * ef));
+        }, dur),
+      restablecerVista: () => ponerVb(vbBase),
+    };
   }
 
   // --- backtest -------------------------------------------------------------
@@ -555,14 +654,14 @@ const { variante = 'completo' } = Astro.props;
     // abanico
     const contAbanico = document.createElement('div');
     contAbanico.className =
-      'overflow-x-auto rounded-xl border border-border bg-bg p-3 sm:p-4';
+      'relative overflow-hidden rounded-xl border border-border bg-bg p-3 sm:p-4';
     cont.appendChild(contAbanico);
     const handleAbanico = dibujarAbanico(
       contAbanico,
       datos.observado,
       datos.estimacion,
       datos.ancla.fecha,
-      { iniciarOculto: true },
+      { iniciarOculto: true, pulso: demo },
     );
 
     cont.appendChild(
@@ -584,28 +683,48 @@ const { variante = 'completo' } = Astro.props;
       'mt-4 flex flex-wrap gap-2' +
       (demo ? ' transition-opacity duration-500 opacity-0' : '');
     const pct = Math.round(d.reduccion_wis * 100);
+    const signo = pct > 0 ? '−' : '+';
+    const contadores: { nodo: HTMLElement; plantilla: string; valor: number }[] = [];
+    const chipCont = (plantilla: string, valor: number, fuerte = false) => {
+      const nodo = chip(plantilla.replace('{n}', String(valor)), fuerte);
+      contadores.push({ nodo, plantilla, valor });
+      return nodo;
+    };
     chips.append(
-      chip(`${pct > 0 ? '−' : '+'}${Math.abs(pct)} % de error frente a la persistencia`, true),
-      chip(`mejor en ${d.anios_ganados} de ${d.n_anios} temporadas de prueba`),
+      chipCont(`${signo}{n} % de error frente a la persistencia`, Math.abs(pct), true),
+      chipCont(`mejor en {n} de ${d.n_anios} temporadas de prueba`, d.anios_ganados),
       chip(`horizonte de referencia: ${d.horizonte} semanas`),
     );
     cont.appendChild(chips);
+    const correrContadores = () => {
+      for (const c of contadores)
+        void animar((f) => {
+          c.nodo.textContent = c.plantilla.replace(
+            '{n}',
+            String(Math.round(c.valor * easeOutCubic(f))),
+          );
+        }, 950);
+    };
+
+    const extra = document.createElement('div');
+    if (demo) extra.className = 'transition-opacity duration-700 opacity-0';
+    cont.appendChild(extra);
 
     if (completo) {
-      cont.appendChild(bloque('Cómo se comportó en las temporadas de prueba'));
+      extra.appendChild(bloque('Cómo se comportó en las temporadas de prueba'));
       const p = document.createElement('p');
       p.className = 'mt-1 font-sans text-xs leading-relaxed text-ink-muted';
       p.textContent =
         'Validación temporal sin fuga: en cada semana de 2019 y 2021–2024 el modelo solo vio datos anteriores. Línea oscura, lo observado; línea punteada y banda, la predicción a cuatro semanas.';
-      cont.appendChild(p);
+      extra.appendChild(p);
 
       if (datos.backtest?.puntos?.length) {
         const contBt = document.createElement('div');
         contBt.className =
           'mt-3 overflow-x-auto rounded-xl border border-border bg-bg p-3 sm:p-4';
-        cont.appendChild(contBt);
+        extra.appendChild(contBt);
         dibujarBacktest(contBt, datos.backtest.puntos);
-        cont.appendChild(
+        extra.appendChild(
           leyenda([
             ['var(--color-ink)', 'observado'],
             ['color-mix(in srgb, var(--color-accent) 60%, transparent)', 'predicción (mediana)'],
@@ -637,30 +756,49 @@ const { variante = 'completo' } = Astro.props;
           celda.append(anioEl, valEl);
           tabla.appendChild(celda);
         }
-        cont.appendChild(tabla);
+        extra.appendChild(tabla);
         const leyendaTabla = document.createElement('p');
         leyendaTabla.className =
           'mt-2 font-sans text-[11px] leading-relaxed text-ink-muted';
         leyendaTabla.textContent =
           'Reducción del error de intervalo (WIS) respecto a la persistencia, por temporada.';
-        cont.appendChild(leyendaTabla);
+        extra.appendChild(leyendaTabla);
       }
-
     }
 
     if (demo && barra) {
       const btn = barra.querySelector<HTMLButtonElement>('[data-cargar]');
       const rei = barra.querySelector<HTMLButtonElement>('[data-reiniciar]');
+
+      // resumen numérico que aparece sobre el gráfico tras el zoom
+      const med = datos.estimacion.map((x) => x.mediana);
+      const b50lo = Math.min(...datos.estimacion.map((x) => x.banda_50[0]));
+      const b50hi = Math.max(...datos.estimacion.map((x) => x.banda_50[1]));
+      const cartel = document.createElement('div');
+      cartel.className =
+        'pointer-events-none absolute left-3 bottom-3 max-w-[min(92%,320px)] rounded-xl border border-accent/25 bg-surface/95 p-3 shadow-lg transition-all duration-500 opacity-0 translate-y-1 sm:left-4 sm:bottom-4';
+      cartel.innerHTML =
+        '<div class="font-sans text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Predicción · próximas 1 a 8 semanas</div>' +
+        `<div class="mt-1 font-sans text-lg font-semibold tabular-nums text-ink">≈ ${fmtNum.format(Math.min(...med))}–${fmtNum.format(Math.max(...med))} casos / semana</div>` +
+        `<div class="mt-0.5 font-sans text-xs tabular-nums text-ink-muted">rango del 50 %: ${fmtNum.format(b50lo)}–${fmtNum.format(b50hi)}</div>`;
+      contAbanico.appendChild(cartel);
+
       btn?.addEventListener(
         'click',
         async () => {
           btn.disabled = true;
           btn.classList.add('opacity-70');
           btn.textContent = 'Calculando…';
-          await new Promise((r) => setTimeout(r, 550));
+          await espera(550);
           btn.textContent = 'Predicción cargada';
-          await handleAbanico.revelar(1600);
+          await handleAbanico.revelar(1700);
+          await espera(280);
+          await handleAbanico.enfocar(950);
+          cartel.classList.remove('opacity-0', 'translate-y-1');
+          await espera(320);
           chips.classList.remove('opacity-0');
+          correrContadores();
+          extra.classList.remove('opacity-0');
           if (rei) rei.hidden = false;
         },
         { once: true },
