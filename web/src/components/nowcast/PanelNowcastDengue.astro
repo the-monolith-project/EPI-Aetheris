@@ -165,6 +165,41 @@ const { variante = 'completo' } = Astro.props;
     return pl;
   }
 
+  // --- revelado animado ---------------------------------------------------
+
+  function easeOutCubic(t: number): number {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  // Llama a aplicar(frac) de 0 a 1 sobre `dur` ms. Respeta prefers-reduced-motion
+  // (salta al estado final). Devuelve una promesa que resuelve al terminar.
+  function animarBarrido(
+    aplicar: (frac: number) => void,
+    dur: number,
+  ): Promise<void> {
+    const reduce =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || dur <= 0) {
+      aplicar(1);
+      return Promise.resolve();
+    }
+    return new Promise((res) => {
+      const t0 = performance.now();
+      const paso = (ahora: number) => {
+        const frac = Math.min(1, (ahora - t0) / dur);
+        aplicar(easeOutCubic(frac));
+        if (frac < 1) requestAnimationFrame(paso);
+        else res();
+      };
+      requestAnimationFrame(paso);
+    });
+  }
+
+  interface AbanicoHandle {
+    revelar: (dur?: number) => Promise<void>;
+  }
+
   // --- abanico hacia adelante ------------------------------------------------
 
   function dibujarAbanico(
@@ -172,7 +207,9 @@ const { variante = 'completo' } = Astro.props;
     observado: PuntoObservadoNowcast[],
     estimacion: EstimacionHorizonte[],
     anclaFecha: string,
-  ) {
+    opts: { iniciarOculto?: boolean } = {},
+  ): AbanicoHandle {
+    const { iniciarOculto = false } = opts;
     const ancho = 720;
     const alto = 300;
     const margen = { arriba: 16, abajo: 30, izq: 42, der: 12 };
@@ -221,8 +258,20 @@ const { variante = 'completo' } = Astro.props;
     );
     ejeY(svg, e, maxV);
 
-    // banda 95 y 50 del abanico
-    svg.appendChild(
+    // línea observada -- siempre visible, no entra en el revelado
+    svg.appendChild(linea(e, serieObs, 'var(--color-accent)', 1.9));
+
+    // grupo de predicción, recortado por un rect que se ensancha en el revelado
+    const uid = 'nc' + Math.random().toString(36).slice(2, 9);
+    const defs = el('defs');
+    const clip = el('clipPath', { id: uid });
+    const clipRect = el('rect', { x: 0, y: 0, width: ancho, height: alto });
+    clip.appendChild(clipRect);
+    defs.appendChild(clip);
+    svg.appendChild(defs);
+
+    const gPred = el('g', { 'clip-path': `url(#${uid})` });
+    gPred.appendChild(
       el('path', {
         d: bandaPath(
           e,
@@ -233,7 +282,7 @@ const { variante = 'completo' } = Astro.props;
         stroke: 'none',
       }),
     );
-    svg.appendChild(
+    gPred.appendChild(
       el('path', {
         d: bandaPath(
           e,
@@ -244,11 +293,7 @@ const { variante = 'completo' } = Astro.props;
         stroke: 'none',
       }),
     );
-
-    // línea observada
-    svg.appendChild(linea(e, serieObs, 'var(--color-accent)', 1.9));
-    // mediana estimada (punteada), desde el ancla
-    svg.appendChild(
+    gPred.appendChild(
       linea(
         e,
         fanDesdeAncla.map((p) => ({ t: p.t, v: p.med })),
@@ -257,6 +302,7 @@ const { variante = 'completo' } = Astro.props;
         '3 3',
       ),
     );
+    svg.appendChild(gPred);
 
     // marca de anclaje
     svg.appendChild(
@@ -280,6 +326,28 @@ const { variante = 'completo' } = Astro.props;
         'stroke-width': 1.5,
       }),
     );
+    const lblAncla = el('text', {
+      x: e.x(tAncla) - 5,
+      y: margen.arriba + 4,
+      'text-anchor': 'end',
+      'font-family': 'var(--font-sans)',
+      'font-size': 9,
+      fill: 'var(--color-ink-muted)',
+    });
+    lblAncla.textContent = fmtFecha.format(fecha(anclaFecha));
+    svg.appendChild(lblAncla);
+
+    // borde móvil que acompaña al revelado
+    const borde = el('line', {
+      x1: 0,
+      x2: 0,
+      y1: margen.arriba,
+      y2: alto - margen.abajo,
+      stroke: 'var(--color-accent)',
+      'stroke-width': 2,
+      opacity: 0,
+    });
+    svg.appendChild(borde);
 
     // etiquetas de año en el eje X
     const aniosVistos = new Set<number>();
@@ -301,7 +369,20 @@ const { variante = 'completo' } = Astro.props;
       svg.appendChild(txt);
     }
 
+    const xA = e.x(tAncla);
+    const xF = e.x(tMax) + 6;
+    const aplicarRevelado = (frac: number) => {
+      const w = xA + (xF - xA) * frac;
+      clipRect.setAttribute('width', String(w));
+      const bx = Math.min(w, e.x(tMax));
+      borde.setAttribute('x1', String(bx));
+      borde.setAttribute('x2', String(bx));
+      borde.setAttribute('opacity', frac > 0.001 && frac < 0.999 ? '0.85' : '0');
+    };
+    aplicarRevelado(iniciarOculto ? 0 : 1);
+
     cont.replaceChildren(svg);
+    return { revelar: (dur = 1500) => animarBarrido(aplicarRevelado, dur) };
   }
 
   // --- backtest -------------------------------------------------------------
@@ -449,12 +530,40 @@ const { variante = 'completo' } = Astro.props;
     const d = datos.desempeno;
     cont.replaceChildren();
 
+    // modo demo (para grabar el video): ?demo -> secuencia con botón y revelado
+    // cinematográfico. En uso normal el abanico aparece con un barrido breve.
+    const demo =
+      completo &&
+      typeof location !== 'undefined' &&
+      new URLSearchParams(location.search).has('demo');
+
+    let barra: HTMLElement | null = null;
+    if (demo) {
+      barra = document.createElement('div');
+      barra.className = 'mb-3 flex flex-wrap items-end gap-3';
+      barra.innerHTML =
+        '<label class="flex flex-col gap-1">' +
+        '<span class="font-sans text-[11px] font-medium text-ink-muted">Semana de anclaje</span>' +
+        '<select class="rounded-lg border border-border bg-surface px-3 py-2 font-sans text-sm text-ink" aria-label="Semana de anclaje">' +
+        `<option>${fmtFecha.format(fecha(datos.ancla.fecha))} · última semana observada</option>` +
+        '</select></label>' +
+        '<button type="button" data-cargar class="rounded-full bg-accent px-5 py-2.5 font-sans text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-deep">Cargar predicción →</button>' +
+        '<button type="button" data-reiniciar hidden class="font-sans text-xs text-accent underline underline-offset-2">reiniciar</button>';
+      cont.appendChild(barra);
+    }
+
     // abanico
     const contAbanico = document.createElement('div');
     contAbanico.className =
       'overflow-x-auto rounded-xl border border-border bg-bg p-3 sm:p-4';
     cont.appendChild(contAbanico);
-    dibujarAbanico(contAbanico, datos.observado, datos.estimacion, datos.ancla.fecha);
+    const handleAbanico = dibujarAbanico(
+      contAbanico,
+      datos.observado,
+      datos.estimacion,
+      datos.ancla.fecha,
+      { iniciarOculto: true },
+    );
 
     cont.appendChild(
       leyenda([
@@ -471,7 +580,9 @@ const { variante = 'completo' } = Astro.props;
 
     // desempeño
     const chips = document.createElement('div');
-    chips.className = 'mt-4 flex flex-wrap gap-2';
+    chips.className =
+      'mt-4 flex flex-wrap gap-2' +
+      (demo ? ' transition-opacity duration-500 opacity-0' : '');
     const pct = Math.round(d.reduccion_wis * 100);
     chips.append(
       chip(`${pct > 0 ? '−' : '+'}${Math.abs(pct)} % de error frente a la persistencia`, true),
@@ -535,6 +646,30 @@ const { variante = 'completo' } = Astro.props;
         cont.appendChild(leyendaTabla);
       }
 
+    }
+
+    if (demo && barra) {
+      const btn = barra.querySelector<HTMLButtonElement>('[data-cargar]');
+      const rei = barra.querySelector<HTMLButtonElement>('[data-reiniciar]');
+      btn?.addEventListener(
+        'click',
+        async () => {
+          btn.disabled = true;
+          btn.classList.add('opacity-70');
+          btn.textContent = 'Calculando…';
+          await new Promise((r) => setTimeout(r, 550));
+          btn.textContent = 'Predicción cargada';
+          await handleAbanico.revelar(1600);
+          chips.classList.remove('opacity-0');
+          if (rei) rei.hidden = false;
+        },
+        { once: true },
+      );
+      rei?.addEventListener('click', () => render(cont, datos, completo));
+    } else {
+      requestAnimationFrame(() =>
+        void handleAbanico.revelar(completo ? 650 : 450),
+      );
     }
 
     const pie = document.createElement('p');
