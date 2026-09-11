@@ -16,3 +16,6 @@
 ## 2026-09-05 - Range Sliders Accessibility
 **Learning:** Multiple range sliders (e.g., dual thumbs for min/max) inside a single wrapping `<label>` tag lack individual context for screen readers. The wrapper text becomes an ambiguous group label.
 **Action:** Always add explicit `aria-label` attributes to each `<input type="range">` when multiple inputs share the same visible label to distinguish their specific functions (e.g., 'Semana inicial' vs 'Semana final').
+## 2026-09-06 - Accessible Popover Overlays
+**Learning:** When building custom popovers (like the workspace analysis filters or the panels menu), trigger buttons that control these menus often fail screen reader tests if they lack explicit `aria-haspopup` attributes, leaving users unaware of the interactive nature of the control. Furthermore, when these popovers are dismissed using a standard interaction (like the Escape key), focus isn't always restored to the original trigger.
+**Action:** When building or auditing custom popover patterns, ensure that the trigger button always includes the `aria-haspopup` attribute (set to `dialog` or `menu` as appropriate), and that keyboard dismissal handlers (e.g. Escape key) explicitly call `.focus()` on the trigger element to maintain a logical and usable tab order.
