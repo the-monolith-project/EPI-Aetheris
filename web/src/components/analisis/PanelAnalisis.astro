@@ -161,7 +161,15 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
       : 'contents';
   }
 
-  function cerrarMenus(): void {
+  function cerrarMenus(devolverFoco = false): void {
+    const menusAbiertos = document.querySelectorAll<HTMLElement>(
+      '[data-menu-panel]:not([hidden])',
+    );
+    let panelIdParaFoco: string | null = null;
+    if (devolverFoco && menusAbiertos.length > 0) {
+      panelIdParaFoco = menusAbiertos[0].dataset.menuPanel || null;
+    }
+
     document
       .querySelectorAll<HTMLElement>('[data-menu-panel]')
       .forEach((menu) => {
@@ -171,6 +179,13 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
       .querySelectorAll<HTMLButtonElement>('[data-boton-menu-panel]')
       .forEach((boton) => {
         boton.setAttribute('aria-expanded', 'false');
+        if (
+          devolverFoco &&
+          panelIdParaFoco &&
+          boton.dataset.botonMenuPanel === panelIdParaFoco
+        ) {
+          boton.focus();
+        }
       });
   }
 
@@ -186,6 +201,7 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
     boton.setAttribute('aria-label', `Opciones de ${etiqueta}`);
     boton.setAttribute('aria-expanded', 'false');
     boton.setAttribute('aria-controls', menuId);
+    boton.setAttribute('aria-haspopup', 'menu');
     boton.className =
       'absolute right-3 top-3 z-10 rounded-md border border-border bg-surface px-2 py-1 font-sans text-xs font-semibold text-ink shadow-sm hover:border-accent/50';
     boton.textContent = '⋯';
@@ -225,13 +241,13 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
           ),
         });
       }
-      cerrarMenus();
+      cerrarMenus(true);
     });
     panel.append(boton, menu);
   });
 
   document.addEventListener('keydown', (evento) => {
-    if (evento.key === 'Escape') cerrarMenus();
+    if (evento.key === 'Escape') cerrarMenus(true);
   });
   document.addEventListener('click', (evento) => {
     if (
