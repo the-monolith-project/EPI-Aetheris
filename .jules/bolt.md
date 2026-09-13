@@ -9,3 +9,7 @@
 ## 2026-08-30 - Missing Cache-Control headers on analytical endpoints
 **Learning:** Certain static/historical analytical endpoints (like `/api/neumonias/*` and `/api/respiratorios/*`) were missing the `_cache_control` utility call, causing clients to re-fetch identical data repeatedly without client-side caching.
 **Action:** Added `response: Response` and `_cache_control(response, CACHE_TTL_HISTORICO)` to these endpoints to enable standard HTTP caching and reduce unnecessary server load.
+
+## 2026-09-13 - Python standard library statistics overhead
+**Learning:** Python's built-in `statistics` module (like `statistics.median` and `statistics.stdev`) adds massive execution overhead due to exact fraction representation and internal type checking (visible via cProfile). In tight loops processing many small arrays (like `calcular_baseline_semana`), this becomes a severe bottleneck.
+**Action:** Replaced standard library functions with manual math operations (`math.sqrt` and manual median from sorted list) for tight loops, reducing calculation time by ~10x (~0.09s -> ~0.009s for 10k loops).
