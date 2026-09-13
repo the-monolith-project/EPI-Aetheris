@@ -16,3 +16,7 @@
 ## 2026-09-05 - Range Sliders Accessibility
 **Learning:** Multiple range sliders (e.g., dual thumbs for min/max) inside a single wrapping `<label>` tag lack individual context for screen readers. The wrapper text becomes an ambiguous group label.
 **Action:** Always add explicit `aria-label` attributes to each `<input type="range">` when multiple inputs share the same visible label to distinguish their specific functions (e.g., 'Semana inicial' vs 'Semana final').
+
+## 2026-09-13 - Focus Restoration and ARIA popups
+**Learning:** When building custom dropdowns, popovers, or menus (e.g., in Astro components), applying the appropriate `aria-haspopup` attribute (`dialog` or `menu`) to the trigger button is crucial for screen readers to understand the button's behavior. Additionally, focus must be explicitly restored to the trigger button when the overlay is dismissed (e.g., via the Escape key) to maintain keyboard navigation flow.
+**Action:** Always apply `aria-haspopup` to overlay triggers and ensure `.focus()` is called on the trigger when the overlay is dismissed via keyboard interaction.
