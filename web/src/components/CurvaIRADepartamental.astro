@@ -65,8 +65,22 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       </label>
       <label class="flex items-center gap-2"
         >SE
-        <input data-curva-desde type="range" min="1" max="52" value="1" />
-        <input data-curva-hasta type="range" min="1" max="52" value="52" />
+        <input
+          data-curva-desde
+          type="range"
+          min="1"
+          max="52"
+          value="1"
+          aria-label="Semana epidemiológica inicial"
+        />
+        <input
+          data-curva-hasta
+          type="range"
+          min="1"
+          max="52"
+          value="52"
+          aria-label="Semana epidemiológica final"
+        />
         <span data-curva-rango class="font-sans tabular-nums text-xs"
           >SE1–SE52</span
         >
