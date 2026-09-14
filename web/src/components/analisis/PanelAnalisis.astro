@@ -161,7 +161,7 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
       : 'contents';
   }
 
-  function cerrarMenus(): void {
+  function cerrarMenus(devolverFoco = false): void {
     document
       .querySelectorAll<HTMLElement>('[data-menu-panel]')
       .forEach((menu) => {
@@ -170,7 +170,9 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
     document
       .querySelectorAll<HTMLButtonElement>('[data-boton-menu-panel]')
       .forEach((boton) => {
+        const estabaAbierto = boton.getAttribute('aria-expanded') === 'true';
         boton.setAttribute('aria-expanded', 'false');
+        if (devolverFoco && estabaAbierto) boton.focus();
       });
   }
 
@@ -186,6 +188,7 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
     boton.setAttribute('aria-label', `Opciones de ${etiqueta}`);
     boton.setAttribute('aria-expanded', 'false');
     boton.setAttribute('aria-controls', menuId);
+    boton.setAttribute('aria-haspopup', 'menu');
     boton.className =
       'absolute right-3 top-3 z-10 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-border bg-surface font-sans text-xs font-semibold text-ink shadow-sm hover:border-accent/50';
     boton.textContent = '⋯';
@@ -231,12 +234,7 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
   });
 
   document.addEventListener('keydown', (evento) => {
-    if (evento.key !== 'Escape') return;
-    const botonAbierto = document.querySelector<HTMLButtonElement>(
-      '[data-boton-menu-panel][aria-expanded="true"]',
-    );
-    cerrarMenus();
-    botonAbierto?.focus();
+    if (evento.key === 'Escape') cerrarMenus(true);
   });
   document.addEventListener('click', (evento) => {
     if (
