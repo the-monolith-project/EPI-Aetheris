@@ -35,7 +35,7 @@ const CANALES = [
 ---
 
 <Layout title="EPI-Aetheris — Sugerencias">
-  <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+  <main id="contenido-principal" class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
     <header class="mb-8 max-w-3xl">
       <h1
         class="font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
@@ -68,6 +68,7 @@ const CANALES = [
             </p>
             <span class="mt-1 font-sans text-sm font-medium text-accent">
               {canal.cta}
+              <span class="sr-only"> (abre en una nueva pestaña)</span>
             </span>
           </a>
         ))

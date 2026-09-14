@@ -9,7 +9,7 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
 ---
 
 <Layout title="EPI-Aetheris — Archivo de alertas">
-  <main class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+  <main id="contenido-principal" class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
     <header class="mb-8 max-w-3xl">
       <p
         class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
@@ -39,6 +39,7 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
     <form
       method="get"
       action="/alertas/archivo"
+      aria-label="Filtrar archivo de alertas"
       class="mb-6 flex flex-wrap items-end gap-3 font-sans text-sm"
       data-archivo-filtros
     >
@@ -60,6 +61,7 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
         <input
           type="date"
           name="desde"
+          data-archivo-desde
           value={desdePedido}
           class="rounded-lg border border-border bg-surface px-3 py-1.5"
         />
@@ -69,6 +71,7 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
         <input
           type="date"
           name="hasta"
+          data-archivo-hasta
           value={hastaPedido}
           class="rounded-lg border border-border bg-surface px-3 py-1.5"
         />
@@ -79,6 +82,14 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
       >
         Filtrar
       </button>
+      <p
+        data-archivo-rango-error
+        role="alert"
+        hidden
+        class="w-full font-sans text-sm text-red-700"
+      >
+        La fecha "Desde" no puede ser posterior a "Hasta".
+      </p>
     </form>
 
     <div data-alertas data-archivo>
@@ -119,6 +130,31 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
 
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const root = document.querySelector<HTMLElement>('[data-alertas]');
+
+  const formFiltros = document.querySelector<HTMLFormElement>(
+    '[data-archivo-filtros]',
+  );
+  const inputDesde = document.querySelector<HTMLInputElement>(
+    '[data-archivo-desde]',
+  );
+  const inputHasta = document.querySelector<HTMLInputElement>(
+    '[data-archivo-hasta]',
+  );
+  const errorRango = document.querySelector<HTMLElement>(
+    '[data-archivo-rango-error]',
+  );
+  formFiltros?.addEventListener('submit', (evento) => {
+    if (!inputDesde?.value || !inputHasta?.value) return;
+    if (inputDesde.value <= inputHasta.value) {
+      inputHasta.removeAttribute('aria-invalid');
+      if (errorRango) errorRango.hidden = true;
+      return;
+    }
+    evento.preventDefault();
+    inputHasta.setAttribute('aria-invalid', 'true');
+    if (errorRango) errorRango.hidden = false;
+    inputHasta.focus();
+  });
 
   if (root) {
     const pintar: PintarAlertas = (payload) => {
