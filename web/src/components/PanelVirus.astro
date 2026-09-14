@@ -281,12 +281,25 @@
 
       const table = document.createElement('table');
       table.className = 'font-sans tabular-nums text-[11px] border-collapse';
+      table.setAttribute(
+        'aria-label',
+        `Heatmap de ${metrica} por virus y semana epidemiológica, año ${anio}`,
+      );
+      const caption = document.createElement('caption');
+      caption.className = 'sr-only';
+      caption.textContent = `Casos de ${metrica} por virus y semana epidemiológica del año ${anio}`;
+      table.appendChild(caption);
       const thead = document.createElement('thead');
       const trh = document.createElement('tr');
-      trh.appendChild(document.createElement('th'));
+      const thCorner = document.createElement('th');
+      thCorner.scope = 'col';
+      thCorner.textContent = 'Virus';
+      thCorner.className = 'sr-only';
+      trh.appendChild(thCorner);
       for (const s of semanas) {
         const th = document.createElement('th');
         th.textContent = String(s);
+        th.scope = 'col';
         th.className = 'px-0.5 text-ink-muted font-sans';
         trh.appendChild(th);
       }
@@ -295,18 +308,21 @@
       const tbody = document.createElement('tbody');
       for (const v of filas) {
         const tr = document.createElement('tr');
-        const name = document.createElement('td');
+        const name = document.createElement('th');
+        name.scope = 'row';
         name.textContent = v;
         name.className =
-          'pr-2 font-sans text-xs text-ink sticky left-0 bg-surface';
+          'pr-2 text-left font-sans text-xs font-medium text-ink sticky left-0 bg-surface';
         tr.appendChild(name);
         for (const s of semanas) {
           const td = document.createElement('td');
           const val = grid[v][s];
-          td.title =
+          const etiqueta =
             val == null
               ? `${v} SE${s} ${anio}: sin dato`
-              : `${v} SE${s} ${anio}: ${val}`;
+              : `${v} SE${s} ${anio}: ${val} casos`;
+          td.title = etiqueta;
+          td.setAttribute('aria-label', etiqueta);
           td.style.background =
             val == null ? '#f4f4f5' : color(val, max, metrica);
           td.style.width = '14px';

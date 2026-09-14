@@ -116,7 +116,7 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
                   href={item.href}
                   aria-current={activo ? 'page' : undefined}
                   class:list={[
-                    'shrink-0 whitespace-nowrap rounded-full px-2 py-1.5 font-medium transition-colors sm:px-3.5',
+                    'flex min-h-[44px] shrink-0 items-center whitespace-nowrap rounded-full px-3 font-medium transition-colors sm:px-3.5',
                     activo
                       ? 'bg-white/15 text-white'
                       : 'text-white/70 hover:bg-white/10 hover:text-white',
