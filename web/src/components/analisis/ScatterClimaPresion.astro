@@ -11,7 +11,7 @@
     </p>
   </header>
 
-  <div class="mt-4 overflow-x-auto">
+  <div class="mt-4 overflow-x-auto scroll-shadow-x">
     <div
       id="scatter-clima-presion"
       class="min-h-[340px] min-w-[720px]"
@@ -87,6 +87,7 @@
       return;
     }
 
+    contenedor.setAttribute('aria-busy', 'true');
     try {
       const datos = await obtenerDatasetAnalitico(filtros.anio);
       if (idRevision !== revision) return;
@@ -188,6 +189,8 @@
       if (resumen)
         resumen.textContent =
           'No fue posible cargar la relación clima-presión.';
+    } finally {
+      contenedor.setAttribute('aria-busy', 'false');
     }
   }
 

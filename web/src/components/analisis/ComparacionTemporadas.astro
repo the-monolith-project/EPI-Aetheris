@@ -12,7 +12,11 @@
     </p>
   </header>
 
-  <div id="comparacion-temporadas-grafica" class="mt-4 overflow-x-auto" hidden>
+  <div
+    id="comparacion-temporadas-grafica"
+    class="mt-4 overflow-x-auto scroll-shadow-x"
+    hidden
+  >
     <div
       id="comparacion-temporadas"
       class="min-h-[340px] min-w-[720px]"
@@ -39,6 +43,7 @@
   } from '../../lib/analisis-state';
   import { vincularMarcasPlot } from '../../lib/plot-interacciones';
   import { ANIOS_ANALISIS_DENGUE } from '../../lib/tipos-analisis';
+  import { colorCualitativo } from '../../lib/colores';
   import type {
     AnioAnalisisDengue,
     FiltrosAnalisis,
@@ -73,6 +78,7 @@
     if (marcoGrafica) marcoGrafica.hidden = false;
     if (resumen) resumen.textContent = 'Cargando temporadas históricas…';
 
+    contenedor.setAttribute('aria-busy', 'true');
     try {
       const datasets = await Promise.all(
         ANIOS_ANALISIS_DENGUE.map((anio) => obtenerDatasetAnalitico(anio)),
@@ -124,8 +130,13 @@
             x: 'semana',
             y: 'casos',
             z: 'anio',
-            stroke: '#9ca3af',
-            strokeOpacity: 0.5,
+            stroke: (punto: PuntoTemporada) =>
+              colorCualitativo(
+                (ANIOS_ANALISIS_DENGUE as readonly number[]).indexOf(
+                  punto.anio,
+                ),
+              ),
+            strokeDasharray: '4 3',
             strokeWidth: 1.25,
           }),
           Plot.line(seleccionada, {
@@ -139,9 +150,13 @@
             x: 'semana',
             y: 'casos',
             fill: (punto: PuntoTemporada) =>
-              punto.anio === filtros.anio ? 'var(--color-accent)' : '#9ca3af',
-            fillOpacity: (punto: PuntoTemporada) =>
-              punto.anio === filtros.anio ? 1 : 0.45,
+              punto.anio === filtros.anio
+                ? 'var(--color-accent)'
+                : colorCualitativo(
+                    (ANIOS_ANALISIS_DENGUE as readonly number[]).indexOf(
+                      punto.anio,
+                    ),
+                  ),
             r: (punto: PuntoTemporada) =>
               punto.anio === filtros.anio ? 3 : 1.8,
             title: (punto: PuntoTemporada) =>
@@ -183,6 +198,8 @@
       if (resumen)
         resumen.textContent =
           'No fue posible cargar la comparación de temporadas.';
+    } finally {
+      contenedor.setAttribute('aria-busy', 'false');
     }
   }
 

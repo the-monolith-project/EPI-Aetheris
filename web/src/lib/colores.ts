@@ -36,3 +36,27 @@ export function colorCasos(conteo: number | null, maximo: number): string {
 export function gradienteCss(rampa: string[]): string {
   return `linear-gradient(90deg, ${rampa.join(', ')})`;
 }
+
+// Paleta cualitativa (ColorBrewer Dark2): pensada para distinguir categorías,
+// no magnitudes -- a diferencia de RAMPA_PRESION/RAMPA_CASOS, que ordenan un
+// valor continuo. Se eligió por ser distinguible bajo las formas más
+// comunes de daltonismo (protanopia/deuteranopia/tritanopia) y por tener
+// contraste suficiente contra fondos claros, algo que variar solo la
+// opacidad de un mismo color no garantiza (issue #129).
+export const PALETA_CUALITATIVA = [
+  '#1b9e77',
+  '#d95f02',
+  '#7570b3',
+  '#e7298a',
+  '#66a61e',
+  '#e6ab02',
+  '#a6761d',
+  '#666666',
+];
+
+export function colorCualitativo(indice: number): string {
+  const i =
+    ((indice % PALETA_CUALITATIVA.length) + PALETA_CUALITATIVA.length) %
+    PALETA_CUALITATIVA.length;
+  return PALETA_CUALITATIVA[i];
+}

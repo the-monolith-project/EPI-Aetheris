@@ -12,7 +12,7 @@
     </p>
   </header>
 
-  <div class="mt-4 overflow-x-auto">
+  <div class="mt-4 overflow-x-auto scroll-shadow-x">
     <div
       id="heatmap-departamentos"
       class="min-h-[420px] min-w-[760px]"
@@ -34,6 +34,11 @@
     <span class="ml-2 inline-flex items-center gap-1.5">
       <span class="h-2.5 w-2.5 rounded-sm bg-zinc-200 ring-1 ring-black/10"
       ></span> Sin dato
+    </span>
+    <span class="sr-only">
+      El color de cada celda va de un tono claro en el percentil 0 a un tono
+      oscuro en el percentil 100, en una escala continua; las celdas grises
+      indican que falta el dato.
     </span>
   </div>
   <p
@@ -101,6 +106,7 @@
       return;
     }
 
+    contenedor.setAttribute('aria-busy', 'true');
     try {
       const datos = await obtenerDatasetAnalitico(filtros.anio);
       if (idRevision !== revision) return;
@@ -205,6 +211,8 @@
       contenedor.replaceChildren();
       if (resumen)
         resumen.textContent = 'No fue posible cargar el heatmap departamental.';
+    } finally {
+      contenedor.setAttribute('aria-busy', 'false');
     }
   }
 

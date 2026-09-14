@@ -72,6 +72,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
           max="52"
           value="1"
           aria-label="Semana epidemiológica inicial"
+          aria-valuetext="Semana epidemiológica 1"
         />
         <input
           data-curva-hasta
@@ -80,6 +81,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
           max="52"
           value="52"
           aria-label="Semana epidemiológica final"
+          aria-valuetext="Semana epidemiológica 52"
         />
         <span data-curva-rango class="font-sans tabular-nums text-xs"
           >SE1–SE52</span
@@ -97,7 +99,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
 
   <div
     data-curva-canvas
-    class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4"
+    class="mt-4 rounded-xl border border-border bg-bg p-3 transition-opacity sm:p-4"
     role="status"
   >
     <div data-estado aria-hidden="true">
@@ -112,6 +114,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     DepartamentoIRA,
     RespuestaIraDepartamental,
   } from '../lib/tipos-analisis';
+  import { colorCualitativo } from '../lib/colores';
   import {
     esNoDisponible,
     motivoNoDisponible,
@@ -134,15 +137,6 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
   const ANCHO = 720;
   const ALTO = 260;
   const MARGEN = { arriba: 20, abajo: 40, izquierda: 44, derecha: 8 };
-  // Años dentro de la misma gama del acento (sin inventar paleta nueva):
-  // opacidad graduada, el año más reciente al frente y a trazo pleno.
-  const OPACIDAD_ANIO: Record<string, number> = {
-    '2018': 0.25,
-    '2019': 0.4,
-    '2021': 0.55,
-    '2022': 0.75,
-    '2023': 1,
-  };
 
   function recortar(
     series: Record<string, Punto[]>,
@@ -202,6 +196,11 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       'aria-label',
       `Casos semanales notificados ${capas.map((c) => c.nombre).join(' y ')}, SE${desde}–SE${hasta}`,
     );
+    const numeros = valores as number[];
+    const totalCasos = numeros.reduce((suma, v) => suma + v, 0);
+    const descSvg = document.createElementNS(SVG_NS, 'desc');
+    descSvg.textContent = `Entre la semana epidemiológica ${desde} y la ${hasta}, el valor máximo notificado en cualquier semana fue ${Math.max(...numeros).toLocaleString('es-SV')} y el total acumulado en el rango fue ${totalCasos.toLocaleString('es-SV')}.`;
+    svg.appendChild(descSvg);
 
     for (const nivel of [0, maxValor / 2, maxValor]) {
       const y = escalaY(nivel);
@@ -257,14 +256,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
         const trazo = document.createElementNS(SVG_NS, 'path');
         trazo.setAttribute('d', d.trim());
         trazo.setAttribute('fill', 'none');
-        trazo.setAttribute(
-          'stroke',
-          capa.dashed ? 'var(--color-ink)' : 'var(--color-accent)',
-        );
-        trazo.setAttribute(
-          'stroke-opacity',
-          String(OPACIDAD_ANIO[anio] ?? 0.5),
-        );
+        trazo.setAttribute('stroke', colorCualitativo(anios.indexOf(anio)));
         trazo.setAttribute(
           'stroke-width',
           anio === aniosCapa[aniosCapa.length - 1] ? '2' : '1.5',
@@ -284,11 +276,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       muestra.setAttribute('x2', String(x + 14));
       muestra.setAttribute('y1', String(ALTO - 8));
       muestra.setAttribute('y2', String(ALTO - 8));
-      muestra.setAttribute('stroke', 'var(--color-accent)');
-      muestra.setAttribute(
-        'stroke-opacity',
-        String(OPACIDAD_ANIO[anio] ?? 0.5),
-      );
+      muestra.setAttribute('stroke', colorCualitativo(anios.indexOf(anio)));
       muestra.setAttribute('stroke-width', '2');
       svg.appendChild(muestra);
       const texto = document.createElementNS(SVG_NS, 'text');
@@ -417,6 +405,8 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       let hasta = Number(inpHasta.value);
       if (desde > hasta) [desde, hasta] = [hasta, desde];
       txtRango.textContent = `SE${desde}–SE${hasta}`;
+      inpDesde.setAttribute('aria-valuetext', `Semana epidemiológica ${desde}`);
+      inpHasta.setAttribute('aria-valuetext', `Semana epidemiológica ${hasta}`);
       return { desde, hasta };
     };
 
@@ -424,6 +414,8 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       const { desde, hasta } = rango();
       const codigo = selector.value;
       const nombre = selector.selectedOptions[0]?.textContent ?? codigo;
+      contenedor.setAttribute('aria-busy', 'true');
+      contenedor.classList.add('opacity-60');
       try {
         const series = await cargarTemporal(apiBase, codigo);
         const filtro = selAnio.value;
@@ -477,6 +469,9 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
           renderErrorFuente(contenedor, () => void refrescar());
         }
         ultimoCsv = '';
+      } finally {
+        contenedor.removeAttribute('aria-busy');
+        contenedor.classList.remove('opacity-60');
       }
     };
     selector.addEventListener('change', () => void refrescar());

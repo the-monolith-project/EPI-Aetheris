@@ -81,6 +81,12 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
     <meta name="twitter:description" content={descripcion} />
   </head>
   <body class="min-h-screen bg-bg text-ink">
+    <a
+      href="#contenido-principal"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-white"
+    >
+      Saltar al contenido principal
+    </a>
     <header
       class="sticky top-0 z-40 bg-accent shadow-[0_1px_0_rgba(255,255,255,0.06)]"
     >

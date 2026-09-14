@@ -38,28 +38,32 @@
           <option value="2018">2018</option>
         </select>
       </label>
-      <label class="flex items-center gap-2"
-        >SE
+      <span class="flex items-center gap-2">
+        SE
         <input
+          id="hm-neu-desde"
           data-hm-desde
           type="range"
           min="1"
           max="52"
           value="1"
           aria-label="Semana epidemiológica inicial"
+          aria-valuetext="Semana 1"
         />
         <input
+          id="hm-neu-hasta"
           data-hm-hasta
           type="range"
           min="1"
           max="52"
           value="52"
           aria-label="Semana epidemiológica final"
+          aria-valuetext="Semana 52"
         />
         <span data-hm-rango class="font-sans tabular-nums text-xs"
           >SE1–SE52</span
         >
-      </label>
+      </span>
       <button
         type="button"
         data-hm-export
@@ -87,7 +91,7 @@
       Reintentar
     </button>
   </div>
-  <div data-hm-grid role="status" class="mt-4 overflow-x-auto"></div>
+  <div data-hm-grid role="status" class="mt-4 overflow-x-auto scroll-shadow-x"></div>
 </section>
 
 <script>
@@ -138,6 +142,8 @@
     let hasta = Number(inpHasta.value);
     if (desde > hasta) [desde, hasta] = [hasta, desde];
     txtRango.textContent = `SE${desde}–SE${hasta}`;
+    inpDesde.setAttribute('aria-valuetext', `Semana ${inpDesde.value}`);
+    inpHasta.setAttribute('aria-valuetext', `Semana ${inpHasta.value}`);
     const anio = sel.value;
     grid.textContent = 'Cargando…';
     try {
