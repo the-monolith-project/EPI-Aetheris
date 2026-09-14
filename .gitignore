@@ -44,8 +44,11 @@ backend/ingestion/data/raw/
 # de ingesta/entrenamiento antes de levantar el backend, así que sin esta
 # excepción el endpoint siempre da 503. Regenerar con:
 # construir_dataset_modelado.py + entrenar_clasificador.py.
-# (Un directorio "excluido" no se recorre, así que la excepción no puede
-# hacerse con un solo patrón "!" al final — hay que reabrir cada nivel.)
+# (La regla del padre usa /* -- excluye cada entrada directa del directorio,
+# no todo el subárbol de una vez -- porque un directorio excluido por completo
+# ("dir/") no se recorre y sus "!" nunca se evalúan. Con /* cada nivel queda
+# reabrible con su propio "!", y por eso hay que repetir el patrón en cada
+# nivel intermedio.)
 backend/ingestion/data/interim/*
 !backend/ingestion/data/interim/dataset_modelado
 backend/ingestion/data/interim/dataset_modelado/*
