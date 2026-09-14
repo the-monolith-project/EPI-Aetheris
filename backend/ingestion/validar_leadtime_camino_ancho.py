@@ -74,7 +74,6 @@ from __future__ import annotations
 
 import csv
 import math
-import statistics
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
@@ -195,9 +194,16 @@ def calcular_serie_Iv(
 def chequeo_de_cordura(serie_iv: dict[str, dict[int, dict[int, float]]]) -> list[float]:
     todos = [v for por_anio in serie_iv.values() for semanas in por_anio.values() for v in semanas.values()]
     n = len(todos)
-    media = statistics.mean(todos)
-    mediana = statistics.median(todos)
-    desv = statistics.stdev(todos)
+
+    # ⚡ Bolt Optimization: Replacing statistics.mean, statistics.median and statistics.stdev
+    # with inline math equivalents to avoid massive overhead.
+    media = sum(todos) / n
+    todos_sorted = sorted(todos)
+    mid = n // 2
+    mediana = (todos_sorted[mid - 1] + todos_sorted[mid]) / 2.0 if n % 2 == 0 else todos_sorted[mid]
+    varianza = sum((x - media) ** 2 for x in todos) / (n - 1)
+    desv = math.sqrt(varianza)
+
     minimo, maximo = min(todos), max(todos)
     frac_cero = sum(1 for v in todos if v < 0.01) / n
     frac_uno = sum(1 for v in todos if v > 0.99) / n
@@ -249,8 +255,17 @@ def calcular_alertas_por_anio(
             if len(pool) < 3:
                 detalle.append((semana, serie_codigo[anio_obj][semana], None, None, None))
                 continue
-            mediana = statistics.median(pool)
-            desv = statistics.stdev(pool)
+
+            # ⚡ Bolt Optimization: Replacing statistics.median and statistics.stdev
+            # with inline math equivalents to avoid massive overhead.
+            n_pool = len(pool)
+            pool_sorted = sorted(pool)
+            mid = n_pool // 2
+            mediana = (pool_sorted[mid - 1] + pool_sorted[mid]) / 2.0 if n_pool % 2 == 0 else pool_sorted[mid]
+            media = sum(pool) / n_pool
+            varianza = sum((x - media) ** 2 for x in pool) / (n_pool - 1)
+            desv = math.sqrt(varianza)
+
             valor = serie_codigo[anio_obj][semana]
             z = None if desv < 1e-9 else (valor - mediana) / desv
             detalle.append((semana, valor, mediana, desv, z))
@@ -329,7 +344,8 @@ def main() -> None:
         ) if serie_iv else set()
         for semana in semanas_comunes:
             valores = [serie_iv[cod][anio][semana] for cod in serie_iv]
-            serie_iv_nacional[anio][semana] = statistics.mean(valores)
+            # ⚡ Bolt Optimization: Replacing statistics.mean with inline math equivalent
+            serie_iv_nacional[anio][semana] = sum(valores) / len(valores)
 
     alertas_nacional = calcular_alertas_por_anio(serie_iv_nacional, ANIOS_EVALUADOS)
     inicio_nacional = inicio_temporada_nacional()
@@ -424,7 +440,8 @@ def main() -> None:
         print(f"\n=== Resumen nivel={nivel} (excluidos por decision metodologica: {sorted(excluir_anios) or 'ninguno'}) ===")
         print(f"  {n_validos}/{n_total} anio-casos con lead time medible (con alerta Y con inicio real).")
         if validos:
-            mediana = statistics.median(validos)
+            # ⚡ Bolt Optimization: Replacing statistics.median with custom percentil function
+            mediana = percentil(validos, 0.5)
             q1 = percentil(validos, 0.25)
             q3 = percentil(validos, 0.75)
             positivos = sum(1 for v in validos if v > 0)
