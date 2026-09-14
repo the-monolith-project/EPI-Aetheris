@@ -118,6 +118,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
             min="1"
             max="53"
             value="1"
+            aria-valuetext="Semana epidemiológica 1"
             class="w-full accent-accent"
           />
         </label>
@@ -141,6 +142,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
               min="1"
               max="53"
               value="1"
+              aria-valuetext="Semana epidemiológica 1"
               class="w-full accent-accent"
             />
           </label>
@@ -157,6 +159,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
               min="1"
               max="53"
               value="53"
+              aria-valuetext="Semana epidemiológica 53"
               class="w-full accent-accent"
             />
           </label>
@@ -335,6 +338,21 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
     if (semanaValor) semanaValor.value = etiquetaSemana(filtros.semana);
     if (desdeValor) desdeValor.value = etiquetaSemana(filtros.semanaDesde);
     if (hastaValor) hastaValor.value = etiquetaSemana(filtros.semanaHasta);
+    if (semana)
+      semana.setAttribute(
+        'aria-valuetext',
+        `Semana epidemiológica ${filtros.semana}`,
+      );
+    if (desde)
+      desde.setAttribute(
+        'aria-valuetext',
+        `Semana epidemiológica ${filtros.semanaDesde}`,
+      );
+    if (hasta)
+      hasta.setAttribute(
+        'aria-valuetext',
+        `Semana epidemiológica ${filtros.semanaHasta}`,
+      );
     document
       .querySelectorAll<HTMLInputElement>('input[name="analisis-serie"]')
       .forEach((radio) => {
