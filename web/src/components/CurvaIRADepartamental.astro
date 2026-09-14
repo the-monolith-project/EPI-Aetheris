@@ -114,6 +114,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     DepartamentoIRA,
     RespuestaIraDepartamental,
   } from '../lib/tipos-analisis';
+  import { colorCualitativo } from '../lib/colores';
   import {
     esNoDisponible,
     motivoNoDisponible,
@@ -136,15 +137,6 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
   const ANCHO = 720;
   const ALTO = 260;
   const MARGEN = { arriba: 20, abajo: 40, izquierda: 44, derecha: 8 };
-  // Años dentro de la misma gama del acento (sin inventar paleta nueva):
-  // opacidad graduada, el año más reciente al frente y a trazo pleno.
-  const OPACIDAD_ANIO: Record<string, number> = {
-    '2018': 0.25,
-    '2019': 0.4,
-    '2021': 0.55,
-    '2022': 0.75,
-    '2023': 1,
-  };
 
   function recortar(
     series: Record<string, Punto[]>,
@@ -264,14 +256,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
         const trazo = document.createElementNS(SVG_NS, 'path');
         trazo.setAttribute('d', d.trim());
         trazo.setAttribute('fill', 'none');
-        trazo.setAttribute(
-          'stroke',
-          capa.dashed ? 'var(--color-ink)' : 'var(--color-accent)',
-        );
-        trazo.setAttribute(
-          'stroke-opacity',
-          String(OPACIDAD_ANIO[anio] ?? 0.5),
-        );
+        trazo.setAttribute('stroke', colorCualitativo(anios.indexOf(anio)));
         trazo.setAttribute(
           'stroke-width',
           anio === aniosCapa[aniosCapa.length - 1] ? '2' : '1.5',
@@ -291,11 +276,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       muestra.setAttribute('x2', String(x + 14));
       muestra.setAttribute('y1', String(ALTO - 8));
       muestra.setAttribute('y2', String(ALTO - 8));
-      muestra.setAttribute('stroke', 'var(--color-accent)');
-      muestra.setAttribute(
-        'stroke-opacity',
-        String(OPACIDAD_ANIO[anio] ?? 0.5),
-      );
+      muestra.setAttribute('stroke', colorCualitativo(anios.indexOf(anio)));
       muestra.setAttribute('stroke-width', '2');
       svg.appendChild(muestra);
       const texto = document.createElementNS(SVG_NS, 'text');
