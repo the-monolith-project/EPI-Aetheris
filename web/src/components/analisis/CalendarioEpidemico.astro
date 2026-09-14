@@ -89,6 +89,7 @@
     const idRevision = ++revision;
     if (resumen) resumen.textContent = 'Cargando serie nacional…';
 
+    contenedor.setAttribute('aria-busy', 'true');
     try {
       const filas = await obtenerCasosNacionales();
       if (idRevision !== revision) return;
@@ -183,6 +184,8 @@
       contenedor.replaceChildren();
       if (resumen)
         resumen.textContent = 'No fue posible cargar el calendario epidémico.';
+    } finally {
+      contenedor.setAttribute('aria-busy', 'false');
     }
   }
 

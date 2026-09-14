@@ -67,8 +67,10 @@ const endpoint =
     data-mapa-canvas
     role="region"
     aria-label={`Mapa departamental de ${etiqueta}`}
+    aria-busy="true"
     class="mt-4 h-[300px] w-full overflow-hidden rounded-xl border border-border shadow-inner sm:h-[420px] lg:h-[540px]"
   >
+    <div class="skeleton h-full w-full" aria-hidden="true"></div>
   </div>
   <div data-mapa-leyenda class="mt-3"></div>
 
@@ -298,6 +300,8 @@ const endpoint =
     // sin esto, un scroll de más con la rueda del mouse manda a ver
     // Guatemala u Honduras, que el proyecto todavía no cubre.
     const LIMITES_SV = L.latLngBounds([12.95, -90.35], [14.65, -87.45]);
+    contenedorMapa.innerHTML = '';
+    contenedorMapa.removeAttribute('aria-busy');
     const mapa = L.map(contenedorMapa, {
       minZoom: 8,
       maxBounds: LIMITES_SV,

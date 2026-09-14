@@ -84,6 +84,7 @@
       return;
     }
 
+    contenedor.setAttribute('aria-busy', 'true');
     try {
       const dataset = await obtenerDatasetAnalitico(filtros.anio);
       if (idRevision !== revision) return;
@@ -173,6 +174,8 @@
       if (resumen)
         resumen.textContent =
           'No fue posible cargar la disponibilidad de datos.';
+    } finally {
+      contenedor.setAttribute('aria-busy', 'false');
     }
   }
 

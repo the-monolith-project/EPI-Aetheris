@@ -129,8 +129,10 @@
     id="mapa-departamentos"
     role="region"
     aria-label="Mapa interactivo de departamentos de El Salvador"
+    aria-busy="true"
     class="mt-4 h-[300px] w-full overflow-hidden rounded-xl border border-border shadow-inner sm:h-[420px] lg:h-[540px]"
   >
+    <div class="skeleton h-full w-full" aria-hidden="true"></div>
   </div>
   <div id="mapa-leyenda" class="mt-3"></div>
 
@@ -1179,6 +1181,8 @@
     // hace que el mapa "rebote" en vez de dejar salir el pan; minZoom evita
     // alejar hasta ver la región entera.
     const LIMITES_SV = L.latLngBounds([12.95, -90.35], [14.65, -87.45]);
+    contenedorMapa.innerHTML = '';
+    contenedorMapa.removeAttribute('aria-busy');
     const mapa = L.map(contenedorMapa, {
       minZoom: 8,
       maxBounds: LIMITES_SV,

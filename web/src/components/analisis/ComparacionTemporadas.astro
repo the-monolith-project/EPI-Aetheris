@@ -73,6 +73,7 @@
     if (marcoGrafica) marcoGrafica.hidden = false;
     if (resumen) resumen.textContent = 'Cargando temporadas históricas…';
 
+    contenedor.setAttribute('aria-busy', 'true');
     try {
       const datasets = await Promise.all(
         ANIOS_ANALISIS_DENGUE.map((anio) => obtenerDatasetAnalitico(anio)),
@@ -183,6 +184,8 @@
       if (resumen)
         resumen.textContent =
           'No fue posible cargar la comparación de temporadas.';
+    } finally {
+      contenedor.setAttribute('aria-busy', 'false');
     }
   }
 

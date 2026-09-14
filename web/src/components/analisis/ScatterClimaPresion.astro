@@ -87,6 +87,7 @@
       return;
     }
 
+    contenedor.setAttribute('aria-busy', 'true');
     try {
       const datos = await obtenerDatasetAnalitico(filtros.anio);
       if (idRevision !== revision) return;
@@ -188,6 +189,8 @@
       if (resumen)
         resumen.textContent =
           'No fue posible cargar la relación clima-presión.';
+    } finally {
+      contenedor.setAttribute('aria-busy', 'false');
     }
   }
 

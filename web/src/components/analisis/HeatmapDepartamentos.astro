@@ -106,6 +106,7 @@
       return;
     }
 
+    contenedor.setAttribute('aria-busy', 'true');
     try {
       const datos = await obtenerDatasetAnalitico(filtros.anio);
       if (idRevision !== revision) return;
@@ -210,6 +211,8 @@
       contenedor.replaceChildren();
       if (resumen)
         resumen.textContent = 'No fue posible cargar el heatmap departamental.';
+    } finally {
+      contenedor.setAttribute('aria-busy', 'false');
     }
   }
 

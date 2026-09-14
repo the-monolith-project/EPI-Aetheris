@@ -99,7 +99,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
 
   <div
     data-curva-canvas
-    class="mt-4 rounded-xl border border-border bg-bg p-3 sm:p-4"
+    class="mt-4 rounded-xl border border-border bg-bg p-3 transition-opacity sm:p-4"
     role="status"
   >
     <div data-estado aria-hidden="true">
@@ -433,6 +433,8 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       const { desde, hasta } = rango();
       const codigo = selector.value;
       const nombre = selector.selectedOptions[0]?.textContent ?? codigo;
+      contenedor.setAttribute('aria-busy', 'true');
+      contenedor.classList.add('opacity-60');
       try {
         const series = await cargarTemporal(apiBase, codigo);
         const filtro = selAnio.value;
@@ -486,6 +488,9 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
           renderErrorFuente(contenedor, () => void refrescar());
         }
         ultimoCsv = '';
+      } finally {
+        contenedor.removeAttribute('aria-busy');
+        contenedor.classList.remove('opacity-60');
       }
     };
     selector.addEventListener('change', () => void refrescar());
