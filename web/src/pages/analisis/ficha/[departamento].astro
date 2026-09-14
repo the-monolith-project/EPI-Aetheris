@@ -31,7 +31,7 @@ const { codigo, nombre } = departamento;
   title={`EPI-Aetheris — Ficha departamental: ${nombre} (${codigo})`}
   descripcion={`Ficha epidemiológica descriptiva para campo del departamento de ${nombre} (${codigo}), El Salvador.`}
 >
-  <main class="mx-auto max-w-[1400px] px-4 py-6 sm:px-8 sm:py-8 lg:px-12">
+  <main id="contenido-principal" class="mx-auto max-w-[1400px] px-4 py-6 sm:px-8 sm:py-8 lg:px-12">
     <!-- Barra superior de navegacion y controles (oculta en impresion) -->
     <div
       class="print:hidden mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
@@ -495,19 +495,25 @@ const { codigo, nombre } = departamento;
           </h3>
           <table
             class="w-full border-collapse font-sans text-xs text-ink print:text-black"
+            aria-label="Observaciones recientes por semana epidemiológica"
           >
+            <caption class="sr-only">
+              Observaciones recientes de las últimas semanas registradas: Iv
+              real, mediana histórica, anomalía, casos probables y
+              confirmados con sus percentiles
+            </caption>
             <thead>
               <tr
                 class="border-b border-border bg-bg/50 print:border-black print:bg-transparent text-left text-[11px] font-semibold text-ink-muted print:text-black"
               >
-                <th class="p-1.5">Semana</th>
-                <th class="p-1.5">Iv real</th>
-                <th class="p-1.5">Mediana hist.</th>
-                <th class="p-1.5">Anomalía σ</th>
-                <th class="p-1.5">Probables</th>
-                <th class="p-1.5">Pctil Prob.</th>
-                <th class="p-1.5">Confirmados</th>
-                <th class="p-1.5">Pctil Conf.</th>
+                <th scope="col" class="p-1.5">Semana</th>
+                <th scope="col" class="p-1.5">Iv real</th>
+                <th scope="col" class="p-1.5">Mediana hist.</th>
+                <th scope="col" class="p-1.5">Anomalía σ</th>
+                <th scope="col" class="p-1.5">Probables</th>
+                <th scope="col" class="p-1.5">Pctil Prob.</th>
+                <th scope="col" class="p-1.5">Confirmados</th>
+                <th scope="col" class="p-1.5">Pctil Conf.</th>
               </tr>
             </thead>
             <tbody id="tabla-semanas-cuerpo">
@@ -795,6 +801,8 @@ const { codigo, nombre } = departamento;
     banda?: { x: number; yMin: number; yMax: number }[],
     mediana?: { x: number; y: number }[],
     rangoY?: [number, number],
+    titulo?: string,
+    descripcion?: string,
   ) {
     if (!puntos.length && !banda?.length) {
       contenedor.innerHTML =
@@ -828,6 +836,18 @@ const { codigo, nombre } = departamento;
     svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
     svg.setAttribute('class', 'w-full h-full');
     svg.setAttribute('preserveAspectRatio', 'none');
+    if (titulo) {
+      svg.setAttribute('role', 'img');
+      svg.setAttribute('aria-label', titulo);
+      const tituloEl = document.createElementNS(SVG_NS, 'title');
+      tituloEl.textContent = titulo;
+      svg.appendChild(tituloEl);
+      if (descripcion) {
+        const descEl = document.createElementNS(SVG_NS, 'desc');
+        descEl.textContent = descripcion;
+        svg.appendChild(descEl);
+      }
+    }
 
     // Eje X lineas de referencia
     [1, 13, 26, 39, 52].forEach((semana) => {
@@ -1052,7 +1072,15 @@ const { codigo, nombre } = departamento;
         const medIv = temporalData.semanas
           .filter((s) => s.mediana_baseline !== null)
           .map((s) => ({ x: s.semana_epi, y: s.mediana_baseline! }));
-        renderSvgCurva(contenedorG1, puntosIv, bandaIv, medIv);
+        renderSvgCurva(
+          contenedorG1,
+          puntosIv,
+          bandaIv,
+          medIv,
+          undefined,
+          'Índice de vigilancia semanal frente a la banda histórica P25-P75',
+          'Curva del índice de vigilancia real por semana epidemiológica, comparada con la banda entre el percentil 25 y el percentil 75 de la referencia histórica y su mediana.',
+        );
       }
 
       const contenedorG2 = document.getElementById('grafica-m2');
@@ -1066,6 +1094,8 @@ const { codigo, nombre } = departamento;
           undefined,
           undefined,
           [-3, 3],
+          'Anomalía semanal en desviaciones estándar respecto a la historia',
+          'Curva de la anomalía por semana epidemiológica, expresada en desviaciones estándar (sigma) respecto al comportamiento histórico del departamento, en un rango de -3 a 3.',
         );
       }
     } else {

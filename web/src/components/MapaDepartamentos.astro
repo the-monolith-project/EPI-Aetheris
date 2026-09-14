@@ -28,9 +28,9 @@
       class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
       aria-hidden="true"></span>
     <div>
-      <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+      <h3 class="font-sans text-base font-semibold text-ink sm:text-lg">
         Mapa departamental
-      </h2>
+      </h3>
     </div>
   </div>
 
@@ -86,7 +86,12 @@
       >
         Aviso de la capa
       </p>
-      <p id="mapa-aviso" class="mt-0.5 font-sans text-sm text-ink"></p>
+      <p
+        id="mapa-aviso"
+        role="status"
+        aria-live="polite"
+        class="mt-0.5 font-sans text-sm text-ink"
+      ></p>
     </div>
   </div>
 
@@ -124,13 +129,40 @@
     id="mapa-departamentos"
     role="region"
     aria-label="Mapa interactivo de departamentos de El Salvador"
+    aria-busy="true"
     class="mt-4 h-[300px] w-full overflow-hidden rounded-xl border border-border shadow-inner sm:h-[420px] lg:h-[540px]"
   >
+    <div class="skeleton h-full w-full" aria-hidden="true"></div>
   </div>
   <div id="mapa-leyenda" class="mt-3"></div>
 
+  <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+    <summary class="cursor-pointer font-sans text-xs font-medium text-ink-muted">
+      Ver los valores por departamento en una tabla
+    </summary>
+    <div class="mt-2 overflow-x-auto">
+      <table
+        id="mapa-tabla-valores"
+        class="w-full border-collapse font-sans text-xs tabular-nums text-ink"
+      >
+        <caption class="sr-only" id="mapa-tabla-caption"></caption>
+        <thead>
+          <tr class="text-left text-ink-muted">
+            <th scope="col" class="border-b border-border py-1 pr-4">Departamento</th>
+            <th scope="col" class="border-b border-border py-1" id="mapa-tabla-columna-valor">Valor</th>
+          </tr>
+        </thead>
+        <tbody id="mapa-tabla-cuerpo"></tbody>
+      </table>
+    </div>
+  </details>
+
+  <p id="mapa-detalle-anuncio" role="status" aria-live="polite" class="sr-only"></p>
   <div
     id="mapa-detalle"
+    role="region"
+    aria-labelledby="mapa-detalle-nombre"
+    tabindex="-1"
     class="mt-4 hidden rounded-xl border border-accent/30 bg-secondary/20 p-4 sm:p-5"
   >
     <div class="flex items-start justify-between gap-3">
@@ -1051,6 +1083,11 @@
     const detalleFicha = document.getElementById(
       'mapa-detalle-ficha',
     ) as HTMLAnchorElement | null;
+    const tablaCuerpo = document.getElementById('mapa-tabla-cuerpo');
+    const tablaCaption = document.getElementById('mapa-tabla-caption');
+    const tablaColumnaValor = document.getElementById(
+      'mapa-tabla-columna-valor',
+    );
     if (
       !contenedorSelector ||
       !contenedorMapa ||
@@ -1080,6 +1117,9 @@
     async function mostrarDetalle(codigo: string, nombre: string) {
       contenedorDetalle.classList.remove('hidden');
       detalleNombre.textContent = nombre;
+      const anuncioDetalle = document.getElementById('mapa-detalle-anuncio');
+      if (anuncioDetalle)
+        anuncioDetalle.textContent = `Detalle de ${nombre} disponible más abajo`;
       if (detalleFicha) {
         detalleFicha.href = `/analisis/ficha/${codigo}`;
         detalleFicha.setAttribute(
@@ -1141,6 +1181,8 @@
     // hace que el mapa "rebote" en vez de dejar salir el pan; minZoom evita
     // alejar hasta ver la región entera.
     const LIMITES_SV = L.latLngBounds([12.95, -90.35], [14.65, -87.45]);
+    contenedorMapa.innerHTML = '';
+    contenedorMapa.removeAttribute('aria-busy');
     const mapa = L.map(contenedorMapa, {
       minZoom: 8,
       maxBounds: LIMITES_SV,
@@ -1237,7 +1279,7 @@
           capa.disponible
             ? ''
             : 'disabled aria-disabled="true" title="Capa no disponible temporalmente"'
-        } role="tab" aria-selected="${activa}" class="${base} ${estilo}">${escapeHtml(capa.etiqueta)}</button>`;
+        } role="tab" aria-selected="${activa}" tabindex="${activa ? '0' : '-1'}" class="${base} ${estilo}">${escapeHtml(capa.etiqueta)}</button>`;
       }).join('');
 
       for (const capa of CAPAS) {
@@ -1258,6 +1300,69 @@
           }
           void activarCapa(capa.id);
         });
+      }
+    }
+
+    function pestanasDisponibles(): HTMLButtonElement[] {
+      return Array.from(
+        contenedorSelector?.querySelectorAll<HTMLButtonElement>(
+          '[role="tab"]:not([disabled])',
+        ) ?? [],
+      );
+    }
+
+    contenedorSelector?.addEventListener('keydown', (evento: KeyboardEvent) => {
+      if (evento.key !== 'ArrowLeft' && evento.key !== 'ArrowRight') return;
+      const pestanas = pestanasDisponibles();
+      if (pestanas.length === 0) return;
+      const actual = pestanas.findIndex(
+        (boton) => boton === document.activeElement,
+      );
+      if (actual === -1) return;
+      evento.preventDefault();
+      const siguiente =
+        evento.key === 'ArrowRight'
+          ? (actual + 1) % pestanas.length
+          : (actual - 1 + pestanas.length) % pestanas.length;
+      pestanas.forEach((boton, indice) =>
+        boton.setAttribute('tabindex', indice === siguiente ? '0' : '-1'),
+      );
+      pestanas[siguiente].focus();
+      pestanas[siguiente].click();
+    });
+
+    function pintarTablaValores(
+      capa: DefinicionCapa,
+      valores: Map<string, number | undefined> | null,
+    ) {
+      if (!tablaCuerpo || !tablaCaption || !tablaColumnaValor) return;
+      tablaColumnaValor.textContent = capa.etiqueta;
+      tablaCaption.textContent = `Valores de ${capa.etiqueta} por departamento`;
+      tablaCuerpo.innerHTML = '';
+      const filas = (
+        geojson.features as {
+          properties?: { codigo?: string; shapeName?: string };
+        }[]
+      )
+        .map((feature) => {
+          const codigo = feature.properties?.codigo ?? '';
+          const nombre = feature.properties?.shapeName
+            ? normalizarNombreDepto(feature.properties.shapeName)
+            : codigo;
+          return { nombre, valor: valores?.get(codigo) };
+        })
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+      for (const fila of filas) {
+        const tr = document.createElement('tr');
+        const th = document.createElement('th');
+        th.scope = 'row';
+        th.className = 'border-b border-border py-1 pr-4 text-left font-normal';
+        th.textContent = fila.nombre;
+        const td = document.createElement('td');
+        td.className = 'border-b border-border py-1';
+        td.textContent = capa.tooltipValor(fila.valor);
+        tr.append(th, td);
+        tablaCuerpo.appendChild(tr);
       }
     }
 
@@ -1297,6 +1402,7 @@
       if (!valores) {
         contenedorNoDisponible!.classList.remove('hidden');
         contenedorLeyenda!.innerHTML = '';
+        pintarTablaValores(capa, null);
         // Se sigue dibujando el contorno departamental, todo en "sin dato",
         // para que el mapa no se sienta roto.
         capaGeoJsonActiva = L.geoJSON(geojson, {
@@ -1326,6 +1432,7 @@
       );
       const cortes = capa.calcularCortes(numericos);
       dibujarLeyenda(contenedorLeyenda!, capa, cortes);
+      pintarTablaValores(capa, valores);
 
       capaGeoJsonActiva = L.geoJSON(geojson, {
         style: (feature) => {

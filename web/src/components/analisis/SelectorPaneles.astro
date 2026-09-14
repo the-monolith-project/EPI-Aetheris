@@ -2,9 +2,9 @@
   <button
     id="analisis-paneles-boton"
     type="button"
+    aria-haspopup="menu"
     aria-expanded="false"
     aria-controls="analisis-paneles-menu"
-    aria-haspopup="menu"
     class="rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
   >
     Paneles
@@ -167,6 +167,18 @@
       cerrarMenu();
     }
   });
+  document
+    .getElementById('analisis-paneles-menu')
+    ?.parentElement?.addEventListener('focusout', (evento) => {
+      const destino = (evento as FocusEvent).relatedTarget as Node | null;
+      if (
+        estaAbierto() &&
+        !menu?.contains(destino) &&
+        !boton?.contains(destino)
+      ) {
+        cerrarMenu();
+      }
+    });
 
   casillas.forEach((casilla) => {
     casilla.addEventListener('change', () => {

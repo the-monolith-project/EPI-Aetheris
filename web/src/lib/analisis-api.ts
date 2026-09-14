@@ -4,6 +4,7 @@ import type {
   DatasetAnaliticoDengue,
   FiltrosAnalisis,
   IntegridadVigilancia,
+  NowcastDengue,
   ProcedenciaAnalitica,
   RespuestaIraDepartamental,
   SerieTemporalIdoneidad,
@@ -18,6 +19,7 @@ const cachePorAnio = new Map<
 let cacheCasosNacionales: Promise<CasoNacionalSemanal[]> | null = null;
 let cacheIraDepartamental: Promise<RespuestaIraDepartamental> | null = null;
 let cacheIntegridad: Promise<IntegridadVigilancia> | null = null;
+let cacheNowcastDengue: Promise<NowcastDengue> | null = null;
 const cacheProcedencia = new Map<string, Promise<ProcedenciaAnalitica>>();
 const cacheSerieIdoneidad = new Map<string, Promise<SerieTemporalIdoneidad>>();
 const cacheSeriePresion = new Map<string, Promise<SerieTemporalPresion>>();
@@ -259,4 +261,23 @@ export function obtenerProcedenciaAnalitica(
     cacheProcedencia.set(clave, solicitud);
   }
   return solicitud;
+}
+
+export function obtenerNowcastDengue(): Promise<NowcastDengue> {
+  if (!cacheNowcastDengue) {
+    cacheNowcastDengue = fetch(`${API_BASE}/api/nowcast-dengue`)
+      .then(async (respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error(
+            `No se pudo cargar la estimación de horizonte corto (${respuesta.status}).`,
+          );
+        }
+        return (await respuesta.json()) as NowcastDengue;
+      })
+      .catch((error) => {
+        cacheNowcastDengue = null;
+        throw error;
+      });
+  }
+  return cacheNowcastDengue;
 }

@@ -1,6 +1,6 @@
 ---
 titulo: "Sensibilidad y honestidad"
-descripcion: "Deslindes del sistema: no diagnostica, no predice, solo datos agregados, métricas visibles y un aporte de ingeniería — no de novedad epidemiológica."
+descripcion: "Deslindes del sistema: no diagnostica, no clasifica riesgo de brote; datos agregados, una predicción de casos a corto plazo validada, métricas visibles y un aporte de ingeniería — no de novedad epidemiológica."
 orden: 5
 categoria: "Datos y método"
 ---
@@ -14,12 +14,22 @@ EPI-Aetheris es una herramienta de **vigilancia descriptiva**. Cruza series púb
 No es:
 
 - un **diagnóstico** de un paciente;
-- un **pronóstico** de la semana que viene;
+- una **clasificación de riesgo de brote** (alto/medio/bajo);
 - una **certeza clínica**;
 - una **recomendación médica** redactada por el sistema;
 - un **descubrimiento epidemiológico** nuevo.
 
 La interfaz no debe afirmar que un color del mapa "es" un brote, ni que un percentil alto "anticipa" un ascenso. Un valor de M1, M2 o M3 describe el clima o los casos **ya observados**. Quien prioriza fumigación, camas o campañas lo hace con ese contexto más el juicio del personal de salud — no sustituyendo ese juicio.
+
+## Predicción de casos a corto plazo
+
+Desde septiembre de 2026 la página de dengue incluye una **predicción estadística de horizonte corto**: a partir de la última semana observada de la serie nacional (OpenDengue), predice el conteo de casos de las siguientes 1 a 8 semanas con un intervalo de incertidumbre calibrado.
+
+- Predice el **conteo de casos** de la serie nacional agregada, con su incertidumbre. No es una lectura de transmisión ni un juicio clínico: da un número y un rango, no una clase de riesgo.
+- Se extiende **desde la última semana observada, no desde la fecha de hoy**. La fuente pública va varios meses detrás del tiempo real; el gráfico muestra siempre la fecha de anclaje.
+- Su **desempeño está a la vista**: en validación temporal sin fuga sobre 2019 y 2021–2024 reduce el error de intervalo (WIS) frente a la persistencia en las cinco temporadas de prueba. El número y el protocolo acompañan a la predicción y se documentan en `docs/experimentos/experimento-nowcast-corto-plazo.md`, que incluye una segunda confirmación independiente (reimplementación desde cero de las métricas y la validación).
+
+Al principio del proyecto se descartó incluso un proto-predictor por considerarlo inviable; el experimento firmado mostró lo contrario para la serie nacional agregada, y por eso se expone y se llama predicción.
 
 El coordinador precisó el 7 de septiembre de 2026 el borde fino de esta regla. **Sí está permitido** mostrar recomendaciones de prevención **ya publicadas** por OPS/OMS o MINSAL, citando la fuente: tarjetas del tipo "elimine criaderos, revise depósitos de agua". Reproducir una guía pública no es diagnosticar ni predecir. **No está permitido** que el sistema *redacte* indicaciones clínicas propias, ni que las derive automáticamente del nivel de M1–M3, de M4 o del clasificador retirado. M4 describe calidad del dato (completitud, cuadre, antigüedad), no transmisión.
 

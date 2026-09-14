@@ -528,6 +528,37 @@ def riesgo_nacional(
     }
 
 
+NOWCAST_DENGUE_PATH = Path(__file__).parent / "datos" / "nowcast_dengue.json"
+
+AVISO_HONESTIDAD_NOWCAST_DENGUE = (
+    "Prediccion estadistica de horizonte corto sobre la serie nacional agregada "
+    "de dengue (OpenDengue). Se extiende desde la ultima semana observada, no "
+    "desde la fecha actual: la fuente publica va varios meses detras del tiempo "
+    "real."
+)
+
+
+@app.get("/api/nowcast-dengue")
+@limiter.limit(RATE_LIMIT_HEAVY)
+def nowcast_dengue(request: Request, response: Response):
+    """Artefacto de prediccion de horizonte corto de dengue, precomputado por
+    backend/ingestion/nowcast_estimacion_dengue.py (metodo del experimento
+    firmado + calibracion CQR-r). Se sirve tal cual desde el JSON versionado;
+    no recalcula nada por request. Si el archivo falta -- despliegue sin el
+    artefacto -- responde 200 con disponible=false, mismo patron que
+    /api/riesgo-nacional y /ira."""
+    if not NOWCAST_DENGUE_PATH.exists():
+        _cache_control(response, CACHE_TTL_COMPUTO)
+        return {
+            "disponible": False,
+            "motivo": "El artefacto de prediccion de horizonte corto no esta generado en este despliegue.",
+            "aviso": AVISO_HONESTIDAD_NOWCAST_DENGUE,
+        }
+    datos = json.loads(NOWCAST_DENGUE_PATH.read_text(encoding="utf-8"))
+    _cache_control(response, CACHE_TTL_HISTORICO)
+    return {"disponible": True, "aviso": AVISO_HONESTIDAD_NOWCAST_DENGUE, **datos}
+
+
 AVISO_HONESTIDAD_CASOS_DEPARTAMENTALES = (
     "Casos probables y confirmados desacumulados de boletines MINSAL "
     "(2018-2023, con huecos entre boletines). El color representa volumen "

@@ -190,14 +190,14 @@ import ToolbarAnalisis from './ToolbarAnalisis.astro';
     boton.setAttribute('aria-controls', menuId);
     boton.setAttribute('aria-haspopup', 'menu');
     boton.className =
-      'absolute right-3 top-3 z-10 rounded-md border border-border bg-surface px-2 py-1 font-sans text-xs font-semibold text-ink shadow-sm hover:border-accent/50';
+      'absolute right-3 top-3 z-10 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-border bg-surface font-sans text-xs font-semibold text-ink shadow-sm hover:border-accent/50';
     boton.textContent = '⋯';
     menu.id = menuId;
     menu.dataset.menuPanel = id;
     menu.setAttribute('role', 'menu');
     menu.hidden = true;
     menu.className =
-      'absolute right-3 top-11 z-20 w-44 rounded-lg border border-border bg-surface p-2 shadow-lg';
+      'absolute right-3 top-14 z-20 w-44 rounded-lg border border-border bg-surface p-2 shadow-lg';
     menu.innerHTML = `<p class="px-2 py-1 font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Tamaño</p><div class="grid gap-1"><button type="button" role="menuitem" data-accion-panel="tamano" data-valor="pequeno" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Pequeño</button><button type="button" role="menuitem" data-accion-panel="tamano" data-valor="mediano" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Mediano</button><button type="button" role="menuitem" data-accion-panel="tamano" data-valor="grande" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Grande</button><button type="button" role="menuitem" data-accion-panel="foco" class="mt-1 rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Abrir en foco</button><button type="button" role="menuitem" data-accion-panel="ocultar" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Ocultar panel</button></div>`;
     boton.addEventListener('click', () => {
       const abierto = menu.hidden;

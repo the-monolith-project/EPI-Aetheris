@@ -18,7 +18,7 @@
       <span class="h-3 w-3 rounded-sm bg-[#e4e4e7]"></span> dato ausente
     </span>
   </div>
-  <div class="mt-4 overflow-x-auto">
+  <div class="mt-4 overflow-x-auto scroll-shadow-x">
     <div
       id="disponibilidad-datos"
       class="min-h-[390px] min-w-[900px]"
@@ -84,6 +84,7 @@
       return;
     }
 
+    contenedor.setAttribute('aria-busy', 'true');
     try {
       const dataset = await obtenerDatasetAnalitico(filtros.anio);
       if (idRevision !== revision) return;
@@ -173,6 +174,8 @@
       if (resumen)
         resumen.textContent =
           'No fue posible cargar la disponibilidad de datos.';
+    } finally {
+      contenedor.setAttribute('aria-busy', 'false');
     }
   }
 

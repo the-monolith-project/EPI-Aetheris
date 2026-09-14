@@ -83,6 +83,8 @@
       enlace.href = destino.href;
       enlace.target = '_blank';
       enlace.rel = 'noopener noreferrer';
+      const aviso = elemento('span', 'sr-only', ' (abre en una nueva pestaña)');
+      enlace.appendChild(aviso);
       return enlace;
     } catch {
       return elemento('span', undefined, texto);

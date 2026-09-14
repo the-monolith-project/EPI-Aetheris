@@ -38,28 +38,32 @@
           <option value="2018">2018</option>
         </select>
       </label>
-      <label class="flex items-center gap-2"
-        >SE
+      <span class="flex items-center gap-2">
+        SE
         <input
+          id="hm-neu-desde"
           data-hm-desde
           type="range"
           min="1"
           max="52"
           value="1"
           aria-label="Semana epidemiológica inicial"
+          aria-valuetext="Semana 1"
         />
         <input
+          id="hm-neu-hasta"
           data-hm-hasta
           type="range"
           min="1"
           max="52"
           value="52"
           aria-label="Semana epidemiológica final"
+          aria-valuetext="Semana 52"
         />
         <span data-hm-rango class="font-sans tabular-nums text-xs"
           >SE1–SE52</span
         >
-      </label>
+      </span>
       <button
         type="button"
         data-hm-export
@@ -87,7 +91,7 @@
       Reintentar
     </button>
   </div>
-  <div data-hm-grid role="status" class="mt-4 overflow-x-auto"></div>
+  <div data-hm-grid role="status" class="mt-4 overflow-x-auto scroll-shadow-x"></div>
 </section>
 
 <script>
@@ -138,6 +142,8 @@
     let hasta = Number(inpHasta.value);
     if (desde > hasta) [desde, hasta] = [hasta, desde];
     txtRango.textContent = `SE${desde}–SE${hasta}`;
+    inpDesde.setAttribute('aria-valuetext', `Semana ${inpDesde.value}`);
+    inpHasta.setAttribute('aria-valuetext', `Semana ${inpHasta.value}`);
     const anio = sel.value;
     grid.textContent = 'Cargando…';
     try {
@@ -164,15 +170,25 @@
 
       const table = document.createElement('table');
       table.className = 'border-collapse font-sans tabular-nums text-[11px]';
+      table.setAttribute(
+        'aria-label',
+        `Heatmap de neumonías notificadas por departamento y semana epidemiológica, año ${anio}`,
+      );
+      const caption = document.createElement('caption');
+      caption.className = 'sr-only';
+      caption.textContent = `Neumonías notificadas por departamento y semana epidemiológica del año ${anio}, semanas ${desde} a ${hasta}`;
+      table.appendChild(caption);
       const thead = document.createElement('thead');
       const trh = document.createElement('tr');
       const th0 = document.createElement('th');
+      th0.scope = 'col';
       th0.className =
         'pr-2 text-left font-sans text-xs text-ink sticky left-0 bg-surface';
       th0.textContent = 'Departamento';
       trh.appendChild(th0);
       for (let s = desde; s <= hasta; s++) {
         const th = document.createElement('th');
+        th.scope = 'col';
         th.className = 'px-0.5 font-sans text-ink-muted';
         th.textContent = String(s);
         trh.appendChild(th);
@@ -182,9 +198,10 @@
       const tbody = document.createElement('tbody');
       for (const d of departamentos) {
         const tr = document.createElement('tr');
-        const name = document.createElement('td');
+        const name = document.createElement('th');
+        name.scope = 'row';
         name.className =
-          'pr-2 font-sans text-xs text-ink sticky left-0 bg-surface';
+          'pr-2 text-left font-sans text-xs font-medium text-ink sticky left-0 bg-surface';
         name.textContent = d.nombre;
         tr.appendChild(name);
         for (let s = desde; s <= hasta; s++) {
@@ -192,12 +209,16 @@
           const v = d.semanas[String(s)];
           td.style.width = '14px';
           td.style.height = '18px';
+          const etiqueta =
+            v == null
+              ? `${d.nombre} SE${s} ${anio}: sin dato`
+              : `${d.nombre} SE${s} ${anio}: ${v} notificados`;
+          td.title = etiqueta;
+          td.setAttribute('aria-label', etiqueta);
           if (v == null) {
             td.style.background = SIN_DATO;
-            td.title = `${d.nombre} SE${s} ${anio}: sin dato`;
           } else {
             td.style.background = color(v, max);
-            td.title = `${d.nombre} SE${s} ${anio}: ${v} notificados`;
           }
           tr.appendChild(td);
         }

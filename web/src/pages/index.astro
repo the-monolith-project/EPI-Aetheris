@@ -222,7 +222,7 @@ const STACK = [
 ---
 
 <Layout title="EPI-Aetheris">
-  <main class="mx-auto max-w-[1600px] px-4 py-12 sm:px-8 sm:py-16 lg:px-12">
+  <main id="contenido-principal" class="mx-auto max-w-[1600px] px-4 py-12 sm:px-8 sm:py-16 lg:px-12">
     <section
       class="grid grid-cols-1 gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center"
     >
@@ -339,9 +339,9 @@ const STACK = [
           >
             Personal de salud
           </p>
-          <p class="mt-1 font-display text-lg font-semibold text-ink">
+          <h3 class="mt-1 font-display text-lg font-semibold text-ink">
             Qué hay vigente y qué hacer
-          </p>
+          </h3>
           <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
             Alertas de campo redactadas por el equipo de vigilancia, con
             indicaciones para la unidad. Sirve en consulta, se puede imprimir y
@@ -363,9 +363,9 @@ const STACK = [
           >
             Investigación y datos
           </p>
-          <p class="mt-1 font-display text-lg font-semibold text-ink">
+          <h3 class="mt-1 font-display text-lg font-semibold text-ink">
             Explorar las series
-          </p>
+          </h3>
           <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
             Dengue, respiratorio e IRA por departamento, contra la propia
             historia de cada uno. Mismos datos que expone la API pública.
@@ -497,12 +497,14 @@ const STACK = [
 
     <section
       class="mt-12 overflow-hidden rounded-2xl border border-border bg-surface"
+      aria-labelledby="alcance-sistema-titulo"
     >
-      <p
+      <h2
+        id="alcance-sistema-titulo"
         class="border-b border-border px-5 py-4 font-sans text-sm font-semibold text-ink sm:px-8"
       >
         Alcance del sistema
-      </p>
+      </h2>
       <div class="grid grid-cols-1 sm:grid-cols-2">
         <div class="p-5 sm:p-6 lg:p-8">
           <p
@@ -569,11 +571,15 @@ const STACK = [
 
     <section
       class="mt-12 flex flex-col items-start gap-4 rounded-2xl bg-deep p-6 sm:flex-row sm:items-center sm:justify-between lg:p-8"
+      aria-labelledby="datos-publicos-titulo"
     >
       <div class="max-w-2xl">
-        <p class="font-sans text-sm font-semibold text-deep-ink">
+        <h2
+          id="datos-publicos-titulo"
+          class="font-sans text-sm font-semibold text-deep-ink"
+        >
           Datos públicos, sin costo de replicar
-        </p>
+        </h2>
         <p class="mt-1 font-sans text-sm leading-relaxed text-deep-ink-muted">
           MINSAL, OpenDengue y Open-Meteo — ninguna API de pago, ningún dato
           personal, todo agregado. `docker compose up` levanta el sistema

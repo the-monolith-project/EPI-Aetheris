@@ -315,6 +315,10 @@ function pintarTarjeta(alerta: AlertaPublica, esNueva = false): HTMLElement {
   enlace.className =
     'inline-flex font-sans text-sm font-medium text-accent underline underline-offset-2';
   enlace.textContent = `Ver datos que motivaron esta alerta (${tipo.toLowerCase()})`;
+  enlace.setAttribute(
+    'aria-label',
+    `Ver datos que motivaron la alerta: ${alerta.titulo}`,
+  );
   acciones.appendChild(enlace);
 
   // Compartir: navigator.share donde exista (móvil), copiar enlace si no.
@@ -322,13 +326,19 @@ function pintarTarjeta(alerta: AlertaPublica, esNueva = false): HTMLElement {
   const compartir = document.createElement('button');
   compartir.type = 'button';
   compartir.setAttribute('data-alerta-compartir', String(alerta.id));
+  compartir.setAttribute('aria-label', `Compartir alerta: ${alerta.titulo}`);
   compartir.className =
     'inline-flex font-sans text-sm font-medium text-accent underline underline-offset-2 print:hidden';
   compartir.textContent = 'Compartir';
+  const anuncioCompartir = document.createElement('p');
+  anuncioCompartir.className = 'sr-only';
+  anuncioCompartir.setAttribute('role', 'status');
+  anuncioCompartir.setAttribute('aria-live', 'polite');
   compartir.addEventListener('click', () => {
-    void compartirAlerta(alerta, compartir);
+    void compartirAlerta(alerta, compartir, anuncioCompartir);
   });
   acciones.appendChild(compartir);
+  acciones.appendChild(anuncioCompartir);
 
   articulo.appendChild(acciones);
 
@@ -343,6 +353,7 @@ export function enlaceDeAlerta(alerta: AlertaPublica): string {
 async function compartirAlerta(
   alerta: AlertaPublica,
   boton: HTMLButtonElement,
+  anuncio: HTMLElement,
 ): Promise<void> {
   const url = enlaceDeAlerta(alerta);
   const nav = navigator as Navigator & {
@@ -364,8 +375,10 @@ async function compartirAlerta(
   try {
     await navigator.clipboard.writeText(url);
     boton.textContent = 'Enlace copiado';
+    anuncio.textContent = 'Enlace copiado al portapapeles.';
   } catch {
     boton.textContent = 'No se pudo copiar';
+    anuncio.textContent = 'No se pudo copiar el enlace.';
   }
   window.setTimeout(() => {
     boton.textContent = etiquetaOriginal;

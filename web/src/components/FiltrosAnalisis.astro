@@ -3,14 +3,15 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
 ---
 
 <div id="analisis-filtros-popover" hidden>
-  <button
+  <div
     id="analisis-filtros-fondo"
-    type="button"
     class="fixed inset-0 z-40 cursor-default bg-ink/30 lg:hidden"
-    aria-label="Cerrar filtros"></button>
+    aria-hidden="true"
+  ></div>
   <aside
     id="analisis-filtros-dialogo"
     role="dialog"
+    tabindex="-1"
     aria-labelledby="filtros-analisis-titulo"
     class="fixed inset-x-0 bottom-0 z-50 max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-t-2xl border border-border bg-surface/95 p-5 shadow-2xl backdrop-blur sm:p-6 lg:absolute lg:inset-auto lg:right-0 lg:top-[calc(100%+0.5rem)] lg:max-h-[calc(100vh-7rem)] lg:w-[min(1180px,calc(100vw-3rem))] lg:rounded-2xl"
   >
@@ -117,6 +118,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
             min="1"
             max="53"
             value="1"
+            aria-valuetext="Semana epidemiológica 1"
             class="w-full accent-accent"
           />
         </label>
@@ -140,6 +142,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
               min="1"
               max="53"
               value="1"
+              aria-valuetext="Semana epidemiológica 1"
               class="w-full accent-accent"
             />
           </label>
@@ -156,6 +159,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
               min="1"
               max="53"
               value="53"
+              aria-valuetext="Semana epidemiológica 53"
               class="w-full accent-accent"
             />
           </label>
@@ -334,6 +338,21 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
     if (semanaValor) semanaValor.value = etiquetaSemana(filtros.semana);
     if (desdeValor) desdeValor.value = etiquetaSemana(filtros.semanaDesde);
     if (hastaValor) hastaValor.value = etiquetaSemana(filtros.semanaHasta);
+    if (semana)
+      semana.setAttribute(
+        'aria-valuetext',
+        `Semana epidemiológica ${filtros.semana}`,
+      );
+    if (desde)
+      desde.setAttribute(
+        'aria-valuetext',
+        `Semana epidemiológica ${filtros.semanaDesde}`,
+      );
+    if (hasta)
+      hasta.setAttribute(
+        'aria-valuetext',
+        `Semana epidemiológica ${filtros.semanaHasta}`,
+      );
     document
       .querySelectorAll<HTMLInputElement>('input[name="analisis-serie"]')
       .forEach((radio) => {

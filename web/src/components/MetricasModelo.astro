@@ -102,7 +102,7 @@
 
   const COLOR_CLASE: Record<string, string> = {
     bajo: '#2e7d32',
-    medio: '#b8860b',
+    medio: '#785600',
     alto: '#c62828',
   };
 
@@ -154,23 +154,24 @@
         <p class="font-sans text-xs font-semibold uppercase text-ink-muted">
           Métricas del modelo (entrenado ${m.anios_entrenamiento.join(', ')} · probado ${m.anio_prueba} · corte ${escapeHtml(m.corte_percentil)})
         </p>
-        <div class="overflow-x-auto">
-        <table class="mt-2 w-full border-collapse font-sans text-xs tabular-nums text-ink">
+        <div class="overflow-x-auto scroll-shadow-x bg-bg">
+        <table class="mt-2 w-full border-collapse font-sans text-xs tabular-nums text-ink" aria-label="Comparación de métricas entre el modelo y la línea base climatológica">
+          <caption class="sr-only">Comparación de F1 macro y recall de "alto" entre el modelo y la línea base climatológica</caption>
           <thead>
             <tr class="text-left text-ink-muted">
-              <th class="border-b border-border py-1.5 pr-4">&nbsp;</th>
-              <th class="border-b border-border py-1.5 pr-4">F1 macro</th>
-              <th class="border-b border-border py-1.5">Recall "alto"</th>
+              <th scope="col" class="border-b border-border py-1.5 pr-4"><span class="sr-only">Serie</span></th>
+              <th scope="col" class="border-b border-border py-1.5 pr-4">F1 macro</th>
+              <th scope="col" class="border-b border-border py-1.5">Recall "alto"</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td class="border-b border-border py-1.5 pr-4">Modelo</td>
+              <th scope="row" class="border-b border-border py-1.5 pr-4 text-left font-medium">Modelo</th>
               <td class="border-b border-border py-1.5 pr-4">${m.f1_macro_modelo.toFixed(3)}</td>
               <td class="border-b border-border py-1.5">${formatearRecall(m.recall_alto_modelo, m.n_alto_real_prueba)}</td>
             </tr>
             <tr>
-              <td class="py-1.5 pr-4">Línea base climatológica</td>
+              <th scope="row" class="py-1.5 pr-4 text-left font-medium">Línea base climatológica</th>
               <td class="py-1.5 pr-4">${m.f1_macro_baseline_climatologica.toFixed(3)}</td>
               <td class="py-1.5">${formatearRecall(m.recall_alto_baseline_climatologica, m.n_alto_real_prueba)}</td>
             </tr>
