@@ -134,6 +134,27 @@
   </div>
   <div id="mapa-leyenda" class="mt-3"></div>
 
+  <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+    <summary class="cursor-pointer font-sans text-xs font-medium text-ink-muted">
+      Ver los valores por departamento en una tabla
+    </summary>
+    <div class="mt-2 overflow-x-auto">
+      <table
+        id="mapa-tabla-valores"
+        class="w-full border-collapse font-sans text-xs tabular-nums text-ink"
+      >
+        <caption class="sr-only" id="mapa-tabla-caption"></caption>
+        <thead>
+          <tr class="text-left text-ink-muted">
+            <th scope="col" class="border-b border-border py-1 pr-4">Departamento</th>
+            <th scope="col" class="border-b border-border py-1" id="mapa-tabla-columna-valor">Valor</th>
+          </tr>
+        </thead>
+        <tbody id="mapa-tabla-cuerpo"></tbody>
+      </table>
+    </div>
+  </details>
+
   <p id="mapa-detalle-anuncio" role="status" aria-live="polite" class="sr-only"></p>
   <div
     id="mapa-detalle"
@@ -1060,6 +1081,11 @@
     const detalleFicha = document.getElementById(
       'mapa-detalle-ficha',
     ) as HTMLAnchorElement | null;
+    const tablaCuerpo = document.getElementById('mapa-tabla-cuerpo');
+    const tablaCaption = document.getElementById('mapa-tabla-caption');
+    const tablaColumnaValor = document.getElementById(
+      'mapa-tabla-columna-valor',
+    );
     if (
       !contenedorSelector ||
       !contenedorMapa ||
@@ -1301,6 +1327,41 @@
       pestanas[siguiente].click();
     });
 
+    function pintarTablaValores(
+      capa: DefinicionCapa,
+      valores: Map<string, number | undefined> | null,
+    ) {
+      if (!tablaCuerpo || !tablaCaption || !tablaColumnaValor) return;
+      tablaColumnaValor.textContent = capa.etiqueta;
+      tablaCaption.textContent = `Valores de ${capa.etiqueta} por departamento`;
+      tablaCuerpo.innerHTML = '';
+      const filas = (
+        geojson.features as {
+          properties?: { codigo?: string; shapeName?: string };
+        }[]
+      )
+        .map((feature) => {
+          const codigo = feature.properties?.codigo ?? '';
+          const nombre = feature.properties?.shapeName
+            ? normalizarNombreDepto(feature.properties.shapeName)
+            : codigo;
+          return { nombre, valor: valores?.get(codigo) };
+        })
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+      for (const fila of filas) {
+        const tr = document.createElement('tr');
+        const th = document.createElement('th');
+        th.scope = 'row';
+        th.className = 'border-b border-border py-1 pr-4 text-left font-normal';
+        th.textContent = fila.nombre;
+        const td = document.createElement('td');
+        td.className = 'border-b border-border py-1';
+        td.textContent = capa.tooltipValor(fila.valor);
+        tr.append(th, td);
+        tablaCuerpo.appendChild(tr);
+      }
+    }
+
     async function activarCapa(id: IdCapa) {
       const capa = CAPAS.find((c) => c.id === id);
       if (!capa || !capa.disponible) return;
@@ -1337,6 +1398,7 @@
       if (!valores) {
         contenedorNoDisponible!.classList.remove('hidden');
         contenedorLeyenda!.innerHTML = '';
+        pintarTablaValores(capa, null);
         // Se sigue dibujando el contorno departamental, todo en "sin dato",
         // para que el mapa no se sienta roto.
         capaGeoJsonActiva = L.geoJSON(geojson, {
@@ -1366,6 +1428,7 @@
       );
       const cortes = capa.calcularCortes(numericos);
       dibujarLeyenda(contenedorLeyenda!, capa, cortes);
+      pintarTablaValores(capa, valores);
 
       capaGeoJsonActiva = L.geoJSON(geojson, {
         style: (feature) => {

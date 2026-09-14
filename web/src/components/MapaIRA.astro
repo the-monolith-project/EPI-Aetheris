@@ -71,6 +71,33 @@ const endpoint =
   >
   </div>
   <div data-mapa-leyenda class="mt-3"></div>
+
+  <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+    <summary class="cursor-pointer font-sans text-xs font-medium text-ink-muted">
+      Ver los valores por departamento en una tabla
+    </summary>
+    <div class="mt-2 overflow-x-auto">
+      <table
+        data-mapa-tabla
+        class="w-full border-collapse font-sans text-xs tabular-nums text-ink"
+      >
+        <caption class="sr-only"
+          >Casos "notificado" acumulados de {etiqueta} por departamento, 2018-2023</caption
+        >
+        <thead>
+          <tr class="text-left text-ink-muted">
+            <th scope="col" class="border-b border-border py-1 pr-4"
+              >Departamento</th
+            >
+            <th scope="col" class="border-b border-border py-1"
+              >Notificado (acum.)</th
+            >
+          </tr>
+        </thead>
+        <tbody data-mapa-tabla-cuerpo></tbody>
+      </table>
+    </div>
+  </details>
 </section>
 
 <style>
@@ -230,9 +257,42 @@ const endpoint =
     const contenedorNoDisponible = seccion.querySelector(
       '[data-mapa-vacio]',
     ) as HTMLElement | null;
+    const tablaCuerpo = seccion.querySelector('[data-mapa-tabla-cuerpo]');
     const endpoint = seccion.dataset.mapaEndpoint ?? '/api/ira/departamental';
     if (!contenedorMapa || !contenedorLeyenda || !contenedorNoDisponible)
       return;
+
+    function pintarTablaValores(
+      detalles: Map<string, DatoDepartamentoIra>,
+    ) {
+      if (!tablaCuerpo) return;
+      tablaCuerpo.innerHTML = '';
+      const filas = (geojson.features as {
+        properties?: { codigo?: string; shapeName?: string };
+      }[])
+        .map((feature) => {
+          const codigo = feature.properties?.codigo ?? '';
+          const nombre = feature.properties?.shapeName
+            ? normalizarNombreDepto(feature.properties.shapeName)
+            : codigo;
+          return { nombre, dato: detalles.get(codigo) };
+        })
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+      for (const fila of filas) {
+        const tr = document.createElement('tr');
+        const th = document.createElement('th');
+        th.scope = 'row';
+        th.className = 'border-b border-border py-1 pr-4 text-left font-normal';
+        th.textContent = fila.nombre;
+        const td = document.createElement('td');
+        td.className = 'border-b border-border py-1';
+        td.textContent = fila.dato
+          ? String(fila.dato.notificado_total)
+          : 'sin dato';
+        tr.append(th, td);
+        tablaCuerpo.appendChild(tr);
+      }
+    }
 
     // Límites duros a El Salvador (mismo bbox que MapaDepartamentos.astro) --
     // sin esto, un scroll de más con la rueda del mouse manda a ver
@@ -292,6 +352,7 @@ const endpoint =
 
     if (!valores) {
       contenedorNoDisponible.classList.remove('hidden');
+      pintarTablaValores(detalles);
       L.geoJSON(geojson, {
         style: () => ({
           color: '#8a8a90',
@@ -316,6 +377,7 @@ const endpoint =
     );
     const cortes = cortesPorCuantiles(numericos);
     dibujarLeyenda(contenedorLeyenda, cortes);
+    pintarTablaValores(detalles);
 
     L.geoJSON(geojson, {
       style: (feature) => {
