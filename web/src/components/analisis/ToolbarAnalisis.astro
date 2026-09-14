@@ -40,7 +40,7 @@
         <button
           id="analisis-zoom-menos"
           type="button"
-          class="rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30 disabled:cursor-not-allowed disabled:opacity-50"
+          class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Reducir zoom temporal"
           title="Reducir zoom">−</button
         >
@@ -51,7 +51,7 @@
         <button
           id="analisis-zoom-mas"
           type="button"
-          class="rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30 disabled:cursor-not-allowed disabled:opacity-50"
+          class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Aumentar zoom temporal"
           title="Aumentar zoom">+</button
         >
@@ -145,11 +145,41 @@
   botonRestablecer?.addEventListener('click', () => {
     restablecerLayoutAnalisis();
   });
+  function elementosEnfocables(contenedor: HTMLElement): HTMLElement[] {
+    return Array.from(
+      contenedor.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((el) => el.offsetParent !== null);
+  }
+  function trampaFoco(evento: KeyboardEvent): void {
+    if (evento.key !== 'Tab' || !dialogoFiltros) return;
+    const enfocables = elementosEnfocables(dialogoFiltros);
+    if (enfocables.length === 0) {
+      evento.preventDefault();
+      dialogoFiltros.focus();
+      return;
+    }
+    const primero = enfocables[0];
+    const ultimo = enfocables[enfocables.length - 1];
+    const activo = document.activeElement;
+    if (evento.shiftKey && activo === primero) {
+      evento.preventDefault();
+      ultimo.focus();
+    } else if (!evento.shiftKey && activo === ultimo) {
+      evento.preventDefault();
+      primero.focus();
+    } else if (!dialogoFiltros.contains(activo)) {
+      evento.preventDefault();
+      primero.focus();
+    }
+  }
   function cerrarFiltros(devolverFoco = false): void {
     if (!popoverFiltros || !botonAbrirFiltros) return;
     popoverFiltros.hidden = true;
     botonAbrirFiltros.setAttribute('aria-expanded', 'false');
     contenedorToolbar?.style.removeProperty('z-index');
+    document.removeEventListener('keydown', trampaFoco, true);
     if (devolverFoco) botonAbrirFiltros.focus();
   }
   botonAbrirFiltros?.addEventListener('click', () => {
@@ -158,6 +188,11 @@
       popoverFiltros.hidden = false;
       botonAbrirFiltros.setAttribute('aria-expanded', 'true');
       if (contenedorToolbar) contenedorToolbar.style.zIndex = '50';
+      document.addEventListener('keydown', trampaFoco, true);
+      const enfocables = dialogoFiltros
+        ? elementosEnfocables(dialogoFiltros)
+        : [];
+      (botonCerrarFiltros ?? enfocables[0] ?? dialogoFiltros)?.focus();
     } else {
       cerrarFiltros();
     }
