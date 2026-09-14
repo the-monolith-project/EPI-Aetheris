@@ -92,6 +92,42 @@
     var(--shadow-card-hover);
 }
 
+/* Sombras de desvanecimiento para contenedores con overflow-x-auto que
+   recortan gráficos de ancho fijo en pantallas angostas -- sin esto no hay
+   ninguna pista visual de que el contenido se puede desplazar horizontalmente
+   (issue #132). Truco estándar de "scroll shadow": dos degradados sólidos
+   (background-attachment: local) viajan con el contenido y tapan la sombra
+   radial correspondiente mientras ese extremo está a la vista; al desplazar,
+   dejan de taparla y la sombra aparece. --scroll-shadow-bg fija el color de
+   fondo real del contenedor (los componentes con bg-bg lo sobreescriben). */
+.scroll-shadow-x {
+  --scroll-shadow-bg: var(--color-surface);
+  background-repeat: no-repeat;
+  background-size:
+    20px 100%,
+    20px 100%,
+    10px 100%,
+    10px 100%;
+  background-position:
+    left,
+    right,
+    left,
+    right;
+  background-attachment: local, local, scroll, scroll;
+  background-image:
+    linear-gradient(to right, var(--scroll-shadow-bg), transparent),
+    linear-gradient(to left, var(--scroll-shadow-bg), transparent),
+    radial-gradient(farthest-side at 0% 50%, rgba(4, 3, 22, 0.2), transparent),
+    radial-gradient(
+      farthest-side at 100% 50%,
+      rgba(4, 3, 22, 0.2),
+      transparent
+    );
+}
+.scroll-shadow-x.bg-bg {
+  --scroll-shadow-bg: var(--color-bg);
+}
+
 /* Placeholder de carga (skeleton) compartido por los componentes que hacen
    fetch -- construido solo con tokens existentes (border/bg), sin colores
    nuevos, para que siga a la paleta cuando el coordinador la reemplace. */

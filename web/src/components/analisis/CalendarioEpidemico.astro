@@ -12,7 +12,7 @@
     </p>
   </header>
 
-  <div class="mt-4 overflow-x-auto">
+  <div class="mt-4 overflow-x-auto scroll-shadow-x">
     <div
       id="calendario-epidemico"
       class="min-h-[300px] min-w-[760px]"
@@ -34,6 +34,11 @@
     <span class="ml-2 inline-flex items-center gap-1.5">
       <span class="h-2.5 w-2.5 rounded-sm bg-zinc-200 ring-1 ring-black/10"
       ></span> Sin dato
+    </span>
+    <span class="sr-only">
+      El color de cada celda va de un tono claro para el conteo más bajo de la
+      serie a un tono oscuro para el conteo más alto, en una escala continua;
+      las celdas grises indican que falta el dato.
     </span>
   </div>
   <p

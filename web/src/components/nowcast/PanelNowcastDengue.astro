@@ -862,7 +862,7 @@ const { variante = 'completo' } = Astro.props;
       if (datos.backtest?.puntos?.length) {
         const contBt = document.createElement('div');
         contBt.className =
-          'mt-3 overflow-x-auto rounded-xl border border-border bg-bg p-3 sm:p-4';
+          'mt-3 overflow-x-auto scroll-shadow-x rounded-xl border border-border bg-bg p-3 sm:p-4';
         extra.appendChild(contBt);
         dibujarBacktest(contBt, datos.backtest.puntos);
         extra.appendChild(
