@@ -13,3 +13,7 @@
 ## 2026-09-13 - Python standard library statistics overhead
 **Learning:** Python's built-in `statistics` module (like `statistics.median` and `statistics.stdev`) adds massive execution overhead due to exact fraction representation and internal type checking (visible via cProfile). In tight loops processing many small arrays (like `calcular_baseline_semana`), this becomes a severe bottleneck.
 **Action:** Replaced standard library functions with manual math operations (`math.sqrt` and manual median from sorted list) for tight loops, reducing calculation time by ~10x (~0.09s -> ~0.009s for 10k loops).
+
+## 2026-09-14 - Python standard library statistics overhead in ingestion scripts
+**Learning:** Python's built-in `statistics` module adds huge overhead in tight loops during data aggregation, similar to earlier observations but this time identified in ingestion scripts such as `corrida_distribucion.py` and `validar_leadtime_camino_ancho.py`.
+**Action:** Replaced `statistics.median` and `statistics.quantiles` with custom inline median calculation and linear interpolation `percentil` function. Replaced `statistics.mean` and `statistics.stdev` with inline math equivalents.
