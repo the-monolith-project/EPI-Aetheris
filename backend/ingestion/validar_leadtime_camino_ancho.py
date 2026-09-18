@@ -74,7 +74,6 @@ from __future__ import annotations
 
 import csv
 import math
-import statistics
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
@@ -107,6 +106,27 @@ UMBRAL_Z = 1.5
 
 SV_SS_ANIOS_DEGENERADOS = {2018, 2019}  # inicio calculado en semana 1, ver docstring
 
+
+
+def _manual_mean(valores: list[float]) -> float:
+    if not valores: return 0.0
+    return sum(valores) / len(valores)
+
+def _manual_median(valores: list[float]) -> float:
+    if not valores: return 0.0
+    ordenados = sorted(valores)
+    n = len(ordenados)
+    mid = n // 2
+    if n % 2 == 0:
+        return (ordenados[mid - 1] + ordenados[mid]) / 2.0
+    return ordenados[mid]
+
+def _manual_stdev(valores: list[float]) -> float:
+    n = len(valores)
+    if n < 2: return 0.0
+    m = sum(valores) / n
+    var = sum((x - m) ** 2 for x in valores) / (n - 1)
+    return math.sqrt(var)
 
 def _resolver_c_normalizacion() -> float:
     """max(f_T crudo) en T e [Tmin,Tmax], via grid fino -- c = 1/ese maximo."""
@@ -195,9 +215,9 @@ def calcular_serie_Iv(
 def chequeo_de_cordura(serie_iv: dict[str, dict[int, dict[int, float]]]) -> list[float]:
     todos = [v for por_anio in serie_iv.values() for semanas in por_anio.values() for v in semanas.values()]
     n = len(todos)
-    media = statistics.mean(todos)
-    mediana = statistics.median(todos)
-    desv = statistics.stdev(todos)
+    media = _manual_mean(todos)
+    mediana = _manual_median(todos)
+    desv = _manual_stdev(todos)
     minimo, maximo = min(todos), max(todos)
     frac_cero = sum(1 for v in todos if v < 0.01) / n
     frac_uno = sum(1 for v in todos if v > 0.99) / n
@@ -249,8 +269,8 @@ def calcular_alertas_por_anio(
             if len(pool) < 3:
                 detalle.append((semana, serie_codigo[anio_obj][semana], None, None, None))
                 continue
-            mediana = statistics.median(pool)
-            desv = statistics.stdev(pool)
+            mediana = _manual_median(pool)
+            desv = _manual_stdev(pool)
             valor = serie_codigo[anio_obj][semana]
             z = None if desv < 1e-9 else (valor - mediana) / desv
             detalle.append((semana, valor, mediana, desv, z))
@@ -329,7 +349,7 @@ def main() -> None:
         ) if serie_iv else set()
         for semana in semanas_comunes:
             valores = [serie_iv[cod][anio][semana] for cod in serie_iv]
-            serie_iv_nacional[anio][semana] = statistics.mean(valores)
+            serie_iv_nacional[anio][semana] = _manual_mean(valores)
 
     alertas_nacional = calcular_alertas_por_anio(serie_iv_nacional, ANIOS_EVALUADOS)
     inicio_nacional = inicio_temporada_nacional()
@@ -424,7 +444,7 @@ def main() -> None:
         print(f"\n=== Resumen nivel={nivel} (excluidos por decision metodologica: {sorted(excluir_anios) or 'ninguno'}) ===")
         print(f"  {n_validos}/{n_total} anio-casos con lead time medible (con alerta Y con inicio real).")
         if validos:
-            mediana = statistics.median(validos)
+            mediana = _manual_median(validos)
             q1 = percentil(validos, 0.25)
             q3 = percentil(validos, 0.75)
             positivos = sum(1 for v in validos if v > 0)

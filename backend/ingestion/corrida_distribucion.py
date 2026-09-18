@@ -22,7 +22,6 @@ from __future__ import annotations
 import argparse
 import csv
 import re
-import statistics
 import unicodedata
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -427,6 +426,21 @@ def analizar_texto_pagina(texto_pagina: str, resultado: ResultadoBoletin) -> Res
     return resultado
 
 
+
+def percentil(valores: list[float], p: float) -> float:
+    """Interpolacion lineal, mismo metodo que
+    corrida_canal_endemico_nacional.percentil."""
+    if not valores: return 0.0
+    ordenados = sorted(valores)
+    n = len(ordenados)
+    if n == 1:
+        return ordenados[0]
+    rango = p * (n - 1)
+    lo = int(rango)
+    hi = min(lo + 1, n - 1)
+    frac = rango - lo
+    return ordenados[lo] + frac * (ordenados[hi] - ordenados[lo])
+
 def paso1_extraer(limite: int | None = None) -> list[ResultadoBoletin]:
     archivos = descubrir_archivos(limite)
     vigentes, descartados = resolver_versiones(archivos)
@@ -644,7 +658,7 @@ def _tabla_distribucion(serie: str, puntos: list[PuntoSemanal]) -> None:
                     w.writerow([anio, depto, 0, total_celdas, "", "", "", ""])
                     continue
                 total_anual = sum(valores)
-                mediana = statistics.median(valores)
+                mediana = percentil(valores, 0.5)
                 maximo = max(valores)
                 pct_cero = sum(1 for v in valores if v == 0) / len(valores)
                 w.writerow([anio, depto, len(valores), total_celdas, total_anual, mediana, maximo,
@@ -676,9 +690,9 @@ def _canal_endemico(serie: str, puntos: list[PuntoSemanal]) -> None:
                     bajo_piso += 1
                 valores = sorted(base.values())
                 if len(valores) >= 2:
-                    q25 = statistics.quantiles(valores, n=4, method="inclusive")[0]
-                    q50 = statistics.median(valores)
-                    q75 = statistics.quantiles(valores, n=4, method="inclusive")[2]
+                    q25 = percentil(valores, 0.25)
+                    q50 = percentil(valores, 0.5)
+                    q75 = percentil(valores, 0.75)
                 elif len(valores) == 1:
                     q25 = q50 = q75 = valores[0]
                 else:
@@ -738,7 +752,7 @@ def _contraste_criterios(desacumulado: dict[str, list[PuntoSemanal]]) -> None:
                     base = base_por_semana.get(semana, [])
                     if valor is None or len(base) < 2:
                         continue
-                    p75 = statistics.quantiles(sorted(base), n=4, method="inclusive")[2]
+                    p75 = percentil(base, 0.75)
                     if valor > p75:
                         anios_con_alto.add(anio)
                         break
