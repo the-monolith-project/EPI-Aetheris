@@ -7,7 +7,8 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
     id="analisis-filtros-fondo"
     class="fixed inset-0 z-40 cursor-default bg-ink/30 lg:hidden"
     aria-hidden="true"
-  ></div>
+  >
+  </div>
   <aside
     id="analisis-filtros-dialogo"
     role="dialog"
@@ -118,6 +119,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
             min="1"
             max="53"
             value="1"
+            aria-label="Semana epidemiológica activa"
             aria-valuetext="Semana epidemiológica 1"
             class="w-full accent-accent"
           />
@@ -142,6 +144,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
               min="1"
               max="53"
               value="1"
+              aria-label="Semana epidemiológica inicial"
               aria-valuetext="Semana epidemiológica 1"
               class="w-full accent-accent"
             />
@@ -159,6 +162,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
               min="1"
               max="53"
               value="53"
+              aria-label="Semana epidemiológica final"
               aria-valuetext="Semana epidemiológica 53"
               class="w-full accent-accent"
             />
