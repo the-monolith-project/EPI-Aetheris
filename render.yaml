@@ -69,8 +69,12 @@ services:
       # global de .onrender.com), en cuyo caso agrega un sufijo. Verificar
       # la URL real del servicio "epi-aetheris-web" en el dashboard tras el
       # primer deploy y corregir aquí si no coincide.
+      #
+      # Incluye también el segundo Static Site "Aetheris Nitor" (fork-vitrina
+      # de web/, ver ADR/decisión del fork), tanto su dominio propio
+      # epi-aetheris.dev como su URL directa de onrender.com.
       - key: CORS_ALLOWED_ORIGINS
-        value: https://epi-aetheris-web.onrender.com
+        value: https://epi-aetheris-web.onrender.com,https://epi-aetheris.dev,https://www.epi-aetheris.dev,https://aetheris-nitor.onrender.com
       # Escritura de alertas (ADR 0015). Render lo pide en el panel; no
       # se versiona un valor. Sin él, POST/PATCH responden 503.
       - key: ALERTAS_TOKEN
