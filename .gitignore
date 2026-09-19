@@ -72,7 +72,7 @@ graphify-out/
 
 # Configuración local de Claude Code (por desarrollador, no se versiona)
 .claude/
-
+/.agents
 # Archivos del sistema operativo y editores
 .DS_Store
 Thumbs.db
@@ -101,3 +101,5 @@ indicaciones-configuracion-codex-documentacion-EPI-Aetheris.md
 ds-bundle/
 .ds-sync/
 .design-sync/.cache/
+/skills-lock.json
+/db/migrations/seed_datos_reales.sql
