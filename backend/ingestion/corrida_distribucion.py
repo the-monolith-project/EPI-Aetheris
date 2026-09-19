@@ -22,7 +22,6 @@ from __future__ import annotations
 import argparse
 import csv
 import re
-import statistics
 import unicodedata
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -30,15 +29,40 @@ from pathlib import Path
 
 import pdfplumber
 
+
+def percentil(valores: list[float], p: float) -> float:
+    """Interpolacion lineal, metodo 'inclusive' para percentil arbitrario."""
+    ordenados = sorted(valores)
+    n = len(ordenados)
+    if n == 1:
+        return ordenados[0]
+    rango = p * (n - 1)
+    lo = int(rango)
+    hi = min(lo + 1, n - 1)
+    frac = rango - lo
+    return ordenados[lo] + frac * (ordenados[hi] - ordenados[lo])
+
+
 RAIZ = Path(__file__).parent
 RAW_ROOT = RAIZ / "data" / "raw" / "minsal"
 INTERIM_ROOT = RAIZ / "data" / "interim" / "corrida_distribucion"
 ANIOS = [2018, 2019, 2021, 2022, 2023]
 
 DEPARTAMENTOS = [
-    "Ahuachapán", "Cabañas", "Chalatenango", "Cuscatlán", "La Libertad",
-    "La Paz", "Santa Ana", "San Miguel", "Sonsonate", "San Salvador",
-    "San Vicente", "La Unión", "Usulután", "Morazán",
+    "Ahuachapán",
+    "Cabañas",
+    "Chalatenango",
+    "Cuscatlán",
+    "La Libertad",
+    "La Paz",
+    "Santa Ana",
+    "San Miguel",
+    "Sonsonate",
+    "San Salvador",
+    "San Vicente",
+    "La Unión",
+    "Usulután",
+    "Morazán",
 ]
 
 # Patrones tolerantes a variantes con/sin tilde vistas en los PDF.
@@ -64,8 +88,11 @@ _NUM = r"[\d]+(?:[.,]\d+)?"
 _FILA_RE_TMPL = r"{nombre}\s+((?:{num}\s+){{0,3}}{num})"
 
 MARCADORES_FIN_BLOQUE = [
-    "Índices larvarios", "Indices larvarios", "Resultados de muestras",
-    "Actividades regulares", "Estratificación de municipios",
+    "Índices larvarios",
+    "Indices larvarios",
+    "Resultados de muestras",
+    "Actividades regulares",
+    "Estratificación de municipios",
     "Estratificacion de municipios",
 ]
 # "FUENTE:"/"Fuente:" y "* Esta tasa..." deliberadamente NO son marcadores de fin:
@@ -132,6 +159,7 @@ class ResultadoBoletin:
 # Paso 0 -- descubrimiento de archivos y resolucion de versiones
 # ---------------------------------------------------------------------------
 
+
 def descubrir_archivos(limite: int | None = None) -> list[Path]:
     archivos = []
     for carpeta in sorted(RAW_ROOT.iterdir()):
@@ -149,7 +177,9 @@ def parsear_nombre(path: Path) -> tuple[int, str | None, int]:
     nombre = path.stem
     m = RE_SEMANA_ARCHIVO.search(nombre)
     if m:
-        semana = m.group(1) if not m.group(2) else f"{int(m.group(1))}-{int(m.group(2))}"
+        semana = (
+            m.group(1) if not m.group(2) else f"{int(m.group(1))}-{int(m.group(2))}"
+        )
     else:
         semana = None
     v = RE_VERSION.search(nombre)
@@ -157,7 +187,9 @@ def parsear_nombre(path: Path) -> tuple[int, str | None, int]:
     return anio, semana, version
 
 
-def resolver_versiones(archivos: list[Path]) -> tuple[list[Path], list[tuple[Path, str]]]:
+def resolver_versiones(
+    archivos: list[Path],
+) -> tuple[list[Path], list[tuple[Path, str]]]:
     """Agrupa por (anio, semana_archivo) y se queda con la version mas alta.
 
     Archivos sin semana_archivo (vacaciones sin patron SEnn) nunca colisionan
@@ -177,13 +209,16 @@ def resolver_versiones(archivos: list[Path]) -> tuple[list[Path], list[tuple[Pat
         miembros.sort(key=lambda t: t[0])
         vigentes.append(miembros[-1][1])
         for version, p in miembros[:-1]:
-            descartados.append((p, f"version {version} superada por version {miembros[-1][0]}"))
+            descartados.append(
+                (p, f"version {version} superada por version {miembros[-1][0]}")
+            )
     return sorted(vigentes), descartados
 
 
 # ---------------------------------------------------------------------------
 # Paso 1 -- extraccion de la tabla departamental
 # ---------------------------------------------------------------------------
+
 
 def _localizar_pagina_depto(pdf: "pdfplumber.PDF") -> tuple[int, str] | None:
     for i, page in enumerate(pdf.pages):
@@ -237,12 +272,16 @@ def _extraer_filas(bloque: str) -> tuple[list[FilaCruda], list[float], re.Match 
         rf"{_PATRON_OTROS}{_esp}({_NUM}{_esp}{_NUM}(?:{_esp}{_NUM})?)"
     )
     m_otros = regex_otros.search(bloque)
-    otros = [float(x.replace(",", ".")) for x in m_otros.group(1).split()] if m_otros else []
+    otros = (
+        [float(x.replace(",", ".")) for x in m_otros.group(1).split()]
+        if m_otros
+        else []
+    )
     return filas, otros, m_otros
 
 
 def _extraer_total_impreso(bloque: str, otros_match_end: int) -> list[float]:
-    ventana = bloque[otros_match_end:otros_match_end + 200]
+    ventana = bloque[otros_match_end : otros_match_end + 200]
     m = re.search(rf"({_NUM}(?:\s+{_NUM}){{0,3}})", ventana)
     if not m:
         return []
@@ -258,13 +297,15 @@ def _extraer_semanas(texto: str, familia: str) -> tuple[int | None, int | None]:
     m = RE_TITULO_FAMILIA_A.search(texto)
     if m:
         return int(m.group(1)), int(m.group(2))
-    m = RE_SEMANAS_FAMILIA_B.search(texto[texto.lower().find("departamento"):])
+    m = RE_SEMANAS_FAMILIA_B.search(texto[texto.lower().find("departamento") :])
     if m:
         return int(m.group(1)), int(m.group(2))
     return None, None
 
 
-def clasificar_sin_tabla(texto_p0: str, menciones_dengue: int, resultado: ResultadoBoletin) -> ResultadoBoletin:
+def clasificar_sin_tabla(
+    texto_p0: str, menciones_dengue: int, resultado: ResultadoBoletin
+) -> ResultadoBoletin:
     """Clasifica un boletin SIN pagina de tabla departamental de dengue:
     vacaciones (deteccion por CONTENIDO de portada, nunca por nombre de
     archivo -- `SE142023-Semana-Santa.pdf` contiene un patron SEnn valido),
@@ -291,7 +332,10 @@ def clasificar_sin_tabla(texto_p0: str, menciones_dengue: int, resultado: Result
 def procesar_boletin(path: Path) -> ResultadoBoletin:
     anio, semana_archivo, version = parsear_nombre(path)
     resultado = ResultadoBoletin(
-        archivo=path.name, anio=anio, semana_archivo=semana_archivo, version=version,
+        archivo=path.name,
+        anio=anio,
+        semana_archivo=semana_archivo,
+        version=version,
         estado="pendiente",
     )
 
@@ -300,7 +344,9 @@ def procesar_boletin(path: Path) -> ResultadoBoletin:
             texto_p0 = (pdf.pages[0].extract_text() or "") if pdf.pages else ""
             ubicacion = _localizar_pagina_depto(pdf)
             if ubicacion is None:
-                menciones_dengue = sum((p.extract_text() or "").lower().count("dengue") for p in pdf.pages)
+                menciones_dengue = sum(
+                    (p.extract_text() or "").lower().count("dengue") for p in pdf.pages
+                )
             else:
                 menciones_dengue = None
     except Exception as exc:  # noqa: BLE001 -- diagnostico exploratorio, no ingesta
@@ -315,7 +361,9 @@ def procesar_boletin(path: Path) -> ResultadoBoletin:
     return analizar_texto_pagina(texto_pagina, resultado)
 
 
-def analizar_texto_pagina(texto_pagina: str, resultado: ResultadoBoletin) -> ResultadoBoletin:
+def analizar_texto_pagina(
+    texto_pagina: str, resultado: ResultadoBoletin
+) -> ResultadoBoletin:
     """Analisis completo de la pagina que contiene la tabla departamental
     (familia, semanas de corte, filas, blancos=cero, multisemana,
     validaciones de cuadre). Opera sobre TEXTO ya extraido -- separado de
@@ -409,9 +457,17 @@ def analizar_texto_pagina(texto_pagina: str, resultado: ResultadoBoletin) -> Res
     resultado.validacion_tabla = val_tabla
 
     val_nacional = None
-    if otros and len(otros) >= 2 and total_impreso and len(total_impreso) >= 2 and len(suma14) >= 2:
+    if (
+        otros
+        and len(otros) >= 2
+        and total_impreso
+        and len(total_impreso) >= 2
+        and len(suma14) >= 2
+    ):
         suma_mas_otros = [suma14[i] + otros[i] for i in range(2)]
-        val_nacional = all(abs(suma_mas_otros[i] - total_impreso[i]) < 0.05 for i in range(2))
+        val_nacional = all(
+            abs(suma_mas_otros[i] - total_impreso[i]) < 0.05 for i in range(2)
+        )
     resultado.validacion_nacional = val_nacional
 
     cuadra = val_tabla is True or val_nacional is True
@@ -431,8 +487,10 @@ def paso1_extraer(limite: int | None = None) -> list[ResultadoBoletin]:
     archivos = descubrir_archivos(limite)
     vigentes, descartados = resolver_versiones(archivos)
 
-    print(f"Paso 1: {len(archivos)} PDF encontrados, {len(vigentes)} vigentes tras resolver versiones "
-          f"({len(descartados)} descartados por version superada).")
+    print(
+        f"Paso 1: {len(archivos)} PDF encontrados, {len(vigentes)} vigentes tras resolver versiones "
+        f"({len(descartados)} descartados por version superada)."
+    )
 
     resultados = []
     for i, path in enumerate(vigentes, 1):
@@ -447,28 +505,74 @@ def paso1_extraer(limite: int | None = None) -> list[ResultadoBoletin]:
     return resultados
 
 
-def _volcar_bitacora(resultados: list[ResultadoBoletin], descartados: list[tuple[Path, str]]) -> None:
+def _volcar_bitacora(
+    resultados: list[ResultadoBoletin], descartados: list[tuple[Path, str]]
+) -> None:
     path = INTERIM_ROOT / "bitacora_paso1.csv"
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow([
-            "archivo", "anio", "semana_archivo", "version", "estado", "familia",
-            "semana_probable", "semana_confirmado", "suma14_probable", "suma14_confirmado",
-            "otros_probable", "otros_confirmado", "total_impreso", "validacion_tabla",
-            "validacion_nacional", "nota",
-        ])
+        w.writerow(
+            [
+                "archivo",
+                "anio",
+                "semana_archivo",
+                "version",
+                "estado",
+                "familia",
+                "semana_probable",
+                "semana_confirmado",
+                "suma14_probable",
+                "suma14_confirmado",
+                "otros_probable",
+                "otros_confirmado",
+                "total_impreso",
+                "validacion_tabla",
+                "validacion_nacional",
+                "nota",
+            ]
+        )
         for r in resultados:
-            w.writerow([
-                r.archivo, r.anio, r.semana_archivo, r.version, r.estado, r.familia,
-                r.semana_probable, r.semana_confirmado,
-                r.suma14[0] if len(r.suma14) > 0 else "",
-                r.suma14[1] if len(r.suma14) > 1 else "",
-                r.otros_paises[0] if len(r.otros_paises) > 0 else "",
-                r.otros_paises[1] if len(r.otros_paises) > 1 else "",
-                r.total_impreso, r.validacion_tabla, r.validacion_nacional, r.nota,
-            ])
+            w.writerow(
+                [
+                    r.archivo,
+                    r.anio,
+                    r.semana_archivo,
+                    r.version,
+                    r.estado,
+                    r.familia,
+                    r.semana_probable,
+                    r.semana_confirmado,
+                    r.suma14[0] if len(r.suma14) > 0 else "",
+                    r.suma14[1] if len(r.suma14) > 1 else "",
+                    r.otros_paises[0] if len(r.otros_paises) > 0 else "",
+                    r.otros_paises[1] if len(r.otros_paises) > 1 else "",
+                    r.total_impreso,
+                    r.validacion_tabla,
+                    r.validacion_nacional,
+                    r.nota,
+                ]
+            )
         for p, motivo in descartados:
-            w.writerow([p.name, "", "", "", "descartado_version", "", "", "", "", "", "", "", "", "", "", motivo])
+            w.writerow(
+                [
+                    p.name,
+                    "",
+                    "",
+                    "",
+                    "descartado_version",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    motivo,
+                ]
+            )
     print(f"  -> {path}")
 
     resumen = Counter(r.estado for r in resultados)
@@ -481,10 +585,19 @@ def _volcar_crudo(resultados: list[ResultadoBoletin]) -> None:
     path = INTERIM_ROOT / "crudo_departamental.csv"
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow([
-            "archivo", "anio", "familia", "departamento", "probable_acum", "confirmado_acum",
-            "tasa", "semana_corte_probable", "semana_corte_confirmado",
-        ])
+        w.writerow(
+            [
+                "archivo",
+                "anio",
+                "familia",
+                "departamento",
+                "probable_acum",
+                "confirmado_acum",
+                "tasa",
+                "semana_corte_probable",
+                "semana_corte_confirmado",
+            ]
+        )
         for r in resultados:
             if r.estado != "ok":
                 continue
@@ -492,22 +605,40 @@ def _volcar_crudo(resultados: list[ResultadoBoletin]) -> None:
                 probable = fila.valores[0]
                 confirmado = fila.valores[1]
                 tasa = fila.valores[2] if len(fila.valores) > 2 else ""
-                w.writerow([
-                    r.archivo, r.anio, r.familia, fila.departamento, probable, confirmado, tasa,
-                    r.semana_probable, r.semana_confirmado,
-                ])
+                w.writerow(
+                    [
+                        r.archivo,
+                        r.anio,
+                        r.familia,
+                        fila.departamento,
+                        probable,
+                        confirmado,
+                        tasa,
+                        r.semana_probable,
+                        r.semana_confirmado,
+                    ]
+                )
             if r.otros_paises:
-                w.writerow([
-                    r.archivo, r.anio, r.familia, "Otros países",
-                    r.otros_paises[0], r.otros_paises[1] if len(r.otros_paises) > 1 else "",
-                    "", r.semana_probable, r.semana_confirmado,
-                ])
+                w.writerow(
+                    [
+                        r.archivo,
+                        r.anio,
+                        r.familia,
+                        "Otros países",
+                        r.otros_paises[0],
+                        r.otros_paises[1] if len(r.otros_paises) > 1 else "",
+                        "",
+                        r.semana_probable,
+                        r.semana_confirmado,
+                    ]
+                )
     print(f"  -> {path}")
 
 
 # ---------------------------------------------------------------------------
 # Paso 2 -- desacumular
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PuntoSemanal:
@@ -518,7 +649,9 @@ class PuntoSemanal:
     nota: str = ""
 
 
-def _serie_por_depto_anio(resultados: list[ResultadoBoletin], serie: str) -> dict[tuple[int, str], list[tuple[int, float]]]:
+def _serie_por_depto_anio(
+    resultados: list[ResultadoBoletin], serie: str
+) -> dict[tuple[int, str], list[tuple[int, float]]]:
     """serie: 'probable' o 'confirmado'. Devuelve {(anio,depto): [(semana_corte, valor_acum), ...]} ordenado."""
     idx = 0 if serie == "probable" else 1
     semana_attr = "semana_probable" if serie == "probable" else "semana_confirmado"
@@ -542,7 +675,9 @@ def _serie_por_depto_anio(resultados: list[ResultadoBoletin], serie: str) -> dic
     return {k: sorted(v.items()) for k, v in datos.items()}
 
 
-def paso2_desacumular(resultados: list[ResultadoBoletin]) -> dict[str, list[PuntoSemanal]]:
+def paso2_desacumular(
+    resultados: list[ResultadoBoletin],
+) -> dict[str, list[PuntoSemanal]]:
     salida: dict[str, list[PuntoSemanal]] = {"probable": [], "confirmado": []}
     correcciones_negativas: list[dict] = []
 
@@ -559,20 +694,36 @@ def paso2_desacumular(resultados: list[ResultadoBoletin]) -> dict[str, list[Punt
                     diff = valor - anterior_valor
                     if hueco > 1:
                         for s in range(anterior_semana + 1, semana + 1):
-                            salida[serie].append(PuntoSemanal(
-                                anio, depto, s, None,
-                                nota=f"hueco de {hueco} semanas entre cortes SE{anterior_semana} y SE{semana}",
-                            ))
+                            salida[serie].append(
+                                PuntoSemanal(
+                                    anio,
+                                    depto,
+                                    s,
+                                    None,
+                                    nota=f"hueco de {hueco} semanas entre cortes SE{anterior_semana} y SE{semana}",
+                                )
+                            )
                     elif diff < 0:
-                        correcciones_negativas.append({
-                            "serie": serie, "anio": anio, "departamento": depto,
-                            "semana": semana, "diferencia": diff,
-                            "acumulado_anterior": anterior_valor, "acumulado_actual": valor,
-                        })
-                        salida[serie].append(PuntoSemanal(
-                            anio, depto, semana, None,
-                            nota=f"correccion retroactiva: diff={diff} (excluida de la serie)",
-                        ))
+                        correcciones_negativas.append(
+                            {
+                                "serie": serie,
+                                "anio": anio,
+                                "departamento": depto,
+                                "semana": semana,
+                                "diferencia": diff,
+                                "acumulado_anterior": anterior_valor,
+                                "acumulado_actual": valor,
+                            }
+                        )
+                        salida[serie].append(
+                            PuntoSemanal(
+                                anio,
+                                depto,
+                                semana,
+                                None,
+                                nota=f"correccion retroactiva: diff={diff} (excluida de la serie)",
+                            )
+                        )
                     else:
                         salida[serie].append(PuntoSemanal(anio, depto, semana, diff))
                 anterior_semana, anterior_valor = semana, valor
@@ -598,10 +749,29 @@ def _volcar_correcciones_negativas(correcciones: list[dict]) -> None:
     path = INTERIM_ROOT / "correcciones_negativas.csv"
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["serie", "anio", "departamento", "semana", "diferencia", "acumulado_anterior", "acumulado_actual"])
+        w.writerow(
+            [
+                "serie",
+                "anio",
+                "departamento",
+                "semana",
+                "diferencia",
+                "acumulado_anterior",
+                "acumulado_actual",
+            ]
+        )
         for c in correcciones:
-            w.writerow([c["serie"], c["anio"], c["departamento"], c["semana"], c["diferencia"],
-                        c["acumulado_anterior"], c["acumulado_actual"]])
+            w.writerow(
+                [
+                    c["serie"],
+                    c["anio"],
+                    c["departamento"],
+                    c["semana"],
+                    c["diferencia"],
+                    c["acumulado_anterior"],
+                    c["acumulado_actual"],
+                ]
+            )
     print(f"  -> {path}  ({len(correcciones)} correcciones retroactivas detectadas)")
 
 
@@ -634,8 +804,18 @@ def _tabla_distribucion(serie: str, puntos: list[PuntoSemanal]) -> None:
     path = INTERIM_ROOT / f"distribucion_{serie}.csv"
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["anio", "departamento", "semanas_con_dato", "semanas_totales_registradas",
-                     "total_anual", "mediana_semanal", "maximo_semanal", "pct_semanas_en_cero"])
+        w.writerow(
+            [
+                "anio",
+                "departamento",
+                "semanas_con_dato",
+                "semanas_totales_registradas",
+                "total_anual",
+                "mediana_semanal",
+                "maximo_semanal",
+                "pct_semanas_en_cero",
+            ]
+        )
         for anio in ANIOS:
             for depto in DEPARTAMENTOS:
                 valores = grupos.get((anio, depto), [])
@@ -644,11 +824,28 @@ def _tabla_distribucion(serie: str, puntos: list[PuntoSemanal]) -> None:
                     w.writerow([anio, depto, 0, total_celdas, "", "", "", ""])
                     continue
                 total_anual = sum(valores)
-                mediana = statistics.median(valores)
+                valores_sorted = sorted(valores)
+                n_valores = len(valores)
+                mid = n_valores // 2
+                mediana = (
+                    (valores_sorted[mid - 1] + valores_sorted[mid]) / 2.0
+                    if n_valores % 2 == 0
+                    else valores_sorted[mid]
+                )
                 maximo = max(valores)
                 pct_cero = sum(1 for v in valores if v == 0) / len(valores)
-                w.writerow([anio, depto, len(valores), total_celdas, total_anual, mediana, maximo,
-                             round(pct_cero, 4)])
+                w.writerow(
+                    [
+                        anio,
+                        depto,
+                        len(valores),
+                        total_celdas,
+                        total_anual,
+                        mediana,
+                        maximo,
+                        round(pct_cero, 4),
+                    ]
+                )
     print(f"Paso 3 -> {path}")
 
 
@@ -671,34 +868,59 @@ def _canal_endemico(serie: str, puntos: list[PuntoSemanal]) -> None:
                 n_obs = len(base)
                 anios_presentes = len(base)
                 total_celdas += 1
-                suficiente = n_obs >= PISO_OBSERVACIONES and anios_presentes >= PISO_ANIOS_MIN
+                suficiente = (
+                    n_obs >= PISO_OBSERVACIONES and anios_presentes >= PISO_ANIOS_MIN
+                )
                 if not suficiente:
                     bajo_piso += 1
                 valores = sorted(base.values())
                 if len(valores) >= 2:
-                    q25 = statistics.quantiles(valores, n=4, method="inclusive")[0]
-                    q50 = statistics.median(valores)
-                    q75 = statistics.quantiles(valores, n=4, method="inclusive")[2]
+                    q25 = percentil(valores, 0.25)
+                    q50 = percentil(valores, 0.5)
+                    q75 = percentil(valores, 0.75)
                 elif len(valores) == 1:
                     q25 = q50 = q75 = valores[0]
                 else:
                     q25 = q50 = q75 = None
                 if q75 == 0:
                     q3_cero += 1
-                filas_out.append([
-                    depto, semana, anio_objetivo, n_obs, anios_presentes, suficiente, q25, q50, q75,
-                ])
+                filas_out.append(
+                    [
+                        depto,
+                        semana,
+                        anio_objetivo,
+                        n_obs,
+                        anios_presentes,
+                        suficiente,
+                        q25,
+                        q50,
+                        q75,
+                    ]
+                )
 
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["departamento", "semana", "anio_objetivo", "n_observaciones_base",
-                     "anios_presentes_base", "cumple_piso_suficiencia", "p25", "p50", "p75"])
+        w.writerow(
+            [
+                "departamento",
+                "semana",
+                "anio_objetivo",
+                "n_observaciones_base",
+                "anios_presentes_base",
+                "cumple_piso_suficiencia",
+                "p25",
+                "p50",
+                "p75",
+            ]
+        )
         w.writerows(filas_out)
 
     print(f"  -> {path}")
-    print(f"     celdas totales: {total_celdas} | Q3=0: {q3_cero} ({q3_cero/total_celdas:.1%}) "
-          f"| bajo piso ({PISO_OBSERVACIONES} obs / {PISO_ANIOS_MIN} de {PISO_ANIOS_DE} anios): "
-          f"{bajo_piso} ({bajo_piso/total_celdas:.1%})")
+    print(
+        f"     celdas totales: {total_celdas} | Q3=0: {q3_cero} ({q3_cero/total_celdas:.1%}) "
+        f"| bajo piso ({PISO_OBSERVACIONES} obs / {PISO_ANIOS_MIN} de {PISO_ANIOS_DE} anios): "
+        f"{bajo_piso} ({bajo_piso/total_celdas:.1%})"
+    )
 
 
 def _contraste_criterios(desacumulado: dict[str, list[PuntoSemanal]]) -> None:
@@ -738,22 +960,39 @@ def _contraste_criterios(desacumulado: dict[str, list[PuntoSemanal]]) -> None:
                     base = base_por_semana.get(semana, [])
                     if valor is None or len(base) < 2:
                         continue
-                    p75 = statistics.quantiles(sorted(base), n=4, method="inclusive")[2]
+                    p75 = percentil(sorted(base), 0.75)
                     if valor > p75:
                         anios_con_alto.add(anio)
                         break
 
             anios_sin_alto = [a for a in ANIOS if a not in anios_con_alto]
-            filas_out.append([
-                serie, depto, total, sin_dato, round(pct_perdida, 4), pierde_20,
-                len(anios_con_alto), ",".join(str(a) for a in anios_sin_alto),
-            ])
+            filas_out.append(
+                [
+                    serie,
+                    depto,
+                    total,
+                    sin_dato,
+                    round(pct_perdida, 4),
+                    pierde_20,
+                    len(anios_con_alto),
+                    ",".join(str(a) for a in anios_sin_alto),
+                ]
+            )
 
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["serie", "departamento", "semanas_registradas", "semanas_sin_dato",
-                     "pct_perdida", "pierde_mas_20pct", "anios_con_al_menos_1_semana_alta",
-                     "anios_sin_ninguna_semana_alta"])
+        w.writerow(
+            [
+                "serie",
+                "departamento",
+                "semanas_registradas",
+                "semanas_sin_dato",
+                "pct_perdida",
+                "pierde_mas_20pct",
+                "anios_con_al_menos_1_semana_alta",
+                "anios_sin_ninguna_semana_alta",
+            ]
+        )
         w.writerows(filas_out)
     print(f"Paso 3 -> {path}")
 
@@ -763,15 +1002,32 @@ def _contraste_criterios(desacumulado: dict[str, list[PuntoSemanal]]) -> None:
 # ---------------------------------------------------------------------------
 
 CASOS_CONOCIDOS = [
-    {"archivo_contiene": "SE232018", "probable_total": 47, "confirmado_total": 21,
-     "fuente": "inspeccion manual previa + verificado en esta corrida (suma14 exacta)"},
-    {"archivo_contiene": "SE522019_v2", "probable_total": 437, "otros_probable": 2,
-     "confirmado_total": 174, "otros_confirmado": 2,
-     "fuente": "captura de hoy: SE52-2019: 437+2 / 174+2"},
-    {"archivo_contiene": "SE522023", "probable_total": 17, "confirmado_total": 54,
-     "fuente": "captura de hoy / trampa 8 (acumulado final 2023)"},
-    {"archivo_contiene": "SE232019", "probable_total": 276, "otros_probable": 3,
-     "fuente": "captura de hoy: SE23-2019: 276+3 probables"},
+    {
+        "archivo_contiene": "SE232018",
+        "probable_total": 47,
+        "confirmado_total": 21,
+        "fuente": "inspeccion manual previa + verificado en esta corrida (suma14 exacta)",
+    },
+    {
+        "archivo_contiene": "SE522019_v2",
+        "probable_total": 437,
+        "otros_probable": 2,
+        "confirmado_total": 174,
+        "otros_confirmado": 2,
+        "fuente": "captura de hoy: SE52-2019: 437+2 / 174+2",
+    },
+    {
+        "archivo_contiene": "SE522023",
+        "probable_total": 17,
+        "confirmado_total": 54,
+        "fuente": "captura de hoy / trampa 8 (acumulado final 2023)",
+    },
+    {
+        "archivo_contiene": "SE232019",
+        "probable_total": 276,
+        "otros_probable": 3,
+        "fuente": "captura de hoy: SE23-2019: 276+3 probables",
+    },
 ]
 
 
@@ -779,9 +1035,18 @@ def paso4_verificar(resultados: list[ResultadoBoletin]) -> list[dict]:
     por_archivo = {r.archivo: r for r in resultados}
     salida = []
     for caso in CASOS_CONOCIDOS:
-        candidatos = [r for nombre, r in por_archivo.items() if caso["archivo_contiene"] in nombre]
+        candidatos = [
+            r for nombre, r in por_archivo.items() if caso["archivo_contiene"] in nombre
+        ]
         if not candidatos:
-            salida.append({**caso, "encontrado": False, "coincide": False, "detalle": "archivo no aparece entre los vigentes (revisar resolucion de versiones)"})
+            salida.append(
+                {
+                    **caso,
+                    "encontrado": False,
+                    "coincide": False,
+                    "detalle": "archivo no aparece entre los vigentes (revisar resolucion de versiones)",
+                }
+            )
             continue
         r = candidatos[0]
         detalle = f"estado={r.estado} suma14={r.suma14} otros={r.otros_paises} total_impreso={r.total_impreso}"
@@ -793,23 +1058,46 @@ def paso4_verificar(resultados: list[ResultadoBoletin]) -> list[dict]:
             # total unico a reconstruir sumandolas primero.
             checks = [abs(r.suma14[0] - caso["probable_total"]) < 0.5]
             if "otros_probable" in caso:
-                checks.append(len(r.otros_paises) > 0 and abs(r.otros_paises[0] - caso["otros_probable"]) < 0.5)
+                checks.append(
+                    len(r.otros_paises) > 0
+                    and abs(r.otros_paises[0] - caso["otros_probable"]) < 0.5
+                )
             if "confirmado_total" in caso:
-                checks.append(len(r.suma14) > 1 and abs(r.suma14[1] - caso["confirmado_total"]) < 0.5)
+                checks.append(
+                    len(r.suma14) > 1
+                    and abs(r.suma14[1] - caso["confirmado_total"]) < 0.5
+                )
             if "otros_confirmado" in caso:
-                checks.append(len(r.otros_paises) > 1 and abs(r.otros_paises[1] - caso["otros_confirmado"]) < 0.5)
+                checks.append(
+                    len(r.otros_paises) > 1
+                    and abs(r.otros_paises[1] - caso["otros_confirmado"]) < 0.5
+                )
             coincide = all(checks)
-        salida.append({**caso, "encontrado": True, "coincide": coincide, "detalle": detalle})
+        salida.append(
+            {**caso, "encontrado": True, "coincide": coincide, "detalle": detalle}
+        )
 
     path = INTERIM_ROOT / "verificacion_paso4.csv"
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["archivo_contiene", "fuente", "encontrado", "coincide", "detalle"])
         for s in salida:
-            w.writerow([s["archivo_contiene"], s["fuente"], s["encontrado"], s["coincide"], s["detalle"]])
+            w.writerow(
+                [
+                    s["archivo_contiene"],
+                    s["fuente"],
+                    s["encontrado"],
+                    s["coincide"],
+                    s["detalle"],
+                ]
+            )
     print(f"Paso 4 -> {path}")
     for s in salida:
-        estado = "OK" if s["coincide"] else ("SIN COINCIDIR" if s["encontrado"] else "NO ENCONTRADO")
+        estado = (
+            "OK"
+            if s["coincide"]
+            else ("SIN COINCIDIR" if s["encontrado"] else "NO ENCONTRADO")
+        )
         print(f"  [{estado}] {s['archivo_contiene']}: {s['detalle']}")
     return salida
 
@@ -818,10 +1106,20 @@ def paso4_verificar(resultados: list[ResultadoBoletin]) -> list[dict]:
 # Orquestacion
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--limite", type=int, default=None, help="limitar a los primeros N PDF por anio (para pruebas rapidas)")
-    ap.add_argument("--solo-paso1", action="store_true", help="correr solo la extraccion, sin desacumular ni distribucion")
+    ap.add_argument(
+        "--limite",
+        type=int,
+        default=None,
+        help="limitar a los primeros N PDF por anio (para pruebas rapidas)",
+    )
+    ap.add_argument(
+        "--solo-paso1",
+        action="store_true",
+        help="correr solo la extraccion, sin desacumular ni distribucion",
+    )
     args = ap.parse_args()
 
     resultados = paso1_extraer(limite=args.limite)

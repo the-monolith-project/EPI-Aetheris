@@ -8,7 +8,7 @@ test_validar_via_cero.py), sin introducir un framework de pruebas nuevo.
 
 from __future__ import annotations
 
-import statistics
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -110,11 +110,20 @@ class CalcularIvTest(unittest.TestCase):
                 for h in [40, 50, 60, 70, 80, 90, 95]:
                     valores.append(iv_mod.calcular_Iv(t, r, h))
 
-        desv = statistics.stdev(valores)
+        n_valores = len(valores)
+        media = sum(valores) / n_valores if n_valores else 0.0
+        varianza = (
+            sum((x - media) ** 2 for x in valores) / (n_valores - 1)
+            if n_valores > 1
+            else 0.0
+        )
+        desv = math.sqrt(varianza)
         frac_cero = sum(1 for v in valores if v < 0.01) / len(valores)
         frac_uno = sum(1 for v in valores if v > 0.99) / len(valores)
 
-        self.assertGreater(desv, 1e-6, "Iv sale constante sobre un rango climatico realista")
+        self.assertGreater(
+            desv, 1e-6, "Iv sale constante sobre un rango climatico realista"
+        )
         self.assertLessEqual(frac_cero, 0.95, "Iv esta degenerado en el extremo bajo")
         self.assertLessEqual(frac_uno, 0.95, "Iv esta degenerado en el extremo alto")
 
@@ -148,8 +157,21 @@ class BaselineYSigmaTest(unittest.TestCase):
         # pool [0.2, 0.4, 0.6] -> mediana 0.4, desv poblacional-muestral via
         # statistics.stdev = 0.2. valor=0.6 -> z=(0.6-0.4)/0.2=1.0
         pool = [0.2, 0.4, 0.6]
-        mediana = statistics.median(pool)
-        desv = statistics.stdev(pool)
+        pool_sorted = sorted(pool)
+        n_pool = len(pool)
+        mid_pool = n_pool // 2
+        mediana = (
+            (pool_sorted[mid_pool - 1] + pool_sorted[mid_pool]) / 2.0
+            if n_pool % 2 == 0
+            else pool_sorted[mid_pool]
+        )
+        media_pool = sum(pool) / n_pool if n_pool else 0.0
+        varianza = (
+            sum((x - media_pool) ** 2 for x in pool) / (n_pool - 1)
+            if n_pool > 1
+            else 0.0
+        )
+        desv = math.sqrt(varianza)
         z = iv_mod.calcular_sigma(0.6, mediana, desv)
         self.assertAlmostEqual(z, 1.0, places=6)
 
@@ -170,7 +192,11 @@ class SerieIvYAcumulacionPrecipitacionTest(unittest.TestCase):
         clima = {
             "SV-SS": {
                 2019: {
-                    1: {"temp_media": 27.0, "precipitation_sum": 10.0, "humedad_relativa_media": 80.0},
+                    1: {
+                        "temp_media": 27.0,
+                        "precipitation_sum": 10.0,
+                        "humedad_relativa_media": 80.0,
+                    },
                 }
             }
         }
@@ -184,7 +210,10 @@ class SerieIvYAcumulacionPrecipitacionTest(unittest.TestCase):
         clima = {
             "SV-SS": {
                 2019: {
-                    5: {"temp_media": 27.0, "precipitation_sum": 10.0},  # falta humedad_relativa_media
+                    5: {
+                        "temp_media": 27.0,
+                        "precipitation_sum": 10.0,
+                    },  # falta humedad_relativa_media
                 }
             }
         }
@@ -195,13 +224,23 @@ class SerieIvYAcumulacionPrecipitacionTest(unittest.TestCase):
         clima = {
             "SV-SS": {
                 2019: {
-                    5: {"temp_media": 27.0, "precipitation_sum": 10.0, "humedad_relativa_media": 80.0},
-                    6: {"temp_media": 27.0, "precipitation_sum": 20.0, "humedad_relativa_media": 80.0},
+                    5: {
+                        "temp_media": 27.0,
+                        "precipitation_sum": 10.0,
+                        "humedad_relativa_media": 80.0,
+                    },
+                    6: {
+                        "temp_media": 27.0,
+                        "precipitation_sum": 20.0,
+                        "humedad_relativa_media": 80.0,
+                    },
                 }
             }
         }
         serie = iv_mod.calcular_serie_iv(clima)
-        esperado_semana_6 = iv_mod.calcular_Iv(27.0, 30.0, 80.0)  # 20 + 10 de la semana anterior
+        esperado_semana_6 = iv_mod.calcular_Iv(
+            27.0, 30.0, 80.0
+        )  # 20 + 10 de la semana anterior
         self.assertAlmostEqual(serie["SV-SS"][2019][6], esperado_semana_6, places=9)
 
 

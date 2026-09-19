@@ -74,7 +74,6 @@ from __future__ import annotations
 
 import csv
 import math
-import statistics
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
@@ -139,7 +138,9 @@ def f_H(humedad_relativa: float) -> float:
     return min(1.0, max(0.0, humedad_relativa / 50.0))
 
 
-def calcular_Iv(temp_media: float, precip_acum_2sem: float, humedad_relativa: float) -> float:
+def calcular_Iv(
+    temp_media: float, precip_acum_2sem: float, humedad_relativa: float
+) -> float:
     return f_T(temp_media) * (0.3 + 0.7 * f_R(precip_acum_2sem)) * f_H(humedad_relativa)
 
 
@@ -172,38 +173,63 @@ def cargar_clima_departamental() -> dict[str, dict[int, dict[int, dict[str, floa
 
 
 def calcular_serie_Iv(
-    clima: dict[str, dict[int, dict[int, dict[str, float]]]]
+    clima: dict[str, dict[int, dict[int, dict[str, float]]]],
 ) -> dict[str, dict[int, dict[int, float]]]:
     """codigo -> anio -> semana -> Iv. Precipitacion acumulada a 2 semanas
     sin envolver entre anios (misma convencion que canal_endemico_nacional):
     si la semana anterior no existe (semana 1), se usa solo la semana
     actual."""
-    resultado: dict[str, dict[int, dict[int, float]]] = defaultdict(lambda: defaultdict(dict))
+    resultado: dict[str, dict[int, dict[int, float]]] = defaultdict(
+        lambda: defaultdict(dict)
+    )
     requeridas = ("temp_media", "precipitation_sum", "humedad_relativa_media")
     for codigo, por_anio in clima.items():
         for anio, semanas in por_anio.items():
             for semana, valores in semanas.items():
                 if any(valores.get(v) is None for v in requeridas):
                     continue
-                precip_prev = semanas.get(semana - 1, {}).get("precipitation_sum", 0.0) if semana > 1 else 0.0
+                precip_prev = (
+                    semanas.get(semana - 1, {}).get("precipitation_sum", 0.0)
+                    if semana > 1
+                    else 0.0
+                )
                 r_acum = valores["precipitation_sum"] + precip_prev
-                iv = calcular_Iv(valores["temp_media"], r_acum, valores["humedad_relativa_media"])
+                iv = calcular_Iv(
+                    valores["temp_media"], r_acum, valores["humedad_relativa_media"]
+                )
                 resultado[codigo][anio][semana] = iv
     return resultado
 
 
 def chequeo_de_cordura(serie_iv: dict[str, dict[int, dict[int, float]]]) -> list[float]:
-    todos = [v for por_anio in serie_iv.values() for semanas in por_anio.values() for v in semanas.values()]
+    todos = [
+        v
+        for por_anio in serie_iv.values()
+        for semanas in por_anio.values()
+        for v in semanas.values()
+    ]
     n = len(todos)
-    media = statistics.mean(todos)
-    mediana = statistics.median(todos)
-    desv = statistics.stdev(todos)
+    media = sum(todos) / len(todos) if todos else 0.0
+    todos_sorted = sorted(todos)
+    n_todos = len(todos)
+    mid_todos = n_todos // 2
+    mediana = (
+        (todos_sorted[mid_todos - 1] + todos_sorted[mid_todos]) / 2.0
+        if n_todos % 2 == 0
+        else todos_sorted[mid_todos]
+    )
+    varianza = (
+        sum((x - media) ** 2 for x in todos) / (n_todos - 1) if n_todos > 1 else 0.0
+    )
+    desv = math.sqrt(varianza)
     minimo, maximo = min(todos), max(todos)
     frac_cero = sum(1 for v in todos if v < 0.01) / n
     frac_uno = sum(1 for v in todos if v > 0.99) / n
 
     print(f"Chequeo de cordura Iv (n={n}):")
-    print(f"  media={media:.4f} mediana={mediana:.4f} desv={desv:.4f} min={minimo:.4f} max={maximo:.4f}")
+    print(
+        f"  media={media:.4f} mediana={mediana:.4f} desv={desv:.4f} min={minimo:.4f} max={maximo:.4f}"
+    )
     print(f"  fraccion < 0.01: {frac_cero:.1%}   fraccion > 0.99: {frac_uno:.1%}")
 
     bins = [0] * 10
@@ -247,10 +273,25 @@ def calcular_alertas_por_anio(
                 if a != anio_obj and semana in serie_codigo.get(a, {})
             ]
             if len(pool) < 3:
-                detalle.append((semana, serie_codigo[anio_obj][semana], None, None, None))
+                detalle.append(
+                    (semana, serie_codigo[anio_obj][semana], None, None, None)
+                )
                 continue
-            mediana = statistics.median(pool)
-            desv = statistics.stdev(pool)
+            pool_sorted = sorted(pool)
+            n_pool = len(pool)
+            mid_pool = n_pool // 2
+            mediana = (
+                (pool_sorted[mid_pool - 1] + pool_sorted[mid_pool]) / 2.0
+                if n_pool % 2 == 0
+                else pool_sorted[mid_pool]
+            )
+            media_pool = sum(pool) / n_pool
+            varianza = (
+                sum((x - media_pool) ** 2 for x in pool) / (n_pool - 1)
+                if n_pool > 1
+                else 0.0
+            )
+            desv = math.sqrt(varianza)
             valor = serie_codigo[anio_obj][semana]
             z = None if desv < 1e-9 else (valor - mediana) / desv
             detalle.append((semana, valor, mediana, desv, z))
@@ -304,9 +345,7 @@ def main() -> None:
 
     print(f"c de normalizacion de f_T resuelto numericamente: {C_NORM:.6f}\n")
 
-    print(
-        f"Cargando clima departamental {ANIOS_CLIMA[0]}-{ANIOS_CLIMA[-1]}..."
-    )
+    print(f"Cargando clima departamental {ANIOS_CLIMA[0]}-{ANIOS_CLIMA[-1]}...")
     clima = cargar_clima_departamental()
     serie_iv = calcular_serie_Iv(clima)
 
@@ -314,22 +353,30 @@ def main() -> None:
     todos_iv = chequeo_de_cordura(serie_iv)
 
     # Volcar distribucion completa para inspeccion
-    with open(INTERIM_ROOT / "distribucion_iv.csv", "w", newline="", encoding="utf-8") as f:
+    with open(
+        INTERIM_ROOT / "distribucion_iv.csv", "w", newline="", encoding="utf-8"
+    ) as f:
         w = csv.writer(f)
         w.writerow(["iv"])
         for v in todos_iv:
             w.writerow([v])
 
     # --- Nacional: agregado simple (promedio no ponderado) de los 14 deptos ---
-    print("Calculando agregado nacional de Iv (promedio simple, sin ponderar por poblacion)...")
+    print(
+        "Calculando agregado nacional de Iv (promedio simple, sin ponderar por poblacion)..."
+    )
     serie_iv_nacional: dict[int, dict[int, float]] = defaultdict(dict)
     for anio in ANIOS_CLIMA:
-        semanas_comunes = set.intersection(
-            *[set(serie_iv[cod].get(anio, {})) for cod in serie_iv]
-        ) if serie_iv else set()
+        semanas_comunes = (
+            set.intersection(*[set(serie_iv[cod].get(anio, {})) for cod in serie_iv])
+            if serie_iv
+            else set()
+        )
         for semana in semanas_comunes:
             valores = [serie_iv[cod][anio][semana] for cod in serie_iv]
-            serie_iv_nacional[anio][semana] = statistics.mean(valores)
+            serie_iv_nacional[anio][semana] = (
+                sum(valores) / len(valores) if valores else 0.0
+            )
 
     alertas_nacional = calcular_alertas_por_anio(serie_iv_nacional, ANIOS_EVALUADOS)
     inicio_nacional = inicio_temporada_nacional()
@@ -346,13 +393,19 @@ def main() -> None:
             nota = "sin inicio de temporada real detectado ese anio (nunca cruza P75 con suficiencia)"
         elif alerta is None:
             nota = "el detector no genero alerta ese anio"
-        resultados.append(ResultadoLeadTime("nacional", "SV", anio, alerta, inicio, lead, nota))
+        resultados.append(
+            ResultadoLeadTime("nacional", "SV", anio, alerta, inicio, lead, nota)
+        )
 
     # --- Departamental: solo SV-SS ---
-    print("Calculando inicio de temporada departamental real (SV-SS, unico que califica)...")
+    print(
+        "Calculando inicio de temporada departamental real (SV-SS, unico que califica)..."
+    )
     serie_casos_depto = leer_serie_departamental()
     pasa, _ = califica(serie_casos_depto["SV-SS"])
-    assert pasa, "SV-SS deberia calificar segun la corrida previa -- revisar si los datos cambiaron"
+    assert (
+        pasa
+    ), "SV-SS deberia calificar segun la corrida previa -- revisar si los datos cambiaron"
     celdas_ss = correr_departamento("SV-SS", serie_casos_depto["SV-SS"])
     inicio_ss = inicio_temporada_por_anio(celdas_ss)
 
@@ -370,28 +423,52 @@ def main() -> None:
             nota = "sin inicio de temporada real detectado ese anio"
         elif alerta is None:
             nota = "el detector no genero alerta ese anio"
-        resultados.append(ResultadoLeadTime("departamental", "SV-SS", anio, alerta, inicio, lead, nota))
+        resultados.append(
+            ResultadoLeadTime(
+                "departamental", "SV-SS", anio, alerta, inicio, lead, nota
+            )
+        )
 
     # Volcar detalle semana-a-semana de Z-scores (para explicar por que no
     # hubo alerta en los anios donde no la hubo, no solo reportar "no hubo")
     zdetalle_path = INTERIM_ROOT / "zscores_detalle.csv"
     with open(zdetalle_path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["nivel", "codigo", "anio", "semana", "valor_iv", "mediana_baseline", "desv_baseline", "z"])
+        w.writerow(
+            [
+                "nivel",
+                "codigo",
+                "anio",
+                "semana",
+                "valor_iv",
+                "mediana_baseline",
+                "desv_baseline",
+                "z",
+            ]
+        )
         for anio, info in alertas_nacional.items():
             for semana, valor, mediana, desv, z in info["detalle"]:
                 w.writerow(["nacional", "SV", anio, semana, valor, mediana, desv, z])
         for anio, info in alertas_ss.items():
             for semana, valor, mediana, desv, z in info["detalle"]:
-                w.writerow(["departamental", "SV-SS", anio, semana, valor, mediana, desv, z])
+                w.writerow(
+                    ["departamental", "SV-SS", anio, semana, valor, mediana, desv, z]
+                )
     print(f"Detalle Z-score semana a semana -> {zdetalle_path}")
 
-    print("\nMaximo Z alcanzado por anio (para entender que tan cerca estuvo de disparar la alerta):")
-    for nivel, alertas in (("nacional", alertas_nacional), ("departamental", alertas_ss)):
+    print(
+        "\nMaximo Z alcanzado por anio (para entender que tan cerca estuvo de disparar la alerta):"
+    )
+    for nivel, alertas in (
+        ("nacional", alertas_nacional),
+        ("departamental", alertas_ss),
+    ):
         for anio, info in alertas.items():
             zs = [z for _, _, _, _, z in info["detalle"] if z is not None]
             if zs:
-                print(f"  {nivel:13s} {anio}: max Z = {max(zs):.2f}  (umbral={UMBRAL_Z})")
+                print(
+                    f"  {nivel:13s} {anio}: max Z = {max(zs):.2f}  (umbral={UMBRAL_Z})"
+                )
             else:
                 print(f"  {nivel:13s} {anio}: sin Z calculable (baseline insuficiente)")
 
@@ -399,15 +476,39 @@ def main() -> None:
     detalle_path = INTERIM_ROOT / "leadtime_resultados.csv"
     with open(detalle_path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["nivel", "codigo", "anio", "semana_alerta", "semana_inicio_real", "lead_time_semanas", "nota"])
+        w.writerow(
+            [
+                "nivel",
+                "codigo",
+                "anio",
+                "semana_alerta",
+                "semana_inicio_real",
+                "lead_time_semanas",
+                "nota",
+            ]
+        )
         for r in resultados:
-            w.writerow([r.nivel, r.codigo, r.anio, r.semana_alerta, r.semana_inicio_real, r.lead_time, r.nota])
+            w.writerow(
+                [
+                    r.nivel,
+                    r.codigo,
+                    r.anio,
+                    r.semana_alerta,
+                    r.semana_inicio_real,
+                    r.lead_time,
+                    r.nota,
+                ]
+            )
 
     print(f"\nResultados -> {detalle_path}\n")
-    print(f"{'nivel':13s} {'codigo':6s} {'anio':5s} {'alerta':7s} {'inicio':7s} {'lead':6s} nota")
+    print(
+        f"{'nivel':13s} {'codigo':6s} {'anio':5s} {'alerta':7s} {'inicio':7s} {'lead':6s} nota"
+    )
     for r in resultados:
-        print(f"{r.nivel:13s} {r.codigo:6s} {r.anio:<5d} "
-              f"{str(r.semana_alerta):7s} {str(r.semana_inicio_real):7s} {str(r.lead_time):6s} {r.nota}")
+        print(
+            f"{r.nivel:13s} {r.codigo:6s} {r.anio:<5d} "
+            f"{str(r.semana_alerta):7s} {str(r.semana_inicio_real):7s} {str(r.lead_time):6s} {r.nota}"
+        )
 
     # Cifras de control: mediana/RIC de lead time, nacional vs departamental,
     # excluyendo explicitamente los anios degenerados de SV-SS y los "sin
@@ -415,28 +516,52 @@ def main() -> None:
     # imputan.
     def resumen(nivel: str, excluir_anios: set[int] = frozenset()) -> None:
         validos = [
-            r.lead_time for r in resultados
-            if r.nivel == nivel and r.lead_time is not None and r.anio not in excluir_anios
+            r.lead_time
+            for r in resultados
+            if r.nivel == nivel
+            and r.lead_time is not None
+            and r.anio not in excluir_anios
         ]
-        total_nivel = [r for r in resultados if r.nivel == nivel and r.anio not in excluir_anios]
+        total_nivel = [
+            r for r in resultados if r.nivel == nivel and r.anio not in excluir_anios
+        ]
         n_total = len(total_nivel)
         n_validos = len(validos)
-        print(f"\n=== Resumen nivel={nivel} (excluidos por decision metodologica: {sorted(excluir_anios) or 'ninguno'}) ===")
-        print(f"  {n_validos}/{n_total} anio-casos con lead time medible (con alerta Y con inicio real).")
+        print(
+            f"\n=== Resumen nivel={nivel} (excluidos por decision metodologica: {sorted(excluir_anios) or 'ninguno'}) ==="
+        )
+        print(
+            f"  {n_validos}/{n_total} anio-casos con lead time medible (con alerta Y con inicio real)."
+        )
         if validos:
-            mediana = statistics.median(validos)
+            validos_sorted = sorted(validos)
+            n_validos = len(validos)
+            mid_validos = n_validos // 2
+            mediana = (
+                (validos_sorted[mid_validos - 1] + validos_sorted[mid_validos]) / 2.0
+                if n_validos % 2 == 0
+                else validos_sorted[mid_validos]
+            )
             q1 = percentil(validos, 0.25)
             q3 = percentil(validos, 0.75)
             positivos = sum(1 for v in validos if v > 0)
-            print(f"  mediana lead time = {mediana:.1f} semanas, RIC=[{q1:.1f}, {q3:.1f}]")
-            print(f"  {positivos}/{n_validos} ({positivos/n_validos:.0%}) con lead time positivo (anticipo real)")
+            print(
+                f"  mediana lead time = {mediana:.1f} semanas, RIC=[{q1:.1f}, {q3:.1f}]"
+            )
+            print(
+                f"  {positivos}/{n_validos} ({positivos/n_validos:.0%}) con lead time positivo (anticipo real)"
+            )
         else:
-            print("  Sin ningun caso con lead time medible -- no hay base para calcular mediana/RIC.")
+            print(
+                "  Sin ningun caso con lead time medible -- no hay base para calcular mediana/RIC."
+            )
 
     resumen("nacional")
     resumen("departamental", excluir_anios=SV_SS_ANIOS_DEGENERADOS)
 
-    print(f"\nCSV completo con todas las filas (incluidos anios degenerados y sin dato) -> {detalle_path}")
+    print(
+        f"\nCSV completo con todas las filas (incluidos anios degenerados y sin dato) -> {detalle_path}"
+    )
 
 
 if __name__ == "__main__":
