@@ -30,6 +30,15 @@ services:
     ports:
       - "8000:8000"
     environment:
+      # Un solo origen permitido obligaba a que CUALQUIER dev server se
+      # atara al 4321, que es el puerto del contenedor `web`. Eso hacia
+      # imposible levantar un segundo frontend (un worktree, una rama en
+      # paralelo) sin parar este contenedor antes y acordarse de volver a
+      # levantarlo. Con el 4322 tambien permitido, los dos conviven.
+      # El default de backend/api/main.py es solo el 4321, asi que sin esta
+      # linea el contenedor se queda con un unico origen. Produccion no se
+      # ve afectada: Render toma CORS_ALLOWED_ORIGINS de render.yaml.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4321,http://localhost:4322}
       POSTGRES_HOST: db
       POSTGRES_USER: ${POSTGRES_USER:?Debe definirse POSTGRES_USER en el archivo .env (ver .env.example)}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Debe definirse POSTGRES_PASSWORD en el archivo .env (ver .env.example)}
