@@ -1,0 +1,96 @@
+---
+/**
+ * Demo animada de la predicción a corto plazo.
+ *
+ * El mismo panel de /dengue, pero como contenido único de la página y con la
+ * secuencia de presentación siempre activa. En /dengue el panel vive dentro de
+ * un tabpanel oculto, así que `?demo` solo se ve tras abrir la pestaña
+ * "Predicción a corto plazo" (`?demo&t=prediccion`); aquí no hace falta.
+ *
+ * Parámetros opcionales:
+ *   ?lento   -> ritmo 1.6x en toda la secuencia, para grabar.
+ *   ?limpio  -> oculta cabecera, pie y el encabezado de la página.
+ */
+import Layout from '../../layouts/Layout.astro';
+import PanelNowcastDengue from '../../components/nowcast/PanelNowcastDengue.astro';
+---
+
+<Layout
+  title="Demo — Predicción de dengue a corto plazo"
+  descripcion="Recorrido animado de la predicción del conteo nacional de dengue para las próximas 1 a 8 semanas."
+  noindex
+>
+  <script is:inline>
+    try {
+      if (new URLSearchParams(location.search).has('limpio')) {
+        document.documentElement.classList.add('demo-limpio');
+      }
+    } catch {
+      // Entornos sin URLSearchParams: la página queda en su forma normal.
+    }
+  </script>
+
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-[1100px] px-4 py-8 sm:px-8 sm:py-10"
+  >
+    <div data-encabezado-demo>
+      <p
+        class="font-sans text-xs font-medium uppercase tracking-wide text-ink-muted"
+      >
+        <a class="underline underline-offset-2" href="/demos">Demos</a>
+      </p>
+      <h1 class="mt-2 font-display text-2xl font-semibold text-ink sm:text-3xl">
+        Predicción a corto plazo
+      </h1>
+      <p
+        class="mt-3 max-w-[70ch] font-sans text-sm leading-relaxed text-ink-muted"
+      >
+        La secuencia arranca con el botón <strong>Cargar predicción</strong>:
+        revela el abanico, acerca la ventana de las próximas ocho semanas y
+        descubre el desempeño por temporada. Es el mismo panel que está en{' '}
+        <a
+          class="text-accent underline underline-offset-2"
+          href="/dengue?t=prediccion">Dengue → Predicción a corto plazo</a
+        >, con los mismos datos.
+      </p>
+      <p class="mt-2 font-sans text-xs text-ink-muted">
+        <a class="underline underline-offset-2" href="/demos/nowcast?lento"
+          >Ritmo lento</a
+        >
+        ·
+        <a class="underline underline-offset-2" href="/demos/nowcast?limpio"
+          >Sin cabecera ni pie</a
+        >
+      </p>
+    </div>
+
+    <div class="mt-6">
+      <PanelNowcastDengue variante="completo" demo />
+    </div>
+  </main>
+</Layout>
+
+<style is:global>
+  /* ?limpio: deja la página con el panel y nada más, para grabar. Sin la
+     clase en <html> la página queda idéntica. */
+  html.demo-limpio body > header,
+  html.demo-limpio body > footer,
+  html.demo-limpio [data-encabezado-demo] {
+    display: none !important;
+  }
+  html.demo-limpio body > main {
+    max-width: none !important;
+    padding: 1.5rem 3rem 2rem !important;
+  }
+  html.demo-limpio body > main > div:last-child {
+    margin-top: 0 !important;
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  html.demo-limpio body > main > div:last-child > * {
+    width: 100%;
+  }
+</style>

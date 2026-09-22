@@ -5,11 +5,15 @@ import '../styles/global.css';
 interface Props {
   title?: string;
   descripcion?: string;
+  /** Saca la página del índice de los buscadores. Se usa en las rutas que no
+   *  son contenido público, como los recorridos de /demos. */
+  noindex?: boolean;
 }
 
 const {
   title = 'EPI-Aetheris',
   descripcion = 'Vigilancia epidemiológica descriptiva de dengue e IRA en El Salvador, sobre datos públicos de MINSAL, OpenDengue y Open-Meteo. Licencia GPL-3.0.',
+  noindex = false,
 } = Astro.props;
 
 // API pública real -- FastAPI genera /docs (Swagger UI) gratis a partir de
@@ -53,6 +57,7 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={descripcion} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href={urlCanonica} />
     {
