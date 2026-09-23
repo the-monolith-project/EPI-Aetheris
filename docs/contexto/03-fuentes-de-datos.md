@@ -94,7 +94,8 @@ Los 264 boletines ya usados para dengue e IRA publican, en otras páginas:
 
 **Modelo por variable, cobertura y evidencia de la decisión:** ver tabla y razonamiento en `01-decisiones-cerradas.md`. Detalle adicional de verificación aquí:
 
-- **Cobertura temporal:** ERA5 desde 1940 (0,25°, ~25 km), ERA5-Land desde 1950 (0,1°, ~11 km), ECMWF IFS desde 2017 (9 km). La ventana de entrenamiento (2018, 2019, 2021–2023) está cubierta cómodamente por los tres.
+- **Cobertura temporal:** ERA5 desde 1940 (0,25°, ~25 km), ERA5-Land desde 1950 (0,1°, ~11 km), ECMWF IFS desde 2017 (9 km). La ventana de entrenamiento original (2018, 2019, 2021–2023) está cubierta cómodamente por los tres.
+- **La capa climática ya no termina en 2024 (ADR 0018, 2026-09-08).** `ANIOS_CLIMA` llega al año calendario en curso y el volcado versionado incluye **2025 completo y 2026 hasta la SE 35** (#124, 2026-09-10) — antes, un `git clone` fresco o Render no veían clima posterior a 2024. Dos consecuencias de ingesta: (1) `cargar_clima.py` **descarta las semanas epidemiológicas con menos de 5 días observados** (`DIAS_MINIMOS_SEMANA`), así que la cola del año en curso no entra hasta completarse — el reanálisis ERA5 tiene ~5 días de rezago y no se rellena con pronóstico; (2) el clima ≤2024 quedó **congelado byte a byte**: una recarga local revisó 70 filas de 2024 SE01 (cambios <0,1 °C / ~2 pp de humedad, probable conteo de días en la semana de borde) y se restauraron a los valores anteriores porque movían `firma_previa_sha256` de la Vía 3 de M3, que es un artefacto congelado.
 - **Trampa confirmada del cero falso:** bajo `era5_land`, en un día de lluvia real (2023-06-05, 12,5 mm según otro modelo), `precipitation_sum` da `null` correctamente pero `precipitation_hours` da `0.0` — cero fabricado. Guarda de pipeline en `01-decisiones-cerradas.md`.
 - **Variables en agregación diaria:** temperatura máxima/mínima/media, humedad relativa media, punto de rocío bajo `era5_land`; precipitación acumulada y horas de lluvia bajo `era5`. Sin agregación semanal nativa en la API — solo horaria y diaria, el pipeline construye la semana epidemiológica sumando/promediando diarios.
 - **Límites de uso gratuito:** 600 llamadas/min, 5.000/hora, 10.000/día, 300.000/mes. Peor caso estimado (si el peso se multiplicara por ubicación): la descarga histórica completa para 14 departamentos ronda ~2.200 llamadas ponderadas contra el techo de 10.000/día — sobra margen. No documentado si el conteo fraccional (más de 10 variables o más de 2 semanas por ubicación) se multiplica al combinar ubicaciones en una sola petición — conviene una llamada de prueba pequeña antes de programar la ingesta completa.
@@ -105,6 +106,17 @@ Los 264 boletines ya usados para dengue e IRA publican, en otras páginas:
 
 Punto representativo del polígono de mayor área por departamento (`shapely.representative_point()`, no centroide aritmético — La Unión y Usulután tienen geometría costera/insular compleja donde un centroide naive puede caer en agua), calculado sobre el GeoJSON ya horneado con el código de departamento (`backend/ingestion/compute_centroides.py`), con aserciones de caja geográfica para detectar una inversión de latitud/longitud (no produce error, produce clima de otro lugar del planeta). Distancia verificada entre punto solicitado y centro de celda real: 1,8–6,5 km. Persistido en `regiones.centroide_lat/lon/elevacion_m` (ADR 0003, ver `01-decisiones-cerradas.md`) — deliberadamente **no** el centro de celda que devuelve la API, que es detalle de fuente/modelo, no identidad de la región. **Las columnas existían desde el 2026-08-07 pero ninguna carga las poblaba** — quedaron con datos reales recién el 2026-08-10, como efecto colateral de `backend/ingestion/cargar_clima.py` (tarjeta 12), que ya necesita lat/lon para llamar a Open-Meteo y recibe `elevation` en la misma respuesta.
 
+## ONI de NOAA (El Niño / La Niña)
+
+`https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt` — texto plano público, sin credenciales ni límite de tasa documentado, formato estable (no hay versión de API que romper). ADR 0008, migración `0006` (una fila de catálogo, `fuentes_datos.codigo = 'noaa_oni'`; variable `oni_anom`). Loader: `backend/ingestion/cargar_oni.py`.
+
+- **Formato verificado en vivo antes de escribir el parser** (no asumido): columnas `SEAS` (ventana móvil de 3 meses, ej. `DJF`), `YR`, `TOTAL`, `ANOM`. Cada temporada representa el **mes central** de la ventana y `YR` es el año calendario de ese mes central (`DJF 1950` = dic-1949 + ene-1950 + feb-1950, `YR=1950`). Se guarda `ANOM`, no `TOTAL`.
+- **Trampa de resolución:** el dato es **mensual** y la tabla es semanal. El mismo valor mensual se aplica a cada semana epidemiológica cuyo `fecha_inicio` cae en ese mes calendario — asignación de resolución declarada como tal, **nunca interpolación ni reparto**. La distinción con el caso de OpenDengue Admin1 (donde fraccionar un acumulado sí fabricaría dato) está en ADR 0008, punto C.
+- **Rezago de publicación:** NOAA publica el ONI con ~1 mes de retraso respecto al mes en curso.
+- **Región:** se almacena una sola vez bajo `SV` (`nivel_admin = 0`); ONI no tiene resolución departamental y repetirlo 14 veces no aporta nada.
+- **Estado:** el ADR lo dejó como predictor *experimental*. Sigue siendo el único predictor de escala oceánica del proyecto y hoy **es feature del nowcast de dengue** (ADR 0020), donde entra con el valor del origen `t`. En el clasificador retirado no había ayudado; en el marco de regresión de conteo se re-evaluó y quedó dentro del vector de features.
+- **Cobertura cargada:** 574 filas semanales en el volcado versionado, alineadas con la serie nacional de dengue (2014–2024).
+
 ## Cobertura temporal real por fuente (resumen para diseño de ingesta)
 
 | Ventana | Nacional | Departamental |
@@ -112,15 +124,22 @@ Punto representativo del polígono de mayor área por departamento (`shapely.rep
 | 2018–2019 | OpenDengue Admin0 | MINSAL PDF, Familia A, con huecos puntuales (2–3 semanas/año) |
 | 2020 | OpenDengue Admin0 | MINSAL PDF, Familia A, riesgo de desalineación — **no descargado** (excluido de entrenamiento) |
 | 2021–2023 | OpenDengue Admin0 | MINSAL PDF, Familia B, limpio y consistente |
-| 2024–presente | OpenDengue Admin0 | Sin fuente automatizable (dashboard bloqueado por Cloudflare) |
+| 2024–presente | OpenDengue Admin0 (el extracto V1.3 termina en la semana del 2024-12-22) | Sin fuente automatizable (dashboard bloqueado por Cloudflare) |
 
 El hueco 2024–presente a nivel departamental es riesgo real, no resuelto.
+
+**El clima va por delante de los casos.** Desde ADR 0018 el clima llega al año en curso (2026 en el volcado), mientras la serie nacional de dengue se detiene en diciembre de 2024 y la departamental en 2023. No es un desajuste a corregir: M1/M2 describen condición biofísica y pueden ser actuales; todo lo que depende de casos (M3, el dataset analítico, el ancla del nowcast del ADR 0020) queda anclado a la última semana con casos observados. M4 publica esa distancia como cifra (`antiguedad`, ADR 0019) en vez de dejarla implícita.
 
 ## Capa de datos intermedia
 
 El parser vuelca la tabla cruda extraída de cada boletín (incluida la columna de tasa de Familia A, siempre conservada aunque no se use downstream) en `backend/ingestion/data/interim/` antes de normalizar — así los 264 PDF se leen una sola vez y todo lo demás trabaja sobre esa capa. `data/interim/` debe estar gitignoreada igual que `data/raw/` — verificar que siga así antes de commitear código de ingesta.
 
-**Regla de datos en el repositorio:** los PDF descargados y cualquier artefacto derivado de la ingesta son datos, no código, y no se versionan (excepción deliberada: `backend/ingestion/geo/slv-adm1-source.geojson`, documentada en el `AGENTS.md` de la raíz — no la "corrija" quitándola del control de versiones).
+**Regla de datos en el repositorio:** los PDF descargados y cualquier artefacto derivado de la ingesta son datos, no código, y no se versionan. Las excepciones son **deliberadas, enumeradas y con excepción explícita en `.gitignore`** — no las "corrija" quitándolas del control de versiones:
+
+- `backend/ingestion/geo/slv-adm1-source.geojson` — documentada en el `AGENTS.md` de la raíz.
+- `db/seed/seed_datos_reales.sql` — volcado de datos reales para reproducibilidad por un tercero (ADR 0010).
+- `backend/api/datos/nowcast_dengue.json` — artefacto precomputado que sirve el endpoint de predicción a corto plazo (ADR 0020).
+- `backend/ingestion/data/interim/dataset_modelado/dataset_modelado.csv`, `.../modelo/clasificador_riesgo_nacional_v1.joblib` y `.../modelo/metricas_modelo.json` — evidencia del clasificador retirado, versionada en la issue #72 (2026-09-13) para que las cifras del informe de cierre sean reproducibles. Es código muerto documentado, no algo a extender.
 
 ## Pendiente, sin avance registrado
 
