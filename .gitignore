@@ -72,7 +72,7 @@ graphify-out/
 
 # Configuración local de Claude Code (por desarrollador, no se versiona)
 .claude/
-
+/.agents
 # Archivos del sistema operativo y editores
 .DS_Store
 Thumbs.db
@@ -93,11 +93,12 @@ referencias_no_trakear/
 INDICACIONES_ALERTAS.md
 PLAN_ALERTAS_OPERABLES.md
 # Documentos legacy que no se versionan (síntesis históricas superadas por
-# docs/contexto/ y por AGENTS.md — se conservan localmente si hacen falta).
-CAMBIO_DE_ORIENTACION_CAMINO_ANCHO.md
+# AGENTS.md — se conservan localmente si hacen falta).
 indicaciones-configuracion-codex-documentacion-EPI-Aetheris.md
 
 # design-sync
 ds-bundle/
 .ds-sync/
 .design-sync/.cache/
+/skills-lock.json
+/db/migrations/seed_datos_reales.sql

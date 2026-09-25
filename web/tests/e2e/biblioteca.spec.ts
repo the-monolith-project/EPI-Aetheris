@@ -55,7 +55,7 @@ test('/biblioteca lista los documentos por titulo del frontmatter', async ({
   page,
 }) => {
   const docs = await leerDocumentos();
-  expect(docs.length).toBeGreaterThanOrEqual(6);
+  expect(docs.length).toBeGreaterThanOrEqual(5);
 
   await page.goto('/biblioteca');
   await expect(

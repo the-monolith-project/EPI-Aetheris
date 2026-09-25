@@ -1,8 +1,7 @@
 """
 Corrida del canal endemico nacional fiel a las 4 zonas OPS/PAHO
 (exito/seguridad/alarma/epidemia), previa a decidir el colapso a 3 clases
-(punto A, docs/contexto/02-decisiones-abiertas.md -- sigue abierto, esta
-corrida no lo cierra).
+(sigue abierto, esta corrida no lo cierra).
 
 Reutiliza sin modificar la linea base ya validada en
 corrida_canal_endemico_nacional.py: mismos anios base (2018, 2019, 2021,

@@ -1,6 +1,6 @@
 ---
-// Mapa departamental -- selector de capas DESCRIPTIVAS (Camino Ancho v3,
-// docs/contexto). Leaflet necesita el DOM del navegador (no hay forma de
+// Mapa departamental -- selector de capas DESCRIPTIVAS (módulos M1–M3).
+// Leaflet necesita el DOM del navegador (no hay forma de
 // renderizarlo en el servidor), así que todo el trabajo con L.* vive en el
 // <script> de abajo, que Astro procesa y ejecuta solo en el cliente. No se
 // agregó React/Preact para esto -- un componente .astro + <script> ya
@@ -510,7 +510,7 @@
   let cacheEspacial: Promise<Map<string, DatoEspacial> | null> | null = null;
 
   // Último resultado resuelto del endpoint espacial, para que el tooltip
-  // unificado de Camino Ancho pueda leerlo de forma síncrona.
+  // unificado de los módulos M1–M3 pueda leerlo de forma síncrona.
   let detallesEspacial = new Map<string, DatoEspacial>();
 
   async function obtenerDatosEspaciales(): Promise<Map<
@@ -860,14 +860,14 @@
   ];
 
   // ---------------------------------------------------------------------
-  // Tooltip unificado de Camino Ancho: al pasar sobre un departamento en
+  // Tooltip unificado de los módulos M1–M3: al pasar sobre un departamento en
   // cualquiera de las capas M1/M2/M3 se ven los cuatro valores a la vez
   // (Iv, anomalía, presión probable y confirmado), no solo el de la capa
   // activa -- la capa activa solo decide el COLOR del mapa. La línea de la
   // capa activa va al final con el detalle extra de su baseline.
   // ---------------------------------------------------------------------
 
-  const ES_CAPA_CAMINO_ANCHO: Partial<Record<IdCapa, boolean>> = {
+  const ES_CAPA_MODULO: Partial<Record<IdCapa, boolean>> = {
     iv: true,
     anomalia: true,
     presion_probable: true,
@@ -884,7 +884,7 @@
     return `${etiqueta}: ${celda.categoria} (percentil ${celda.percentil})`;
   }
 
-  function tooltipCaminoAncho(
+  function tooltipModulos(
     codigo: string,
     nombre: string,
     capaActiva: IdCapa,
@@ -922,7 +922,7 @@
 
   // ---------------------------------------------------------------------
   // Detalle de departamento (click en el mapa): snapshot de las 4 capas de
-  // Camino Ancho para la semana/año seleccionados + mini-curva de Iv del
+  // los módulos M1–M3 para la semana/año seleccionados + mini-curva de Iv del
   // año contra su banda histórica P25-P75. Mismo patrón hecho a mano de
   // <svg><polyline> que CurvaEpidemicaNacional.astro -- sin librería de
   // charts nueva.
@@ -1386,11 +1386,11 @@
         cacheValoresPorCapa.set(id, valores);
       }
 
-      // Para las capas de Camino Ancho el tooltip muestra los CUATRO valores
+      // Para las capas de los módulos M1–M3 el tooltip muestra los CUATRO valores
       // (Iv, anomalía, presión probable/confirmado) a la vez -- se esperan
       // ambos endpoints aquí (cacheados: 2 fetch en total como máximo) para
       // que el tooltip no dependa de qué capa se visitó antes.
-      if (ES_CAPA_CAMINO_ANCHO[id]) {
+      if (ES_CAPA_MODULO[id]) {
         await Promise.all([obtenerDatosEspaciales(), obtenerDatosPresion()]);
       }
 
@@ -1481,8 +1481,8 @@
             return;
           }
 
-          if (ES_CAPA_CAMINO_ANCHO[capa.id]) {
-            layer.bindTooltip(tooltipCaminoAncho(codigo, nombre, capa.id));
+          if (ES_CAPA_MODULO[capa.id]) {
+            layer.bindTooltip(tooltipModulos(codigo, nombre, capa.id));
             return;
           }
 

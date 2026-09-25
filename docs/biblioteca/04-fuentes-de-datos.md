@@ -5,7 +5,7 @@ orden: 4
 categoria: "Datos y método"
 ---
 
-Todo conteo y toda variable ambiental en EPI-Aetheris sale de una fuente pública, citable, con `fuente_id` en el esquema. Esta página resume procedencia, ventanas y licencias para un lector externo. El detalle empírico de trampas de ingesta vive en `docs/contexto/03-fuentes-de-datos.md` del repositorio.
+Todo conteo y toda variable ambiental en EPI-Aetheris sale de una fuente pública, citable, con `fuente_id` en el esquema. Esta página resume procedencia, ventanas y licencias para un lector externo.
 
 ## MINSAL — boletines epidemiológicos
 

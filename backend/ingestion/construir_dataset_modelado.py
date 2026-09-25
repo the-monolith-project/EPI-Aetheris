@@ -1,8 +1,8 @@
 """
 Tarjeta 23 -- construye el conjunto de datos de modelado: una fila por
 semana nacional con predictores climaticos rezagados y etiqueta de riesgo
-aplicada. Ver docs/contexto/01-decisiones-cerradas.md (cierre 2026-08-15)
-para las dos decisiones que desbloquearon esta tarjeta.
+aplicada. Las dos decisiones que desbloquearon esta tarjeta se cerraron el
+2026-08-15.
 
 Reutiliza sin reescribir la logica ya validada del canal endemico nacional
 (corrida_canal_endemico_nacional.py): misma serie de casos, misma regla de
@@ -64,8 +64,7 @@ LAGS = (1, 2)
 # que le faltaba para detectar "alto" -- resultado NEGATIVO: recall de
 # "alto" siguio en 0.000 en los dos anios de prueba con casos reales (2019,
 # 2022), igual que con la ventana corta, y de paso empeoro el F1 macro del
-# modelo de produccion (2023). Revertido. Detalle completo del experimento
-# descartado en docs/experimentos/experimento-ventana-climatica-ampliada.md -- no
+# modelo de produccion (2023). Revertido. No
 # reabrir esto sin una senal distinta de que el problema es de ventana.
 VENTANAS_MEDIA_MOVIL = (4,)  # semanas anteriores, sin incluir la semana actual
 ANIO_2020_EXCLUIDO = 2020  # recorte de entrenamiento, no de ingesta -- ver punto E
@@ -74,8 +73,8 @@ ANIO_2020_EXCLUIDO = 2020  # recorte de entrenamiento, no de ingesta -- ver punt
 # 2026-08-15). p50_p75 es el que SI reproduce el canal endemico OPS/PAHO de
 # 4 zonas ya verificado -- exploratorio, para probar si "alto" siendo el
 # 25% superior (en vez del 10%) le da al modelo mas ejemplos positivos de
-# los que aprender. Ver docs/contexto/01-decisiones-cerradas.md para el
-# motivo por el que se eligio p75_p90 en produccion pese a esto.
+# los que aprender. p75_p90 se eligio en produccion pese a esto (decision
+# cerrada).
 CORTES = {"p75_p90": (0.75, 0.90), "p50_p75": (0.50, 0.75)}
 CORTE_PRODUCCION = "p75_p90"
 

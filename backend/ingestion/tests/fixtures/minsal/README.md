@@ -3,16 +3,14 @@
 Cada `.txt` es el **texto extraído tal cual** (pdfplumber `extract_text()`)
 de la página que contiene la tabla departamental de dengue del boletín
 MINSAL correspondiente (o la portada / texto completo, en el caso del
-boletín de vacaciones). Regla del proyecto
-(`docs/contexto/03-fuentes-de-datos.md`, sección pytest): *"Guardar solo el
+boletín de vacaciones). Regla del proyecto: *"Guardar solo el
 texto extraído como fixture, nunca los PDF"* — los PDFs viven en
 `backend/ingestion/data/raw/minsal/` (gitignoreado) y se descargan con
 `backend/ingestion/minsal/descargar_{año}.py` desde salud.gob.sv.
 
 Ningún valor fue editado a mano: son datos públicos reales de la fuente,
 extraídos el 2026-08-21 y verificados contra la bitácora de la corrida
-exploratoria validada (`corrida_distribucion.py`, verificación 4/4, ver
-`docs/contexto/03-fuentes-de-datos.md`).
+exploratoria validada (`corrida_distribucion.py`, verificación 4/4).
 
 | Fixture | Boletín | Por qué está aquí |
 |---|---|---|
@@ -35,7 +33,7 @@ Las páginas del texto completo van separadas por `\f` (form feed).
 Extractos de la página que contiene la **tabla departamental de Infección
 Respiratoria Aguda (IRA)** de cada boletín (misma regla: texto extraído tal
 cual con pdfplumber, nunca PDFs), extraídos el 2026-08-21 para la corrida
-exploratoria `corrida_ira.py` (ver `docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md`).
+exploratoria `corrida_ira.py`.
 Los usa `tests/test_corrida_ira.py`.
 
 | Fixture | Boletín | Por qué está aquí |

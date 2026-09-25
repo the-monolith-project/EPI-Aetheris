@@ -1,5 +1,5 @@
 """Pruebas de los endpoints /api/v1/spatial/current y
-/api/v1/temporal/{departamento_id} (Modulos 1 y 2 de "El Camino Ancho" v3).
+/api/v1/temporal/{departamento_id} (Modulos 1 y 2 de los modulos descriptivos).
 
 Usan FastAPI TestClient contra la base de datos real (Postgres ya cargado
 con clima ERA5-Land/ERA5 2014-2024, ver AGENTS.md) -- no hay mocks de la

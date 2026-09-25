@@ -1,5 +1,5 @@
 """
-Integridad y confianza de la vigilancia -- Modulo 4 de "El Camino Ancho".
+Integridad y confianza de la vigilancia -- Modulo 4 (M4) de los modulos descriptivos.
 
 Responde: "que tan completo, cuadrado y reciente es el dato de vigilancia
 que estamos mostrando", no "que tan alta es la transmision". Es 100%

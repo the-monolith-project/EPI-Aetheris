@@ -1,0 +1,70 @@
+---
+/**
+ * Índice de demos: recorridos animados de una sola vista, pensados para
+ * enseñar o grabar. No son una sección del producto — van fuera del índice de
+ * los buscadores y no se enlazan desde la navegación.
+ */
+import Layout from '../../layouts/Layout.astro';
+
+const DEMOS = [
+  {
+    href: '/demos/nowcast',
+    titulo: 'Predicción de dengue a corto plazo',
+    descripcion:
+      'Carga de la predicción, revelado del abanico de incertidumbre, acercamiento a las próximas ocho semanas y desempeño por temporada.',
+    variantes: [
+      { href: '/demos/nowcast?lento', etiqueta: 'ritmo lento' },
+      { href: '/demos/nowcast?limpio', etiqueta: 'sin cabecera ni pie' },
+    ],
+  },
+];
+---
+
+<Layout
+  title="Demos — EPI-Aetheris"
+  descripcion="Recorridos animados de las vistas de EPI-Aetheris."
+  noindex
+>
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-[900px] px-4 py-8 sm:px-8 sm:py-10"
+  >
+    <h1 class="font-display text-2xl font-semibold text-ink sm:text-3xl">
+      Demos
+    </h1>
+    <p
+      class="mt-3 max-w-[70ch] font-sans text-sm leading-relaxed text-ink-muted"
+    >
+      Cada demo muestra una sola vista, con su secuencia de animación completa y
+      sin el resto de la interfaz alrededor. Los datos son los mismos que sirve
+      la API en producción.
+    </p>
+
+    <ul class="mt-8 flex flex-col gap-4">
+      {
+        DEMOS.map((d) => (
+          <li class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6">
+            <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+              <a class="text-accent underline underline-offset-2" href={d.href}>
+                {d.titulo}
+              </a>
+            </h2>
+            <p class="mt-2 max-w-[65ch] font-sans text-sm leading-relaxed text-ink-muted">
+              {d.descripcion}
+            </p>
+            <p class="mt-3 font-sans text-xs text-ink-muted">
+              {d.variantes.map((v, i) => (
+                <>
+                  {i > 0 ? ' · ' : ''}
+                  <a class="underline underline-offset-2" href={v.href}>
+                    {v.etiqueta}
+                  </a>
+                </>
+              ))}
+            </p>
+          </li>
+        ))
+      }
+    </ul>
+  </main>
+</Layout>

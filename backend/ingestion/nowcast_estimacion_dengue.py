@@ -1,10 +1,8 @@
 """
 Precomputo del artefacto de estimacion a corto plazo de dengue para la UI.
 
-Metodo: el mismo del experimento firmado
-(`docs/experimentos/experimento-nowcast-corto-plazo.md`) mas la capa de
-calibracion de intervalos cerrada el 2026-09-09 (CQR-r; ver la seccion
-"Calibracion de intervalos" del mismo doc). Este script NO reentrena nada nuevo:
+Metodo: el mismo del experimento firmado (ADR 0020) mas la capa de
+calibracion de intervalos cerrada el 2026-09-09 (CQR-r). Este script NO reentrena nada nuevo:
 reutiliza la maquinaria validada de `experimento_nowcast_corto_plazo.py` y
 `experimento_nowcast_calibracion.py`.
 

@@ -4,7 +4,7 @@
 
 ## Contexto
 
-`fuentes_datos` (`db/migrations/0001_init_schema.sql`) solo tiene una fila para Open-Meteo: `open_meteo_era5_land`. El modelo climático dejó de ser único el 2026-08-07 (`docs/contexto/01-decisiones-cerradas.md`): `era5_land` sirve `temperature_2m_max/min/mean`, `relative_humidity_2m_mean` y `dew_point_2m_mean`, pero **no sirve precipitación** (limitación confirmada de la implementación, no del dataset — ver `backend/ingestion/clima/hallazgos_precipitacion_modelo.md`). `precipitation_sum` y `precipitation_hours` salen de `era5`, un modelo distinto, con resolución distinta (0,25° vs. 0,1°) y con su propia trampa de cero falso ya documentada.
+`fuentes_datos` (`db/migrations/0001_init_schema.sql`) solo tiene una fila para Open-Meteo: `open_meteo_era5_land`. El modelo climático dejó de ser único el 2026-08-07: `era5_land` sirve `temperature_2m_max/min/mean`, `relative_humidity_2m_mean` y `dew_point_2m_mean`, pero **no sirve precipitación** (limitación confirmada de la implementación, no del dataset — ver `backend/ingestion/clima/hallazgos_precipitacion_modelo.md`). `precipitation_sum` y `precipitation_hours` salen de `era5`, un modelo distinto, con resolución distinta (0,25° vs. 0,1°) y con su propia trampa de cero falso ya documentada.
 
 Este hueco quedó registrado como punto abierto (`02-decisiones-abiertas.md`, punto B) desde el cierre del modelo por variable, con la nota explícita de no escribir el ADR sin que se pidiera. Al construir el loader de clima (tarjeta 12) se volvió bloqueante real: insertar filas de `precipitation_sum`/`precipitation_hours` con `fuente_id = open_meteo_era5_land` atribuiría esos datos a un modelo que no los produjo — mismo tipo de mala etiqueta que motivó el ADR 0005 para OpenDengue, esta vez sobre la procedencia del predictor climático en vez del conteo de casos.
 
@@ -17,7 +17,7 @@ Se agrega una segunda fila a `fuentes_datos`:
 ```sql
 INSERT INTO fuentes_datos (codigo, nombre, url_referencia, notas) VALUES
     ('open_meteo_era5', 'Open-Meteo - ERA5', 'https://open-meteo.com',
-     'Unico modelo usado para precipitation_sum/precipitation_hours (era5_land no sirve precipitacion). Resolucion 0,25 grados -- La Libertad y San Salvador comparten celda, aceptado deliberadamente (ver docs/contexto/01-decisiones-cerradas.md).');
+     'Unico modelo usado para precipitation_sum/precipitation_hours (era5_land no sirve precipitacion). Resolucion 0,25 grados -- La Libertad y San Salvador comparten celda, aceptado deliberadamente.');
 ```
 
 `open_meteo_era5_land` conserva las cinco variables de superficie (temperatura ×3, humedad, punto de rocío). `open_meteo_era5` es exclusivamente para las dos variables de precipitación. El loader (`backend/ingestion/cargar_clima.py`) resuelve el `fuente_id` correcto por variable antes de insertar — nada en el esquema fuerza esa correspondencia (mismo patrón de disciplina de loader que `clasificacion = 'total'` en el ADR 0005), así que cualquier código nuevo que escriba en `variables_ambientales` debe hacer el mismo mapeo variable → fuente, no asumir una sola fuente para toda la tabla.

@@ -376,7 +376,7 @@ def health_check(response: Response):
 def casos_nacional(response: Response):
     """Serie semanal nacional de OpenDengue ya cargada (clasificacion='total',
     fuente opendengue_v1_3). Es la única variable objetivo cargada hasta ahora
-    -- ver docs/contexto/01-decisiones-cerradas.md, pivote "Opción C". No es
+    -- pivote "Opción C". No es
     clasificación de riesgo -- para eso ver /api/riesgo-nacional."""
     _cache_control(response, CACHE_TTL_HISTORICO)
     try:
@@ -471,7 +471,7 @@ def riesgo_nacional(
     Sin parámetros, devuelve la última semana disponible del dataset (fin
     de 2023, año de prueba de la tarjeta 24) -- el sistema no tiene forma
     de verificar en vivo lo que predice, no hay fuente departamental
-    automatizable después de 2023 (ver docs/contexto, punto F).
+    automatizable después de 2023.
     """
     filas = _cargar_dataset_riesgo()
     modelo_paquete = _cargar_modelo() if filas is not None else None
@@ -573,8 +573,7 @@ def casos_departamentales(request: Request, response: Response):
     (tarjeta 22) sumados por departamento en toda la ventana cargada
     (2018-2023, sin 2020 ni 2024+ porque no hay boletín automatizable desde
     entonces). Se agrega el acumulado completo, no una sola semana: con
-    87-93% de celdas departamento-semana en cero (ver
-    docs/contexto/03-fuentes-de-datos.md), una sola semana suele salir casi
+    87-93% de celdas departamento-semana en cero, una sola semana suele salir casi
     vacía y no representa bien la distribución real -- esto es una elección
     de presentación, no una decisión de equipo cerrada.
 
@@ -629,11 +628,11 @@ def casos_departamentales(request: Request, response: Response):
 
 
 # ---------------------------------------------------------------------------
-# "Camino Ancho" -- Módulo 1 (idoneidad biofísica Iv) y Módulo 2 (anomalía
+# Módulos descriptivos -- Módulo 1 (idoneidad biofísica Iv) y Módulo 2 (anomalía
 # climática continua). Ver backend/api/idoneidad.py para las fórmulas y su
 # procedencia (duplicadas literalmente desde
-# backend/ingestion/validar_leadtime_camino_ancho.py, experimento ya
-# validado en docs/experimentos/experimento-validacion-leadtime-camino-ancho.md).
+# backend/ingestion/validar_leadtime_idoneidad.py, experimento ya
+# validado).
 #
 # La validación empírica descartó la tesis de "ventana de anticipación"
 # (lead time) -- por eso estos endpoints NO exponen alerta binaria, NO
@@ -714,9 +713,9 @@ def idoneidad_espacial_actual(request: Request, response: Response, week: int, y
 
 
 # ---------------------------------------------------------------------------
-# "Camino Ancho" -- Módulo 3 (presión epidemiológica relativa). Ver
-# backend/api/presion.py para la fórmula (cerrada por el coordinador,
-# docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md) y su procedencia (mismo patrón de
+# Módulos descriptivos -- Módulo 3 (presión epidemiológica relativa). Ver
+# backend/api/presion.py para la fórmula (cerrada por el coordinador)
+# y su procedencia (mismo patrón de
 # percentil leave-one-out que corrida_canal_endemico_nacional.py). Igual que
 # M1/M2: calculado on-request, nada persistido, sin cambios de esquema.
 # ---------------------------------------------------------------------------
@@ -969,7 +968,7 @@ def idoneidad_temporal_departamento(departamento_id: str, anio: int, response: R
 
 # ---------------------------------------------------------------------------
 # Infección Respiratoria Aguda (IRA) -- ADR 0011 (aceptado 2026-08-22).
-# Ver backend/api/ira.py: NO es un módulo de "El Camino Ancho" (M1-M4), es
+# Ver backend/api/ira.py: NO es uno de los módulos descriptivos de dengue (M1-M4), es
 # otro tipo_evento con su propia serie 'notificado', sin Iv/anomalía/presión
 # calculados. Cargado por backend/ingestion/cargar_ira.py (2742 filas,
 # 2018-2023 sin 2020, 14 departamentos).

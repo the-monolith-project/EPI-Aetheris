@@ -1,13 +1,12 @@
 """
 Corrida del canal endemico sobre la serie nacional de OpenDengue (TAREA-02,
-ver docs/contexto/01-decisiones-cerradas.md, pivote "Opcion C"). Alimenta la
+pivote "Opcion C"). Alimenta la
 eleccion de cortes de percentil que bloquea la tarjeta 23 -- no entrena
 nada, es exploratorio.
 
 Lee casos_epidemiologicos ya cargado (clasificacion='total', fuente
 opendengue_v1_3, region SV) -- no vuelve a tocar el CSV de OpenDengue.
-Implementa la ventana de semanas vecinas +-1 (ver
-docs/contexto/02-decisiones-abiertas.md, punto A): la corrida exploratoria
+Implementa la ventana de semanas vecinas +-1: la corrida exploratoria
 de MINSAL (corrida_distribucion.py) NO la implementaba pese a una
 afirmacion previa incorrecta en el contexto (ya corregida) -- esta es la
 primera vez que se aplica de verdad. La ventana no envuelve entre anios: la

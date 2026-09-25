@@ -1,7 +1,7 @@
 """Validacion forward-chaining limpia de la Via -1.
 
-Este modulo implementa exclusivamente el protocolo aprobado en
-``docs/rescate-prediccion/protocolo-evaluacion-rescate-prediccion.md``. Lee el volcado SQL
+Este modulo implementa exclusivamente el protocolo de evaluacion aprobado
+para la Via -1. Lee el volcado SQL
 canonico, no se conecta a PostgreSQL, no modifica produccion y solo escribe
 artefactos bajo ``backend/ingestion/data/interim/via_menos_uno/``.
 

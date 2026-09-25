@@ -1,8 +1,8 @@
 """Regresion de las formulas duplicadas entre backend/api y backend/ingestion.
 
-Issue #57 / pendiente operativo en docs/contexto/02-decisiones-abiertas.md:
+Issue #57:
 idoneidad.py copia f_T, f_R, f_H, calcular_Iv y el Z-score leave-one-out
-desde validar_leadtime_camino_ancho.py; presion.py copia ventana/pool/
+desde validar_leadtime_idoneidad.py; presion.py copia ventana/pool/
 percentil/bordes de categorizar desde corrida_canal_endemico_nacional.py.
 No hay paquete compartido -- si alguien cambia el script de ingestion y
 olvida el modulo de api, el mapa sirve una formula distinta a la validada.
@@ -38,7 +38,7 @@ sys.path.insert(0, str(INGESTION_DIR))
 from api import idoneidad as api_iv  # noqa: E402
 from api import presion as api_presion  # noqa: E402
 import corrida_canal_endemico_nacional as ing_canal  # noqa: E402
-import validar_leadtime_camino_ancho as ing_iv  # noqa: E402
+import validar_leadtime_idoneidad as ing_iv  # noqa: E402
 
 
 # Etiquetas de M3 (descriptivas) vs esquema p50_p75 de la corrida nacional.

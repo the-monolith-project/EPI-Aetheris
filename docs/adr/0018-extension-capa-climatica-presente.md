@@ -16,7 +16,7 @@ se veía "detenido en 2023" aunque la capa biofísica podía seguir.
 
 Hasta este ADR, `ANIOS_CLIMA = list(range(2014, 2025))` en
 `backend/api/idoneidad.py` y en
-`backend/ingestion/validar_leadtime_camino_ancho.py` (copias
+`backend/ingestion/validar_leadtime_idoneidad.py` (copias
 deliberadas, sin paquete compartido). Aunque `variables_ambientales`
 tuviera filas de 2025, los endpoints
 `GET /api/v1/spatial/current` y `GET /api/v1/temporal/{codigo}` no las

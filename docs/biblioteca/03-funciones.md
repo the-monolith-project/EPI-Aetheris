@@ -1,6 +1,6 @@
 ---
 titulo: "Qué hace hoy"
-descripcion: "Catálogo de módulos Camino Ancho, mapa, observatorio respiratorio, alertas de campo, PWA y pipeline de datos."
+descripcion: "Catálogo de módulos descriptivos (M1–M3), mapa, observatorio respiratorio, alertas de campo, PWA y pipeline de datos."
 orden: 3
 categoria: "Cómo funciona"
 ---
@@ -36,7 +36,7 @@ Responde qué tan inusual es el `Iv` de un departamento-semana respecto de su pr
 
 ## M3 — Presión epidemiológica relativa
 
-Responde qué tan alta es la presión de casos **ya observados** en un departamento-semana comparado con su propia historia. Fórmula cerrada por la coordinación el 21 de agosto de 2026 (`docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md`).
+Responde qué tan alta es la presión de casos **ya observados** en un departamento-semana comparado con su propia historia. Fórmula cerrada por la coordinación el 21 de agosto de 2026.
 
 | Elemento | Valor |
 |---|---|

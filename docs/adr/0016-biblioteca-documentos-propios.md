@@ -34,10 +34,9 @@ El índice ordena y agrupa por esos campos; se elimina
 `ORDEN_BIBLIOTECA`. La vista de documento muestra `titulo` y
 `descripcion` en la cabecera del artículo.
 
-**B. Síntesis, no duplicación ni mudanza.** Los `.md` internos no se
-borran ni se mueven. La Biblioteca los sintetiza para un lector
-externo. Si un hecho cambia, se actualiza primero `docs/contexto/`,
-ADR o el módulo correspondiente; los documentos públicos se alinean
+**B. Síntesis, no duplicación.** La Biblioteca sintetiza para un lector
+externo; no copia documentación interna. Si un hecho cambia, se
+actualiza primero el ADR o el módulo correspondiente; los documentos públicos se alinean
 después. Cifras, fechas y fuentes salen del repositorio, no se inventan.
 
 **C. "Sensibilidad y honestidad" es el hogar canónico de los

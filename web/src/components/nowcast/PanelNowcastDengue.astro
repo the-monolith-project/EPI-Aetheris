@@ -1,8 +1,7 @@
 ---
 // Predicción de casos de dengue a corto plazo (GET /api/nowcast-dengue).
 // Artefacto precomputado por backend/ingestion/nowcast_estimacion_dengue.py:
-// método del experimento firmado (docs/experimentos/experimento-nowcast-corto-plazo.md)
-// más la calibración de intervalos CQR-r. Detalle de método y validación en
+// método del experimento firmado (ADR 0020) más la calibración de intervalos CQR-r. Detalle de método y validación en
 // docs/biblioteca/05-sensibilidad-y-honestidad.md.
 //
 // La predicción se extiende desde la ÚLTIMA SEMANA OBSERVADA de la serie, no
@@ -12,17 +11,23 @@
 // Prop `variante`:
 //   - 'compacto'  -> solo el abanico hacia adelante + una línea de desempeño.
 //   - 'completo'  -> además el backtest 2019/2021-2024 y el detalle por año.
+//
+// Prop `demo`: fuerza la secuencia de presentación sin depender de `?demo` en
+// la URL. La usa /demos/nowcast, donde el panel es el contenido de la página y
+// no un tabpanel oculto. En /dengue el gatillo sigue siendo `?demo`.
 
 interface Props {
   variante?: 'compacto' | 'completo';
+  demo?: boolean;
 }
-const { variante = 'completo' } = Astro.props;
+const { variante = 'completo', demo = false } = Astro.props;
 ---
 
 <section
   class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
   data-nowcast
   data-variante={variante}
+  data-demo={demo ? 'true' : undefined}
 >
   <div class="flex items-start gap-3">
     <span
@@ -751,7 +756,12 @@ const { variante = 'completo' } = Astro.props;
     return wrap;
   }
 
-  function render(cont: HTMLElement, datos: NowcastDengue, completo: boolean) {
+  function render(
+    cont: HTMLElement,
+    datos: NowcastDengue,
+    completo: boolean,
+    demoForzado = false,
+  ) {
     if (
       !datos.ancla ||
       !datos.observado?.length ||
@@ -766,16 +776,14 @@ const { variante = 'completo' } = Astro.props;
 
     // modo demo (para grabar el video): ?demo -> secuencia con botón y revelado
     // cinematográfico. En uso normal el abanico aparece con un barrido breve.
-    const demo =
-      completo &&
-      typeof location !== 'undefined' &&
-      new URLSearchParams(location.search).has('demo');
-    // ?demo=lento -> ritmo más pausado en TODA la secuencia demo.
+    const busqueda =
+      typeof location !== 'undefined'
+        ? new URLSearchParams(location.search)
+        : new URLSearchParams();
+    const demo = completo && (demoForzado || busqueda.has('demo'));
+    // ?demo=lento (o ?lento en /demos) -> ritmo más pausado en TODA la secuencia.
     const RITMO =
-      typeof location !== 'undefined' &&
-      new URLSearchParams(location.search).get('demo') === 'lento'
-        ? 1.6
-        : 1;
+      busqueda.get('demo') === 'lento' || busqueda.has('lento') ? 1.6 : 1;
 
     let barra: HTMLElement | null = null;
     if (demo) {
@@ -976,7 +984,9 @@ const { variante = 'completo' } = Astro.props;
         },
         { once: true },
       );
-      rei?.addEventListener('click', () => render(cont, datos, completo));
+      rei?.addEventListener('click', () =>
+        render(cont, datos, completo, demoForzado),
+      );
     } else {
       requestAnimationFrame(() =>
         void handleAbanico.revelar(completo ? 650 : 450),
@@ -997,13 +1007,14 @@ const { variante = 'completo' } = Astro.props;
       const cont = sec.querySelector<HTMLElement>('[data-nowcast-cuerpo]');
       if (!cont) continue;
       const completo = sec.dataset.variante !== 'compacto';
+      const demoForzado = sec.dataset.demo === 'true';
       try {
         const datos = await obtenerNowcastDengue();
         if (esNoDisponible(datos)) {
           renderSinDato(cont, motivoNoDisponible(datos));
           continue;
         }
-        render(cont, datos, completo);
+        render(cont, datos, completo, demoForzado);
       } catch {
         renderErrorFuente(cont, () => void iniciar());
       }

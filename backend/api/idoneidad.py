@@ -1,11 +1,10 @@
 """
 Motor de idoneidad biofisica (Iv) y anomalia climatica continua -- Modulos 1
-y 2 de "El Camino Ancho" v3
-(docs/experimentos/experimento-validacion-leadtime-camino-ancho.md).
+y 2 de los modulos descriptivos.
 
 Las formulas de Iv y el metodo de Z-score leave-one-out estan duplicados
 LITERALMENTE (mismas constantes, mismo metodo de resolucion de `c`) desde
-`backend/ingestion/validar_leadtime_camino_ancho.py`, que ya corrio la
+`backend/ingestion/validar_leadtime_idoneidad.py`, que ya corrio la
 validacion empirica sobre datos reales (chequeo de cordura incluido, ver el
 doc arriba). No existe hoy un paquete compartido entre `backend/api` y
 `backend/ingestion`, asi que esto es una copia deliberada de las funciones
@@ -35,7 +34,7 @@ TMIN, TMAX = 16.0, 38.0
 R0, K = 30.0, 0.1
 
 # Pool leave-one-out hasta el año en curso (ADR 0018). Misma lista que
-# validar_leadtime_camino_ancho.py: ANIOS_CLIMA.
+# validar_leadtime_idoneidad.py: ANIOS_CLIMA.
 ANIO_CLIMA_INICIO = 2014
 ANIOS_CLIMA = list(range(ANIO_CLIMA_INICIO, date.today().year + 1))
 
@@ -44,7 +43,7 @@ VARIABLES_REQUERIDAS = ("temp_media", "precipitation_sum", "humedad_relativa_med
 
 def _resolver_c_normalizacion() -> float:
     """max(f_T crudo) en T e [Tmin,Tmax], via grid fino -- c = 1/ese maximo.
-    Mismo metodo que validar_leadtime_camino_ancho.py (que resuelve
+    Mismo metodo que validar_leadtime_idoneidad.py (que resuelve
     c=0.000795 sobre este mismo rango); se recalcula aqui en vez de copiar
     el numero para no arriesgar un desfase silencioso si Tmin/Tmax cambian
     en un solo lugar y no en el otro."""
@@ -95,7 +94,7 @@ def _acumular_precipitacion_2sem(semanas_valores: dict[int, dict[str, float]], s
     """Precipitacion acumulada a 2 semanas (actual + anterior), sin envolver
     entre anios: si la semana anterior no existe (p.ej. semana 1), se usa
     solo la semana actual -- misma convencion que
-    validar_leadtime_camino_ancho.py y corrida_canal_endemico_nacional.py."""
+    validar_leadtime_idoneidad.py y corrida_canal_endemico_nacional.py."""
     valor_actual = semanas_valores.get(semana, {}).get("precipitation_sum", 0.0)
     valor_prev = semanas_valores.get(semana - 1, {}).get("precipitation_sum", 0.0) if semana > 1 else 0.0
     return valor_actual + valor_prev
@@ -132,7 +131,7 @@ def calcular_baseline_semana(
     exacta, sin ventana de semanas vecinas -- el documento no la pide para
     Iv). Devuelve (pool, mediana, desviacion); mediana/desviacion son None
     si el pool tiene menos de 3 observaciones (mismo piso que
-    validar_leadtime_camino_ancho.py)."""
+    validar_leadtime_idoneidad.py)."""
     pool = [
         serie_codigo[a][semana]
         for a in anios_corpus

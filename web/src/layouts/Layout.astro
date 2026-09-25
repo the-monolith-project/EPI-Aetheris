@@ -5,11 +5,15 @@ import '../styles/global.css';
 interface Props {
   title?: string;
   descripcion?: string;
+  /** Saca la página del índice de los buscadores. Se usa en las rutas que no
+   *  son contenido público, como los recorridos de /demos. */
+  noindex?: boolean;
 }
 
 const {
   title = 'EPI-Aetheris',
   descripcion = 'Vigilancia epidemiológica descriptiva de dengue e IRA en El Salvador, sobre datos públicos de MINSAL, OpenDengue y Open-Meteo. Licencia GPL-3.0.',
+  noindex = false,
 } = Astro.props;
 
 // API pública real -- FastAPI genera /docs (Swagger UI) gratis a partir de
@@ -31,8 +35,8 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
   { href: '/', etiqueta: 'Inicio' },
   // Puente vigilancia -> personal de salud (ADR 0013): decisiones humanas.
   { href: '/alertas', etiqueta: 'Alertas' },
-  // Índice de las herramientas descriptivas. Dengue lleva Camino Ancho
-  // completo; respiratorio (neumonías, IRA y virus, ADR 0011) va sin capas
+  // Índice de las herramientas descriptivas. Dengue lleva los módulos
+  // M1–M3 completos; respiratorio (neumonías, IRA y virus, ADR 0011) va sin capas
   // Iv/anomalía/presión -- esas fórmulas siguen cerradas solo a dengue.
   {
     href: '/analisis',
@@ -53,6 +57,7 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={descripcion} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href={urlCanonica} />
     {
@@ -273,14 +278,6 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
                     class="rounded-xs text-deep-ink transition-colors hover:text-white"
                   >
                     Análisis por departamento
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/biblioteca/02-historia"
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
-                  >
-                    Decisiones y trayectoria
                   </a>
                 </li>
                 <li>

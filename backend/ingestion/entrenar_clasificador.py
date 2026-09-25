@@ -4,8 +4,7 @@ dataset producido por construir_dataset_modelado.py (tarjeta 23).
 
 Primera pasada (Hito 2): un solo anio de prueba, se acepta que el
 resultado sea malo -- la meta es que el camino completo funcione, no que
-acierte. Validacion temporal simple, ya cerrada en
-docs/contexto/01-decisiones-cerradas.md: entrenar con los anios viejos,
+acierte. Validacion temporal simple, ya cerrada: entrenar con los anios viejos,
 probar contra el anio mas reciente de la ventana (2023). Nunca split
 aleatorio de semanas entre anios -- eso dejaria al modelo ver el futuro.
 
@@ -54,7 +53,6 @@ from corrida_canal_endemico_nacional import ANIOS_BASE
 RAIZ = Path(__file__).parent
 DATASET_DIR = RAIZ / "data" / "interim" / "dataset_modelado"
 MODELO_DIR = RAIZ / "data" / "interim" / "modelo"
-DOCS_DIR = RAIZ.parent.parent / "docs"
 
 ANIO_PRUEBA_DEFAULT = max(ANIOS_BASE)  # 2023 -- "el mas reciente", validación temporal simple
 ANIO_MIN_DEFAULT = min(ANIOS_BASE)  # 2018 -- ventana de producción
@@ -298,12 +296,12 @@ def main() -> None:
                     (
                         "Recall de 'alto' no evaluable -- el año de prueba no tuvo semanas reales "
                         "'alto' con este corte, no es un fallo del modelo. "
-                        f"Ver docs/clasificador-retirado/entrenamientos/entrenamiento-clasificador-riesgo-nacional{sufijo}.md."
+                        f"Ver entrenamiento-clasificador-riesgo-nacional{sufijo}.md junto a este archivo."
                     ) if met_modelo["n_alto_real"] == 0 else (
                         f"Recall de 'alto' SI evaluable ({met_modelo['n_alto_real']} semanas reales "
                         f"en el año de prueba): {met_modelo['recall_alto']:.3f} para el modelo, "
                         f"{met_clima['recall_alto']:.3f} para la línea base climatológica. "
-                        f"Ver docs/clasificador-retirado/entrenamientos/entrenamiento-clasificador-riesgo-nacional{sufijo}.md."
+                        f"Ver entrenamiento-clasificador-riesgo-nacional{sufijo}.md junto a este archivo."
                     )
                 ),
             },
@@ -340,12 +338,7 @@ def main() -> None:
     for nombre, imp in importancias[:10]:
         print(f"  {nombre}: {imp:.4f}")
 
-    docs_path = (
-        DOCS_DIR
-        / "clasificador-retirado"
-        / "entrenamientos"
-        / f"entrenamiento-clasificador-riesgo-nacional{sufijo}.md"
-    )
+    docs_path = MODELO_DIR / f"entrenamiento-clasificador-riesgo-nacional{sufijo}.md"
     docs_path.parent.mkdir(parents=True, exist_ok=True)
     escribir_documento(
         cols, train, test, met_modelo, met_clima, met_persist, n_excluidas_persist,
@@ -449,9 +442,9 @@ def escribir_documento(cols, train, test, met_modelo, met_clima, met_persist,
 ## Configuración
 
 - **Entrenamiento:** {len(train)} filas, años {', '.join(str(a) for a in sorted(set(int(f['anio']) for f in train)))}.
-- **Prueba:** {len(test)} filas, año {ANIO_PRUEBA} (validación temporal simple, cerrada en `docs/contexto/01-decisiones-cerradas.md`).
+- **Prueba:** {len(test)} filas, año {ANIO_PRUEBA} (validación temporal simple, decisión cerrada).
 - **Predictores:** {len(cols)} variables de clima rezagado (rezago 1, rezago 2, media móvil 4 semanas — 7 variables climáticas). Ningún dato de casos entra como predictor (decisión cerrada 2026-08-09).
-- **Corte de etiqueta:** {corte_label}{" (cerrado 2026-08-15 — no es el que reproduce el canal endémico OPS/PAHO verificado, que da P50/P75; ver `docs/contexto/01-decisiones-cerradas.md`)" if corte_label == "P75/P90" else " (EXPLORATORIO -- no es el corte de producción; ver más abajo)"}.
+- **Corte de etiqueta:** {corte_label}{" (cerrado 2026-08-15 — no es el que reproduce el canal endémico OPS/PAHO verificado, que da P50/P75)" if corte_label == "P75/P90" else " (EXPLORATORIO -- no es el corte de producción; ver más abajo)"}.
 - **Modelo:** `RandomForestClassifier` (scikit-learn), 300 árboles, `class_weight="balanced"`, semilla fija 42.
 - **Distribución real del año de prueba ({ANIO_PRUEBA}):** {dict(dist_test)}.
 

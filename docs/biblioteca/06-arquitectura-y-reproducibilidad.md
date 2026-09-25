@@ -62,7 +62,7 @@ Corre desde el host contra `localhost:5432`. Sin rollback: una migración mala s
 - **Frontend:** Astro, TypeScript, Tailwind CSS v4, Leaflet. Sin React ni Vue.
 - **Dominio en español:** tablas, columnas, comentarios.
 
-Contenido de esta Biblioteca: Markdown con frontmatter en `docs/biblioteca/`, colección de Astro en `web/src/content.config.ts`. La documentación interna del equipo (`docs/contexto/`, `docs/adr/`, corridas) sigue en su sitio y no se renderiza aquí.
+Contenido de esta Biblioteca: Markdown con frontmatter en `docs/biblioteca/`, colección de Astro en `web/src/content.config.ts`. Los registros de decisiones de arquitectura (`docs/adr/`) no se renderizan aquí.
 
 ## Despliegue público
 
