@@ -22,7 +22,7 @@ NOTAS_NEUMONIAS = {
     "reimpresiones": ["SE34/2019_v2 = SE33/2019 (14 valores idénticos)"],
     "correcciones_negativas_excluidas": 23,
     "cortes_usables_exploracion": {"2018": 46, "2019": 22, "2021": 50, "2022": 48, "2023": 49},
-    "fuente_informe": "docs/exploraciones-respiratorias/exploracion-neumonias-boletines-minsal.md",
+    "fuente_informe": "https://github.com/the-monolith-project/STC/blob/main/EPI-Aetheris/historico/exploraciones-respiratorias/exploracion-neumonias-boletines-minsal.md",
     "nota_corpus": (
         "Constantes del corpus histórico congelado 2018-2019 y 2021-2023. "
         "Si se incorporan 2020 o 2024+, regenerarlas desde la nueva exploración."
@@ -35,14 +35,14 @@ NOTAS_VIRUS = {
     "anio_2020_descargado": False,
     "granularidad": "nacional",
     "unidad": "muestras / detecciones / positividad (no casos clínicos)",
-    "fuente_informe": "docs/exploraciones-respiratorias/exploracion-vigilancia-virus-boletines-minsal.md",
+    "fuente_informe": "https://github.com/the-monolith-project/STC/blob/main/EPI-Aetheris/historico/exploraciones-respiratorias/exploracion-vigilancia-virus-boletines-minsal.md",
     "nota_corpus": (
         "Constantes del corpus histórico congelado 2018-2019 y 2021-2023. "
         "Si se incorporan 2020 o 2024+, regenerarlas desde la nueva exploración."
     ),
 }
 NOTAS_IRA = {
-    "fuente_informe": "docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md",
+    "fuente_informe": "https://github.com/the-monolith-project/STC/blob/main/EPI-Aetheris/historico/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md",
     "nota": "Misma ventana 2018-2023 sin 2020; tablas-imagen en 2019 temprana.",
 }
 

@@ -2,17 +2,13 @@
 
 Este archivo define cómo deben trabajar los agentes de programación dentro de este repositorio.
 
-Su propósito es indicar **qué fuentes consultar, qué reglas respetar y cómo proceder antes de modificar código**. No duplica la documentación de `docs/`, salvo el contexto técnico consolidado en la sección 17 (antes en un `CLAUDE.md` aparte).
+Su propósito es indicar **qué fuentes consultar, qué reglas respetar y cómo proceder antes de modificar código**. No duplica los ADR de `docs/adr/`; el contexto técnico vigente está consolidado en la sección 17.
 
 ---
 
 ## 1. Punto de entrada obligatorio
 
-Antes de realizar cambios relevantes, lee:
-
-`docs/contexto/00-resumen.md`
-
-Ese archivo es el punto de entrada al contexto de EPI-Aetheris.
+Antes de realizar cambios relevantes, lee la **sección 17** de este archivo (contexto técnico vigente) y los ADR de `docs/adr/` que toquen el área de la tarea.
 
 No cargues toda la documentación por defecto. Consulta archivos adicionales únicamente cuando sean relevantes para la tarea.
 
@@ -20,70 +16,23 @@ No cargues toda la documentación por defecto. Consulta archivos adicionales ún
 
 ## 2. Fuentes de autoridad del proyecto
 
-### Contexto general
+### Decisiones
 
-`docs/contexto/00-resumen.md`
-
-Contiene:
-
-* alcance actual del proyecto;
-* propósito de EPI-Aetheris;
-* estado general;
-* restricciones principales;
-* referencias hacia documentación más detallada.
-
-### Decisiones cerradas
-
-`docs/contexto/01-decisiones-cerradas.md`
-
-Contiene decisiones ya tomadas por el equipo.
-
-No reabras, contradigas o reemplaces una decisión cerrada sin una instrucción explícita del coordinador o del usuario.
+Las decisiones vigentes están en los **ADR aceptados** (`docs/adr/`) y en el resumen de la sección 17. No reabras, contradigas o reemplaces una decisión sin una instrucción explícita del coordinador o del usuario.
 
 ### Decisiones abiertas
 
-`docs/contexto/02-decisiones-abiertas.md`
-
-Contiene asuntos que todavía requieren evidencia, implementación, validación o decisión del equipo.
-
-**No inventes una respuesta para cerrar estos puntos.**
-
-Si una tarea depende directamente de una decisión abierta:
+Las que siguen sin resolver se listan en la sección 17 ("Decisiones abiertas"). **No inventes una respuesta para cerrarlas.** Si una tarea depende de una:
 
 1. identifica la dependencia;
 2. explica qué información falta;
 3. evita convertir una hipótesis en una decisión oficial.
 
-### Fuentes y evidencia de datos
+### Archivo histórico (fuera de este repo)
 
-`docs/contexto/03-fuentes-de-datos.md`
+La documentación interna que guió el proyecto hasta septiembre de 2026 —contexto, decisiones cerradas y abiertas, evidencia de fuentes de datos, CHANGELOG, experimentos, rescate de la predicción, clasificador retirado, exploraciones respiratorias— salió de este repositorio y vive en el repo **STC** de the-monolith-project, carpeta `EPI-Aetheris/historico/` (https://github.com/the-monolith-project/STC/tree/main/EPI-Aetheris/historico). Los comentarios de código y los ADR antiguos citan esos archivos con su ruta original (`docs/contexto/...`, `docs/experimentos/...`); en STC están en la misma ruta sin el prefijo `docs/`.
 
-Consulta este archivo antes de:
-
-* modificar pipelines de ingestión;
-* interpretar datos epidemiológicos;
-* interpretar variables climáticas;
-* modificar transformaciones;
-* cambiar agregaciones;
-* introducir nuevas fuentes;
-* corregir supuestos sobre MINSAL, OpenDengue u Open-Meteo.
-
-Las particularidades empíricas documentadas aquí tienen prioridad sobre suposiciones generales acerca de esas fuentes.
-
-### Historial
-
-`docs/contexto/CHANGELOG.md`
-
-Contiene historial detallado del proyecto.
-
-Úsalo cuando necesites saber:
-
-* por qué existe determinado comportamiento;
-* cuándo se produjo un cambio;
-* qué experimentos se realizaron;
-* qué decisiones anteriores llevaron al estado actual.
-
-No es necesario leerlo completo para cada tarea.
+Es registro, no autoridad: consúltalo sólo para saber **por qué** existe un comportamiento. **No lo uses como fuente de redacción de la UI** — su vocabulario interno no es copy de producto (ver sección 5, "Redacción de producto").
 
 ---
 
@@ -131,12 +80,9 @@ No escribas primero la migración para documentarla después.
 Cuando varias fuentes parezcan entrar en conflicto, utiliza este orden como guía:
 
 1. ADR aceptado aplicable.
-2. `docs/contexto/01-decisiones-cerradas.md`.
-3. Estado vigente descrito en `docs/contexto/00-resumen.md`.
-4. Evidencia especializada documentada en `docs/contexto/03-fuentes-de-datos.md`.
-5. Código y configuración actualmente presentes en `main`.
-6. Historial en `docs/contexto/CHANGELOG.md`.
-7. Documentación histórica, comentarios antiguos o experimentos.
+2. Sección 17 de este archivo.
+3. Código y configuración actualmente presentes en `main`.
+4. Archivo histórico en STC, comentarios antiguos o experimentos.
 
 Si el conflicto no puede resolverse con estas fuentes, **decláralo en lugar de asumir una respuesta**.
 
@@ -257,9 +203,7 @@ Cuando exista una lista documentada de valores válidos, utiliza exactamente eso
 
 Los pipelines de ingestión contienen conocimiento de dominio que no siempre resulta evidente observando solamente el código.
 
-Antes de corregir un comportamiento que parezca extraño, consulta:
-
-`docs/contexto/03-fuentes-de-datos.md`
+Antes de corregir un comportamiento que parezca extraño, consulta las trampas resumidas en la sección 17 ("Fuentes de datos"). La evidencia completa está en el archivo histórico (`historico/contexto/03-fuentes-de-datos.md` en STC).
 
 En particular, evita asumir comportamientos uniformes en:
 
@@ -482,44 +426,36 @@ Al trabajar con un Pull Request, distingue siempre entre:
 
 No crees un sistema paralelo de documentación sin necesidad.
 
-La estructura existente es la fuente de verdad:
+En este repositorio `docs/` contiene sólo lo esencial:
 
 ```text
 docs/
-├── adr/
-├── biblioteca/                     # documentos públicos de /biblioteca (síntesis, no copia de docs/)
-├── contexto/
-├── clasificador-retirado/          # clasificador retirado: corridas, auditorías y entrenamientos/
-├── experimentos/                   # experimentos descartados (multipaís, ONI, ventana climática)
-├── exploraciones-respiratorias/    # exploraciones e ingesta MINSAL respiratorios
-└── rescate-prediccion/             # línea de rescate de predicción: protocolo, tarea, corridas Vía
+├── adr/                    # decisiones arquitectónicas formales
+├── biblioteca/             # documentos públicos de /biblioteca (colección de Astro; no mover)
+└── despliegue-render.md    # procedimiento de despliegue (referenciado por render.yaml)
 ```
 
 Cuando surja conocimiento nuevo:
 
-* decisión arquitectónica formal → `docs/adr/`;
-* decisión cerrada de proyecto → `docs/contexto/01-decisiones-cerradas.md`;
-* asunto todavía pendiente → `docs/contexto/02-decisiones-abiertas.md`;
-* evidencia sobre fuentes de datos → `docs/contexto/03-fuentes-de-datos.md`;
-* cambio histórico relevante → `docs/contexto/CHANGELOG.md`;
-* resultado reproducible de una corrida → documentación específica de la corrida cuando corresponda.
+* decisión arquitectónica o de proyecto → ADR en `docs/adr/`;
+* contexto técnico que un agente necesita antes de tocar código → sección 17 de este archivo, breve;
+* historial de cambios → los mensajes de commit (no hay CHANGELOG);
+* protocolos y resultados de experimentos, notas de sesión, planes → no se versionan aquí; si hace falta conservarlos, van al archivo histórico en STC.
 
-No dupliques información extensa entre `AGENTS.md` y `docs/`.
-
-La sección 17 de este archivo recoge el contexto técnico acumulado; el resto debe mantenerse principalmente como **guía de operación para agentes**. Cuando una información sea parte del conocimiento permanente del proyecto, debe registrarse en `docs/` según la estructura existente, no solo aquí.
+No recrees `docs/contexto/`, `docs/experimentos/` ni carpetas equivalentes.
 
 ---
 
 ## 17. Contexto técnico del proyecto
 
-Referencia rápida. El detalle vive en `docs/`; aquí solo lo que conviene tener a mano antes de tocar código. Si `docs/contexto/` contradice algo, aplica la precedencia de la sección 4.
+Referencia rápida de lo vigente. Las rutas `historico/...` se refieren al archivo histórico en el repo STC (sección 2). Ante una contradicción, aplica la precedencia de la sección 4.
 
 ### Qué es y qué no es
 
 EPI-Aetheris es un sistema de vigilancia epidemiológica **descriptiva** (piloto: dengue e IRA en El Salvador). Ingesta casos históricos y predictores ambientales, los alinea por semana epidemiológica y los expone vía FastAPI + mapa Leaflet.
 
-- **El clasificador de riesgo de brote interanual está retirado** (pivote a herramienta descriptiva, cerrado 2026-08-18 — `docs/rescate-prediccion/informe-cierre-rescate-prediccion.md`). Clasificaba semanas en alto/medio/bajo y obtuvo recall de "alto" = 0 en 2019 y 2022. El código entrenado (`entrenar_clasificador.py` y afines) se conserva como referencia histórica: **no lo extiendas ni lo reactives.** Es un modelo distinto de la predicción de conteo de abajo.
-- **Predicción de casos a corto plazo** (autorizada por Eduardo el 2026-09-09): la página de dengue predice el conteo nacional de casos a 1–8 semanas desde la última semana observada, con intervalo calibrado. Validada con WIS + segunda confirmación independiente (`docs/experimentos/experimento-nowcast-corto-plazo.md`). Artefacto: `backend/ingestion/nowcast_estimacion_dengue.py` → `backend/api/datos/nowcast_dengue.json`; endpoint `GET /api/nowcast-dengue`. Se llama **predicción**: al inicio del proyecto se creyó que ni un proto-predictor era viable y de ahí venía el veto a esa palabra; el experimento mostró lo contrario para la serie nacional agregada. Nota técnica para mantenimiento (no es copy de producto): el método sólo gana a la persistencia cuando el historial de entrenamiento ya contiene una temporada de brote grande — no reutilizarlo en otra serie sin verificar esa condición.
+- **El clasificador de riesgo de brote interanual está retirado** (pivote a herramienta descriptiva, cerrado 2026-08-18 — `historico/rescate-prediccion/informe-cierre-rescate-prediccion.md`). Clasificaba semanas en alto/medio/bajo y obtuvo recall de "alto" = 0 en 2019 y 2022. El código entrenado (`entrenar_clasificador.py` y afines) se conserva como referencia histórica: **no lo extiendas ni lo reactives.** Es un modelo distinto de la predicción de conteo de abajo.
+- **Predicción de casos a corto plazo** (autorizada por Eduardo el 2026-09-09): la página de dengue predice el conteo nacional de casos a 1–8 semanas desde la última semana observada, con intervalo calibrado. Validada con WIS + segunda confirmación independiente (ADR 0020; protocolo en `historico/experimentos/experimento-nowcast-corto-plazo.md`). Artefacto: `backend/ingestion/nowcast_estimacion_dengue.py` → `backend/api/datos/nowcast_dengue.json`; endpoint `GET /api/nowcast-dengue`. Se llama **predicción**: al inicio del proyecto se creyó que ni un proto-predictor era viable y de ahí venía el veto a esa palabra; el experimento mostró lo contrario para la serie nacional agregada. Nota técnica para mantenimiento (no es copy de producto): el método sólo gana a la persistencia cuando el historial de entrenamiento ya contiene una temporada de brote grande — no reutilizarlo en otra serie sin verificar esa condición.
 - El proyecto es descriptivo salvo esa capa: "qué está pasando y qué tan inusual es contra su propia historia", más una predicción del conteo nacional a pocas semanas con su incertidumbre.
 - El aporte es de **ingeniería de software** (sistema libre, contenedorizado, reproducible), no de novedad epidemiológica ni un oráculo médico (esto no impide mostrar guías de prevención públicas citadas).
 - Modelo de dominio **agnóstico a enfermedad y región**: `tipos_evento` y `regiones` son catálogos, no columnas fijas.
@@ -527,7 +463,7 @@ EPI-Aetheris es un sistema de vigilancia epidemiológica **descriptiva** (piloto
 ### Módulos descriptivos (M1–M4)
 
 - **M1 — Idoneidad biofísica (`Iv`)** y **M2 — Anomalía climática continua (Z-score leave-one-out)** — implementados en `backend/api/idoneidad.py`, servidos vía `GET /api/v1/spatial/current` y `/api/v1/temporal/{codigo}`. M2 es serie continua: sin alerta binaria, sin lenguaje de lead-time.
-- **M3 — Presión epidemiológica relativa** — implementado en `backend/api/presion.py` (fórmula **cerrada** por la coordinación 2026-08-21, `docs/modulos-descriptivos/modulo-3-presion-epidemiologica.md`): percentil histórico leave-one-out por departamento, `probable` y `confirmado` como series **separadas** (nunca `total`), años base 2018/2019/2021/2022/2023, ventana ±1 semana, piso de ≥3 años, cortes P50/P75. Salida = percentil + lectura cualitativa (baja/media/alta), **nunca alerta binaria**; celdas insuficientes → `null` + nota. Vía `GET /api/v1/presion/current` y `/api/v1/presion/temporal/{codigo}`. No ajustes estos parámetros sin nueva decisión de la coordinación.
+- **M3 — Presión epidemiológica relativa** — implementado en `backend/api/presion.py` (fórmula **cerrada** por la coordinación 2026-08-21, `historico/modulos-descriptivos/modulo-3-presion-epidemiologica.md`): percentil histórico leave-one-out por departamento, `probable` y `confirmado` como series **separadas** (nunca `total`), años base 2018/2019/2021/2022/2023, ventana ±1 semana, piso de ≥3 años, cortes P50/P75. Salida = percentil + lectura cualitativa (baja/media/alta), **nunca alerta binaria**; celdas insuficientes → `null` + nota. Vía `GET /api/v1/presion/current` y `/api/v1/presion/temporal/{codigo}`. No ajustes estos parámetros sin nueva decisión de la coordinación.
 - **M4 — Integridad de vigilancia** — implementado en `backend/api/vigilancia.py` (fórmula **cerrada** 2026-09-08, ADR 0018): tres métricas separadas, sin número compuesto. `completitud` = n/14 departamentos con fila esa semana-serie (dengue MINSAL, `probable`/`confirmado`); `cuadre` = expone `validacion_cuadra` y la discrepancia ya almacenada en `boletines_procesados` (no recalcula la suma); `antiguedad` = semanas PAHO/CDC (`epiweeks`) desde la última SE con dato, por serie — **no** es latencia de reporte. Vía `GET /api/v1/vigilancia/integridad` (`week`+`year` = vista semanal; sin parámetros = resumen anual + antigüedad). Capa del mapa `'confianza'`. No combines las tres en un índice ni uses lenguaje de riesgo.
 - **Alertas de campo** — tabla `alertas` (ADR 0013, migración `0009`; operable por ADR 0015, migración `0011`). Decisiones humanas persistidas; **no** se generan desde M1–M3 ni del clasificador. `GET /api/alertas` por defecto: `activa=true` y `etiqueta IS NULL`, filtro opcional `tipo`; parámetros opcionales `desde`/`hasta` (solapamiento de vigencia), `incluir_inactivas=true`, `incluir_etiquetadas=true` (AND). UI en `/alertas`; archivo en `/alertas/archivo`; formulario de alta (sin enlace en la nav) en `/alertas/nueva`. `POST /api/alertas` y `PATCH /api/alertas/{id}` exigen `Authorization: Bearer` contra `ALERTAS_TOKEN` (`secrets.compare_digest`); sin token en el entorno → 503; cabecera ausente o token incorrecto → 401; no hay `DELETE`. Esos dos endpoints llevan además `@limiter.limit(RATE_LIMIT_WRITE)` (default `10/minute`; ADR 0017); el GET público se queda con el límite global. `etiqueta`: `NULL` | `test` | `simulacro` | `historica`. Migración `0010` (ADR 0014) añadió cinco columnas `TEXT` nulas; `0011` las llena **por `tipo`** con transcripción citada (VIGEPES/OPS): dengue tiene los cuatro bloques clínicos; respiratorio deja `signos_alarma` y `criterios_referencia` en `NULL`; `contacto_vigilancia` es la ruta SIBASI/VIGEPES-01 **sin teléfono ni correo**. No inventes texto clínico ni datos de contacto. `AVISO_HONESTIDAD_ALERTAS` no se altera.
 
@@ -559,7 +495,7 @@ Tres servicios Docker (`docker-compose.yml`, red `aetheris_network`):
 
 ### Fuentes de datos
 
-Las trampas empíricas —MINSAL (el año impreso en el PDF no es fiable; dos familias de tabla detectadas **por documento**, nunca por rango de año; celdas vacías = `0`; fila "Otros países"; Probable/Confirmado son **acumulados desde SE1** que hay que desacumular por diferencias; boletines de vacaciones sin tabla; ~49/52 semanas reales), OpenDengue (`case_definition_standardised` siempre `Total`; resolver la semana por coincidencia exacta de `calendar_start_date`), Open-Meteo (`era5_land` para temp/humedad/rocío + `era5` para precipitación, nunca `best_match`; ceros falsos de precipitación; rate-limit `429` por minuto)— están documentadas con evidencia en **`docs/contexto/03-fuentes-de-datos.md`**. Léela antes de tocar cualquier pipeline de ingesta. No reimplementes la desacumulación MINSAL desde cero: existe validada en `backend/ingestion/corrida_distribucion.py` y en producción en `backend/ingestion/minsal/parser.py`.
+Las trampas empíricas —MINSAL (el año impreso en el PDF no es fiable; dos familias de tabla detectadas **por documento**, nunca por rango de año; celdas vacías = `0`; fila "Otros países"; Probable/Confirmado son **acumulados desde SE1** que hay que desacumular por diferencias; boletines de vacaciones sin tabla; ~49/52 semanas reales), OpenDengue (`case_definition_standardised` siempre `Total`; resolver la semana por coincidencia exacta de `calendar_start_date`), Open-Meteo (`era5_land` para temp/humedad/rocío + `era5` para precipitación, nunca `best_match`; ceros falsos de precipitación; rate-limit `429` por minuto)— están documentadas con evidencia en `historico/contexto/03-fuentes-de-datos.md` (STC). Tenlas presentes antes de tocar cualquier pipeline de ingesta. No reimplementes la desacumulación MINSAL desde cero: existe validada en `backend/ingestion/corrida_distribucion.py` y en producción en `backend/ingestion/minsal/parser.py`.
 
 **2020 está deliberadamente ausente** de la ventana departamental (subregistro real por covid + riesgo de extracción) — no lo "arregles". Es una exclusión de ventana de entrenamiento: no filtres 2020 durante la ingesta. La serie nacional de OpenDengue sí muestra 2020 con nota explicativa.
 
@@ -572,7 +508,7 @@ Las trampas empíricas —MINSAL (el año impreso en el PDF no es fiable; dos fa
 
 ### Decisiones abiertas
 
-`docs/contexto/02-decisiones-abiertas.md` es la fuente. No resuelvas unilateralmente: las coordenadas departamentales para Open-Meteo, si la exclusión de 2020 gobierna la ingesta, y si el clasificador de riesgo de brote interanual se reactiva (esa línea está cerrada — no la resucites sin instrucción explícita; la predicción de conteo a corto plazo autorizada el 2026-09-09 es una línea separada, no esa reapertura). M4 (fórmula y dónde vive) quedó cerrado el 2026-09-08, ADR 0018.
+No resuelvas unilateralmente: las coordenadas departamentales para Open-Meteo, si la exclusión de 2020 gobierna la ingesta, y si el clasificador de riesgo de brote interanual se reactiva (esa línea está cerrada — no la resucites sin instrucción explícita; la predicción de conteo a corto plazo autorizada el 2026-09-09 es una línea separada, no esa reapertura). M4 (fórmula y dónde vive) quedó cerrado el 2026-09-08, ADR 0018.
 
 ### Comandos
 

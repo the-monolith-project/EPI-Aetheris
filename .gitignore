@@ -93,7 +93,7 @@ referencias_no_trakear/
 INDICACIONES_ALERTAS.md
 PLAN_ALERTAS_OPERABLES.md
 # Documentos legacy que no se versionan (síntesis históricas superadas por
-# docs/contexto/ y por AGENTS.md — se conservan localmente si hacen falta).
+# AGENTS.md — se conservan localmente si hacen falta).
 indicaciones-configuracion-codex-documentacion-EPI-Aetheris.md
 
 # design-sync
