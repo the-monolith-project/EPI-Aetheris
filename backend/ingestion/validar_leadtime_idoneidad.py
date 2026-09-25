@@ -1,6 +1,5 @@
 """
-Validacion empirica previa de la idoneidad biofisica (Iv)
-(docs/experimentos/experimento-validacion-leadtime-idoneidad.md). Responde una sola pregunta: si el indice de
+Validacion empirica previa de la idoneidad biofisica (Iv). Responde una sola pregunta: si el indice de
 idoneidad biofisica (Iv) + detector de anomalias estacionales habrian
 anticipado el ascenso real de casos observado en los boletines MINSAL,
 y por cuantas semanas -- reportando el resultado real, incluyendo los
@@ -59,7 +58,7 @@ coordinador (no inventada aqui):
     baseline, mismo principio que canal_endemico_nacional.py aplica a
     casos -- SIN ventana de semanas vecinas (el documento no la pide
     para Iv, a diferencia del canal endemico de casos que si la usa).
-    El experimento original (docs/experimentos/) se corrio sobre
+    El experimento original se corrio sobre
     2014-2024; la constante crece a proposito y mueve los sigma ya
     mostrados.
   - Alerta: Z >= 1.5 dos semanas consecutivas (criterio literal del

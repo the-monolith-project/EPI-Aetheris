@@ -6,7 +6,7 @@ columnas, y este loader ya necesita lat/lon para llamar a la API y recibe
 elevation en la misma respuesta.
 
 Dos llamadas reales a archive-api.open-meteo.com, una por modelo -- nunca
-best_match ni era5_seamless (ver docs/contexto/01-decisiones-cerradas.md):
+best_match ni era5_seamless (decision cerrada):
 - era5_land (fuente 'open_meteo_era5_land'): temperature_2m_max/min/mean,
   relative_humidity_2m_mean, dew_point_2m_mean.
 - era5 (fuente 'open_meteo_era5', ADR 0006): precipitation_sum,
@@ -29,7 +29,7 @@ el equipo mas alla de "sumar/promediar diarios" -- revisar si se necesita
 otro criterio (ej. maximo semanal del maximo diario).
 
 No excluye 2020: la exclusion de 2020 es del training del clasificador,
-no de la ingesta (punto E de docs/contexto/02-decisiones-abiertas.md) --
+no de la ingesta --
 trae el rango continuo completo, igual que backend/ingestion/cargar_
 opendengue.py.
 
@@ -132,9 +132,9 @@ def llamar_open_meteo(deptos: list[Departamento], modelo: str, variables: list[s
         "timezone": "America/El_Salvador",
         "models": modelo,
     }
-    # El limite gratuito es generoso (ver docs/contexto/01-decisiones-cerradas.md,
-    # ~2200 llamadas ponderadas estimadas contra 10000/dia), pero el rate
-    # limit por minuto se dispara con pocas llamadas seguidas -- confirmado
+    # El limite gratuito es generoso (~2200 llamadas ponderadas estimadas
+    # contra 10000/dia), pero el rate limit por minuto se dispara con pocas
+    # llamadas seguidas -- confirmado
     # en vivo probando este mismo loader. Reintento con backoff simple en
     # vez de fallar sobre un 429.
     for intento in range(5):

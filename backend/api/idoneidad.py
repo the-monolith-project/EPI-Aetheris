@@ -1,7 +1,6 @@
 """
 Motor de idoneidad biofisica (Iv) y anomalia climatica continua -- Modulos 1
-y 2 de los modulos descriptivos
-(docs/experimentos/experimento-validacion-leadtime-idoneidad.md).
+y 2 de los modulos descriptivos.
 
 Las formulas de Iv y el metodo de Z-score leave-one-out estan duplicados
 LITERALMENTE (mismas constantes, mismo metodo de resolucion de `c`) desde

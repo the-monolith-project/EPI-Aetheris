@@ -1,8 +1,7 @@
 """
 Experimento: proto-predictor de nowcast de horizonte corto.
 
-Registro y ejecucion del experimento descrito en
-docs/experimentos/experimento-nowcast-corto-plazo.md (parametros firmados por
+Registro y ejecucion del experimento de nowcast (ADR 0020; parametros firmados por
 Eduardo el 2026-09-08, opciones por defecto).
 
 Pregunta unica: un nowcast probabilistico de la serie nacional semanal de casos
@@ -20,7 +19,7 @@ Reglas de datos (firmadas):
     fuente 'opendengue_v1_3', region 'SV'. Disponible 2014-2024 (la carga ya
     incluye 2014+, la decision 1 no requirio accion: ver seccion Resultados del
     doc).
-  - 2020 (D1, docs/rescate-prediccion/...): EXCLUIDO como anio objetivo y como
+  - 2020 (D1): EXCLUIDO como anio objetivo y como
     anio de origen de prueba; EXCLUIDO del pool de la climatologia; se conserva
     unicamente como insumo de rezagos autorregresivos para semanas vecinas.
   - Sensibilidad de alcance: el experimento corre completo en DOS ventanas de

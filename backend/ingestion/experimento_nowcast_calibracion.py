@@ -1,8 +1,8 @@
 """
 Experimento: calibracion de intervalos del proto-predictor de nowcast.
 
-Pendiente 3 de la decision 5 firmada en
-docs/experimentos/experimento-nowcast-corto-plazo.md: los intervalos del modelo
+Pendiente 3 de la decision 5 firmada para el experimento de nowcast
+(ADR 0020): los intervalos del modelo
 corren estrechos (cobertura al 50 % en ~0.38-0.43 a h=4, nominal 0.50). Este
 script prueba una capa de calibracion conformal (CQR) encima del mismo pipeline.
 

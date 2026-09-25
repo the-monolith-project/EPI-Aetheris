@@ -5,8 +5,7 @@ tests/fixtures/minsal/README.md -- solo texto extraido, nunca PDFs). Ningun
 numero es inventado: todos salen de boletines publicos y estan verificados
 contra la bitacora de la corrida exploratoria (data/interim/corrida_ira/).
 
-Cubre las trampas especificas de IRA encontradas en la exploracion
-(docs/exploraciones-respiratorias/exploracion-ira-boletines-minsal.md):
+Cubre las trampas especificas de IRA encontradas en la exploracion:
   1. Separador de miles inconsistente (coma/punto/ninguno) y el malformado
      "1363,652" (primera coma de millares perdida).
   2. Semana de corte leida del titulo de la TABLA, nunca de la narrativa

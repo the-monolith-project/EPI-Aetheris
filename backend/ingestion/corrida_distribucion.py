@@ -1,9 +1,8 @@
 """
 Corrida exploratoria de distribucion de casos de dengue (MINSAL, 2018-2023 sin 2020).
 
-Resuelve el punto H de docs/contexto/02-decisiones-abiertas.md: si desacumulando
-las series Probable/Confirmado de la tabla departamental (acumuladas desde SE1,
-ver trampa 8 de docs/contexto/03-fuentes-de-datos.md) se obtiene una variable
+Responde si desacumulando las series Probable/Confirmado de la tabla
+departamental (acumuladas desde SE1) se obtiene una variable
 objetivo departamental utilizable para el canal endemico.
 
 NO escribe a PostgreSQL -- es analisis exploratorio, no ingesta. NO es el parser
@@ -322,7 +321,7 @@ def analizar_texto_pagina(texto_pagina: str, resultado: ResultadoBoletin) -> Res
     validaciones de cuadre). Opera sobre TEXTO ya extraido -- separado de
     procesar_boletin (que solo agrega la I/O de pdfplumber) para poder
     probarse contra extractos reales guardados como fixture, sin versionar
-    PDFs (docs/contexto/03-fuentes-de-datos.md, seccion pytest)."""
+    PDFs."""
     bloque = _recortar_bloque_depto(texto_pagina)
     if bloque is None:
         resultado.estado = "error_extraccion"

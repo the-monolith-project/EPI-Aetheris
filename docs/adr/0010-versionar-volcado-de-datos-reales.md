@@ -6,7 +6,7 @@
 
 El proyecto promete que cualquiera clone el repositorio, levante con un comando (`docker compose up`) y obtenga el sistema funcionando, con costo de replicación cercano a cero (ver `AGENTS.md`, invariantes de infraestructura). Pero `backend/ingestion/data/raw/` (264 boletines MINSAL) y `backend/ingestion/data/interim/` no se versionan por regla explícita — así que hoy quien clona obtiene una base vacía: sin datos hasta correr manualmente el pipeline completo de ingesta (parser MINSAL + Open-Meteo, con rate-limits ya confirmados) o el runner de migraciones no alcanza a llenarla, porque las migraciones son esquema, no datos.
 
-Se evaluaron tres salidas (`docs/contexto/02-decisiones-abiertas.md`, punto C original antes de dividirse):
+Se evaluaron tres salidas:
 
 1. Versionar un volcado (`pg_dump`) de la base ya poblada.
 2. Versionar solo el extracto nacional de OpenDengue (candidato ya reconocido, <0,5 MB).
@@ -16,7 +16,7 @@ Se evaluaron tres salidas (`docs/contexto/02-decisiones-abiertas.md`, punto C or
 
 ## Decisión
 
-**A. Se versiona un volcado `pg_dump --data-only` de los datos reales ya cargados**, en `db/seed/seed_datos_reales.sql`. Es dato público real ya verificado (mismo origen que documenta `docs/contexto/03-fuentes-de-datos.md`), no un dataset sintético — no viola el estatuto de "nunca fabricar, simular o sintetizar un dataset". Mismo principio ya aceptado para `backend/ingestion/geo/slv-adm1-source.geojson` (ADR 0002): dato descargado pero pequeño, estático y necesario para que el build no dependa de red.
+**A. Se versiona un volcado `pg_dump --data-only` de los datos reales ya cargados**, en `db/seed/seed_datos_reales.sql`. Es dato público real ya verificado (mismas fuentes públicas que la ingesta), no un dataset sintético — no viola el estatuto de "nunca fabricar, simular o sintetizar un dataset". Mismo principio ya aceptado para `backend/ingestion/geo/slv-adm1-source.geojson` (ADR 0002): dato descargado pero pequeño, estático y necesario para que el build no dependa de red.
 
 **B. El volcado excluye `regiones`, `tipos_evento` y `fuentes_datos`.** Esas tres tablas de catálogo ya se siembran completas dentro de las propias migraciones (`0001`, `0004`, `0006` insertan sus filas vía `INSERT INTO`), verificado en vivo: cargar solo `0001`-`0006` sobre un volumen limpio ya deja `regiones`=15, `tipos_evento`=1, `fuentes_datos`=5 filas. Incluirlas en el volcado de datos provocaba conflicto de llave primaria al cargar sobre un volumen nuevo. El volcado contiene únicamente `semanas_epidemiologicas`, `boletines_procesados`, `casos_epidemiologicos` y `variables_ambientales` — las tablas que sí dependen de ingesta real.
 

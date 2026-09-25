@@ -4,7 +4,7 @@
 
 ## Contexto
 
-La corrida exploratoria del parser (`backend/ingestion/corrida_distribucion.py`, 264 PDF, resumen en `docs/contexto/03-fuentes-de-datos.md` trampa 8/11) encontró un caso que el `CHECK` actual de `boletines_procesados.estado` (`pendiente`, `ok`, `revision_manual`, `error`, `ausencia_esperada` — ADR 0004) no cubre: 3 boletines de 2019 (`SE232019`, `SE322019`, `SE352019_v2`) tienen la tabla departamental de dengue pegada como imagen/raster en vez de texto extraíble — cero menciones de la palabra "dengue" en todo el documento, y el boletín **no** es de vacaciones (no aplica `ausencia_esperada`).
+La corrida exploratoria del parser (`backend/ingestion/corrida_distribucion.py`, 264 PDF) encontró un caso que el `CHECK` actual de `boletines_procesados.estado` (`pendiente`, `ok`, `revision_manual`, `error`, `ausencia_esperada` — ADR 0004) no cubre: 3 boletines de 2019 (`SE232019`, `SE322019`, `SE352019_v2`) tienen la tabla departamental de dengue pegada como imagen/raster en vez de texto extraíble — cero menciones de la palabra "dengue" en todo el documento, y el boletín **no** es de vacaciones (no aplica `ausencia_esperada`).
 
 Ninguno de los cinco valores existentes describe esto con precisión:
 
@@ -14,7 +14,7 @@ Ninguno de los cinco valores existentes describe esto con precisión:
 
 Meter este caso en cualquiera de los tres contamina esa métrica: `error` infla la tasa de fallos genuinos del parser (que el informe cita como calidad de la ingesta) con algo que no es un fallo del parser sino una limitación conocida y localizada de la fuente; `ausencia_esperada` afirmaría que MINSAL no publicó el dato, cuando sí lo hizo, solo que en un formato que esta ingesta no lee.
 
-**Alcance de este ADR:** registrar el estado, no resolver el rescate. El rescate en sí (rasterizar la página y aplicar OCR con `pytesseract`) es la tarjeta 26, bloqueada aparte porque agregar una dependencia de OCR toca el stack ya cerrado (`docs/contexto/01-decisiones-cerradas.md`) y requiere confirmación explícita del coordinador antes de instalarse — no se resuelve aquí ni se adelanta.
+**Alcance de este ADR:** registrar el estado, no resolver el rescate. El rescate en sí (rasterizar la página y aplicar OCR con `pytesseract`) es la tarjeta 26, bloqueada aparte porque agregar una dependencia de OCR toca el stack ya cerrado y requiere confirmación explícita del coordinador antes de instalarse — no se resuelve aquí ni se adelanta.
 
 ## Decisión
 
@@ -35,7 +35,7 @@ CHECK (estado IN ('pendiente', 'ok', 'revision_manual', 'error', 'ausencia_esper
 
 * Positivo: la métrica de calidad de la ingesta que cita el informe distingue ahora tres cosas antes mezcladas: fallo genuino del parser (`error`), ausencia real de dato (`ausencia_esperada`), y hueco de cobertura conocido por limitación de formato (`sin_texto_extraible`).
 * Positivo: dejar constancia explícita de estos 3 boletines en la bitácora es lo que permite, más adelante, contar exactamente cuántas semanas de 2019 dependen del rescate OCR (tarjeta 26) sin tener que releer la corrida exploratoria cada vez.
-* Negativo: mismo costo ya aceptado en el ADR 0004 — con el volumen de Postgres ya poblado (clima 2014-2024, casos OpenDengue 2014-2023), aplicar este cambio de esquema exige, en ausencia de un runner de migraciones (punto C de `docs/contexto/02-decisiones-abiertas.md`, sigue abierto), aplicar la sentencia DDL directamente sobre el volumen en ejecución además de dejar la migración versionada para instalaciones limpias — no un `docker compose down -v` completo esta vez, por el costo de reingesta ya explicado en ese punto.
+* Negativo: mismo costo ya aceptado en el ADR 0004 — con el volumen de Postgres ya poblado (clima 2014-2024, casos OpenDengue 2014-2023), aplicar este cambio de esquema exige, en ausencia de un runner de migraciones (sigue abierto), aplicar la sentencia DDL directamente sobre el volumen en ejecución además de dejar la migración versionada para instalaciones limpias — no un `docker compose down -v` completo esta vez, por el costo de reingesta ya explicado en ese punto.
 * Neutral: no adelanta ni bloquea la decisión de si la vía departamental se activa como segundo clasificador (punto H de `02-decisiones-abiertas.md`) — solo mejora la calidad del registro de auditoría del parser de producción.
 
 ## Migración

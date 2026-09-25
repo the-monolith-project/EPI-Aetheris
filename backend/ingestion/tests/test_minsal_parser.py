@@ -1,8 +1,7 @@
 """
 Suite pytest del pipeline de ingesta MINSAL (extraccion + desacumulacion),
 contra extractos de texto REALES de los boletines de referencia (ver
-tests/fixtures/minsal/README.md -- solo texto extraido, nunca PDFs, regla de
-docs/contexto/03-fuentes-de-datos.md). Ningun numero de estas pruebas es
+tests/fixtures/minsal/README.md -- solo texto extraido, nunca PDFs). Ningun numero de estas pruebas es
 inventado: todos salen de boletines publicos de MINSAL y estan verificados
 contra la bitacora de la corrida exploratoria validada (verificacion 4/4).
 

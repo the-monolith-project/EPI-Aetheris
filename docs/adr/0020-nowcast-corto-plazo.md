@@ -4,15 +4,13 @@
 
 ## Contexto
 
-El pivote "Camino Ancho" (2026-08-18, `docs/contexto/01-decisiones-cerradas.md`)
-retiró el clasificador de riesgo de brote alto/medio/bajo y, con él, quedó
-un veto de facto a la palabra "predicción" en todo el producto. Ese veto se
-apoyaba en una creencia, no en una medición: que con esta serie ni un
+El pivote a herramienta descriptiva (2026-08-18) retiró el clasificador de
+riesgo de brote alto/medio/bajo y, con él, quedó un veto de facto a la
+palabra "predicción" en todo el producto. Ese veto se apoyaba en una creencia, no en una medición: que con esta serie ni un
 proto-predictor era viable. Nadie lo había probado con protocolo.
 
-El experimento se firmó antes de correrlo
-(`docs/experimentos/experimento-nowcast-corto-plazo.md`, firmado 2026-09-08,
-ejecutado 2026-09-09): objetivo, horizonte decisivo, baselines, métrica y
+El experimento se firmó antes de correrlo (firmado 2026-09-08, ejecutado
+2026-09-09): objetivo, horizonte decisivo, baselines, métrica y
 criterio de éxito predeclarados, con la configuración del modelo escrita en
 el documento antes de ver un resultado. Salió **positivo y acotado**: en la
 ventana 2014+ el modelo supera al baseline más fuerte en los cuatro

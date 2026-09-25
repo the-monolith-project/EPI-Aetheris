@@ -27,7 +27,7 @@ Desde septiembre de 2026 la página de dengue incluye una **predicción estadís
 
 - Predice el **conteo de casos** de la serie nacional agregada, con su incertidumbre. No es una lectura de transmisión ni un juicio clínico: da un número y un rango, no una clase de riesgo.
 - Se extiende **desde la última semana observada, no desde la fecha de hoy**. La fuente pública va varios meses detrás del tiempo real; el gráfico muestra siempre la fecha de anclaje.
-- Su **desempeño está a la vista**: en validación temporal sin fuga sobre 2019 y 2021–2024 reduce el error de intervalo (WIS) frente a la persistencia en las cinco temporadas de prueba. El número y el protocolo acompañan a la predicción y se documentan en `docs/experimentos/experimento-nowcast-corto-plazo.md`, que incluye una segunda confirmación independiente (reimplementación desde cero de las métricas y la validación).
+- Su **desempeño está a la vista**: en validación temporal sin fuga sobre 2019 y 2021–2024 reduce el error de intervalo (WIS) frente a la persistencia en las cinco temporadas de prueba. El número y el protocolo acompañan a la predicción, validada además con una segunda confirmación independiente (reimplementación desde cero de las métricas y la validación).
 
 Al principio del proyecto se descartó incluso un proto-predictor por considerarlo inviable; el experimento firmado mostró lo contrario para la serie nacional agregada, y por eso se expone y se llama predicción.
 
@@ -45,7 +45,7 @@ Hechos, no atmósfera:
 - Cinco vías de rescate (fuga temporal, transferencia multipaís, casos previos, posición estacional, features con mecanismo biológico) no sostuvieron el criterio de éxito predeclarado. Vía 0: 0 de 16 países. Vías 1 y 3: 0 de 10 semillas en el único fold evaluable.
 - El experimento de lead time del mismo día produjo, en los dos únicos casos comparables, **+29 y −30 semanas**, sin acuerdo de signo.
 
-La recomendación del informe de cierre fue entregar ese resultado negativo como evidencia reproducible, no integrar una clasificación experimental al tablero como si fuera una alerta. El código (`entrenar_clasificador.py` y la línea de `docs/clasificador-retirado/`) **se conserva** para que cualquiera repita las corridas. Conservarlo no es una invitación a reactivarlo: no se extiende, no se expone en vivo, no se pinta como semáforo departamental.
+La recomendación del informe de cierre fue entregar ese resultado negativo como evidencia reproducible, no integrar una clasificación experimental al tablero como si fuera una alerta. El código (`entrenar_clasificador.py` y afines) **se conserva** para que cualquiera repita las corridas. Conservarlo no es una invitación a reactivarlo: no se extiende, no se expone en vivo, no se pinta como semáforo departamental.
 
 Retirarlo es coherente con el Pilar 3 del marco del proyecto (márgenes de error declarados, prohibidos los atajos). Dejar un modelo con recall 0 en la clase que justifica el pitch habría sido exactamente el atajo que el estatuto prohíbe.
 

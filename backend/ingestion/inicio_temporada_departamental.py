@@ -1,7 +1,6 @@
 """
 Inicio de temporada por departamento-anio, para el diagnostico de lead time
-de la idoneidad biofisica (docs/experimentos/experimento-validacion-leadtime-idoneidad.md,
-en construccion). No entrena nada, no escribe a Postgres.
+de la idoneidad biofisica. No entrena nada, no escribe a Postgres.
 
 Metodologia acordada explicitamente con el coordinador (no inventada aqui):
 

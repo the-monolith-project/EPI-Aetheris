@@ -4,7 +4,7 @@
 
 ## Contexto
 
-Las corridas de evaluación con años de prueba reales (2019, 2022 — ver `docs/contexto/CHANGELOG.md`, entrada 2026-08-16) mostraron que el clasificador de riesgo nacional obtiene **recall de "alto" = 0,000** en ambos, empatado con la línea base climatológica. El experimento de ampliar la ventana de rezago climático (4→4/8/12 semanas) no movió esa métrica (`docs/experimentos/experimento-ventana-climatica-ampliada.md`). El clima local rezagado (Open-Meteo, por departamento) no está capturando la señal de brote severo.
+Las corridas de evaluación con años de prueba reales (2019, 2022 — corridas del 2026-08-16) mostraron que el clasificador de riesgo nacional obtiene **recall de "alto" = 0,000** en ambos, empatado con la línea base climatológica. El experimento de ampliar la ventana de rezago climático (4→4/8/12 semanas) no movió esa métrica. El clima local rezagado (Open-Meteo, por departamento) no está capturando la señal de brote severo.
 
 La literatura epidemiológica documenta El Niño/La Niña (medido por el índice ONI de NOAA) como factor asociado a brotes de dengue en Centroamérica — condiciones más cálidas y secas durante El Niño favorecen la cría de *Aedes aegypti* en agua almacenada. Es una oscilación climática de escala oceánica/continental, distinta en naturaleza del clima superficial local que ya se usa (temperatura, humedad, precipitación por departamento) — no reemplaza esas variables, las complementa con una señal que Open-Meteo no puede dar por diseño (es un dato puntual por coordenada, no un índice de teleconexión).
 
@@ -29,7 +29,7 @@ La literatura epidemiológica documenta El Niño/La Niña (medido por el índice
 * Positivo: primera fuente climática de escala oceánica/continental del proyecto — complementa, no compite con, el clima superficial local ya cargado.
 * Positivo: gratuita, sin límite de tasa documentado, formato estable (texto plano, sin versión de API que romper).
 * Negativo: introduce una segunda escala temporal (mensual) dentro de una tabla pensada originalmente para datos ya-semanales — el mapeo mes→semana (punto C) es una elección de diseño nueva que hay que mantener consistente si se agregan más fuentes de resolución distinta a la semanal en el futuro.
-* Negativo: NOAA publica el ONI con un retraso de aproximadamente un mes respecto al mes en curso — relevante si alguna vez se usa para inferencia "en vivo" (ver punto F de `docs/contexto/02-decisiones-abiertas.md`, el sistema ya no verifica en vivo lo que predice, así que esto no agrega una limitación nueva).
+* Negativo: NOAA publica el ONI con un retraso de aproximadamente un mes respecto al mes en curso — relevante si alguna vez se usa para inferencia "en vivo" (el sistema ya no verifica en vivo lo que predice, así que esto no agrega una limitación nueva).
 * Neutral: no reabre la decisión cerrada de predictor climático — se interpreta como una extensión de "clima", no como autocorrelación de casos.
 
 ## Migración

@@ -36,7 +36,7 @@ Responde qué tan inusual es el `Iv` de un departamento-semana respecto de su pr
 
 ## M3 — Presión epidemiológica relativa
 
-Responde qué tan alta es la presión de casos **ya observados** en un departamento-semana comparado con su propia historia. Fórmula cerrada por la coordinación el 21 de agosto de 2026 (`docs/modulos-descriptivos/modulo-3-presion-epidemiologica.md`).
+Responde qué tan alta es la presión de casos **ya observados** en un departamento-semana comparado con su propia historia. Fórmula cerrada por la coordinación el 21 de agosto de 2026.
 
 | Elemento | Valor |
 |---|---|

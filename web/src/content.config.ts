@@ -3,9 +3,8 @@ import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
 
 // Documentos propios de la Biblioteca pública (docs/biblioteca/), escritos
-// para un lector externo. La documentación interna del equipo (ADR,
-// archivo histórico en STC) no alimenta esta colección: se sintetiza, no se
-// reutiliza cruda. Orden, título, descripción y agrupación salen del
+// para un lector externo. Los ADR no alimentan esta colección: se
+// sintetiza, no se reutiliza documentación interna cruda. Orden, título, descripción y agrupación salen del
 // frontmatter -- no hay un array paralelo en las páginas.
 const biblioteca = defineCollection({
   loader: glob({

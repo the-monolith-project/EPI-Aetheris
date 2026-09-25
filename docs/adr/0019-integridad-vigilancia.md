@@ -6,9 +6,8 @@
 
 El selector de capas del mapa tenía una capa `'confianza'` deshabilitada
 ("próximamente") y el panel `AuditoriaDatos.astro` era estático, con la
-nota de que M4 no tenía fórmula. El punto A de
-`docs/contexto/02-decisiones-abiertas.md` dejaba abierta tanto la
-fórmula como el lugar de la salida.
+nota de que M4 no tenía fórmula. Seguían abiertos tanto la fórmula como
+el lugar de la salida.
 
 El coordinador cerró la fórmula el 2026-09-08: tres métricas
 verificables, sin combinarlas en un número único, y `antiguedad` en

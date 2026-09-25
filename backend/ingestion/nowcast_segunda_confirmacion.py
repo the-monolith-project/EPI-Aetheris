@@ -1,7 +1,7 @@
 """
 Segunda confirmacion independiente del proto-predictor de nowcast de horizonte corto.
 
-Metodo predeclarado en docs/experimentos/nowcast-segunda-confirmacion.md (commit anterior).
+Metodo predeclarado antes de correr (commit anterior).
 
 Reimplementacion DESDE CERO de: formula del WIS, bucle de forward-chaining, construccion de
 features, baselines y criterio de veredicto. El script original

@@ -3,14 +3,12 @@ Tarjeta 22 -- parser de produccion de boletines MINSAL. Escribe a Postgres
 (bitacora + casos_epidemiologicos), a diferencia de la corrida exploratoria
 (backend/ingestion/corrida_distribucion.py, 264 PDF, verificacion 4/4) de la
 que reutiliza sin reescribir la extraccion (paso 1) y la desacumulacion
-(paso 2) -- ver docs/contexto/03-fuentes-de-datos.md, trampa 8/11, para la
-evidencia detras de esa logica.
+(paso 2).
 
 Alimenta unicamente la capa descriptiva del mapa (tarjeta 25) por ahora --
 el clasificador de la primera entrega es nacional (pivote "Opcion C"), no
 depende de esto. Si la vía departamental se activa como segundo
-clasificador queda condicionado al reconteo del punto H de
-docs/contexto/02-decisiones-abiertas.md tras rescatar los boletines con
+clasificador queda condicionado a un reconteo tras rescatar los boletines con
 tabla-imagen (tarjeta 26) -- no adelantado aqui.
 
 Requiere migracion 0005 aplicada (ADR 0007, estado 'sin_texto_extraible').
