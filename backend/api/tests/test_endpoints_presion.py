@@ -1,5 +1,5 @@
 """Pruebas de los endpoints /api/v1/presion/current y
-/api/v1/presion/temporal/{departamento_id} (Modulo 3 de "El Camino Ancho").
+/api/v1/presion/temporal/{departamento_id} (Modulo 3 de los modulos descriptivos).
 
 Usan FastAPI TestClient contra la base de datos real (Postgres ya cargado
 con el seed de datos MINSAL desacumulados, ver ADR 0010) -- mismo patron

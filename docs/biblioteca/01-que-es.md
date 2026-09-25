@@ -17,7 +17,7 @@ Eso es lo que el sistema entrega:
 
 - Ingesta de boletines MINSAL, OpenDengue, Open-Meteo y NOAA ONI, con bitácora de cada boletín.
 - Un esquema de hechos que no mezcla definiciones de caso distintas (`probable`, `confirmado`, `total`, `notificado`).
-- Módulos descriptivos de Camino Ancho (idoneidad biofísica, anomalía climática, presión epidemiológica relativa) calculados a pedido.
+- Módulos descriptivos (idoneidad biofísica, anomalía climática, presión epidemiológica relativa) calculados a pedido.
 - Un mapa departamental, un observatorio respiratorio y un canal de alertas de campo redactadas por el equipo de vigilancia.
 - Replicación a costo cercano a cero: `git clone` + `docker compose up` deja el sistema funcionando con datos reales versionados.
 
@@ -26,7 +26,7 @@ Eso es lo que el sistema entrega:
 El sitio tiene dos caras, que son **secciones**, no un modo que se conmuta:
 
 - **Consulta** (`/alertas`): personal de salud ve las alertas vigentes y qué hacer en la unidad.
-- **Análisis** (`/analisis`): dengue (mapa y módulos Camino Ancho) y respiratorio (neumonías, IRA, vigilancia laboratorial de virus).
+- **Análisis** (`/analisis`): dengue (mapa y módulos descriptivos M1–M3) y respiratorio (neumonías, IRA, vigilancia laboratorial de virus).
 
 La **Biblioteca** es esta colección: el relato del proyecto, el catálogo de funciones, las fuentes y el método. El detalle de sensibilidad —límites, deslindes, qué no afirma el sistema— vive en [Sensibilidad y honestidad](/biblioteca/05-sensibilidad-y-honestidad).
 

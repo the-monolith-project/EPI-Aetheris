@@ -1,7 +1,7 @@
 """
 Endpoints descriptivos de Neumonías (ADR 0011 + catálogo 'neumonia').
 
-No es un módulo de Camino Ancho. Capa 100% descriptiva: conteo semanal
+No es uno de los módulos descriptivos de dengue (M1-M4). Capa 100% descriptiva: conteo semanal
 'notificado' por departamento. Huecos = ausencia de fila, nunca cero.
 """
 

@@ -1,7 +1,7 @@
 # Experimento: proto-predictor de nowcast de horizonte corto (2026-09-08)
 
 > Ejecutado el 2026-09-09 — ver "Resultados" al final. Los parámetros se fijaron antes de mirar
-> los datos, igual que `experimento-oni-predictor.md` y `experimento-validacion-leadtime-camino-ancho.md`.
+> los datos, igual que `experimento-oni-predictor.md` y `experimento-validacion-leadtime-idoneidad.md`.
 > Es un diagnóstico exploratorio — no cambia producción. No escribe a Postgres, no toca FastAPI ni
 > el frontend, no modifica el esquema. No reabre ninguna decisión cerrada: M3 (P50/P75,
 > leave-one-out, ±1) queda intacto y no se usa como objetivo ni como insumo aquí. No autoriza

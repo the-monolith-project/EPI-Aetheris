@@ -1,5 +1,5 @@
 """
-Motor de presion epidemiologica relativa -- Modulo 3 de "El Camino Ancho".
+Motor de presion epidemiologica relativa -- Modulo 3 (M3) de los modulos descriptivos.
 
 Responde: "¿que tan alta es la presion de casos observados en este
 departamento-semana comparado con su propia historia?" -- 100% descriptivo.
@@ -9,7 +9,7 @@ mismo departamento. No comparte codigo ni logica con el clasificador
 retirado (entrenar_clasificador.py).
 
 Formula cerrada por el coordinador (documento de decision: INSTRUCCIONES de
-la tarea M3, 2026-08-21; ver tambien docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md):
+la tarea M3, 2026-08-21; ver tambien docs/modulos-descriptivos/modulo-3-presion-epidemiologica.md):
 
   - Variable base: casos_epidemiologicos.conteo, clasificacion IN
     ('probable', 'confirmado') como DOS SERIES SEPARADAS, nunca fusionadas,
@@ -41,7 +41,7 @@ la tarea M3, 2026-08-21; ver tambien docs/modulos-camino-ancho/modulo-3-presion-
     acepta que pueda sobre-etiquetar semanas de anios de baja transmision,
     trade-off consciente, no un error a corregir).
   - Lectura cualitativa (texto libre, no bandera booleana de alerta --
-    Camino Ancho no hace alertas binarias): valor <= P50 -> "baja";
+    los modulos descriptivos no hacen alertas binarias): valor <= P50 -> "baja";
     P50 < valor <= P75 -> "media"; valor > P75 -> "alta". La convencion en
     los bordes (igualdad cae hacia abajo) es la misma que
     corrida_canal_endemico_nacional.clasificar.

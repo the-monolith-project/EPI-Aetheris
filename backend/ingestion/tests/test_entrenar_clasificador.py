@@ -2,7 +2,7 @@
 Cobertura de formatear_recall_alto (entrenar_clasificador.py): el formateo
 de la metrica de recall de la clase 'alto' para el panel.
 
-El clasificador esta retirado (pivote 'Camino Ancho') pero su codigo sigue
+El clasificador esta retirado (pivote a herramienta descriptiva, 2026-08-18) pero su codigo sigue
 en el repo como referencia historica; esta prueba solo fija el contrato de
 presentacion. Se salta si sklearn no esta instalado (el modulo lo importa
 a nivel de modulo), igual que las pruebas con Postgres se saltan sin DB.

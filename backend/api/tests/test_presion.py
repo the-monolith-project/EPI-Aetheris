@@ -1,5 +1,5 @@
-"""Pruebas del motor de presion epidemiologica relativa (Modulo 3 de "El
-Camino Ancho", backend/api/presion.py).
+"""Pruebas del motor de presion epidemiologica relativa (Modulo 3 de los
+modulos descriptivos, backend/api/presion.py).
 
 Solo logica pura -- no toca Postgres. Los numeros de estas pruebas son
 valores arbitrarios para verificar el algoritmo (percentiles, ventanas,

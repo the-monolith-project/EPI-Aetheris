@@ -2,9 +2,9 @@
 Endpoints descriptivos para Infección Respiratoria Aguda (IRA), ADR 0011
 (aceptado 2026-08-22, clasificacion='notificado').
 
-Deliberadamente NO es un modulo de "El Camino Ancho" (M1-M4): IRA es otro
+Deliberadamente NO es uno de los modulos descriptivos de dengue (M1-M4): IRA es otro
 tipo_evento, sin Iv/anomalia/presion calculados -- eso son formulas
-cerradas para dengue especificamente (docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md)
+cerradas para dengue especificamente (docs/modulos-descriptivos/modulo-3-presion-epidemiologica.md)
 y no hay decision del coordinador para extenderlas a IRA. Esto es solo la
 serie observada, igual de descriptiva que /api/casos-departamentales.
 

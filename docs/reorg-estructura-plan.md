@@ -57,7 +57,7 @@ docs/adr docs/contexto`.
 | **2** | `corrida-canal-endemico-nacional.md`, `corrida-canal-endemico-nacional-4zonas.md`, `levantamiento-gaps-stack-web.md` |
 | **3** | `tarea-rescate-prediccion.md` (3 manifiestos Vía) |
 | **4** | `experimento-ventana-climatica-ampliada.md` |
-| **5** | `experimento-validacion-leadtime-camino-ancho.md`, `exploracion-neumonias-boletines-minsal.md`, `exploracion-vigilancia-virus-boletines-minsal.md`, `modulo-3-presion-epidemiologica.md`, `protocolo-evaluacion-rescate-prediccion.md` |
+| **5** | `experimento-validacion-leadtime-idoneidad.md`, `exploracion-neumonias-boletines-minsal.md`, `exploracion-vigilancia-virus-boletines-minsal.md`, `modulo-3-presion-epidemiologica.md`, `protocolo-evaluacion-rescate-prediccion.md` |
 | **7** | `exploracion-ira-boletines-minsal.md`, `informe-cierre-rescate-prediccion.md` |
 
 Además hay **enlaces entre docs sueltos** que el grep anterior no cubre y que se
@@ -88,7 +88,7 @@ Convención de destino: subcarpetas temáticas bajo `docs/`, en paralelo a
 | Origen | Destino | Referencias a actualizar | Riesgo |
 |--------|---------|--------------------------|--------|
 | `docs/entrenamiento-clasificador-riesgo-nacional*.md` (13) | `docs/clasificador-retirado/entrenamientos/` | **`backend/ingestion/entrenar_clasificador.py:301,306`** — la ruta se arma con `f"docs/entrenamiento-clasificador-riesgo-nacional{sufijo}.md"`. **Cambio de código, no reescritura de ruta**: actualizar el prefijo del f-string. Sin tests sobre ese string (verificar `test_entrenar_clasificador.py`). | Medio |
-| `docs/experimento-multipais.md`, `docs/experimento-oni-predictor.md`, `docs/experimento-ventana-climatica-ampliada.md`, `docs/experimento-validacion-leadtime-camino-ancho.md` | `docs/experimentos/` | Enlaces relativos entre estos 4 (§2). `experimento-ventana-climatica-ampliada.md` (4 refs) y `experimento-validacion-leadtime-camino-ancho.md` (5 refs) están citados desde `backend/api/idoneidad.py`, `backend/api/main.py:524,536`, `backend/ingestion/{validar_leadtime_camino_ancho,construir_dataset_modelado,inicio_temporada_departamental}.py`, `docs/adr/0008`. **Estos dos suben a Fase 2.** Los otros dos (0 y 1 ref) quedan en Fase 1. | Bajo (multipais/oni) |
+| `docs/experimento-multipais.md`, `docs/experimento-oni-predictor.md`, `docs/experimento-ventana-climatica-ampliada.md`, `docs/experimento-validacion-leadtime-idoneidad.md` | `docs/experimentos/` | Enlaces relativos entre estos 4 (§2). `experimento-ventana-climatica-ampliada.md` (4 refs) y `experimento-validacion-leadtime-idoneidad.md` (5 refs) están citados desde `backend/api/idoneidad.py`, `backend/api/main.py:524,536`, `backend/ingestion/{validar_leadtime_idoneidad,construir_dataset_modelado,inicio_temporada_departamental}.py`, `docs/adr/0008`. **Estos dos suben a Fase 2.** Los otros dos (0 y 1 ref) quedan en Fase 1. | Bajo (multipais/oni) |
 | `docs/corrida-via-{cero,uno,dos,tres,menos-uno}.md`, `docs/borrador-registro-documental-via-menos-uno.md`, `docs/respuesta-protocolo-evaluacion.md`, `docs/respuesta-protocolo-via-menos-uno-v2.md` | `docs/rescate-prediccion/` | Enlaces relativos internos del cluster (§2). Ninguno referenciado desde código. **Mover junto con `protocolo-evaluacion-rescate-prediccion.md` y `tarea-rescate-prediccion.md`** (Fase 2) para no partir el cluster. | Bajo si van todos juntos |
 | `docs/diagnostico-senal-etiqueta-auditoria.md` | `docs/clasificador-retirado/` o `docs/experimentos/` | Enlace a `docs/tobeer/LEEME-procedencia.md` (depende de la decisión B). | Bajo |
 | `docs/limitaciones-ingesta-respiratoria.md`, `docs/propuesta-coordinador-cierre-ingesta-respiratoria.md`, `docs/protocolo-exploracion-respiratorios.md` | `docs/exploraciones-respiratorias/` | `protocolo-exploracion-respiratorios.md` es citado por `exploracion-vigilancia-virus-boletines-minsal.md` (mover juntos). | Bajo |
@@ -100,8 +100,8 @@ Convención de destino: subcarpetas temáticas bajo `docs/`, en paralelo a
 | `docs/protocolo-evaluacion-rescate-prediccion.md` | `docs/rescate-prediccion/` | **4 manifiestos Vía congelados** (`backend/ingestion/via_{cero,uno,dos,tres,menos_uno}_manifesto_congelado.json`) campo `"protocolo"`; `backend/ingestion/validar_via_menos_uno.py:4`; enlaces desde `respuesta-*` y `borrador-*`. Los manifiestos NO hashean su propio contenido (solo `seed_sha256` del seed) → editar el string `protocolo` no invalida los tests `test_validar_via_*.py` (verificar: ninguno *asserta* sobre `fuente.protocolo`). | Medio |
 | `docs/tarea-rescate-prediccion.md` | `docs/rescate-prediccion/` | Manifiestos `via_{uno,dos,tres}_manifesto_congelado.json` campo `"tarea"`. Mismo criterio que arriba. | Medio |
 | `docs/experimento-ventana-climatica-ampliada.md` | `docs/experimentos/` | `backend/ingestion/construir_dataset_modelado.py:68` (comentario); `docs/adr/0008`. | Medio |
-| `docs/experimento-validacion-leadtime-camino-ancho.md` | `docs/experimentos/` | `backend/api/idoneidad.py:3`; `backend/api/main.py:524,536`; `backend/ingestion/validar_leadtime_camino_ancho.py:2`; `backend/ingestion/inicio_temporada_departamental.py:3`; `web/src/content.config.ts:15` **+ `web/src/pages/biblioteca/index.astro:19` (`ORDEN_BIBLIOTECA` id)** → ver nota biblioteca abajo. | Alto (biblioteca) |
-| `docs/modulo-3-presion-epidemiologica.md` | `docs/` (dejar en raíz) o `docs/modulos-camino-ancho/` | `backend/api/{presion,ira,main}.py`; `AGENTS.md:490`; **`web/src/content.config.ts:16` + biblioteca id**. | Alto (biblioteca) |
+| `docs/experimento-validacion-leadtime-idoneidad.md` | `docs/experimentos/` | `backend/api/idoneidad.py:3`; `backend/api/main.py:524,536`; `backend/ingestion/validar_leadtime_idoneidad.py:2`; `backend/ingestion/inicio_temporada_departamental.py:3`; `web/src/content.config.ts:15` **+ `web/src/pages/biblioteca/index.astro:19` (`ORDEN_BIBLIOTECA` id)** → ver nota biblioteca abajo. | Alto (biblioteca) |
+| `docs/modulo-3-presion-epidemiologica.md` | `docs/` (dejar en raíz) o `docs/modulos-descriptivos/` | `backend/api/{presion,ira,main}.py`; `AGENTS.md:490`; **`web/src/content.config.ts:16` + biblioteca id**. | Alto (biblioteca) |
 | `docs/informe-cierre-rescate-prediccion.md` | `docs/` (dejar en raíz) o `docs/rescate-prediccion/` | `AGENTS.md:482`; `docs/contexto/{00,01,02}.md`; **`web/src/components/MetricasModelo.astro:53` — URL de GitHub *hardcodeada* `blob/main/docs/informe-cierre-rescate-prediccion.md`**; `web/src/content.config.ts:14` + biblioteca id. | Alto (biblioteca + URL hardcodeada) |
 | `docs/exploracion-ira-boletines-minsal.md` | `docs/exploraciones-respiratorias/` | `backend/api/{cobertura,ira}.py` (`cobertura.py:45` como valor de dict `fuente_informe`), `backend/ingestion/{cargar_ira,corrida_ira}.py`, `backend/ingestion/tests/{fixtures/minsal/README.md,test_corrida_ira.py}`, **`db/migrations/0007_clasificacion_notificado_ira.sql:37` (string dentro de un `INSERT`)**. | Medio-alto (string en migración ya aplicada) |
 | `docs/exploracion-neumonias-boletines-minsal.md` | `docs/exploraciones-respiratorias/` | `backend/api/cobertura.py:25`; **`db/migrations/0008_*.sql:12` (string en `INSERT`)**; `docs/contexto/01`. | Medio-alto |
@@ -134,7 +134,7 @@ bloquean, pero cualquier verificación de `preview` debe correr en **puerto 4321
 (CORS del backend local — ver `docker-compose.yml` `e2e` y `render.yaml`).
 
 **Recomendación:** los 3 docs de biblioteca
-(`informe-cierre-rescate-prediccion.md`, `experimento-validacion-leadtime-camino-ancho.md`,
+(`informe-cierre-rescate-prediccion.md`, `experimento-validacion-leadtime-idoneidad.md`,
 `modulo-3-presion-epidemiologica.md`) **se quedan en `docs/` raíz**. Son los de
 mayor costo de movimiento y el beneficio de agruparlos es marginal.
 
@@ -240,9 +240,9 @@ Cada fase = un PR contra `dev`, con CI verde antes del siguiente.
 >   `docs/exploraciones-respiratorias/`; refs backend/SQL/ADR/contexto actualizadas.
 >   Suite backend 208 passed / 53 skipped.
 > - PR 3 — HECHO: `informe-cierre-rescate-prediccion.md` →
->   `docs/rescate-prediccion/`, `experimento-validacion-leadtime-camino-ancho.md`
+>   `docs/rescate-prediccion/`, `experimento-validacion-leadtime-idoneidad.md`
 >   → `docs/experimentos/`, `modulo-3-presion-epidemiologica.md` →
->   `docs/modulos-camino-ancho/` (nueva). `content.config.ts` (`pattern`),
+>   `docs/modulos-descriptivos/` (nueva). `content.config.ts` (`pattern`),
 >   `ORDEN_BIBLIOTECA`, URL hardcodeada en `MetricasModelo.astro` y comentarios
 >   backend/AGENTS/contexto actualizados. Suite backend verde; `pnpm build`
 >   limpio con las 3 rutas `/biblioteca/<subcarpeta>/<id>` generadas.
@@ -266,7 +266,7 @@ Cada fase = un PR contra `dev`, con CI verde antes del siguiente.
 3. **PR 2 — docs referenciados desde backend / SQL / manifiestos** (riesgo medio)
    - Mover `protocolo-evaluacion-rescate-prediccion.md`,
      `tarea-rescate-prediccion.md`, `experimento-ventana-climatica-ampliada.md`,
-     `experimento-validacion-leadtime-camino-ancho.md`,
+     `experimento-validacion-leadtime-idoneidad.md`,
      `exploracion-{ira,neumonias,vigilancia-virus}-*.md`,
      `corrida-canal-endemico-*.md`.
    - Actualizar: comentarios y strings en `backend/api/*.py`,

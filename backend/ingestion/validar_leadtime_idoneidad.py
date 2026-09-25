@@ -1,14 +1,14 @@
 """
-Validacion empirica previa del "Camino Ancho"
-(docs/experimentos/experimento-validacion-leadtime-camino-ancho.md). Responde una sola pregunta: si el indice de
+Validacion empirica previa de la idoneidad biofisica (Iv)
+(docs/experimentos/experimento-validacion-leadtime-idoneidad.md). Responde una sola pregunta: si el indice de
 idoneidad biofisica (Iv) + detector de anomalias estacionales habrian
 anticipado el ascenso real de casos observado en los boletines MINSAL,
 y por cuantas semanas -- reportando el resultado real, incluyendo los
 casos sin anticipacion o con senal tardia. No entrena nada, no escribe a
 Postgres, no toca FastAPI ni el frontend.
 
-Formulas de Iv tomadas literalmente de "EPI-Aetheris_Camino_Ancho_v2_
-ajustada.md" (seccion 4, Modulo 1):
+Formulas de Iv tomadas literalmente de la propuesta de diseno v2 ajustada
+(seccion 4, Modulo 1; documento externo al repo):
 
   f_T(T) = max(0, c . T . (T-Tmin) . sqrt(Tmax-T))   Tmin=16, Tmax=38
   f_R(R) = 1 / (1 + e^(-k.(R-R0)))                    R0=30mm/sem, k=0.1
@@ -67,7 +67,7 @@ coordinador (no inventada aqui):
     = semana de deteccion. Sin alerta => "sin alerta", no se fuerza nada.
 
 Uso:
-    python3 validar_leadtime_camino_ancho.py
+    python3 validar_leadtime_idoneidad.py
 """
 
 from __future__ import annotations
@@ -93,7 +93,7 @@ from inicio_temporada_departamental import (
 )
 
 RAIZ = Path(__file__).parent
-INTERIM_ROOT = RAIZ / "data" / "interim" / "leadtime_camino_ancho"
+INTERIM_ROOT = RAIZ / "data" / "interim" / "leadtime_idoneidad"
 DOC_ROOT = RAIZ.parent.parent / "docs"
 
 ANIO_CLIMA_INICIO = 2014

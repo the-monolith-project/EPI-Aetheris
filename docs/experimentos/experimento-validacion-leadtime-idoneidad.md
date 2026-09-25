@@ -2,7 +2,7 @@
 
 > Registro del experimento y su resultado, para no reintentarlo sin una hipótesis distinta. Es un
 > diagnóstico exploratorio -- no cambia producción. No escribe a Postgres, no toca FastAPI ni el
-> frontend, no modifica el esquema. Scripts: `backend/ingestion/validar_leadtime_camino_ancho.py`,
+> frontend, no modifica el esquema. Scripts: `backend/ingestion/validar_leadtime_idoneidad.py`,
 > `backend/ingestion/inicio_temporada_departamental.py` (auxiliar, calcula el inicio de temporada real
 > a nivel departamental, que no existía en el repositorio antes de este experimento).
 
@@ -105,7 +105,7 @@ el proyecto -- esto es un supuesto explícito de este experimento, no una conven
 | Departamental | SV-SS | 2022 | — | 16 | — | sin alerta ese año |
 | Departamental | SV-SS | 2023 | 36 | 6 | **−30** | |
 
-CSV completo: `backend/ingestion/data/interim/leadtime_camino_ancho/leadtime_resultados.csv`.
+CSV completo: `backend/ingestion/data/interim/leadtime_idoneidad/leadtime_resultados.csv`.
 
 ## Cifras de control
 

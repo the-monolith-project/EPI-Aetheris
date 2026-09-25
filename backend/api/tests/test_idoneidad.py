@@ -1,5 +1,5 @@
 """Pruebas del motor de idoneidad biofisica (Iv) y del Z-score continuo
-(Modulos 1 y 2 de "El Camino Ancho" v3, backend/api/idoneidad.py).
+(Modulos 1 y 2 de los modulos descriptivos, backend/api/idoneidad.py).
 
 Solo matematica pura -- no toca Postgres. Sigue el mismo estilo unittest +
 sys.path.insert que ya usa backend/ingestion/tests/ (ver
@@ -99,7 +99,7 @@ class CalcularIvTest(unittest.TestCase):
                     self.assertLessEqual(valor, 1.0 + 1e-9)
 
     def test_distribucion_no_degenerada_sobre_rango_climatico_realista(self):
-        """Chequeo de cordura estilo validar_leadtime_camino_ancho.py: sobre
+        """Chequeo de cordura estilo validar_leadtime_idoneidad.py: sobre
         un grid de condiciones climaticas plausibles para El Salvador (temp
         20-32C, precip acumulada 0-150mm/2sem, HR 40-95%), Iv no debe salir
         constante ni saturado en 0 o 1 -- si sale asi, la formula no

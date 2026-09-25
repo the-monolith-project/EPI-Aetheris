@@ -338,9 +338,6 @@ test('el footer reestructurado expone las cuatro secciones y el aviso de sensibi
     navFooter.getByRole('link', { name: 'Análisis por departamento' }),
   ).toHaveAttribute('href', '/analisis');
   await expect(
-    navFooter.getByRole('link', { name: 'Decisiones y trayectoria' }),
-  ).toHaveAttribute('href', '/biblioteca/02-historia');
-  await expect(
     navFooter.getByRole('link', { name: 'Sugerencias (GitHub Issues)' }),
   ).toHaveAttribute('href', '/sugerencias');
 

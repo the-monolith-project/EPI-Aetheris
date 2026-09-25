@@ -629,11 +629,11 @@ def casos_departamentales(request: Request, response: Response):
 
 
 # ---------------------------------------------------------------------------
-# "Camino Ancho" -- Módulo 1 (idoneidad biofísica Iv) y Módulo 2 (anomalía
+# Módulos descriptivos -- Módulo 1 (idoneidad biofísica Iv) y Módulo 2 (anomalía
 # climática continua). Ver backend/api/idoneidad.py para las fórmulas y su
 # procedencia (duplicadas literalmente desde
-# backend/ingestion/validar_leadtime_camino_ancho.py, experimento ya
-# validado en docs/experimentos/experimento-validacion-leadtime-camino-ancho.md).
+# backend/ingestion/validar_leadtime_idoneidad.py, experimento ya
+# validado en docs/experimentos/experimento-validacion-leadtime-idoneidad.md).
 #
 # La validación empírica descartó la tesis de "ventana de anticipación"
 # (lead time) -- por eso estos endpoints NO exponen alerta binaria, NO
@@ -714,9 +714,9 @@ def idoneidad_espacial_actual(request: Request, response: Response, week: int, y
 
 
 # ---------------------------------------------------------------------------
-# "Camino Ancho" -- Módulo 3 (presión epidemiológica relativa). Ver
+# Módulos descriptivos -- Módulo 3 (presión epidemiológica relativa). Ver
 # backend/api/presion.py para la fórmula (cerrada por el coordinador,
-# docs/modulos-camino-ancho/modulo-3-presion-epidemiologica.md) y su procedencia (mismo patrón de
+# docs/modulos-descriptivos/modulo-3-presion-epidemiologica.md) y su procedencia (mismo patrón de
 # percentil leave-one-out que corrida_canal_endemico_nacional.py). Igual que
 # M1/M2: calculado on-request, nada persistido, sin cambios de esquema.
 # ---------------------------------------------------------------------------
@@ -969,7 +969,7 @@ def idoneidad_temporal_departamento(departamento_id: str, anio: int, response: R
 
 # ---------------------------------------------------------------------------
 # Infección Respiratoria Aguda (IRA) -- ADR 0011 (aceptado 2026-08-22).
-# Ver backend/api/ira.py: NO es un módulo de "El Camino Ancho" (M1-M4), es
+# Ver backend/api/ira.py: NO es uno de los módulos descriptivos de dengue (M1-M4), es
 # otro tipo_evento con su propia serie 'notificado', sin Iv/anomalía/presión
 # calculados. Cargado por backend/ingestion/cargar_ira.py (2742 filas,
 # 2018-2023 sin 2020, 14 departamentos).
