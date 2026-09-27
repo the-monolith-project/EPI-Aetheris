@@ -165,3 +165,24 @@ la máquina se corre con 4 procesos de un hilo cada uno y `nice`.
 4. **Confirmación:** 2025–2026, mirada una sola vez y solo para M0 y el candidato elegido. firmada
 5. **Umbrales:** los del ADR 0020 (4 de 5 años, bandas de cobertura), más "no quedar peor que M0". firmada
 
+
+## Enmiendas (2026-09-27, antes de la primera corrida)
+
+Decisiones de implementación que el documento no fijaba o describía distinto del script original.
+Ninguna cambia candidatos, referencia ni criterio.
+
+1. **Control de mutación.** Se implementa como en el script del ADR 0020: etiquetas de
+   entrenamiento permutadas (semilla 12345), no adelantando el objetivo una semana como decía la
+   sección de protocolo. Se corre a h = 4 sobre la validación; debe empeorar el WIS de M0 y de M1.
+   M2 se reporta sin exigencia, porque con etiquetas permutadas puede elegir peso 0 y quedarse con
+   la persistencia.
+2. **Repetibilidad.** Se repite la cadena completa a h = 4 sobre la validación y se exige que los
+   cuantiles de los tres modelos sean idénticos.
+3. **Persistencia de M2.** La combinación usa la persistencia publicada (la del ADR 0020, que
+   aprende de toda la historia), no la limpia: M2 es un modelo y no debe depender de la elección
+   de la referencia con la que se evalúa.
+4. **Marca de vacaciones de M1.** Se calcula por calendario sobre la semana objetivo (domingo a
+   sábado): toca el período si comparte al menos un día con él.
+5. **Dos fases.** El script corre la validación y la confirmación en dos invocaciones. La
+   confirmación usa, en cada horizonte, la referencia decisiva elegida en la validación, y se niega
+   a correr si la validación no eligió candidato o si la confirmación ya se corrió.
