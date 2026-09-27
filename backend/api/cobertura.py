@@ -57,6 +57,7 @@ def _semanas_por_anio(conn, tipo_codigo: str) -> dict[str, int]:
             FROM casos_epidemiologicos
             WHERE clasificacion = 'notificado'
               AND tipo_evento_id = (SELECT id FROM tipos_evento WHERE codigo = %s)
+              AND fuente_id = (SELECT id FROM fuentes_datos WHERE codigo = 'minsal_pdf')
             GROUP BY anio
             ORDER BY anio
             """,
@@ -73,6 +74,7 @@ def _filas_evento(conn, tipo_codigo: str) -> int:
             FROM casos_epidemiologicos
             WHERE clasificacion = 'notificado'
               AND tipo_evento_id = (SELECT id FROM tipos_evento WHERE codigo = %s)
+              AND fuente_id = (SELECT id FROM fuentes_datos WHERE codigo = 'minsal_pdf')
             """,
             (tipo_codigo,),
         )
