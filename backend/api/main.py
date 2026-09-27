@@ -559,6 +559,30 @@ def nowcast_dengue(request: Request, response: Response):
     return {"disponible": True, "aviso": AVISO_HONESTIDAD_NOWCAST_DENGUE, **datos}
 
 
+NOWCAST_DENGUE_RETRO_PATH = NOWCAST_DENGUE_PATH.with_name("nowcast_dengue_retrospectivo.json")
+
+
+@app.get("/api/nowcast-dengue/retrospectivo")
+@limiter.limit(RATE_LIMIT_HEAVY)
+def nowcast_dengue_retrospectivo(request: Request, response: Response):
+    """Abanico h=1..8 que el modelo habria dado desde cada semana de la serie,
+    con los datos disponibles hasta esa semana, para contrastarlo con lo
+    observado. Precomputado por
+    backend/ingestion/nowcast_retrospectivo_dengue.py; va en un endpoint aparte
+    porque pesa ~10 veces mas que /api/nowcast-dengue y solo lo pide la vista
+    completa del panel."""
+    if not NOWCAST_DENGUE_RETRO_PATH.exists():
+        _cache_control(response, CACHE_TTL_COMPUTO)
+        return {
+            "disponible": False,
+            "motivo": "El artefacto retrospectivo de la prediccion no esta generado en este despliegue.",
+            "aviso": AVISO_HONESTIDAD_NOWCAST_DENGUE,
+        }
+    datos = json.loads(NOWCAST_DENGUE_RETRO_PATH.read_text(encoding="utf-8"))
+    _cache_control(response, CACHE_TTL_HISTORICO)
+    return {"disponible": True, "aviso": AVISO_HONESTIDAD_NOWCAST_DENGUE, **datos}
+
+
 AVISO_HONESTIDAD_CASOS_DEPARTAMENTALES = (
     "Casos probables y confirmados desacumulados de boletines MINSAL "
     "(2018-2023, con huecos entre boletines). El color representa volumen "

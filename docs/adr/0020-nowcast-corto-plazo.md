@@ -133,3 +133,35 @@ modelo.
   aplica dos veces hasta que se decida cuál copia es la fuente.
 * Neutral: el veto de vocabulario queda levantado solo para esta capa y con
   su horizonte rotulado. "Riesgo de brote" sigue prohibido en el producto.
+
+## Ampliación (2026-09-27): predicción desde cualquier semana
+
+La interfaz permite mover el punto de partida de la predicción a cualquier
+semana de la serie y contrastar el abanico de 1 a 8 semanas con lo observado
+después. El método no cambia; cambia solo cuántos orígenes se precomputan.
+
+* `backend/ingestion/nowcast_retrospectivo_dengue.py` escribe
+  `backend/api/datos/nowcast_dengue_retrospectivo.json` y
+  `GET /api/nowcast-dengue/retrospectivo` lo sirve con el mismo contrato de
+  `disponible: false` que el artefacto principal. Va en un endpoint aparte
+  porque pesa unas diez veces más y solo lo pide la vista completa del panel.
+* Cada abanico usa solo datos anteriores a su semana de partida. Por
+  horizonte corren dos cadenas forward-chaining: la de los orígenes de prueba
+  del experimento (misma secuencia de reajustes que el backtest publicado) y
+  la del resto de las semanas.
+* El script aborta si, a h = 4 en los orígenes de prueba, no reproduce el
+  desempeño publicado con su redondeo. No se exige igualdad punto a punto:
+  el ajuste no es reproducible bit a bit entre corridas (tampoco
+  `nowcast_estimacion_dengue.py`) y una diferencia en la última cifra puede
+  mover un factor CQR-r, que se elige por cuantil.
+* Las primeras semanas no tienen predicción: el modelo necesita unos tres
+  años de historia para entrenarse. El artefacto las marca con `motivo` en
+  vez de rellenarlas con persistencia.
+* 2020 se muestra con un aviso. Sigue excluido como objetivo de
+  entrenamiento, así que mostrarlo no cambia ninguna predicción de los demás
+  años, y su resumen no entra en ningún agregado.
+* La última semana observada no se duplica: su abanico es `estimacion` del
+  artefacto principal.
+* La vista está en el frontend `aetheris-nitor`
+  (`src/components/nowcast/ContrasteNowcastDengue.astro`); la copia del panel
+  en `web/` de este repositorio no la tiene.
