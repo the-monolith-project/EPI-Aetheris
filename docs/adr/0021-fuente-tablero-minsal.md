@@ -1,0 +1,44 @@
+# 0021 - Tablero de vigilancia de MINSAL como fuente, a partir de capturas HAR
+
+**Estado:** Aceptado
+
+## Contexto
+
+MINSAL dejó de publicar boletines en PDF después de 2023. Los datos de 2024 en adelante están en un tablero Superset público (`boletin.salud.gob.sv`) que bloquea las peticiones automáticas. `backend/ingestion/minsal/common.py` prohíbe que scripts y agentes hagan peticiones a ese sitio.
+
+Al abrir el tablero, el navegador descarga una respuesta JSON por gráfico (`POST /api/v1/chart/data`). Cada respuesta trae la consulta SQL, con el año escrito (`da.anio=2025`), y una fila por semana (`semana_mes` = "NN-Mes"). Una persona puede guardar todas esas respuestas en un archivo HAR desde las herramientas de desarrollo. Es el uso normal del sitio.
+
+Las primeras capturas (2026-09-27) cubren 2025 completo (tablero 10) y 2026 hasta la semana 37 (tableros 04, 05 y 06, que leen los mismos datos). Solo hay series nacionales. No hay 2024 en ningún tablero encontrado.
+
+Revisión de las series antes de cargarlas:
+
+- Los totales cuadran entre vistas. Los confirmados semanales suman lo mismo que la cifra suelta del tablero (203 en 2025, 48 en 2026). La serie semanal de sospechosos de 2026 (4.786) coincide con el gráfico por grupo de edad (unos 4.750).
+- La escala coincide con OpenDengue. Los sospechosos de 2025 (5.833) están al nivel de OpenDengue en 2021 y 2023, y el canal endémico que publica MINSAL para 2025 tiene la misma escala que los cuartiles de OpenDengue de 2014 a 2024.
+- La serie es mucho más lisa que un conteo semanal crudo. Medida como la desviación de cada semana respecto a sus vecinas, en unidades de ruido de Poisson, da 0,28 en 2025 y 0,70 en 2026. OpenDengue da entre 1,2 y 8,3 de 2014 a 2023 y 0,26 en 2024. El tablero no dice qué proceso produce esa forma.
+- Hay saltos al cambiar de año. Los sospechosos pasan de 39 en la semana 52 de 2025 a 214 en la semana 1 de 2026.
+- El calendario coincide con `semanas_epidemiologicas`. Las etiquetas de mes de 2026 cuadran en las 37 semanas sin desfase y fallan entre 8 y 13 con una semana de desfase. La semana 53 de 2025 (28 de diciembre al 3 de enero) no aparece publicada.
+
+## Decisión
+
+**A. Fuente nueva:** `fuentes_datos.codigo = 'minsal_tablero'`.
+
+**B. Quinto valor de `clasificacion`: `'sospechoso'`**, tomado tal cual del nombre que usa la fuente ("Casos Sospechosos de Dengue"), mismo criterio que `'total'` (ADR 0005). Los confirmados del tablero se cargan como `'confirmado'`; IRA y neumonías, como `'notificado'` (ADR 0011).
+
+**C. Carga desde archivos, nunca desde el sitio.** `cargar_minsal_tablero.py` lee los HAR de `data/raw/minsal_tablero/` (no versionado, como los PDF; procedencia y sha256 en `data/README.md`). Toma el año de la consulta SQL y rechaza la respuesta si no hay un año único, si una semana se repite o si un valor no es entero.
+
+**D. Una cifra por semana, la de la captura más reciente.** Si dos capturas difieren, el cargador lo informa como revisión de MINSAL. Las capturas viejas se conservan.
+
+**E. Sin relleno.** La semana 53 de 2025 queda sin fila.
+
+**F. Separada de las otras fuentes.** Las consultas que describen los PDF departamentales filtran por `minsal_pdf`, y las que leen OpenDengue por `opendengue_v1_3`. Con esta carga se añadió ese filtro a la antigüedad de IRA y neumonías (`api/vigilancia.py`) y a la cobertura respiratoria (`api/cobertura.py`), que antes contaban cualquier fuente.
+
+## Consecuencias
+
+- Hay datos de casos de 2025 y 2026 por primera vez, aunque solo nacionales.
+- La serie del tablero no se puede empalmar con OpenDengue como si fuera la misma: tiene otra forma y no comparte ninguna semana con ella. Usarla en el nowcast exige validarla aparte (ADR 0020).
+- OpenDengue 2024 tiene la misma forma lisa que el tablero, así que es probable que venga de la misma fuente. Eso afecta a 2024 como temporada de validación del nowcast y queda pendiente de revisar.
+- Actualizar exige que una persona vuelva a capturar el tablero. No hay descarga programada.
+
+## Migración
+
+`db/migrations/0012_fuente_tablero_minsal.sql`: recrea el `CHECK` de `clasificacion` con `'sospechoso'`, actualiza su comentario e inserta la fuente `minsal_tablero`.

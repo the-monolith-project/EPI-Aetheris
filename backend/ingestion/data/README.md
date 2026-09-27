@@ -35,3 +35,26 @@ constancia de dónde salió cada dato reunido en la Fase 0 de ingesta.
   Probable/Confirmado sin tasa). El detector de esquema debe basarse en la
   presencia/ausencia de la columna de tasa por documento, no asumirse por
   año.
+
+## Tablero de vigilancia MINSAL (`data/raw/minsal_tablero/`)
+
+- **Fuente:** tablero Superset público `https://boletin.salud.gob.sv/superset/dashboard/{id}/?standalone=1`.
+  Desde 2024 MINSAL publica aquí en lugar de en PDF.
+- **Obtenido:** capturas HAR guardadas por una persona desde las
+  herramientas de desarrollo del navegador al abrir el tablero. Ningún
+  script hace peticiones al sitio (ADR 0021).
+- **Carga:** `cargar_minsal_tablero.py` (fuente `minsal_tablero`, nivel
+  nacional).
+- **Capturas** (nombre = tablero y hora UTC de la captura; sha256):
+
+  | Archivo | Datos | sha256 |
+  |---|---|---|
+  | `tablero-10_20260927T0542Z.har` | 2025, S1–S52 | `4d1c4add575cd82647c46c885cbe152b00f4e1e8d7a136f41774e1d4320eff7f` |
+  | `tablero-06_20260927T0654Z.har` | 2026, S1–S37 | `79e677e2c59751e732ba85635efcc37bc16d2d883400acd1348d9b1d504926b4` |
+  | `tablero-05_20260927T0655Z.har` | 2026, S1–S37 | `b696593a157b225063e11548b653cd6b94b7d3bab6b9c01aa8fa77b08f4d06e3` |
+  | `tablero-04_20260927T0656Z.har` | 2026, S1–S37 | `5cabe8dbfd6a7012f0241d021951dce46600dc5f03cf0b525e9849e9c932e3db` |
+
+- **Notas:** los tableros 04, 05 y 06 leen los mismos datos de 2026 aunque
+  su rótulo diga otra fecha. Cada captura es una foto del día y MINSAL
+  puede revisar semanas ya publicadas; guardar las capturas nuevas sin
+  borrar las anteriores.
