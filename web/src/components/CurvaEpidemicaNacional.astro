@@ -2,8 +2,9 @@
 // Curva epidémica nacional. Fetch del lado del cliente (el navegador siempre
 // resuelve la API en localhost:8000, tanto corriendo con docker-compose como
 // con `pnpm dev` local -- evita depender de resolución de hostname interna
-// de la red de Docker) contra GET /api/casos-nacional: serie de OpenDengue,
-// clasificacion='total', nivel nacional. No es clasificación de riesgo: el
+// de la red de Docker) contra GET /api/casos-nacional: total nacional de
+// OpenDengue y, desde 2025, sospechosos del tablero de MINSAL (cada fila trae
+// su `fuente`). No es clasificación de riesgo: el
 // corte de percentil sigue abierto.
 ---
 
@@ -20,8 +21,9 @@
           Curva epidémica nacional
         </h2>
         <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
-          Serie semanal de casos de dengue, OpenDengue (nivel nacional,
-          2018-2024).
+          Serie semanal de casos de dengue en todo el país. Hasta 2024 viene de
+          OpenDengue; desde 2025, del tablero de MINSAL (casos sospechosos), que
+          publica cada semana como un promedio de varias.
         </p>
       </div>
     </div>
@@ -102,18 +104,25 @@
       d.conteo > max.conteo ? d : max,
     );
     const totalCasos = datos.reduce((suma, d) => suma + d.conteo, 0);
+    const primeraTablero = datos.find((d) => d.fuente === 'minsal_tablero');
     const resumen = contenedor.parentElement?.querySelector<HTMLElement>(
       '#curva-epidemica-resumen',
     );
     if (resumen) {
-      resumen.textContent = `Serie de ${datos[0].anio} a ${datos[datos.length - 1].anio}, ${datos.length} semanas. Total acumulado: ${totalCasos.toLocaleString('es-SV')} casos. Semana con más casos: SE${picoSemana.semana_epi} de ${picoSemana.anio}, con ${picoSemana.conteo.toLocaleString('es-SV')} casos.`;
+      resumen.textContent = `Serie de ${datos[0].anio} a ${datos[datos.length - 1].anio}, ${datos.length} semanas. Total acumulado: ${totalCasos.toLocaleString('es-SV')} casos. Semana con más casos: SE${picoSemana.semana_epi} de ${picoSemana.anio}, con ${picoSemana.conteo.toLocaleString('es-SV')} casos.${primeraTablero ? ` Desde ${primeraTablero.anio}, casos sospechosos del tablero de MINSAL.` : ''}`;
     }
     const areaGrafica = ALTO - MARGEN.arriba - MARGEN.abajo;
     const escalaY = (valor: number) =>
       ALTO - MARGEN.abajo - (valor / (maxConteo || 1)) * areaGrafica;
-    const escalaX = (indice: number) =>
+    // Eje por fecha y no por posición: una semana sin publicar (la 53 de 2025
+    // en el tablero) deja su hueco en lugar de juntar a sus vecinas.
+    const tiempo = (d: CasoNacionalSemanal) =>
+      new Date(`${d.semana_inicio}T00:00:00`).getTime();
+    const t0 = tiempo(datos[0]);
+    const duracion = Math.max(tiempo(datos[datos.length - 1]) - t0, 1);
+    const escalaX = (d: CasoNacionalSemanal) =>
       MARGEN.izquierda +
-      (indice / Math.max(datos.length - 1, 1)) *
+      ((tiempo(d) - t0) / duracion) *
         (ANCHO - MARGEN.izquierda - MARGEN.derecha);
 
     const svg = document.createElementNS(SVG_NS, 'svg');
@@ -150,6 +159,28 @@
     defs.appendChild(gradiente);
     svg.appendChild(defs);
 
+    // Desde 2025 cambian la fuente y la forma de la serie: banda de fondo con
+    // el nombre del tablero sobre ese tramo.
+    if (primeraTablero) {
+      const x0 = escalaX(primeraTablero);
+      const banda = document.createElementNS(SVG_NS, 'rect');
+      banda.setAttribute('x', String(x0));
+      banda.setAttribute('y', String(MARGEN.arriba));
+      banda.setAttribute('width', String(ANCHO - MARGEN.derecha - x0));
+      banda.setAttribute('height', String(ALTO - MARGEN.arriba - MARGEN.abajo));
+      banda.setAttribute('fill', 'var(--color-secondary)');
+      banda.setAttribute('fill-opacity', '0.3');
+      svg.appendChild(banda);
+      const rotulo = document.createElementNS(SVG_NS, 'text');
+      rotulo.setAttribute('x', String(x0 + 4));
+      rotulo.setAttribute('y', String(MARGEN.arriba + 10));
+      rotulo.setAttribute('font-family', 'var(--font-sans)');
+      rotulo.setAttribute('font-size', '9');
+      rotulo.setAttribute('fill', 'var(--color-ink-muted)');
+      rotulo.textContent = 'tablero MINSAL';
+      svg.appendChild(rotulo);
+    }
+
     // Líneas de referencia horizontales (0, mitad, máximo) para dar escala
     // sin sumar un eje completo -- el objetivo es lectura rápida, no un
     // gráfico analítico detallado.
@@ -177,32 +208,46 @@
       svg.appendChild(etiquetaY);
     }
 
-    const puntos = datos
-      .map((d, i) => `${escalaX(i)},${escalaY(d.conteo)}`)
-      .join(' ');
+    // Tramos de semanas consecutivas de una misma fuente.
+    const tramos: CasoNacionalSemanal[][] = [];
+    datos.forEach((d, i) => {
+      const previo = datos[i - 1];
+      const corta =
+        !previo ||
+        previo.fuente !== d.fuente ||
+        tiempo(d) - tiempo(previo) > 1.5 * 7 * 86_400_000;
+      if (corta) tramos.push([]);
+      tramos[tramos.length - 1].push(d);
+    });
 
-    const area = document.createElementNS(SVG_NS, 'polygon');
     const base = ALTO - MARGEN.abajo;
-    area.setAttribute(
-      'points',
-      `${escalaX(0)},${base} ${puntos} ${escalaX(datos.length - 1)},${base}`,
-    );
-    area.setAttribute('fill', 'url(#curva-gradiente)');
-    area.setAttribute('stroke', 'none');
-    svg.appendChild(area);
+    for (const tramo of tramos) {
+      const puntos = tramo
+        .map((d) => `${escalaX(d)},${escalaY(d.conteo)}`)
+        .join(' ');
 
-    const polilinea = document.createElementNS(SVG_NS, 'polyline');
-    polilinea.setAttribute('points', puntos);
-    polilinea.setAttribute('fill', 'none');
-    polilinea.setAttribute('stroke', 'var(--color-accent)');
-    polilinea.setAttribute('stroke-width', '1.75');
-    polilinea.setAttribute('stroke-linejoin', 'round');
-    polilinea.setAttribute('stroke-linecap', 'round');
-    svg.appendChild(polilinea);
+      const area = document.createElementNS(SVG_NS, 'polygon');
+      area.setAttribute(
+        'points',
+        `${escalaX(tramo[0])},${base} ${puntos} ${escalaX(tramo[tramo.length - 1])},${base}`,
+      );
+      area.setAttribute('fill', 'url(#curva-gradiente)');
+      area.setAttribute('stroke', 'none');
+      svg.appendChild(area);
+
+      const polilinea = document.createElementNS(SVG_NS, 'polyline');
+      polilinea.setAttribute('points', puntos);
+      polilinea.setAttribute('fill', 'none');
+      polilinea.setAttribute('stroke', 'var(--color-accent)');
+      polilinea.setAttribute('stroke-width', '1.75');
+      polilinea.setAttribute('stroke-linejoin', 'round');
+      polilinea.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(polilinea);
+    }
 
     const ultimo = datos[datos.length - 1];
     const puntoFinal = document.createElementNS(SVG_NS, 'circle');
-    puntoFinal.setAttribute('cx', String(escalaX(datos.length - 1)));
+    puntoFinal.setAttribute('cx', String(escalaX(ultimo)));
     puntoFinal.setAttribute('cy', String(escalaY(ultimo.conteo)));
     puntoFinal.setAttribute('r', '3');
     puntoFinal.setAttribute('fill', 'var(--color-accent)');
@@ -211,12 +256,12 @@
     svg.appendChild(puntoFinal);
 
     const aniosVistos = new Set<number>();
-    datos.forEach((d, i) => {
+    datos.forEach((d) => {
       if (aniosVistos.has(d.anio)) return;
       aniosVistos.add(d.anio);
       const linea = document.createElementNS(SVG_NS, 'line');
-      linea.setAttribute('x1', String(escalaX(i)));
-      linea.setAttribute('x2', String(escalaX(i)));
+      linea.setAttribute('x1', String(escalaX(d)));
+      linea.setAttribute('x2', String(escalaX(d)));
       linea.setAttribute('y1', String(MARGEN.arriba));
       linea.setAttribute('y2', String(ALTO - MARGEN.abajo));
       linea.setAttribute('stroke', 'var(--color-border)');
@@ -225,7 +270,7 @@
       svg.appendChild(linea);
 
       const etiqueta = document.createElementNS(SVG_NS, 'text');
-      etiqueta.setAttribute('x', String(escalaX(i)));
+      etiqueta.setAttribute('x', String(escalaX(d)));
       etiqueta.setAttribute('y', String(ALTO - 8));
       etiqueta.setAttribute('font-family', 'var(--font-sans)');
       etiqueta.style.fontVariantNumeric = 'tabular-nums';
@@ -242,14 +287,17 @@
   // transformación adicional. Generado 100% en el cliente (Blob + URL de
   // objeto), no hay endpoint de exportación nuevo en el backend.
   function descargarCsv(datos: CasoNacionalSemanal[]) {
-    const encabezado = 'semana_inicio,anio,conteo';
-    const filas = datos.map((d) => `${d.semana_inicio},${d.anio},${d.conteo}`);
+    const encabezado = 'semana_inicio,anio,semana_epi,conteo,fuente';
+    const filas = datos.map(
+      (d) =>
+        `${d.semana_inicio},${d.anio},${d.semana_epi},${d.conteo},${d.fuente ?? ''}`,
+    );
     const csv = [encabezado, ...filas].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const enlace = document.createElement('a');
     enlace.href = url;
-    enlace.download = 'epi-aetheris-dengue-nacional-2018-2024.csv';
+    enlace.download = `epi-aetheris-dengue-nacional-${datos[0].anio}-${datos[datos.length - 1].anio}.csv`;
     document.body.appendChild(enlace);
     enlace.click();
     enlace.remove();

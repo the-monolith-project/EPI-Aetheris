@@ -117,6 +117,8 @@ export interface CasoNacionalSemanal {
   anio: number;
   semana_epi: number;
   conteo: number;
+  /** Total de OpenDengue hasta 2024; sospechosos del tablero desde 2025. */
+  fuente?: 'opendengue_v1_3' | 'minsal_tablero';
 }
 
 export interface RegistroProcedencia {
