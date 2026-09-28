@@ -59,7 +59,7 @@ Tres hechos verificables sobre la calidad del dato, **sin combinarlos en un índ
 
 - **Completitud geográfica:** cuántos de los 14 departamentos tienen fila esa semana (y cuántas semanas de cada año están completas).
 - **Cuadre del boletín:** si la suma departamental coincide con el total nacional publicado en el mismo PDF, y por cuánto difiere cuando no.
-- **Antigüedad:** semanas desde la última observación de cada serie (dengue MINSAL, OpenDengue, clima, IRA, neumonías, virus). Explica el corte de 2023 sin esconderlo. No es el retraso entre el caso y la publicación del boletín: esa fecha no está en la base.
+- **Antigüedad:** semanas desde la última observación de cada serie (dengue MINSAL, OpenDengue, tablero de MINSAL, clima, IRA, neumonías, virus). Explica el corte de 2023 sin esconderlo. No es el retraso entre el caso y la publicación del boletín: esa fecha no está en la base.
 
 **Endpoint.** `GET /api/v1/vigilancia/integridad`. Capa del mapa "Integridad de la vigilancia".
 

@@ -59,3 +59,8 @@ Dos puntos de las consecuencias quedaron resueltos con los experimentos de predi
 * Desde 2025-S1 el nowcast usa esta serie con un método propio, la mezcla del experimento de
   tendencia, en prueba con semanas publicadas desde 2026-S38 (enmienda de ADR 0020). La serie
   mixta es OpenDengue hasta 2024-S52 y el tablero desde 2025-S1, sin semanas compartidas.
+* La serie nacional del sitio usa el mismo empalme. `GET /api/casos-nacional` devuelve el total
+  de OpenDengue y, en las semanas posteriores a su última fila, los sospechosos del tablero, con
+  `fuente` en cada fila para que la curva marque el tramo. La antigüedad de M4
+  suma la serie `dengue_tablero_nacional`. Es una excepción acotada a la regla F: las consultas
+  departamentales y las de IRA y neumonías siguen filtrando por `minsal_pdf`.
