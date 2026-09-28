@@ -174,3 +174,25 @@ hilo cada uno y `nice`. Antes de cargar las capturas de 2027 hay que añadir ese
   2027-S05. El script se niega si su archivo tiene cambios sin commit, si faltan semanas o si la
   salida ya existe.
 
+## Enmiendas
+
+### 2026-09-27: C se publica antes del veredicto
+
+Eduardo decidió publicar C en el sitio antes del corte. Con la serie del tablero, M0 pierde contra
+la persistencia de 1 a 5 semanas en 2025–2026, y el sitio no tenía predicción desde 2025. La
+enmienda deja sin efecto la línea de «Qué no se hace» sobre FastAPI, el frontend y los artefactos
+publicados. No cambia el candidato, la referencia, el conjunto de prueba, el corte ni el criterio:
+la evaluación sigue siendo `--evaluar` con el script congelado.
+
+- `backend/ingestion/nowcast_tablero_dengue.py` calcula lo publicado con `_tarea` del script
+  congelado y con sus mismas cadenas: la de la confirmación del experimento de mejora para los
+  objetivos ya publicados y la de la evaluación para los objetivos desde 2026-S38. El abanico que
+  el sitio muestra desde la última semana sale de las predicciones que se van a puntuar. Como en
+  el modelo de ADR 0020, sus rangos se ensanchan donde haga falta para no estrecharse al alargar
+  el horizonte; las medianas no cambian y la evaluación puntúa las predicciones sin ese ajuste.
+- Para predecir desde 2026-S37 se recargó el clima de 2026 (Open-Meteo, ERA5). Si ERA5 revisa esas
+  semanas antes del corte, el abanico puntuado puede diferir en poco del publicado.
+- Los orígenes hasta 2024 siguen con M0. Desde 2025-S1 el sitio usa C y dice que 2025 y 2026
+  sirvieron para elegirlo.
+- Si C no se confirma, se aplica «Qué habilita cada resultado»: el sitio vuelve a M0 y dice que,
+  con la serie del tablero, no supera a la persistencia.
