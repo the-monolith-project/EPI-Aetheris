@@ -1,6 +1,6 @@
 # 0021 - Tablero de vigilancia de MINSAL como fuente, a partir de capturas HAR
 
-**Estado:** Aceptado
+**Estado:** Aceptado (enmendado 2026-09-27)
 
 ## Contexto
 
@@ -42,3 +42,20 @@ Revisión de las series antes de cargarlas:
 ## Migración
 
 `db/migrations/0012_fuente_tablero_minsal.sql`: recrea el `CHECK` de `clasificacion` con `'sospechoso'`, actualiza su comentario e inserta la fuente `minsal_tablero`.
+
+## Enmienda (2026-09-27): forma de la serie y uso en el nowcast
+
+Dos puntos de las consecuencias quedaron resueltos con los experimentos de predicción
+(`docs/experimentos/experimento-nowcast-mejora.md` y `experimento-nowcast-tendencia.md`).
+
+* La definición es la misma. El `total` de OpenDengue en 2019 (27.470) coincide con los
+  sospechosos nacionales que publicó MINSAL ese año, así que la diferencia con OpenDengue está en
+  la forma, no en la definición.
+* La forma es la de un promedio hacia atrás de 6 o 7 semanas. La consulta del tablero solo suma
+  `total_casos` de `diagnosticos_acumulados`, así que el promedio viene de la tabla de MINSAL.
+  Aplicado a los años crudos de OpenDengue, ese promedio deja la misma huella, y la caída de Semana
+  Santa de 2026 aparece en la semana 13 sin adelantarse. El núcleo exacto no se puede recuperar.
+  Pasa lo mismo con IRA y neumonías, y con OpenDengue 2024.
+* Desde 2025-S1 el nowcast usa esta serie con un método propio, la mezcla del experimento de
+  tendencia, en prueba con semanas publicadas desde 2026-S38 (enmienda de ADR 0020). La serie
+  mixta es OpenDengue hasta 2024-S52 y el tablero desde 2025-S1, sin semanas compartidas.
