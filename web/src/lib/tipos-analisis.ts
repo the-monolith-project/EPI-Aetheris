@@ -188,13 +188,17 @@ export interface IntegridadVigilancia {
 }
 
 // --- Estimación de horizonte corto de dengue (GET /api/nowcast-dengue) --------
-// Artefacto precomputado por backend/ingestion/nowcast_estimacion_dengue.py.
+// Artefacto precomputado por backend/ingestion/nowcast_tablero_dengue.py sobre
+// la base de nowcast_estimacion_dengue.py. Desde 2025 la serie es la del
+// tablero de MINSAL y el método es la mezcla del experimento
+// docs/experimentos/experimento-nowcast-tendencia.md.
 // No es clasificación de riesgo ni aviso epidemiológico; ver
 // docs/biblioteca/05-sensibilidad-y-honestidad.md.
 
 export interface PuntoObservadoNowcast {
   fecha: string;
-  casos: number;
+  /** null: semana que la fuente no publicó (la 53 de 2025 en el tablero). */
+  casos: number | null;
 }
 
 export interface EstimacionHorizonte {
@@ -229,6 +233,16 @@ export interface DesempenoNowcast {
   n_anios: number;
   cobertura_50: number;
   cobertura_95: number;
+  /** true: los años del desempeño se usaron para elegir el método. */
+  dentro_de_muestra?: boolean;
+}
+
+/** Prueba del método con semanas publicadas después de elegirlo. */
+export interface PruebaNowcast {
+  inicio: { fecha: string; anio: number; semana: number };
+  semanas: number;
+  horizontes_decisivos: number[];
+  referencia: string;
 }
 
 export interface NowcastDengue {
@@ -249,5 +263,6 @@ export interface NowcastDengue {
     puntos: PuntoBacktestNowcast[];
   };
   desempeno?: DesempenoNowcast;
+  prueba?: PruebaNowcast;
   nota_alcance?: string;
 }
