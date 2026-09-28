@@ -1,16 +1,18 @@
 ---
 // Predicción de casos de dengue a corto plazo (GET /api/nowcast-dengue).
-// Artefacto precomputado por backend/ingestion/nowcast_estimacion_dengue.py:
-// método del experimento firmado (ADR 0020) más la calibración de intervalos CQR-r. Detalle de método y validación en
+// Artefacto precomputado por backend/ingestion/nowcast_tablero_dengue.py. Sobre
+// la serie del tablero de MINSAL (desde 2025) el método es la mezcla del modelo
+// de ADR 0020 con una tendencia amortiguada; `prueba` describe su prueba con
+// semanas nuevas y `desempeno.dentro_de_muestra` marca que los años del
+// desempeño se usaron para elegirlo. Detalle de método y validación en
 // docs/biblioteca/05-sensibilidad-y-honestidad.md.
 //
-// La predicción se extiende desde la ÚLTIMA SEMANA OBSERVADA de la serie, no
-// desde la fecha de hoy: OpenDengue va varios meses detrás del tiempo real. El
-// panel muestra siempre esa fecha de anclaje.
+// La predicción se extiende desde la última semana publicada de la serie, no
+// desde la fecha de hoy. El panel muestra siempre esa fecha de anclaje.
 //
 // Prop `variante`:
 //   - 'compacto'  -> solo el abanico hacia adelante + una línea de desempeño.
-//   - 'completo'  -> además el backtest 2019/2021-2024 y el detalle por año.
+//   - 'completo'  -> además el backtest a cuatro semanas y el detalle por año.
 //
 // Prop `demo`: fuerza la secuencia de presentación sin depender de `?demo` en
 // la URL. La usa /demos/nowcast, donde el panel es el contenido de la página y
@@ -192,15 +194,27 @@ const { variante = 'completo', demo = false } = Astro.props;
     return `M${arriba.join(' L')} L${abajo.join(' L')} Z`;
   }
 
+  // Una semana sin dato (v null, como la 53 de 2025 en el tablero) corta la
+  // línea en lugar de unirla con las vecinas.
   function linea(
     e: Escalas,
-    puntos: { t: number; v: number }[],
+    puntos: { t: number; v: number | null }[],
     color: string,
     ancho: number,
     guiones?: string,
   ): SVGElement {
-    const pl = el('polyline', {
-      points: puntos.map((p) => `${e.x(p.t)},${e.y(p.v)}`).join(' '),
+    let d = '';
+    let enTramo = false;
+    for (const p of puntos) {
+      if (p.v === null || !Number.isFinite(p.v)) {
+        enTramo = false;
+        continue;
+      }
+      d += `${enTramo ? 'L' : 'M'}${e.x(p.t)},${e.y(p.v)} `;
+      enTramo = true;
+    }
+    const pl = el('path', {
+      d: d.trim(),
       fill: 'none',
       stroke: color,
       'stroke-width': ancho,
@@ -274,7 +288,7 @@ const { variante = 'completo', demo = false } = Astro.props;
 
     const serieObs = obs.map((p) => ({ t: tEje(fecha(p.fecha)), v: p.casos }));
     const tAncla = tEje(fecha(anclaFecha));
-    const casoAncla = obs[obs.length - 1].casos;
+    const casoAncla = obs[obs.length - 1].casos ?? 0;
 
     const fan = estimacion.map((e) => ({
       t: tEje(fecha(e.fecha)),
@@ -289,7 +303,7 @@ const { variante = 'completo', demo = false } = Astro.props;
     const tMax = fan[fan.length - 1].t;
     const maxV =
       Math.max(
-        ...serieObs.map((p) => p.v),
+        ...serieObs.map((p) => p.v ?? 0),
         ...fan.map((p) => p.b95[1]),
       ) * 1.08;
 
@@ -626,7 +640,11 @@ const { variante = 'completo', demo = false } = Astro.props;
 
   // --- backtest -------------------------------------------------------------
 
-  function dibujarBacktest(cont: HTMLElement, puntos: PuntoBacktestNowcast[]) {
+  function dibujarBacktest(
+    cont: HTMLElement,
+    puntos: PuntoBacktestNowcast[],
+    etiqueta: string,
+  ) {
     const ancho = 720;
     const alto = 240;
     const margen = { arriba: 16, abajo: 30, izq: 42, der: 12 };
@@ -651,22 +669,19 @@ const { variante = 'completo', demo = false } = Astro.props;
       y: (v) => alto - margen.abajo - (v / (maxV || 1)) * areaY,
     };
 
-    const svg = crearSvg(
-      ancho,
-      alto,
-      'Validación: casos observados frente a la predicción a cuatro semanas en las temporadas de prueba',
-    );
+    const svg = crearSvg(ancho, alto, etiqueta);
     ejeY(svg, e, maxV);
 
-    // segmentar por año para no unir a través de los huecos (2020 excluido)
-    const porAnio = new Map<number, PuntoBacktestNowcast[]>();
-    for (const p of puntos) {
-      const arr = porAnio.get(p.anio) ?? [];
-      arr.push(p);
-      porAnio.set(p.anio, arr);
+    // tramos de semanas consecutivas, para no unir a través de los huecos
+    // (2020 excluido, semanas sin predicción)
+    const tramos: PuntoBacktestNowcast[][] = [];
+    for (const [i, p] of puntos.entries()) {
+      const salto = i > 0 && tEje(p.fecha) - tEje(puntos[i - 1].fecha) > 1.5;
+      if (i === 0 || salto) tramos.push([]);
+      tramos[tramos.length - 1].push(p);
     }
 
-    for (const [, arr] of porAnio) {
+    for (const arr of tramos) {
       svg.appendChild(
         el('path', {
           d: bandaPath(
@@ -823,7 +838,10 @@ const { variante = 'completo', demo = false } = Astro.props;
 
     const nota = document.createElement('p');
     nota.className = 'mt-3 font-sans text-xs leading-relaxed text-ink-muted';
-    nota.textContent = `La predicción parte de la última semana observada de la serie pública (${fmtFecha.format(fecha(datos.ancla.fecha))}, ${fmtNum.format(datos.ancla.casos)} casos), que se actualiza con retraso.`;
+    nota.textContent =
+      datos.fuente_serie === 'minsal_tablero'
+        ? `La predicción parte de la última semana publicada en el tablero de MINSAL (${fmtFecha.format(fecha(datos.ancla.fecha))}, ${fmtNum.format(datos.ancla.casos)} casos). El tablero publica cada semana como un promedio de varias.`
+        : `La predicción parte de la última semana observada de la serie pública (${fmtFecha.format(fecha(datos.ancla.fecha))}, ${fmtNum.format(datos.ancla.casos)} casos), que se actualiza con retraso.`;
     cont.appendChild(nota);
 
     // desempeño
@@ -839,11 +857,23 @@ const { variante = 'completo', demo = false } = Astro.props;
       contadores.push({ nodo, plantilla, valor });
       return nodo;
     };
-    chips.append(
-      chipCont(`${signo}{n} % de error frente a la persistencia`, Math.abs(pct), true),
-      chipCont(`mejor en {n} de ${d.n_anios} temporadas de prueba`, d.anios_ganados),
-      chip(`horizonte de referencia: ${d.horizonte} semanas`),
-    );
+    const anios = Object.keys(d.skill_por_anio);
+    const tramoAnios =
+      anios.length > 1 ? `${anios[0]}–${anios[anios.length - 1]}` : anios[0];
+    const prueba = datos.prueba;
+    if (d.dentro_de_muestra && prueba) {
+      chips.append(
+        chipCont(`${signo}{n} % de error frente a la persistencia en ${tramoAnios}`, Math.abs(pct), true),
+        chip(`en prueba con semanas nuevas desde la semana ${prueba.inicio.semana} de ${prueba.inicio.anio}`),
+        chip(`horizonte de referencia: ${d.horizonte} semanas`),
+      );
+    } else {
+      chips.append(
+        chipCont(`${signo}{n} % de error frente a la persistencia`, Math.abs(pct), true),
+        chipCont(`mejor en {n} de ${d.n_anios} temporadas de prueba`, d.anios_ganados),
+        chip(`horizonte de referencia: ${d.horizonte} semanas`),
+      );
+    }
     cont.appendChild(chips);
     const correrContadores = () => {
       for (const c of contadores)
@@ -860,11 +890,21 @@ const { variante = 'completo', demo = false } = Astro.props;
     cont.appendChild(extra);
 
     if (completo) {
-      extra.appendChild(bloque('Cómo se comportó en las temporadas de prueba'));
+      const pruebaNueva = d.dentro_de_muestra ? prueba : undefined;
+      const enMuestra = Boolean(pruebaNueva);
+      const listaAnios = anios.join(' y ');
+      extra.appendChild(
+        bloque(
+          enMuestra
+            ? `Cómo se comportó en ${listaAnios}`
+            : 'Cómo se comportó en las temporadas de prueba',
+        ),
+      );
       const p = document.createElement('p');
       p.className = 'mt-1 font-sans text-xs leading-relaxed text-ink-muted';
-      p.textContent =
-        'Validación temporal sin fuga: en cada semana de 2019 y 2021–2024 el modelo solo vio datos anteriores. Línea oscura, lo observado; línea punteada y banda, la predicción a cuatro semanas.';
+      p.textContent = pruebaNueva
+        ? `En cada semana de ${listaAnios} la predicción usó solo los datos anteriores. Línea oscura, lo observado; línea punteada y banda, la predicción a cuatro semanas. Estos años sirvieron para elegir el método. La prueba con semanas nuevas usa las ${pruebaNueva.semanas} que MINSAL publique desde el ${fmtFecha.format(fecha(pruebaNueva.inicio.fecha))}.`
+        : 'Validación temporal sin fuga: en cada semana de 2019 y 2021–2024 el modelo solo vio datos anteriores. Línea oscura, lo observado; línea punteada y banda, la predicción a cuatro semanas.';
       extra.appendChild(p);
 
       if (datos.backtest?.puntos?.length) {
@@ -872,7 +912,13 @@ const { variante = 'completo', demo = false } = Astro.props;
         contBt.className =
           'mt-3 overflow-x-auto scroll-shadow-x rounded-xl border border-border bg-bg p-3 sm:p-4';
         extra.appendChild(contBt);
-        dibujarBacktest(contBt, datos.backtest.puntos);
+        dibujarBacktest(
+          contBt,
+          datos.backtest.puntos,
+          enMuestra
+            ? `Casos observados frente a la predicción a cuatro semanas en ${listaAnios}`
+            : 'Validación: casos observados frente a la predicción a cuatro semanas en las temporadas de prueba',
+        );
         extra.appendChild(
           leyenda([
             ['var(--color-ink)', 'observado'],
@@ -883,7 +929,6 @@ const { variante = 'completo', demo = false } = Astro.props;
       }
 
       // detalle por año
-      const anios = Object.keys(d.skill_por_anio);
       if (anios.length) {
         const tabla = document.createElement('div');
         tabla.className =
@@ -910,7 +955,7 @@ const { variante = 'completo', demo = false } = Astro.props;
         leyendaTabla.className =
           'mt-2 font-sans text-[11px] leading-relaxed text-ink-muted';
         leyendaTabla.textContent =
-          'Reducción del error de intervalo (WIS) respecto a la persistencia, por temporada.';
+          'Reducción del error de intervalo (WIS) respecto a la persistencia, por año.';
         extra.appendChild(leyendaTabla);
       }
     }

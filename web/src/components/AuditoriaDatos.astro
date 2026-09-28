@@ -18,10 +18,11 @@
         Ventana de datos
       </dt>
       <dd class="mt-1 font-sans text-sm leading-relaxed text-deep-ink">
-        Nacional (OpenDengue): 2018-2024. Departamental (MINSAL): 2018, 2019,
-        2021, 2022, 2023. Clima (ERA5-Land / ERA5, M1/M2): desde 2014 hasta el
-        año en curso, con un rezago de unos 5 días propio del reanálisis; no es
-        incidencia ni sustituye a los casos MINSAL.
+        Nacional: OpenDengue 2014-2024 y tablero de MINSAL (casos sospechosos)
+        desde 2025. Departamental (MINSAL): 2018, 2019, 2021, 2022, 2023. Clima
+        (ERA5-Land / ERA5, M1/M2): desde 2014 hasta el año en curso, con un
+        rezago de unos 5 días propio del reanálisis; no es incidencia ni
+        sustituye a los casos MINSAL.
       </dd>
     </div>
     <div class="rounded-xl border border-white/10 bg-white/5 p-3">
@@ -66,9 +67,12 @@
   const ETIQUETAS_SERIE: Record<string, string> = {
     dengue_minsal_departamental: 'dengue MINSAL departamental',
     dengue_opendengue_nacional: 'dengue OpenDengue nacional',
+    dengue_tablero_nacional: 'dengue tablero MINSAL nacional',
     clima: 'clima',
-    ira: 'IRA',
-    neumonias: 'neumonías',
+    ira: 'IRA MINSAL departamental',
+    neumonias: 'neumonías MINSAL departamental',
+    ira_tablero_nacional: 'IRA tablero MINSAL nacional',
+    neumonias_tablero_nacional: 'neumonías tablero MINSAL nacional',
     virus_respiratorios: 'virus respiratorios',
   };
 

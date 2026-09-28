@@ -23,11 +23,12 @@ La interfaz no debe afirmar que un color del mapa "es" un brote, ni que un perce
 
 ## Predicción de casos a corto plazo
 
-Desde septiembre de 2026 la página de dengue incluye una **predicción estadística de horizonte corto**: a partir de la última semana observada de la serie nacional (OpenDengue), predice el conteo de casos de las siguientes 1 a 8 semanas con un intervalo de incertidumbre calibrado.
+Desde septiembre de 2026 la página de dengue incluye una **predicción estadística de horizonte corto**: a partir de la última semana publicada de la serie nacional, predice el conteo de casos de las siguientes 1 a 8 semanas con un intervalo de incertidumbre.
 
 - Predice el **conteo de casos** de la serie nacional agregada, con su incertidumbre. No es una lectura de transmisión ni un juicio clínico: da un número y un rango, no una clase de riesgo.
-- Se extiende **desde la última semana observada, no desde la fecha de hoy**. La fuente pública va varios meses detrás del tiempo real; el gráfico muestra siempre la fecha de anclaje.
-- Su **desempeño está a la vista**: en validación temporal sin fuga sobre 2019 y 2021–2024 reduce el error de intervalo (WIS) frente a la persistencia en las cinco temporadas de prueba. El número y el protocolo acompañan a la predicción, validada además con una segunda confirmación independiente (reimplementación desde cero de las métricas y la validación).
+- Se extiende **desde la última semana publicada, no desde la fecha de hoy**. El gráfico muestra siempre la fecha de anclaje.
+- Hasta 2024 usa la serie de OpenDengue y el modelo validado sobre 2019 y 2021–2024, donde reduce el error de intervalo (WIS) frente a la persistencia en las cinco temporadas de prueba. Esa validación tiene una segunda confirmación independiente (reimplementación desde cero de las métricas y la validación).
+- Desde 2025 usa los casos sospechosos del tablero de MINSAL, que publica cada semana como un promedio de varias. Con esa serie el modelo anterior tiene más error que la persistencia de 1 a 5 semanas, así que la predicción lo combina con una tendencia amortiguada. En 2025 y 2026, a cuatro semanas, la combinación tuvo un 14 % menos de error que la persistencia; esos años sirvieron para elegirla. La prueba usa las 20 semanas que MINSAL publique desde el 20 de septiembre de 2026 y se evalúa una sola vez, hacia febrero de 2027. En 2026 una de cada cinco semanas quedó fuera del rango del 95 %, sobre todo al empezar el año, cuando la serie del tablero da un salto.
 
 Al principio del proyecto se descartó incluso un proto-predictor por considerarlo inviable; el experimento firmado mostró lo contrario para la serie nacional agregada, y por eso se expone y se llama predicción.
 

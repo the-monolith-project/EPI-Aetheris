@@ -29,13 +29,15 @@ Otras reglas de la fuente, verificadas al leer los PDF:
 
 Los mismos PDF publican **IRA**, **neumonías** (conteo notificado departamental) y la tabla nacional de **vigilancia laboratorial** de influenza / VSR / SARS-CoV-2.
 
+Desde 2025, IRA y neumonías tienen además una serie nacional tomada del tablero de MINSAL (ADR 0021), que el observatorio respiratorio muestra aparte de la departamental. En neumonías, la suma de los departamentos de los boletines promedia entre 500 y 780 casos por semana según el año, y el tablero publica entre 130 y 430 en 2025 y 2026; no se ha comprobado si las dos fuentes usan la misma definición.
+
 **Licencia / uso.** Publicación oficial del Ministerio de Salud de El Salvador. El proyecto los usa como dato agregado de vigilancia, sin republicar los PDF (los crudos no se versionan).
 
 ## OpenDengue
 
 **Qué es.** `opendengue.org`, extracto `Spatial_extract_V1_3.csv` (~2,8 millones de filas), distribución en Figshare con DOI y licencia, versión 1.3. Para El Salvador, Admin0 (nacional) es semanal desde 2013/2014; Admin1 (departamento) es **mensual y solo 2000–2009** — no se usa para series semanales.
 
-**Qué carga el sistema.** 365 filas nacionales, 2018–2024, `clasificacion = 'total'` (ADR 0005). El campo `case_definition_standardised` vale `'Total'` en el 100 % de las 574 filas semanales de Admin0: OpenDengue no separa probable/confirmado a esta resolución. Insertar ese agregado como `confirmado` mezclaría una cifra de definición propia con la confirmación de laboratorio de MINSAL.
+**Qué carga el sistema.** Las 574 filas semanales nacionales, 2014–2024, `clasificacion = 'total'` (ADR 0005). Desde 2025 la serie nacional sigue con los casos sospechosos del tablero de MINSAL (ADR 0021). El campo `case_definition_standardised` vale `'Total'` en el 100 % de las 574 filas semanales de Admin0: OpenDengue no separa probable/confirmado a esta resolución. Insertar ese agregado como `confirmado` mezclaría una cifra de definición propia con la confirmación de laboratorio de MINSAL.
 
 La semana se resuelve por coincidencia exacta de `calendar_start_date` contra `semanas_epidemiologicas.fecha_inicio` (domingo a sábado, PAHO/CDC), no recalculando con `epiweeks` sobre el CSV.
 

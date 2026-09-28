@@ -1,11 +1,16 @@
 """
 Utilidades compartidas para los scripts descargar_{anio}.py de este paquete.
 
-Descarga boletines epidemiologicos del MINSAL (salud.gob.sv) en PDF.
-Ver Instrucciones_Claude_Code_Descarga_MINSAL.md para el detalle del
-mecanismo (ruta directa / ruta de respaldo, validacion %PDF, etc).
+Descarga los boletines epidemiologicos en PDF que el MINSAL publico en
+salud.gob.sv hasta 2023: ruta directa, ruta de respaldo y validacion de la
+cabecera %PDF. El MINSAL ya no publica esos PDF.
 
-No tocar boletin.salud.gob.sv (dashboard 2024+) bajo ninguna circunstancia.
+Desde 2024 los datos estan en el tablero boletin.salud.gob.sv, que bloquea
+las peticiones automaticas. Ningun script ni agente de codigo de este
+repositorio debe hacer peticiones a ese sitio. Abrirlo en un navegador y
+guardar lo que el propio sitio descarga (por ejemplo, un HAR exportado desde
+las herramientas de desarrollo) es el uso normal del sitio, y esos archivos
+se pueden usar como fuente.
 """
 
 from __future__ import annotations

@@ -35,9 +35,12 @@ SERIES_COMPLETITUD = ("probable", "confirmado")
 SERIES_ANTIGUEDAD = (
     "dengue_minsal_departamental",
     "dengue_opendengue_nacional",
+    "dengue_tablero_nacional",
     "clima",
     "ira",
     "neumonias",
+    "ira_tablero_nacional",
+    "neumonias_tablero_nacional",
     "virus_respiratorios",
 )
 
@@ -347,6 +350,19 @@ def cargar_ultimas_se(conn) -> dict[str, tuple[int, int] | None]:
             LIMIT 1
             """,
         ),
+        "dengue_tablero_nacional": _ultima_se(
+            conn,
+            """
+            SELECT c.anio, c.semana_epi
+            FROM casos_epidemiologicos c
+            JOIN tipos_evento t ON t.id = c.tipo_evento_id
+            JOIN fuentes_datos f ON f.id = c.fuente_id
+            WHERE t.codigo = 'dengue'
+              AND f.codigo = 'minsal_tablero'
+            ORDER BY c.anio DESC, c.semana_epi DESC
+            LIMIT 1
+            """,
+        ),
         "clima": _ultima_se(
             conn,
             """
@@ -362,7 +378,9 @@ def cargar_ultimas_se(conn) -> dict[str, tuple[int, int] | None]:
             SELECT c.anio, c.semana_epi
             FROM casos_epidemiologicos c
             JOIN tipos_evento t ON t.id = c.tipo_evento_id
+            JOIN fuentes_datos f ON f.id = c.fuente_id
             WHERE t.codigo = 'ira'
+              AND f.codigo = 'minsal_pdf'
             ORDER BY c.anio DESC, c.semana_epi DESC
             LIMIT 1
             """,
@@ -373,7 +391,35 @@ def cargar_ultimas_se(conn) -> dict[str, tuple[int, int] | None]:
             SELECT c.anio, c.semana_epi
             FROM casos_epidemiologicos c
             JOIN tipos_evento t ON t.id = c.tipo_evento_id
+            JOIN fuentes_datos f ON f.id = c.fuente_id
             WHERE t.codigo = 'neumonia'
+              AND f.codigo = 'minsal_pdf'
+            ORDER BY c.anio DESC, c.semana_epi DESC
+            LIMIT 1
+            """,
+        ),
+        "ira_tablero_nacional": _ultima_se(
+            conn,
+            """
+            SELECT c.anio, c.semana_epi
+            FROM casos_epidemiologicos c
+            JOIN tipos_evento t ON t.id = c.tipo_evento_id
+            JOIN fuentes_datos f ON f.id = c.fuente_id
+            WHERE t.codigo = 'ira'
+              AND f.codigo = 'minsal_tablero'
+            ORDER BY c.anio DESC, c.semana_epi DESC
+            LIMIT 1
+            """,
+        ),
+        "neumonias_tablero_nacional": _ultima_se(
+            conn,
+            """
+            SELECT c.anio, c.semana_epi
+            FROM casos_epidemiologicos c
+            JOIN tipos_evento t ON t.id = c.tipo_evento_id
+            JOIN fuentes_datos f ON f.id = c.fuente_id
+            WHERE t.codigo = 'neumonia'
+              AND f.codigo = 'minsal_tablero'
             ORDER BY c.anio DESC, c.semana_epi DESC
             LIMIT 1
             """,

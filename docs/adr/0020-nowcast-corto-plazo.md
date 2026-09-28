@@ -1,6 +1,6 @@
 # 0020 - Predicción de casos de dengue a corto plazo (nowcast)
 
-**Estado:** Aceptado (2026-09-09; expuesto en la UI 2026-09-10)
+**Estado:** Aceptado (2026-09-09; expuesto en la UI 2026-09-10; enmendado 2026-09-27)
 
 ## Contexto
 
@@ -133,3 +133,86 @@ modelo.
   aplica dos veces hasta que se decida cuál copia es la fuente.
 * Neutral: el veto de vocabulario queda levantado solo para esta capa y con
   su horizonte rotulado. "Riesgo de brote" sigue prohibido en el producto.
+
+## Ampliación (2026-09-27): predicción desde cualquier semana
+
+La interfaz permite mover el punto de partida de la predicción a cualquier
+semana de la serie y contrastar el abanico de 1 a 8 semanas con lo observado
+después. El método no cambia; cambia solo cuántos orígenes se precomputan.
+
+* `backend/ingestion/nowcast_retrospectivo_dengue.py` escribe
+  `backend/api/datos/nowcast_dengue_retrospectivo.json` y
+  `GET /api/nowcast-dengue/retrospectivo` lo sirve con el mismo contrato de
+  `disponible: false` que el artefacto principal. Va en un endpoint aparte
+  porque pesa unas diez veces más y solo lo pide la vista completa del panel.
+* Cada abanico usa solo datos anteriores a su semana de partida. Por
+  horizonte corren dos cadenas forward-chaining: la de los orígenes de prueba
+  del experimento (misma secuencia de reajustes que el backtest publicado) y
+  la del resto de las semanas.
+* El script aborta si, a h = 4 en los orígenes de prueba, no reproduce el
+  desempeño publicado con su redondeo. No se exige igualdad punto a punto:
+  el ajuste no es reproducible bit a bit entre corridas (tampoco
+  `nowcast_estimacion_dengue.py`) y una diferencia en la última cifra puede
+  mover un factor CQR-r, que se elige por cuantil.
+* Las primeras semanas no tienen predicción: el modelo necesita unos tres
+  años de historia para entrenarse. El artefacto las marca con `motivo` en
+  vez de rellenarlas con persistencia.
+* 2020 se muestra con un aviso. Sigue excluido como objetivo de
+  entrenamiento, así que mostrarlo no cambia ninguna predicción de los demás
+  años, y su resumen no entra en ningún agregado.
+* La última semana observada no se duplica: su abanico es `estimacion` del
+  artefacto principal.
+* La vista está en el frontend `aetheris-nitor`
+  (`src/components/nowcast/ContrasteNowcastDengue.astro`); la copia del panel
+  en `web/` de este repositorio no la tiene.
+
+## Enmienda (2026-09-27): desde 2025, serie del tablero y mezcla con tendencia amortiguada
+
+El tablero de MINSAL (ADR 0021) extiende la serie nacional a 2025 y 2026 con la misma definición
+de caso que OpenDengue, pero con la forma de un promedio de unas seis o siete semanas. Con esa
+serie el modelo de esta ADR (M0), entrenado con conteos sin promediar, pierde contra la
+persistencia de 1 a 5 semanas en 2025 y 2026 (`docs/experimentos/experimento-nowcast-mejora.md`).
+
+El experimento firmado `docs/experimentos/experimento-nowcast-tendencia.md`, con el script
+congelado en el commit 40b6ebb, define el candidato C: la mezcla 50/50 en `log1p` de M0 y de una
+tendencia amortiguada (φ = 0,8, pendiente de 3 semanas, residuos de la historia hasta 2023
+promediada a 7 semanas). La prueba son las 20 semanas objetivo de 2026-S38 a 2027-S05, a h = 4 y
+h = 8, contra la persistencia suavizada. Eduardo decidió publicar C antes del veredicto; la
+enmienda del experimento fija qué cambia y qué no.
+
+* Orígenes hasta 2024-S52: M0 sin cambios. Desde 2025-S1: C sobre la serie del tablero.
+* `nowcast_estimacion_dengue.py` y `nowcast_retrospectivo_dengue.py` escriben ahora la base de M0
+  en `backend/api/datos/nowcast_dengue_opendengue.json` y
+  `backend/api/datos/nowcast_dengue_retrospectivo_opendengue.json`.
+  `backend/ingestion/nowcast_tablero_dengue.py` lee esa base y el crudo que deja
+  `nowcast_retrospectivo_dengue.py`, comprueba que la serie de la base coincide con la de Postgres
+  hasta 2024-S52 y que el crudo es el de la base, calcula C con las cadenas del experimento y
+  escribe `nowcast_dengue.json` y `nowcast_dengue_retrospectivo.json`, los que sirve la API. Los
+  endpoints y su contrato no cambian.
+* El artefacto principal parte de la última semana capturada del tablero. Su abanico es la
+  predicción de C que se va a puntuar, con anchos monótonos en el horizonte como en la sección C.
+  El backtest y el bloque `desempeno` cubren 2025 y 2026 a h = 4 contra la persistencia suavizada,
+  con `dentro_de_muestra: true`, porque esos años sirvieron para elegir C. El bloque `prueba`
+  describe la prueba prospectiva.
+* El retrospectivo marca con `motivo: "hueco_en_serie"` los orígenes de 2025-S53 a 2026-S7, cuya
+  ventana de ocho semanas incluye la semana 53 de 2025, que el tablero no publica. El bloque
+  `tablero` indica desde dónde rige C.
+* A h = 4, en 2025 y 2026: WIS 19,6 frente a 22,8 de la persistencia suavizada (skill +0,14; +0,11
+  en 2025 y +0,16 en 2026), cobertura 0,39 al 50 % y 0,91 al 95 %. En 2026 la cobertura del 95 % es
+  0,79 a h = 4 y a h = 8, por debajo del 0,85 que exige el criterio. Los fallos se concentran en
+  2026-S1 a S3, con el salto del cambio de año, y en S19 a S22. La prueba incluye el cambio de año
+  de 2027.
+
+Consecuencias:
+
+* El ancla va unas dos semanas detrás del tiempo real, en lugar de los ~21 meses de OpenDengue. El
+  encuadre de la sección D sigue: la predicción parte de la última semana publicada, no de hoy.
+* Actualizar exige capturar el tablero y cargarlo (ADR 0021), recargar el clima hasta la semana de
+  anclaje (`cargar_clima.py`), tener en `semanas_epidemiologicas` las ocho semanas siguientes
+  (`poblar_semanas_epidemiologicas.py` antes de 2027) y correr `nowcast_tablero_dengue.py`, con
+  el crudo de `nowcast_retrospectivo_dengue.py` en la misma máquina. El volcado de `db/seed` no
+  incluye el tablero, así que desde un clon limpio solo se puede regenerar la base de M0.
+* Si C no se confirma al corte, rige «Qué habilita cada resultado» del experimento: el sitio vuelve
+  a M0 y dice que, con la serie del tablero, no supera a la persistencia.
+* Los dos frontends muestran los textos de desempeño según el periodo. La vista de contraste desde
+  cualquier semana sigue solo en `aetheris-nitor`.

@@ -52,6 +52,12 @@ from .neumonias import (
     cargar_neumonias_departamental,
     cargar_neumonias_departamento_temporal,
 )
+from .tablero import (
+    AVISO_TABLERO_RESPIRATORIO,
+    EVENTOS_TABLERO,
+    MOTIVO_TABLERO_AUSENTE,
+    cargar_serie_tablero_nacional,
+)
 from .cobertura import AVISO_COBERTURA, cargar_cobertura
 from .vigilancia import construir_integridad
 from .respiratorios import (
@@ -374,26 +380,50 @@ def health_check(response: Response):
 
 @app.get("/api/casos-nacional")
 def casos_nacional(response: Response):
-    """Serie semanal nacional de OpenDengue ya cargada (clasificacion='total',
-    fuente opendengue_v1_3). Es la única variable objetivo cargada hasta ahora
-    -- pivote "Opción C". No es
-    clasificación de riesgo -- para eso ver /api/riesgo-nacional."""
+    """Serie semanal nacional de dengue: el total de OpenDengue
+    (opendengue_v1_3) y, en las semanas posteriores a su ultima fila, los
+    casos sospechosos del tablero de MINSAL (minsal_tablero, ADR 0021). Es la
+    misma definicion de caso; el tablero publica cada semana como un promedio
+    de varias. Cada fila lleva su `fuente` para que la UI distinga los dos
+    tramos. La semana 53 de 2025, que el tablero no publica, no tiene fila.
+    No es clasificacion de riesgo -- para eso ver /api/riesgo-nacional."""
     _cache_control(response, CACHE_TTL_HISTORICO)
     try:
         with _conexion() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT s.fecha_inicio, c.anio, c.semana_epi, c.conteo
+                    WITH opendengue AS (
+                        SELECT s.fecha_inicio, c.anio, c.semana_epi, c.conteo,
+                               f.codigo AS fuente
+                        FROM casos_epidemiologicos c
+                        JOIN regiones r ON r.id = c.region_id
+                        JOIN fuentes_datos f ON f.id = c.fuente_id
+                        JOIN semanas_epidemiologicas s
+                            ON s.anio = c.anio AND s.semana_epi = c.semana_epi
+                        WHERE r.codigo = 'SV'
+                          AND c.clasificacion = 'total'
+                          AND f.codigo = 'opendengue_v1_3'
+                    )
+                    SELECT * FROM opendengue
+                    UNION ALL
+                    SELECT s.fecha_inicio, c.anio, c.semana_epi, c.conteo,
+                           f.codigo
                     FROM casos_epidemiologicos c
                     JOIN regiones r ON r.id = c.region_id
+                    JOIN tipos_evento t ON t.id = c.tipo_evento_id
                     JOIN fuentes_datos f ON f.id = c.fuente_id
                     JOIN semanas_epidemiologicas s
                         ON s.anio = c.anio AND s.semana_epi = c.semana_epi
                     WHERE r.codigo = 'SV'
-                      AND c.clasificacion = 'total'
-                      AND f.codigo = 'opendengue_v1_3'
-                    ORDER BY c.anio, c.semana_epi
+                      AND t.codigo = 'dengue'
+                      AND c.clasificacion = 'sospechoso'
+                      AND f.codigo = 'minsal_tablero'
+                      AND s.fecha_inicio > COALESCE(
+                          (SELECT max(fecha_inicio) FROM opendengue),
+                          '-infinity'::date
+                      )
+                    ORDER BY anio, semana_epi
                     """
                 )
                 filas = cursor.fetchall()
@@ -409,8 +439,9 @@ def casos_nacional(response: Response):
             "anio": anio,
             "semana_epi": semana_epi,
             "conteo": conteo,
+            "fuente": fuente,
         }
-        for fecha_inicio, anio, semana_epi, conteo in filas
+        for fecha_inicio, anio, semana_epi, conteo, fuente in filas
     ]
 
 
@@ -531,10 +562,11 @@ def riesgo_nacional(
 NOWCAST_DENGUE_PATH = Path(__file__).parent / "datos" / "nowcast_dengue.json"
 
 AVISO_HONESTIDAD_NOWCAST_DENGUE = (
-    "Prediccion estadistica de horizonte corto sobre la serie nacional agregada "
-    "de dengue (OpenDengue). Se extiende desde la ultima semana observada, no "
-    "desde la fecha actual: la fuente publica va varios meses detras del tiempo "
-    "real."
+    "Prediccion estadistica de horizonte corto sobre la serie nacional de "
+    "dengue: OpenDengue hasta 2024 y sospechosos del tablero de MINSAL desde "
+    "2025. Se extiende desde la ultima semana publicada. Desde 2025 combina el "
+    "modelo validado con una tendencia amortiguada y esta en prueba con las "
+    "semanas publicadas desde 2026-S38."
 )
 
 
@@ -542,11 +574,12 @@ AVISO_HONESTIDAD_NOWCAST_DENGUE = (
 @limiter.limit(RATE_LIMIT_HEAVY)
 def nowcast_dengue(request: Request, response: Response):
     """Artefacto de prediccion de horizonte corto de dengue, precomputado por
-    backend/ingestion/nowcast_estimacion_dengue.py (metodo del experimento
-    firmado + calibracion CQR-r). Se sirve tal cual desde el JSON versionado;
-    no recalcula nada por request. Si el archivo falta -- despliegue sin el
-    artefacto -- responde 200 con disponible=false, mismo patron que
-    /api/riesgo-nacional y /ira."""
+    backend/ingestion/nowcast_tablero_dengue.py sobre la base de
+    nowcast_estimacion_dengue.py (ADR 0020 y
+    docs/experimentos/experimento-nowcast-tendencia.md). Se sirve tal cual
+    desde el JSON versionado; no recalcula nada por request. Si el archivo
+    falta -- despliegue sin el artefacto -- responde 200 con disponible=false,
+    mismo patron que /api/riesgo-nacional y /ira."""
     if not NOWCAST_DENGUE_PATH.exists():
         _cache_control(response, CACHE_TTL_COMPUTO)
         return {
@@ -555,6 +588,31 @@ def nowcast_dengue(request: Request, response: Response):
             "aviso": AVISO_HONESTIDAD_NOWCAST_DENGUE,
         }
     datos = json.loads(NOWCAST_DENGUE_PATH.read_text(encoding="utf-8"))
+    _cache_control(response, CACHE_TTL_HISTORICO)
+    return {"disponible": True, "aviso": AVISO_HONESTIDAD_NOWCAST_DENGUE, **datos}
+
+
+NOWCAST_DENGUE_RETRO_PATH = NOWCAST_DENGUE_PATH.with_name("nowcast_dengue_retrospectivo.json")
+
+
+@app.get("/api/nowcast-dengue/retrospectivo")
+@limiter.limit(RATE_LIMIT_HEAVY)
+def nowcast_dengue_retrospectivo(request: Request, response: Response):
+    """Abanico h=1..8 que el modelo habria dado desde cada semana de la serie,
+    con los datos disponibles hasta esa semana, para contrastarlo con lo
+    observado. Precomputado por
+    backend/ingestion/nowcast_retrospectivo_dengue.py (hasta 2024) y
+    nowcast_tablero_dengue.py (desde 2025); va en un endpoint aparte porque
+    pesa ~10 veces mas que /api/nowcast-dengue y solo lo pide la vista
+    completa del panel."""
+    if not NOWCAST_DENGUE_RETRO_PATH.exists():
+        _cache_control(response, CACHE_TTL_COMPUTO)
+        return {
+            "disponible": False,
+            "motivo": "El artefacto retrospectivo de la prediccion no esta generado en este despliegue.",
+            "aviso": AVISO_HONESTIDAD_NOWCAST_DENGUE,
+        }
+    datos = json.loads(NOWCAST_DENGUE_RETRO_PATH.read_text(encoding="utf-8"))
     _cache_control(response, CACHE_TTL_HISTORICO)
     return {"disponible": True, "aviso": AVISO_HONESTIDAD_NOWCAST_DENGUE, **datos}
 
@@ -1040,6 +1098,48 @@ def ira_temporal_departamento(departamento_id: str, response: Response):
         },
         "aviso": AVISO_HONESTIDAD_IRA,
     }
+
+
+def _serie_respiratoria_nacional(evento: str, response: Response) -> dict:
+    """Serie nacional del tablero de MINSAL (ADR 0021) para IRA o neumonías.
+    Sin capturas cargadas responde 200 disponible=false: el seed del
+    repositorio no trae el tablero."""
+    try:
+        with _conexion() as conn:
+            semanas = cargar_serie_tablero_nacional(conn, EVENTOS_TABLERO[evento])
+    except Exception as exc:
+        return _degradar_consulta(
+            exc, response, MOTIVO_TABLERO_AUSENTE, AVISO_TABLERO_RESPIRATORIO
+        )
+
+    if not semanas:
+        return _respuesta_no_disponible(
+            response, MOTIVO_TABLERO_AUSENTE, AVISO_TABLERO_RESPIRATORIO
+        )
+
+    _cache_control(response, CACHE_TTL_HISTORICO)
+    return {
+        "disponible": True,
+        "evento": evento,
+        "fuente": "minsal_tablero",
+        "unidad": "conteo_notificado",
+        "semanas": semanas,
+        "aviso": AVISO_TABLERO_RESPIRATORIO,
+    }
+
+
+@app.get("/api/ira/nacional")
+def ira_nacional(response: Response):
+    """Serie semanal nacional de IRA notificada, del tablero de MINSAL desde
+    2025. La semana 53 de 2025, que el tablero no publica, no tiene fila."""
+    return _serie_respiratoria_nacional("ira", response)
+
+
+@app.get("/api/neumonias/nacional")
+def neumonias_nacional(response: Response):
+    """Serie semanal nacional de neumonías notificadas, del tablero de MINSAL
+    desde 2025. Mismo contrato que /api/ira/nacional."""
+    return _serie_respiratoria_nacional("neumonias", response)
 
 
 @app.get("/api/neumonias/departamental")

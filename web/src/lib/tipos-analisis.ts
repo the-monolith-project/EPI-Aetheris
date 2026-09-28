@@ -117,6 +117,8 @@ export interface CasoNacionalSemanal {
   anio: number;
   semana_epi: number;
   conteo: number;
+  /** Total de OpenDengue hasta 2024; sospechosos del tablero desde 2025. */
+  fuente?: 'opendengue_v1_3' | 'minsal_tablero';
 }
 
 export interface RegistroProcedencia {
@@ -163,6 +165,26 @@ export interface RespuestaIraDepartamental {
   aviso: string;
 }
 
+export type EventoRespiratorio = 'ira' | 'neumonias';
+
+export interface SemanaRespiratoriaNacional {
+  semana_inicio: string;
+  anio: number;
+  semana_epi: number;
+  conteo: number;
+}
+
+/** Serie nacional del tablero de MINSAL desde 2025 (ADR 0021). Las semanas
+ *  que el tablero no publicó no traen fila. */
+export interface SerieRespiratoriaNacional {
+  disponible: true;
+  evento: EventoRespiratorio;
+  fuente: 'minsal_tablero';
+  unidad: 'conteo_notificado';
+  semanas: SemanaRespiratoriaNacional[];
+  aviso: string;
+}
+
 export interface CompletitudAnual {
   semanas_completas: number;
   semanas_con_dato: number;
@@ -188,13 +210,17 @@ export interface IntegridadVigilancia {
 }
 
 // --- Estimación de horizonte corto de dengue (GET /api/nowcast-dengue) --------
-// Artefacto precomputado por backend/ingestion/nowcast_estimacion_dengue.py.
+// Artefacto precomputado por backend/ingestion/nowcast_tablero_dengue.py sobre
+// la base de nowcast_estimacion_dengue.py. Desde 2025 la serie es la del
+// tablero de MINSAL y el método es la mezcla del experimento
+// docs/experimentos/experimento-nowcast-tendencia.md.
 // No es clasificación de riesgo ni aviso epidemiológico; ver
 // docs/biblioteca/05-sensibilidad-y-honestidad.md.
 
 export interface PuntoObservadoNowcast {
   fecha: string;
-  casos: number;
+  /** null: semana que la fuente no publicó (la 53 de 2025 en el tablero). */
+  casos: number | null;
 }
 
 export interface EstimacionHorizonte {
@@ -229,6 +255,16 @@ export interface DesempenoNowcast {
   n_anios: number;
   cobertura_50: number;
   cobertura_95: number;
+  /** true: los años del desempeño se usaron para elegir el método. */
+  dentro_de_muestra?: boolean;
+}
+
+/** Prueba del método con semanas publicadas después de elegirlo. */
+export interface PruebaNowcast {
+  inicio: { fecha: string; anio: number; semana: number };
+  semanas: number;
+  horizontes_decisivos: number[];
+  referencia: string;
 }
 
 export interface NowcastDengue {
@@ -249,5 +285,6 @@ export interface NowcastDengue {
     puntos: PuntoBacktestNowcast[];
   };
   desempeno?: DesempenoNowcast;
+  prueba?: PruebaNowcast;
   nota_alcance?: string;
 }
