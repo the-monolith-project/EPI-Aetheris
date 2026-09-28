@@ -52,6 +52,12 @@ from .neumonias import (
     cargar_neumonias_departamental,
     cargar_neumonias_departamento_temporal,
 )
+from .tablero import (
+    AVISO_TABLERO_RESPIRATORIO,
+    EVENTOS_TABLERO,
+    MOTIVO_TABLERO_AUSENTE,
+    cargar_serie_tablero_nacional,
+)
 from .cobertura import AVISO_COBERTURA, cargar_cobertura
 from .vigilancia import construir_integridad
 from .respiratorios import (
@@ -1092,6 +1098,48 @@ def ira_temporal_departamento(departamento_id: str, response: Response):
         },
         "aviso": AVISO_HONESTIDAD_IRA,
     }
+
+
+def _serie_respiratoria_nacional(evento: str, response: Response) -> dict:
+    """Serie nacional del tablero de MINSAL (ADR 0021) para IRA o neumonías.
+    Sin capturas cargadas responde 200 disponible=false: el seed del
+    repositorio no trae el tablero."""
+    try:
+        with _conexion() as conn:
+            semanas = cargar_serie_tablero_nacional(conn, EVENTOS_TABLERO[evento])
+    except Exception as exc:
+        return _degradar_consulta(
+            exc, response, MOTIVO_TABLERO_AUSENTE, AVISO_TABLERO_RESPIRATORIO
+        )
+
+    if not semanas:
+        return _respuesta_no_disponible(
+            response, MOTIVO_TABLERO_AUSENTE, AVISO_TABLERO_RESPIRATORIO
+        )
+
+    _cache_control(response, CACHE_TTL_HISTORICO)
+    return {
+        "disponible": True,
+        "evento": evento,
+        "fuente": "minsal_tablero",
+        "unidad": "conteo_notificado",
+        "semanas": semanas,
+        "aviso": AVISO_TABLERO_RESPIRATORIO,
+    }
+
+
+@app.get("/api/ira/nacional")
+def ira_nacional(response: Response):
+    """Serie semanal nacional de IRA notificada, del tablero de MINSAL desde
+    2025. La semana 53 de 2025, que el tablero no publica, no tiene fila."""
+    return _serie_respiratoria_nacional("ira", response)
+
+
+@app.get("/api/neumonias/nacional")
+def neumonias_nacional(response: Response):
+    """Serie semanal nacional de neumonías notificadas, del tablero de MINSAL
+    desde 2025. Mismo contrato que /api/ira/nacional."""
+    return _serie_respiratoria_nacional("neumonias", response)
 
 
 @app.get("/api/neumonias/departamental")

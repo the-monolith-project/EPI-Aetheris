@@ -29,6 +29,8 @@ ENDPOINTS_DEGRADABLES = [
     "/api/neumonias/departamental",
     "/api/neumonias/temporal/SV-SS",
     "/api/neumonias/heatmap/2023",
+    "/api/ira/nacional",
+    "/api/neumonias/nacional",
 ]
 
 
@@ -78,6 +80,22 @@ def test_virus_sin_filas_responde_200_disponible_false(client):
     cuerpo = respuesta.json()
     assert cuerpo["disponible"] is False
     assert "sin filas" in cuerpo["motivo"]
+
+
+@pytest.mark.parametrize("ruta", ["/api/ira/nacional", "/api/neumonias/nacional"])
+def test_serie_nacional_sin_capturas_responde_disponible_false(client, ruta):
+    # El seed del repositorio no trae el tablero: sin filas no es un error.
+    mock_cx = MagicMock()
+    mock_cx.return_value.__enter__.return_value = MagicMock()
+    mock_cx.return_value.__exit__.return_value = False
+    with patch("api.main._conexion", mock_cx), patch(
+        "api.main.cargar_serie_tablero_nacional", return_value=[]
+    ):
+        respuesta = client.get(ruta)
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.json()
+    assert cuerpo["disponible"] is False
+    assert "tablero" in cuerpo["motivo"]
 
 
 def test_error_inesperado_sigue_siendo_500(client):

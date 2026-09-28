@@ -144,3 +144,31 @@ class HeatmapNeumoniasTest(unittest.TestCase):
     def test_heatmap_anio_fuera_de_ventana(self):
         r = self.client.get("/api/neumonias/heatmap/2020")
         self.assertEqual(r.status_code, 400)
+
+
+class SerieNacionalTableroTest(unittest.TestCase):
+    def setUp(self):
+        if not _db_disponible():
+            raise unittest.SkipTest("Postgres no disponible")
+        self.client = TestClient(app)
+
+    def test_serie_nacional_del_tablero(self):
+        for ruta in ("/api/ira/nacional", "/api/neumonias/nacional"):
+            with self.subTest(ruta=ruta):
+                r = self.client.get(ruta)
+                self.assertEqual(r.status_code, 200)
+                cuerpo = r.json()
+                if not cuerpo["disponible"]:
+                    # base cargada solo desde el seed, sin capturas del tablero
+                    self.assertIn("tablero", cuerpo["motivo"])
+                    continue
+                self.assertEqual(cuerpo["fuente"], "minsal_tablero")
+                self.assertEqual(cuerpo["unidad"], "conteo_notificado")
+                semanas = cuerpo["semanas"]
+                self.assertGreater(len(semanas), 0)
+                fechas = [s["semana_inicio"] for s in semanas]
+                self.assertEqual(fechas, sorted(set(fechas)))
+                for s in semanas:
+                    self.assertGreaterEqual(s["anio"], 2025)
+                    self.assertTrue(1 <= s["semana_epi"] <= 53)
+                    self.assertGreaterEqual(s["conteo"], 0)
