@@ -259,9 +259,12 @@ los horizontes (M2 entre 0,13 y 0,33), pero el criterio firmado es contra la lim
 - En 2019–2024 hay una ventaja real y modesta a 5–8 semanas (skill 0,12–0,18 contra la
   referencia limpia, 4 de 5 años). A 1–3 semanas el modelo rinde como la persistencia.
 - En 2025–2026 los dos modelos predicen de más: el rango del 50 % contiene entre el 20 % y el
-  33 % de lo observado. El problema es la posición de la mediana, no el ancho de los rangos. Es
-  coherente con el empalme entre el `total` de OpenDengue y los sospechosos del tablero, que este
-  documento señalaba como posible fuente de sesgo.
+  33 % de lo observado. El problema es la posición de la mediana, no el ancho de los rangos.
+- Corrección a la sección de datos: el `total` de OpenDengue y los sospechosos del tablero son la
+  misma definición de caso. El total de OpenDengue en 2019 (27.470) coincide exactamente con los
+  sospechosos nacionales que publicó MINSAL ese año, y la escala del tablero en 2025 es la de
+  OpenDengue en 2021 y 2023. Lo que cambia es la forma: el tablero, como OpenDengue 2024, está
+  suavizado. El sesgo de 2025–2026 no se explica por la definición; queda sin causa identificada.
 - M2 mejora a M0 en 2025–2026 a 1–5 semanas (menor WIS, cobertura del 95 % más cerca del
   nominal), pero no lo suficiente para superar a la persistencia.
 
@@ -270,5 +273,5 @@ los horizontes (M2 entre 0,13 y 0,33), pero el criterio firmado es contra la lim
 Aplica el segundo caso de "Qué habilita cada resultado": el modelo publicado no cambia. El sitio
 debe decir que la ventaja a 5–8 semanas se midió en 2019–2024 y que con los datos del tablero
 todavía no se sostiene, y sus métricas se corrigen con la referencia limpia. Un experimento
-posterior sobre el sesgo del empalme requiere su propia firma; los objetivos de 2025 ya no sirven
+posterior sobre el sesgo de 2025–2026 requiere su propia firma; los objetivos de 2025 ya no sirven
 como dato no visto para él.
