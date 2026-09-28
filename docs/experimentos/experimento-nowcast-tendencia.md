@@ -165,6 +165,12 @@ hilo cada uno y `nice`. Antes de cargar las capturas de 2027 hay que añadir ese
 
 ## Congelamiento
 
-- Commit del script: pendiente.
+- Commit del script: `40b6ebb78fe670222966a225438155b83ada876d` (2026-09-27).
 - Última semana capturada al congelar: 2026-S37.
+- Verificación sobre semanas ya vistas, antes del commit: la aserción anti-fuga pasa, M0 reproduce
+  las 1.063 predicciones de la confirmación del experimento de mejora sin diferencia, y T, C y M0
+  reproducen las cifras de la exploración con diferencia máxima de 0,005.
+- Evaluación: `experimento_nowcast_tendencia.py --evaluar`, una sola vez al tener publicada
+  2027-S05. El script se niega si su archivo tiene cambios sin commit, si faltan semanas o si la
+  salida ya existe.
 
