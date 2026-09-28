@@ -186,3 +186,89 @@ Ninguna cambia candidatos, referencia ni criterio.
 5. **Dos fases.** El script corre la validación y la confirmación en dos invocaciones. La
    confirmación usa, en cada horizonte, la referencia decisiva elegida en la validación, y se niega
    a correr si la validación no eligió candidato o si la confirmación ya se corrió.
+
+## Resultados (ejecución 2026-09-27)
+
+Validación y confirmación corridas una vez cada una con
+`experimento_nowcast_mejora.py` (commit `c6be38e`). Salida completa en
+`backend/ingestion/data/interim/nowcast/mejora_validacion.json` y `mejora_confirmacion.json`.
+
+### Controles
+
+- Garantía anti-fuga verificada en 13 orígenes, con el control negativo rompiendo como se espera.
+- M0 reproduce el desempeño publicado a h = 4 (diferencia máxima de skill por año: 0,000).
+- Mutación (etiquetas permutadas, h = 4): el WIS empeora en los tres modelos. M0 pasa de 56,6 a
+  142,3; M1, de 58,0 a 74.732; M2, de 53,7 a 125,2.
+- Repetibilidad (h = 4): cuantiles idénticos en las dos corridas.
+
+### Validación (2019, 2021–2024)
+
+Skill medio por año contra la referencia limpia, años ganados entre paréntesis y cobertura del
+rango del 95 %:
+
+| h | referencia | M0 | M1 | M2 |
+|---|---|---|---|---|
+| 1 | persistencia | −0,04 (2/5); 0,92 | −0,14 (2/5); 0,93 | 0,00 (3/5); 0,96 |
+| 2 | persistencia | 0,06 (3/5); 0,91 | −0,03 (3/5); 0,91 | 0,07 (3/5); 0,95 |
+| 3 | persistencia | 0,05 (3/5); 0,90 | −0,09 (2/5); 0,92 | 0,06 (3/5); 0,95 |
+| 4 | persistencia | 0,05 (4/5); 0,88 | −0,08 (2/5); 0,89 | 0,07 (4/5); 0,91 |
+| 5 | persistencia | 0,12 (4/5); 0,90 | −0,09 (2/5); 0,89 | 0,12 (4/5); 0,92 |
+| 6 | persistencia | 0,13 (4/5); 0,90 | −0,05 (2/5); 0,88 | 0,13 (4/5); 0,93 |
+| 7 | persistencia | 0,16 (4/5); 0,89 | −0,06 (2/5); 0,91 | 0,17 (4/5); 0,91 |
+| 8 | persistencia | 0,18 (4/5); 0,88 | 0,06 (2/5); 0,89 | 0,17 (4/5); 0,90 |
+
+WIS medio a h = 4 / h = 8: M0 56,6 / 78,8; M1 58,0 / 80,4; M2 53,7 / 77,8.
+
+Contra la referencia publicada, M0 y M2 ganan en 5 de 5 años en todos los horizontes (M0 entre
+0,28 y 0,36; M2 entre 0,28 y 0,37), y M1 queda por debajo de los dos. Sin puntuar las 17
+semanas afectadas, las cifras contra la referencia limpia cambian en menos de 0,05 y ningún
+veredicto cambia.
+
+Veredicto de la validación:
+
+- **M1 no pasa.** A h = 4 tiene skill medio negativo y gana en 2 de 5 años, y a h = 8 gana en 2
+  de 5; en los dos horizontes queda peor que M0. Falla sobre todo en 2021 (−0,48 a h = 4):
+  predecir el cambio lo hace seguir la última semana y amplifica el ruido en un año de nivel bajo.
+- **M2 pasa las cuatro condiciones** a h = 4 y h = 8, y es el candidato elegido. El peso de M0 en
+  la combinación es 1 en la mayoría de los reajustes y baja a 0,5–0,6 en 2019 y 2022, los años en
+  que M0 predice de más.
+
+### Confirmación (2025–2026, 81 semanas objetivo a h = 4)
+
+| h | referencia | M0 | M2 |
+|---|---|---|---|
+| 1 | persistencia | −0,52 (0/2); 0,81 | −0,29 (0/2); 0,99 |
+| 2 | persistencia | −0,28 (0/2); 0,75 | −0,19 (0/2); 0,85 |
+| 3 | persistencia | −0,23 (0/2); 0,72 | −0,13 (0/2); 0,84 |
+| 4 | persistencia | −0,15 (0/2); 0,73 | −0,09 (1/2); 0,85 |
+| 5 | persistencia | −0,10 (0/2); 0,69 | −0,05 (1/2); 0,78 |
+| 6 | persistencia | −0,01 (1/2); 0,69 | 0,02 (1/2); 0,72 |
+| 7 | persistencia | 0,03 (1/2); 0,73 | 0,03 (1/2); 0,74 |
+| 8 | persistencia | 0,08 (1/2); 0,69 | 0,08 (1/2); 0,70 |
+
+Criterio de confirmación para M2, con skill agrupado sobre 2025–2026:
+
+- h = 4: skill −0,078 (no cumple) y cobertura del 95 % de 0,85 (cumple).
+- h = 8: skill 0,084 (cumple) y cobertura del 95 % de 0,70 (no cumple).
+
+**M2 no se confirma.** Contra la referencia publicada, M0 y M2 ganan en 2025 y en 2026 en todos
+los horizontes (M2 entre 0,13 y 0,33), pero el criterio firmado es contra la limpia.
+
+### Lectura
+
+- En 2019–2024 hay una ventaja real y modesta a 5–8 semanas (skill 0,12–0,18 contra la
+  referencia limpia, 4 de 5 años). A 1–3 semanas el modelo rinde como la persistencia.
+- En 2025–2026 los dos modelos predicen de más: el rango del 50 % contiene entre el 20 % y el
+  33 % de lo observado. El problema es la posición de la mediana, no el ancho de los rangos. Es
+  coherente con el empalme entre el `total` de OpenDengue y los sospechosos del tablero, que este
+  documento señalaba como posible fuente de sesgo.
+- M2 mejora a M0 en 2025–2026 a 1–5 semanas (menor WIS, cobertura del 95 % más cerca del
+  nominal), pero no lo suficiente para superar a la persistencia.
+
+### Consecuencias
+
+Aplica el segundo caso de "Qué habilita cada resultado": el modelo publicado no cambia. El sitio
+debe decir que la ventaja a 5–8 semanas se midió en 2019–2024 y que con los datos del tablero
+todavía no se sostiene, y sus métricas se corrigen con la referencia limpia. Un experimento
+posterior sobre el sesgo del empalme requiere su propia firma; los objetivos de 2025 ya no sirven
+como dato no visto para él.
