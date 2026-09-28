@@ -1,12 +1,18 @@
+import {
+  esNoDisponible,
+  type RespuestaNoDisponible,
+} from '../components/estado-async';
 import type {
   AnioAnalisisDengue,
   CasoNacionalSemanal,
   DatasetAnaliticoDengue,
+  EventoRespiratorio,
   FiltrosAnalisis,
   IntegridadVigilancia,
   NowcastDengue,
   ProcedenciaAnalitica,
   RespuestaIraDepartamental,
+  SerieRespiratoriaNacional,
   SerieTemporalIdoneidad,
   SerieTemporalPresion,
 } from './tipos-analisis';
@@ -23,6 +29,10 @@ let cacheNowcastDengue: Promise<NowcastDengue> | null = null;
 const cacheProcedencia = new Map<string, Promise<ProcedenciaAnalitica>>();
 const cacheSerieIdoneidad = new Map<string, Promise<SerieTemporalIdoneidad>>();
 const cacheSeriePresion = new Map<string, Promise<SerieTemporalPresion>>();
+const cacheRespiratorioNacional = new Map<
+  EventoRespiratorio,
+  Promise<SerieRespiratoriaNacional | RespuestaNoDisponible>
+>();
 
 function cargarDataset(
   anio: AnioAnalisisDengue,
@@ -151,6 +161,38 @@ function tieneSemanas(datos: unknown): boolean {
     typeof datos === 'object' &&
     Array.isArray((datos as { semanas?: unknown }).semanas)
   );
+}
+
+/** Serie nacional de IRA o neumonías del tablero de MINSAL, desde 2025.
+ *  Sin capturas cargadas la API responde disponible:false. */
+export function obtenerSerieRespiratoriaNacional(
+  evento: EventoRespiratorio,
+): Promise<SerieRespiratoriaNacional | RespuestaNoDisponible> {
+  let solicitud = cacheRespiratorioNacional.get(evento);
+  if (!solicitud) {
+    solicitud = fetch(`${API_BASE}/api/${evento}/nacional`)
+      .then(async (respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error(
+            `No se pudo cargar la serie nacional (${respuesta.status}).`,
+          );
+        }
+        const datos: unknown = await respuesta.json();
+        if (esNoDisponible(datos)) {
+          return datos;
+        }
+        if (!tieneSemanas(datos)) {
+          throw new Error('La serie nacional no tiene el contrato esperado.');
+        }
+        return datos as SerieRespiratoriaNacional;
+      })
+      .catch((error) => {
+        cacheRespiratorioNacional.delete(evento);
+        throw error;
+      });
+    cacheRespiratorioNacional.set(evento, solicitud);
+  }
+  return solicitud;
 }
 
 /** Serie del año contra la banda histórica de Iv (M1) y la anomalía (M2)

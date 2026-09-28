@@ -165,6 +165,26 @@ export interface RespuestaIraDepartamental {
   aviso: string;
 }
 
+export type EventoRespiratorio = 'ira' | 'neumonias';
+
+export interface SemanaRespiratoriaNacional {
+  semana_inicio: string;
+  anio: number;
+  semana_epi: number;
+  conteo: number;
+}
+
+/** Serie nacional del tablero de MINSAL desde 2025 (ADR 0021). Las semanas
+ *  que el tablero no publicó no traen fila. */
+export interface SerieRespiratoriaNacional {
+  disponible: true;
+  evento: EventoRespiratorio;
+  fuente: 'minsal_tablero';
+  unidad: 'conteo_notificado';
+  semanas: SemanaRespiratoriaNacional[];
+  aviso: string;
+}
+
 export interface CompletitudAnual {
   semanas_completas: number;
   semanas_con_dato: number;

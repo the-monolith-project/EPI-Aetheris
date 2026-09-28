@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 test.describe('observatorio respiratorio', () => {
@@ -176,5 +177,105 @@ test.describe('observatorio respiratorio', () => {
       'tabla ausente o sin filas',
     );
     await expect(page.locator('[data-virus-error]')).toBeHidden();
+  });
+
+  test('la serie nacional del tablero marca la semana sin publicar', async ({
+    page,
+  }) => {
+    // 2025 completo hasta la SE52 y la SE53 sin fila, como en el tablero.
+    const inicio2025 = Date.UTC(2024, 11, 29);
+    const semanas = [
+      ...Array.from({ length: 52 }, (_, i) => ({
+        semana_inicio: new Date(inicio2025 + i * 7 * 86_400_000)
+          .toISOString()
+          .slice(0, 10),
+        anio: 2025,
+        semana_epi: i + 1,
+        conteo: 300 - i,
+      })),
+      { semana_inicio: '2026-01-04', anio: 2026, semana_epi: 1, conteo: 263 },
+      { semana_inicio: '2026-01-11', anio: 2026, semana_epi: 2, conteo: 210 },
+    ];
+    await page.route('**/api/neumonias/nacional', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          disponible: true,
+          evento: 'neumonias',
+          fuente: 'minsal_tablero',
+          unidad: 'conteo_notificado',
+          semanas,
+          aviso: 'aviso',
+        }),
+      }),
+    );
+    await page.goto('/respiratorio#neumonias');
+    const panel = page.locator('[data-nac-evento="neumonias"]');
+    await expect(panel.locator('[data-nac-canvas] svg')).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(panel.locator('[data-nac-resumen]')).toContainText(
+      'SE2 de 2026',
+    );
+    await expect(panel.locator('[data-nac-resumen]')).toContainText(
+      '30 % menos que en la misma semana de 2025 (299)',
+    );
+    await expect(panel.locator('[data-nac-huecos]')).toHaveText(
+      'Sin publicar en el tablero: SE53 de 2025.',
+    );
+
+    await panel.getByText('Ver los valores semanales en una tabla').click();
+    const tabla = panel.locator('[data-nac-tabla]');
+    await expect(tabla.locator('tbody tr')).toHaveCount(53);
+    await expect(tabla.locator('tbody tr').last()).toContainText(
+      'sin publicar',
+    );
+    // Las semanas que aún no llegan en 2026 quedan vacías, no «sin publicar».
+    await expect(tabla.locator('tbody tr').nth(2)).not.toContainText(
+      'sin publicar',
+    );
+
+    const [descarga] = await Promise.all([
+      page.waitForEvent('download'),
+      panel.getByRole('button', { name: /Exportar.*CSV/i }).click(),
+    ]);
+    const tmp = test.info().outputPath('neumonias-nacional.csv');
+    await descarga.saveAs(tmp);
+    const lineas = (await readFile(tmp, 'utf8')).trim().split('\n');
+    expect(lineas).toHaveLength(semanas.length + 1);
+    expect(lineas[53]).toBe('2026-01-04,2026,1,263,minsal_tablero');
+
+    const resultados = await new AxeBuilder({ page })
+      .include('[data-nac-evento]')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+    expect(resultados.violations).toEqual([]);
+  });
+
+  test('sin capturas del tablero, la serie nacional muestra el motivo', async ({
+    page,
+  }) => {
+    const motivo =
+      'La serie nacional del tablero de MINSAL no está cargada en este despliegue.';
+    await page.route('**/api/ira/nacional', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ disponible: false, motivo, aviso: 'aviso' }),
+      }),
+    );
+    await page.goto('/respiratorio#ira');
+    const panel = page.locator('[data-nac-evento="ira"]');
+    await expect(panel.locator('[data-nac-canvas]')).toHaveText(motivo, {
+      timeout: 15_000,
+    });
+    await expect(panel.getByRole('button', { name: 'Reintentar' })).toHaveCount(
+      0,
+    );
+    await expect(panel.locator('[data-nac-detalle]')).toBeHidden();
+    await expect(
+      panel.getByRole('button', { name: /Exportar.*CSV/i }),
+    ).toBeDisabled();
   });
 });

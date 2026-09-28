@@ -1,0 +1,443 @@
+---
+// Serie nacional de IRA o neumonías del tablero de MINSAL, desde 2025
+// (ADR 0021). El tablero no publica departamentos, así que esta curva va
+// aparte de las departamentales de los boletines (2018-2023) y no se empalma
+// con la suma de estas: muchas semanas de los boletines no traen los 14
+// departamentos y en neumonías las escalas no cuadran.
+import type { EventoRespiratorio } from '../lib/tipos-analisis';
+
+interface Props {
+  evento: EventoRespiratorio;
+}
+const { evento } = Astro.props;
+const etiqueta = evento === 'neumonias' ? 'Neumonías' : 'IRA';
+const etiquetaMinuscula = evento === 'neumonias' ? 'neumonías' : 'IRA';
+---
+
+<section
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+  data-nac-evento={evento}
+  data-nac-etiqueta={etiquetaMinuscula}
+>
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="flex items-start gap-3">
+      <span
+        class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+        aria-hidden="true"></span>
+      <div>
+        <h3 class="font-sans text-base font-semibold text-ink sm:text-lg">
+          {etiqueta} en todo el país
+        </h3>
+        <p
+          class="mt-1 max-w-2xl font-sans text-sm leading-relaxed text-ink-muted"
+        >
+          Casos notificados por semana según el tablero de MINSAL, desde 2025.
+          El tablero publica cada semana como un promedio de varias. Una línea
+          por año.
+        </p>
+      </div>
+    </div>
+    <button
+      type="button"
+      data-nac-export
+      aria-label={`Exportar la serie nacional de ${etiquetaMinuscula} a CSV`}
+      disabled
+      class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      Exportar CSV
+    </button>
+  </div>
+
+  <p
+    data-nac-resumen
+    class="mt-4 font-sans text-sm leading-relaxed text-ink tabular-nums"
+  >
+  </p>
+
+  <div
+    data-nac-canvas
+    class="mt-3 rounded-xl border border-border bg-bg p-3 sm:p-4"
+    role="status"
+    aria-busy="true"
+  >
+    <div data-estado aria-hidden="true">
+      <div class="skeleton h-40 w-full sm:h-52"></div>
+      <div class="skeleton mt-2 h-3 w-1/3"></div>
+    </div>
+  </div>
+
+  <p data-nac-huecos class="mt-2 font-sans text-xs text-ink-muted" hidden></p>
+
+  <details
+    data-nac-detalle
+    class="mt-3 rounded-xl border border-border bg-bg p-3"
+    hidden
+  >
+    <summary
+      class="cursor-pointer font-sans text-xs font-medium text-ink-muted"
+    >
+      Ver los valores semanales en una tabla
+    </summary>
+    <div
+      class="mt-2 max-h-96 overflow-auto rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      tabindex="0"
+      role="region"
+      aria-label={`Tabla semanal de ${etiquetaMinuscula} en todo el país`}
+    >
+      <table
+        data-nac-tabla
+        class="border-collapse font-sans text-xs tabular-nums text-ink"
+      >
+        <caption class="sr-only"
+          >Casos notificados de {etiquetaMinuscula} en todo el país por semana epidemiológica,
+          según el tablero de MINSAL</caption
+        >
+      </table>
+    </div>
+  </details>
+</section>
+
+<script>
+  import { obtenerSerieRespiratoriaNacional } from '../lib/analisis-api';
+  import { colorCualitativo } from '../lib/colores';
+  import type {
+    EventoRespiratorio,
+    SemanaRespiratoriaNacional,
+  } from '../lib/tipos-analisis';
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderErrorFuente,
+    renderSinDato,
+  } from './estado-async';
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  // El ancho del viewBox sigue al del contenedor hasta 720: en un teléfono
+  // el dibujo queda a escala 1:1 y el texto se lee sin hacer zoom.
+  const ANCHO_MAX = 720;
+  const ANCHO_MIN = 280;
+  const ALTO = 260;
+  const MARGEN = { arriba: 20, abajo: 40, izquierda: 52, derecha: 12 };
+  const SEMANA_MS = 7 * 86_400_000;
+
+  type SemanaFaltante = { anio: number; semana_epi: number };
+
+  const numero = (valor: number) => valor.toLocaleString('es-SV');
+
+  const tiempo = (d: SemanaRespiratoriaNacional) =>
+    new Date(`${d.semana_inicio}T00:00:00`).getTime();
+
+  // Semanas sin fila entre dos publicadas, por fecha de inicio. Si el hueco
+  // cruza el cambio de año, las que no caben antes de la semana siguiente
+  // son las últimas del año anterior (la 53 de 2025).
+  function semanasSinPublicar(
+    semanas: SemanaRespiratoriaNacional[],
+  ): SemanaFaltante[] {
+    const faltantes: SemanaFaltante[] = [];
+    for (let i = 1; i < semanas.length; i++) {
+      const previa = semanas[i - 1];
+      const actual = semanas[i];
+      const n = Math.round((tiempo(actual) - tiempo(previa)) / SEMANA_MS) - 1;
+      if (n <= 0) continue;
+      const enAnioActual =
+        actual.anio === previa.anio ? n : Math.min(n, actual.semana_epi - 1);
+      for (let k = 1; k <= n - enAnioActual; k++) {
+        faltantes.push({
+          anio: previa.anio,
+          semana_epi: previa.semana_epi + k,
+        });
+      }
+      for (let k = enAnioActual; k >= 1; k--) {
+        faltantes.push({
+          anio: actual.anio,
+          semana_epi: actual.semana_epi - k,
+        });
+      }
+    }
+    return faltantes;
+  }
+
+  function porAnio(semanas: SemanaRespiratoriaNacional[]) {
+    const mapa = new Map<number, Map<number, number>>();
+    for (const s of semanas) {
+      if (!mapa.has(s.anio)) mapa.set(s.anio, new Map());
+      mapa.get(s.anio)!.set(s.semana_epi, s.conteo);
+    }
+    return mapa;
+  }
+
+  function textoResumen(semanas: SemanaRespiratoriaNacional[]): string {
+    const ultima = semanas[semanas.length - 1];
+    const base = `Última semana publicada: SE${ultima.semana_epi} de ${ultima.anio}, con ${numero(ultima.conteo)} casos notificados`;
+    const previa = semanas.find(
+      (s) => s.anio === ultima.anio - 1 && s.semana_epi === ultima.semana_epi,
+    );
+    if (!previa || previa.conteo === 0) return `${base}.`;
+    const cambio = ((ultima.conteo - previa.conteo) / previa.conteo) * 100;
+    const redondeo = Math.round(Math.abs(cambio));
+    const comparacion =
+      redondeo === 0
+        ? 'casi los mismos que'
+        : `un ${redondeo} % ${cambio > 0 ? 'más' : 'menos'} que`;
+    return `${base}, ${comparacion} en la misma semana de ${previa.anio} (${numero(previa.conteo)}).`;
+  }
+
+  function dibujar(
+    contenedor: HTMLElement,
+    semanas: SemanaRespiratoriaNacional[],
+    etiqueta: string,
+  ) {
+    const series = porAnio(semanas);
+    const anios = [...series.keys()].sort((a, b) => a - b);
+    const maxConteo = Math.max(...semanas.map((s) => s.conteo));
+    const semanaMax = Math.max(52, ...semanas.map((s) => s.semana_epi));
+    const pico = semanas.reduce((max, s) => (s.conteo > max.conteo ? s : max));
+
+    const estilo = getComputedStyle(contenedor);
+    const util =
+      contenedor.clientWidth -
+      parseFloat(estilo.paddingLeft) -
+      parseFloat(estilo.paddingRight);
+    const ANCHO = Math.round(
+      Math.min(ANCHO_MAX, Math.max(ANCHO_MIN, util || ANCHO_MAX)),
+    );
+    const angosto = ANCHO < 480;
+    const areaGrafica = ALTO - MARGEN.arriba - MARGEN.abajo;
+    const escalaY = (v: number) =>
+      ALTO - MARGEN.abajo - (v / (maxConteo || 1)) * areaGrafica;
+    const escalaX = (semana: number) =>
+      MARGEN.izquierda +
+      ((semana - 1) / (semanaMax - 1)) *
+        (ANCHO - MARGEN.izquierda - MARGEN.derecha);
+
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${ANCHO} ${ALTO}`);
+    svg.setAttribute('class', 'w-full');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute(
+      'aria-label',
+      `Casos notificados de ${etiqueta} en todo el país por semana epidemiológica, una línea por año: ${anios.join(' y ')}`,
+    );
+    const desc = document.createElementNS(SVG_NS, 'desc');
+    desc.textContent = `La semana con más casos fue la SE${pico.semana_epi} de ${pico.anio}, con ${numero(pico.conteo)}.`;
+    svg.appendChild(desc);
+
+    const texto = (
+      x: number,
+      y: number,
+      contenido: string,
+      ancla: 'start' | 'middle' | 'end',
+      tamano = angosto ? '10' : '9',
+    ) => {
+      const t = document.createElementNS(SVG_NS, 'text');
+      t.setAttribute('x', String(x));
+      t.setAttribute('y', String(y));
+      t.setAttribute('text-anchor', ancla);
+      t.setAttribute('font-family', 'var(--font-sans)');
+      t.style.fontVariantNumeric = 'tabular-nums';
+      t.setAttribute('font-size', tamano);
+      t.setAttribute('fill', 'var(--color-ink-muted)');
+      t.textContent = contenido;
+      svg.appendChild(t);
+    };
+
+    for (const nivel of [0, maxConteo / 2, maxConteo]) {
+      const y = escalaY(nivel);
+      const linea = document.createElementNS(SVG_NS, 'line');
+      linea.setAttribute('x1', String(MARGEN.izquierda));
+      linea.setAttribute('x2', String(ANCHO - MARGEN.derecha));
+      linea.setAttribute('y1', String(y));
+      linea.setAttribute('y2', String(y));
+      linea.setAttribute('stroke', 'var(--color-border)');
+      linea.setAttribute('stroke-width', '1');
+      svg.appendChild(linea);
+      texto(MARGEN.izquierda - 8, y + 3, numero(Math.round(nivel)), 'end');
+    }
+
+    const marcas = angosto ? [1, 26, semanaMax] : [1, 13, 26, 39, semanaMax];
+    for (const semana of marcas) {
+      texto(escalaX(semana), ALTO - 24, `SE${semana}`, 'middle');
+    }
+
+    // Una semana sin publicar corta la línea en lugar de unir a sus vecinas.
+    anios.forEach((anio, i) => {
+      const puntos = [...series.get(anio)!.entries()].sort(
+        (a, b) => a[0] - b[0],
+      );
+      let d = '';
+      let semanaPrevia = -1;
+      for (const [semana, conteo] of puntos) {
+        const comando = semana === semanaPrevia + 1 ? 'L' : 'M';
+        d += `${comando}${escalaX(semana).toFixed(1)},${escalaY(conteo).toFixed(1)} `;
+        semanaPrevia = semana;
+      }
+      const trazo = document.createElementNS(SVG_NS, 'path');
+      trazo.setAttribute('d', d.trim());
+      trazo.setAttribute('fill', 'none');
+      trazo.setAttribute('stroke', colorCualitativo(i));
+      trazo.setAttribute(
+        'stroke-width',
+        i === anios.length - 1 ? '2.25' : '1.5',
+      );
+      trazo.setAttribute('stroke-linejoin', 'round');
+      trazo.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(trazo);
+    });
+
+    const ultima = semanas[semanas.length - 1];
+    const punto = document.createElementNS(SVG_NS, 'circle');
+    punto.setAttribute('cx', String(escalaX(ultima.semana_epi)));
+    punto.setAttribute('cy', String(escalaY(ultima.conteo)));
+    punto.setAttribute('r', '3.5');
+    punto.setAttribute('fill', colorCualitativo(anios.length - 1));
+    punto.setAttribute('stroke', 'var(--color-surface)');
+    punto.setAttribute('stroke-width', '1.5');
+    svg.appendChild(punto);
+
+    let x = MARGEN.izquierda;
+    anios.forEach((anio, i) => {
+      const muestra = document.createElementNS(SVG_NS, 'line');
+      muestra.setAttribute('x1', String(x));
+      muestra.setAttribute('x2', String(x + 14));
+      muestra.setAttribute('y1', String(ALTO - 8));
+      muestra.setAttribute('y2', String(ALTO - 8));
+      muestra.setAttribute('stroke', colorCualitativo(i));
+      muestra.setAttribute('stroke-width', '2');
+      svg.appendChild(muestra);
+      texto(x + 18, ALTO - 5, String(anio), 'start', angosto ? '11' : '10');
+      x += 60;
+    });
+
+    contenedor.replaceChildren(svg);
+  }
+
+  function llenarTabla(
+    tabla: HTMLTableElement,
+    semanas: SemanaRespiratoriaNacional[],
+    faltantes: SemanaFaltante[],
+  ) {
+    const series = porAnio(semanas);
+    const anios = [...series.keys()].sort((a, b) => a - b);
+    // Hasta la última semana con fila o sin publicar (la 53 de 2025 no tiene
+    // fila en ningún año, pero debe verse como hueco).
+    const semanaMax = Math.max(
+      ...semanas.map((s) => s.semana_epi),
+      ...faltantes.map((f) => f.semana_epi),
+    );
+    const sinPublicar = new Set(
+      faltantes.map((f) => `${f.anio}-${f.semana_epi}`),
+    );
+
+    tabla.querySelectorAll('thead, tbody').forEach((n) => n.remove());
+    const thead = tabla.createTHead();
+    const filaCabecera = thead.insertRow();
+    filaCabecera.className = 'text-left text-ink-muted';
+    for (const titulo of ['Semana', ...anios.map(String)]) {
+      const th = document.createElement('th');
+      th.scope = 'col';
+      th.className = 'sticky top-0 border-b border-border bg-bg py-1 pr-8';
+      th.textContent = titulo;
+      filaCabecera.appendChild(th);
+    }
+
+    const tbody = tabla.createTBody();
+    for (let semana = 1; semana <= semanaMax; semana++) {
+      const fila = tbody.insertRow();
+      const th = document.createElement('th');
+      th.scope = 'row';
+      th.className = 'py-0.5 pr-8 text-left font-normal text-ink-muted';
+      th.textContent = `SE${semana}`;
+      fila.appendChild(th);
+      for (const anio of anios) {
+        const celda = fila.insertCell();
+        celda.className = 'py-0.5 pr-8';
+        const conteo = series.get(anio)!.get(semana);
+        if (conteo !== undefined) {
+          celda.textContent = numero(conteo);
+        } else if (sinPublicar.has(`${anio}-${semana}`)) {
+          celda.textContent = 'sin publicar';
+          celda.classList.add('text-ink-muted');
+        }
+      }
+    }
+  }
+
+  function descargarCsv(evento: string, semanas: SemanaRespiratoriaNacional[]) {
+    const lineas = ['semana_inicio,anio,semana_epi,conteo,fuente'];
+    for (const s of semanas) {
+      lineas.push(
+        `${s.semana_inicio},${s.anio},${s.semana_epi},${s.conteo},minsal_tablero`,
+      );
+    }
+    const enlace = document.createElement('a');
+    enlace.href = URL.createObjectURL(
+      new Blob([lineas.join('\n')], { type: 'text/csv;charset=utf-8' }),
+    );
+    enlace.download = `epi-aetheris-${evento}-nacional-${semanas[0].anio}-${semanas[semanas.length - 1].anio}.csv`;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    URL.revokeObjectURL(enlace.href);
+  }
+
+  async function iniciar(seccion: HTMLElement) {
+    const evento = seccion.dataset.nacEvento as EventoRespiratorio;
+    const etiqueta = seccion.dataset.nacEtiqueta ?? evento;
+    const contenedor = seccion.querySelector<HTMLElement>('[data-nac-canvas]');
+    const resumen = seccion.querySelector<HTMLElement>('[data-nac-resumen]');
+    const huecos = seccion.querySelector<HTMLElement>('[data-nac-huecos]');
+    const detalle = seccion.querySelector<HTMLElement>('[data-nac-detalle]');
+    const tabla = seccion.querySelector<HTMLTableElement>('[data-nac-tabla]');
+    const boton = seccion.querySelector<HTMLButtonElement>('[data-nac-export]');
+    if (!contenedor || !resumen || !huecos || !detalle || !tabla) return;
+
+    contenedor.setAttribute('aria-busy', 'true');
+    let respuesta;
+    try {
+      respuesta = await obtenerSerieRespiratoriaNacional(evento);
+    } catch {
+      renderErrorFuente(contenedor, () => void iniciar(seccion));
+      return;
+    }
+    if (esNoDisponible(respuesta)) {
+      renderSinDato(contenedor, motivoNoDisponible(respuesta));
+      return;
+    }
+    const semanas = respuesta.semanas;
+    if (semanas.length === 0) {
+      renderSinDato(contenedor, 'Sin semanas publicadas en el tablero.');
+      return;
+    }
+
+    resumen.textContent = textoResumen(semanas);
+    dibujar(contenedor, semanas, etiqueta);
+    contenedor.removeAttribute('aria-busy');
+    let anchoPrevio = contenedor.clientWidth;
+    new ResizeObserver(() => {
+      if (contenedor.clientWidth === anchoPrevio) return;
+      anchoPrevio = contenedor.clientWidth;
+      dibujar(contenedor, semanas, etiqueta);
+    }).observe(contenedor);
+
+    const faltantes = semanasSinPublicar(semanas);
+    if (faltantes.length > 0) {
+      huecos.textContent = `Sin publicar en el tablero: ${faltantes
+        .map((f) => `SE${f.semana_epi} de ${f.anio}`)
+        .join(', ')}.`;
+      huecos.hidden = false;
+    }
+    llenarTabla(tabla, semanas, faltantes);
+    detalle.hidden = false;
+
+    if (boton) {
+      boton.disabled = false;
+      boton.onclick = () => descargarCsv(evento, semanas);
+    }
+  }
+
+  document
+    .querySelectorAll<HTMLElement>('[data-nac-evento]')
+    .forEach((seccion) => {
+      void iniciar(seccion);
+    });
+</script>
