@@ -63,4 +63,11 @@ Dos puntos de las consecuencias quedaron resueltos con los experimentos de predi
   de OpenDengue y, en las semanas posteriores a su última fila, los sospechosos del tablero, con
   `fuente` en cada fila para que la curva marque el tramo. La antigüedad de M4
   suma la serie `dengue_tablero_nacional`. Es una excepción acotada a la regla F: las consultas
-  departamentales y las de IRA y neumonías siguen filtrando por `minsal_pdf`.
+  departamentales siguen filtrando por `minsal_pdf`.
+* IRA y neumonías tienen su propia serie nacional. `GET /api/ira/nacional` y
+  `GET /api/neumonias/nacional` devuelven solo las filas del tablero, desde 2025-S1, y la
+  antigüedad de M4 suma `ira_tablero_nacional` y `neumonias_tablero_nacional`. No se empalman con
+  la suma de los departamentos de los boletines: muchas semanas de 2018-2023 no traen los 14
+  departamentos, y en neumonías esa suma promedia entre 500 y 780 por semana según el año, frente
+  a 130-430 en el tablero, sin que se haya comprobado si es la misma definición. El observatorio
+  respiratorio las muestra en una curva aparte, con una línea por año.

@@ -59,7 +59,7 @@ Tres hechos verificables sobre la calidad del dato, **sin combinarlos en un índ
 
 - **Completitud geográfica:** cuántos de los 14 departamentos tienen fila esa semana (y cuántas semanas de cada año están completas).
 - **Cuadre del boletín:** si la suma departamental coincide con el total nacional publicado en el mismo PDF, y por cuánto difiere cuando no.
-- **Antigüedad:** semanas desde la última observación de cada serie (dengue MINSAL, OpenDengue, tablero de MINSAL, clima, IRA, neumonías, virus). Explica el corte de 2023 sin esconderlo. No es el retraso entre el caso y la publicación del boletín: esa fecha no está en la base.
+- **Antigüedad:** semanas desde la última observación de cada serie (dengue MINSAL, OpenDengue, tablero de MINSAL, clima, IRA y neumonías de los boletines y del tablero, virus). Explica el corte de 2023 sin esconderlo. No es el retraso entre el caso y la publicación del boletín: esa fecha no está en la base.
 
 **Endpoint.** `GET /api/v1/vigilancia/integridad`. Capa del mapa "Integridad de la vigilancia".
 
@@ -75,6 +75,7 @@ Catorce departamentos, unión por nombre normalizado contra el GeoJSON (el ISO 3
 
 Misma familia de boletines MINSAL, otras tablas, otra semántica. Vive en `/respiratorio` (IRA y neumonías son secciones de esa página; no hay ruta `/ira`).
 
+- **Serie nacional de IRA y de neumonías:** casos notificados por semana según el tablero de MINSAL, desde 2025, con una línea por año, la última semana comparada con la misma de un año antes, las semanas sin publicar y una tabla con los valores. `GET /api/ira/nacional` y `GET /api/neumonias/nacional`.
 - **Neumonías:** conteo clínico departamental único, acumulado desde SE1, `clasificacion = 'notificado'`, `tipos_evento = 'neumonia'`. No se mezcla con IRA ni hereda M1–M4.
 - **IRA:** el mismo contrato de conteo notificado (ADR 0011), serie acumulada y desacumulada, 2.742 filas en el volcado vigente.
 - **Vigilancia laboratorial nacional** (ADR 0012): influenza, VSR y SARS-CoV-2 — muestras, detecciones, positividad. Tabla `vigilancia_virus_respiratorios`. COVID-19 como fila aparece en 2023. No hay mapa departamental de virus.

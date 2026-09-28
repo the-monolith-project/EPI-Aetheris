@@ -29,6 +29,8 @@ Otras reglas de la fuente, verificadas al leer los PDF:
 
 Los mismos PDF publican **IRA**, **neumonías** (conteo notificado departamental) y la tabla nacional de **vigilancia laboratorial** de influenza / VSR / SARS-CoV-2.
 
+Desde 2025, IRA y neumonías tienen además una serie nacional tomada del tablero de MINSAL (ADR 0021), que el observatorio respiratorio muestra aparte de la departamental. En neumonías, la suma de los departamentos de los boletines promedia entre 500 y 780 casos por semana según el año, y el tablero publica entre 130 y 430 en 2025 y 2026; no se ha comprobado si las dos fuentes usan la misma definición.
+
 **Licencia / uso.** Publicación oficial del Ministerio de Salud de El Salvador. El proyecto los usa como dato agregado de vigilancia, sin republicar los PDF (los crudos no se versionan).
 
 ## OpenDengue
