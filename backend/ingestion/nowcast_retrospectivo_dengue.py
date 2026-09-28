@@ -6,6 +6,8 @@ desde la ultima semana observada y el backtest a h = 4. Este script genera,
 para CADA semana de la serie, el abanico h = 1..8 que el modelo habria dado
 con los datos disponibles hasta esa semana, para que la UI pueda mover el
 punto de partida a cualquier semana y contrastarlo con lo observado despues.
+Escribe la base de OpenDengue (`nowcast_dengue_retrospectivo_opendengue.json`);
+`nowcast_tablero_dengue.py` le anade las semanas del tablero de MINSAL.
 
 Metodo: el mismo del artefacto principal (ADR 0020), sin cambios. Por cada
 horizonte se corren dos cadenas forward-chaining con la misma cadencia de
@@ -81,7 +83,7 @@ from nowcast_estimacion_dengue import (
 
 from db import get_connection
 
-SALIDA = SALIDA_PRINCIPAL.with_name("nowcast_dengue_retrospectivo.json")
+SALIDA = SALIDA_PRINCIPAL.with_name("nowcast_dengue_retrospectivo_opendengue.json")
 # resultado crudo por horizonte: si la verificacion falla, se inspecciona sin
 # repetir la corrida (~25 min)
 # Un proceso por horizonte con un solo hilo de OpenMP cada uno: con los hilos

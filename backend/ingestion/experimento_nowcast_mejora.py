@@ -325,7 +325,7 @@ def fase_validacion(serie: Serie) -> None:
               tablas["limpia_sin_afectadas"], modelos, ANIOS_VALIDACION)
 
     # M0 debe reproducir lo publicado (h = 4, referencia publicada)
-    publicado = json.loads((Path(__file__).parent.parent / "api" / "datos" / "nowcast_dengue.json")
+    publicado = json.loads((Path(__file__).parent.parent / "api" / "datos" / "nowcast_dengue_opendengue.json")
                            .read_text(encoding="utf-8"))["desempeno"]["skill_por_anio"]
     m0 = tablas["pub"][4]["M0"]["skill_por_anio"]
     dif = max(abs(m0[int(a)] - v) for a, v in publicado.items())

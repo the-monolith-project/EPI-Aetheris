@@ -6,7 +6,10 @@ calibracion de intervalos cerrada el 2026-09-09 (CQR-r). Este script NO reentren
 reutiliza la maquinaria validada de `experimento_nowcast_corto_plazo.py` y
 `experimento_nowcast_calibracion.py`.
 
-Que produce (`backend/api/datos/nowcast_dengue.json`, versionado):
+Que produce (`backend/api/datos/nowcast_dengue_opendengue.json`, versionado).
+Es la base de OpenDengue: `nowcast_tablero_dengue.py` la combina con la serie
+del tablero de MINSAL en el artefacto que sirve la API
+(`backend/api/datos/nowcast_dengue.json`).
 
   - ancla:   ultima semana observada de la serie (OpenDengue V1.3 termina en
              2024-12-22; la fuente va ~21 meses detras del tiempo real). La
@@ -68,7 +71,7 @@ SEMANAS_CONTEXTO = 120           # observado reciente que viaja en el artefacto
 IDX_B50 = (6, 16)                # cuantiles 0.25 / 0.75
 IDX_B95 = (1, 21)                # cuantiles 0.025 / 0.975
 
-SALIDA = Path(__file__).resolve().parents[1] / "api" / "datos" / "nowcast_dengue.json"
+SALIDA = Path(__file__).resolve().parents[1] / "api" / "datos" / "nowcast_dengue_opendengue.json"
 
 NOTA_ALCANCE = (
     "La estimación asume una temporada con un brote grande ya presente en el "

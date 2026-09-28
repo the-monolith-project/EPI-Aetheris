@@ -531,10 +531,11 @@ def riesgo_nacional(
 NOWCAST_DENGUE_PATH = Path(__file__).parent / "datos" / "nowcast_dengue.json"
 
 AVISO_HONESTIDAD_NOWCAST_DENGUE = (
-    "Prediccion estadistica de horizonte corto sobre la serie nacional agregada "
-    "de dengue (OpenDengue). Se extiende desde la ultima semana observada, no "
-    "desde la fecha actual: la fuente publica va varios meses detras del tiempo "
-    "real."
+    "Prediccion estadistica de horizonte corto sobre la serie nacional de "
+    "dengue: OpenDengue hasta 2024 y sospechosos del tablero de MINSAL desde "
+    "2025. Se extiende desde la ultima semana publicada. Desde 2025 combina el "
+    "modelo validado con una tendencia amortiguada y esta en prueba con las "
+    "semanas publicadas desde 2026-S38."
 )
 
 
@@ -542,11 +543,12 @@ AVISO_HONESTIDAD_NOWCAST_DENGUE = (
 @limiter.limit(RATE_LIMIT_HEAVY)
 def nowcast_dengue(request: Request, response: Response):
     """Artefacto de prediccion de horizonte corto de dengue, precomputado por
-    backend/ingestion/nowcast_estimacion_dengue.py (metodo del experimento
-    firmado + calibracion CQR-r). Se sirve tal cual desde el JSON versionado;
-    no recalcula nada por request. Si el archivo falta -- despliegue sin el
-    artefacto -- responde 200 con disponible=false, mismo patron que
-    /api/riesgo-nacional y /ira."""
+    backend/ingestion/nowcast_tablero_dengue.py sobre la base de
+    nowcast_estimacion_dengue.py (ADR 0020 y
+    docs/experimentos/experimento-nowcast-tendencia.md). Se sirve tal cual
+    desde el JSON versionado; no recalcula nada por request. Si el archivo
+    falta -- despliegue sin el artefacto -- responde 200 con disponible=false,
+    mismo patron que /api/riesgo-nacional y /ira."""
     if not NOWCAST_DENGUE_PATH.exists():
         _cache_control(response, CACHE_TTL_COMPUTO)
         return {
@@ -568,8 +570,9 @@ def nowcast_dengue_retrospectivo(request: Request, response: Response):
     """Abanico h=1..8 que el modelo habria dado desde cada semana de la serie,
     con los datos disponibles hasta esa semana, para contrastarlo con lo
     observado. Precomputado por
-    backend/ingestion/nowcast_retrospectivo_dengue.py; va en un endpoint aparte
-    porque pesa ~10 veces mas que /api/nowcast-dengue y solo lo pide la vista
+    backend/ingestion/nowcast_retrospectivo_dengue.py (hasta 2024) y
+    nowcast_tablero_dengue.py (desde 2025); va en un endpoint aparte porque
+    pesa ~10 veces mas que /api/nowcast-dengue y solo lo pide la vista
     completa del panel."""
     if not NOWCAST_DENGUE_RETRO_PATH.exists():
         _cache_control(response, CACHE_TTL_COMPUTO)
