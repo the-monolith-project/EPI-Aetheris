@@ -374,26 +374,50 @@ def health_check(response: Response):
 
 @app.get("/api/casos-nacional")
 def casos_nacional(response: Response):
-    """Serie semanal nacional de OpenDengue ya cargada (clasificacion='total',
-    fuente opendengue_v1_3). Es la única variable objetivo cargada hasta ahora
-    -- pivote "Opción C". No es
-    clasificación de riesgo -- para eso ver /api/riesgo-nacional."""
+    """Serie semanal nacional de dengue: el total de OpenDengue
+    (opendengue_v1_3) y, en las semanas posteriores a su ultima fila, los
+    casos sospechosos del tablero de MINSAL (minsal_tablero, ADR 0021). Es la
+    misma definicion de caso; el tablero publica cada semana como un promedio
+    de varias. Cada fila lleva su `fuente` para que la UI distinga los dos
+    tramos. La semana 53 de 2025, que el tablero no publica, no tiene fila.
+    No es clasificacion de riesgo -- para eso ver /api/riesgo-nacional."""
     _cache_control(response, CACHE_TTL_HISTORICO)
     try:
         with _conexion() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT s.fecha_inicio, c.anio, c.semana_epi, c.conteo
+                    WITH opendengue AS (
+                        SELECT s.fecha_inicio, c.anio, c.semana_epi, c.conteo,
+                               f.codigo AS fuente
+                        FROM casos_epidemiologicos c
+                        JOIN regiones r ON r.id = c.region_id
+                        JOIN fuentes_datos f ON f.id = c.fuente_id
+                        JOIN semanas_epidemiologicas s
+                            ON s.anio = c.anio AND s.semana_epi = c.semana_epi
+                        WHERE r.codigo = 'SV'
+                          AND c.clasificacion = 'total'
+                          AND f.codigo = 'opendengue_v1_3'
+                    )
+                    SELECT * FROM opendengue
+                    UNION ALL
+                    SELECT s.fecha_inicio, c.anio, c.semana_epi, c.conteo,
+                           f.codigo
                     FROM casos_epidemiologicos c
                     JOIN regiones r ON r.id = c.region_id
+                    JOIN tipos_evento t ON t.id = c.tipo_evento_id
                     JOIN fuentes_datos f ON f.id = c.fuente_id
                     JOIN semanas_epidemiologicas s
                         ON s.anio = c.anio AND s.semana_epi = c.semana_epi
                     WHERE r.codigo = 'SV'
-                      AND c.clasificacion = 'total'
-                      AND f.codigo = 'opendengue_v1_3'
-                    ORDER BY c.anio, c.semana_epi
+                      AND t.codigo = 'dengue'
+                      AND c.clasificacion = 'sospechoso'
+                      AND f.codigo = 'minsal_tablero'
+                      AND s.fecha_inicio > COALESCE(
+                          (SELECT max(fecha_inicio) FROM opendengue),
+                          '-infinity'::date
+                      )
+                    ORDER BY anio, semana_epi
                     """
                 )
                 filas = cursor.fetchall()
@@ -409,8 +433,9 @@ def casos_nacional(response: Response):
             "anio": anio,
             "semana_epi": semana_epi,
             "conteo": conteo,
+            "fuente": fuente,
         }
-        for fecha_inicio, anio, semana_epi, conteo in filas
+        for fecha_inicio, anio, semana_epi, conteo, fuente in filas
     ]
 
 

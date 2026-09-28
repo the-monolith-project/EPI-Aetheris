@@ -128,6 +128,18 @@ class DatasetAnaliticoTest(unittest.TestCase):
             self.assertGreaterEqual(fila["semana_epi"], 1)
             self.assertLessEqual(fila["semana_epi"], 53)
 
+    def test_casos_nacional_empalma_el_tablero_despues_de_opendengue(self):
+        filas = self.client.get("/api/casos-nacional").json()
+        fuentes = [fila["fuente"] for fila in filas]
+        self.assertTrue(set(fuentes) <= {"opendengue_v1_3", "minsal_tablero"})
+        # un solo tramo de cada fuente, OpenDengue primero y sin semanas repetidas
+        cambios = [a for a, b in zip(fuentes, fuentes[1:]) if a != b]
+        self.assertLessEqual(len(cambios), 1)
+        if cambios:
+            self.assertEqual(cambios[0], "opendengue_v1_3")
+        fechas = [fila["semana_inicio"] for fila in filas]
+        self.assertEqual(fechas, sorted(set(fechas)))
+
     def test_procedencia_de_observacion_conserva_fuente_y_boletin(self):
         departamento = self.cuerpo["departamentos"][0]
         fila = next(
