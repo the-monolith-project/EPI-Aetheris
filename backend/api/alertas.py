@@ -15,6 +15,22 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 TIPOS_ALERTA = ("dengue", "respiratorio")
 NIVELES_ALERTA = ("informativo", "atencion", "intensificacion")
 ETIQUETAS_ALERTA = ("test", "simulacro", "historica")
+DEPARTAMENTOS_ALERTA = (
+    "SV-AH",
+    "SV-CA",
+    "SV-CH",
+    "SV-CU",
+    "SV-LI",
+    "SV-MO",
+    "SV-PA",
+    "SV-SA",
+    "SV-SM",
+    "SV-SO",
+    "SV-SS",
+    "SV-SV",
+    "SV-UN",
+    "SV-US",
+)
 
 AVISO_HONESTIDAD_ALERTAS = (
     "Alertas redactadas por el equipo de vigilancia del proyecto (INSAMT, Equipo 4) "
@@ -26,7 +42,7 @@ _COLUMNAS = (
     "id, tipo, nivel, titulo, contexto, indicaciones, fuente, autor, "
     "vigente_desde, vigente_hasta, activa, etiqueta, "
     "signos_alarma, criterios_referencia, que_notificar, "
-    "definicion_caso, contacto_vigilancia"
+    "definicion_caso, contacto_vigilancia, departamentos"
 )
 
 _CAMPOS_CLINICOS = (
@@ -49,6 +65,7 @@ _CAMPOS_ESCRITURA = (
     "vigente_hasta",
     "activa",
     "etiqueta",
+    "departamentos",
     *_CAMPOS_CLINICOS,
 )
 
@@ -78,6 +95,7 @@ def _fila_publica(fila: tuple) -> dict:
         que_notificar,
         definicion_caso,
         contacto_vigilancia,
+        departamentos,
     ) = fila
     return {
         "id": int(ident),
@@ -99,6 +117,8 @@ def _fila_publica(fila: tuple) -> dict:
         "que_notificar": que_notificar,
         "definicion_caso": definicion_caso,
         "contacto_vigilancia": contacto_vigilancia,
+        # ADR 0022: None = alerta nacional; lista = códigos ISO 3166-2.
+        "departamentos": list(departamentos) if departamentos else None,
     }
 
 
@@ -109,6 +129,22 @@ def _etiqueta_normalizada(valor: str | None) -> str | None:
     if recortada == "":
         return None
     return recortada
+
+
+def _departamentos_normalizados(valor: list[str] | None) -> list[str] | None:
+    """Quita duplicados y espacios; lista vacía -> None (alcance nacional)."""
+    if valor is None:
+        return None
+    limpios: list[str] = []
+    for codigo in valor:
+        recortado = codigo.strip()
+        if recortado not in DEPARTAMENTOS_ALERTA:
+            raise ValueError(
+                "departamentos debe contener códigos ISO 3166-2 de El Salvador (SV-AH..SV-US)"
+            )
+        if recortado not in limpios:
+            limpios.append(recortado)
+    return limpios or None
 
 
 class AlertaCrear(BaseModel):
@@ -125,11 +161,17 @@ class AlertaCrear(BaseModel):
     vigente_hasta: date | None = None
     activa: bool = True
     etiqueta: str | None = None
+    departamentos: list[str] | None = None
     signos_alarma: str | None = None
     criterios_referencia: str | None = None
     que_notificar: str | None = None
     definicion_caso: str | None = None
     contacto_vigilancia: str | None = None
+
+    @field_validator("departamentos")
+    @classmethod
+    def _departamentos(cls, valor: list[str] | None) -> list[str] | None:
+        return _departamentos_normalizados(valor)
 
     @field_validator("tipo")
     @classmethod
@@ -182,11 +224,17 @@ class AlertaParche(BaseModel):
     vigente_hasta: date | None = None
     activa: bool | None = None
     etiqueta: str | None = Field(default=None)
+    departamentos: list[str] | None = None
     signos_alarma: str | None = None
     criterios_referencia: str | None = None
     que_notificar: str | None = None
     definicion_caso: str | None = None
     contacto_vigilancia: str | None = None
+
+    @field_validator("departamentos")
+    @classmethod
+    def _departamentos(cls, valor: list[str] | None) -> list[str] | None:
+        return _departamentos_normalizados(valor)
 
     @field_validator("tipo")
     @classmethod
@@ -256,12 +304,15 @@ def listar_alertas(
     hasta: date | None = None,
     incluir_inactivas: bool = False,
     incluir_etiquetadas: bool = False,
+    departamento: str | None = None,
 ) -> list[dict]:
     """Lista alertas con filtros opcionales combinados con AND.
 
     Por defecto: activa=TRUE y etiqueta IS NULL (contrato público de ADR 0013).
     `tipo` ya debe ser None o un valor de TIPOS_ALERTA.
     `desde`/`hasta` filtran por solapamiento con la vigencia, no por igualdad.
+    `departamento` (código ISO ya validado) devuelve las nacionales más las que
+    lo incluyen (ADR 0022).
     """
     sql = f"""
         SELECT {_COLUMNAS}
@@ -276,6 +327,9 @@ def listar_alertas(
     if tipo is not None:
         sql += " AND tipo = %s"
         params.append(tipo)
+    if departamento is not None:
+        sql += " AND (departamentos IS NULL OR %s = ANY(departamentos))"
+        params.append(departamento)
     if desde is not None:
         sql += " AND (vigente_hasta IS NULL OR vigente_hasta >= %s)"
         params.append(desde)
@@ -310,6 +364,7 @@ def consultar_alertas_publicas(
     hasta: date | None = None,
     incluir_inactivas: bool = False,
     incluir_etiquetadas: bool = False,
+    departamento: str | None = None,
 ) -> dict:
     """Cuerpo del GET público: aviso, última revisión y lista filtrada."""
     return {
@@ -322,6 +377,7 @@ def consultar_alertas_publicas(
             hasta=hasta,
             incluir_inactivas=incluir_inactivas,
             incluir_etiquetadas=incluir_etiquetadas,
+            departamento=departamento,
         ),
     }
 
@@ -351,6 +407,7 @@ def crear_alerta(conn, cuerpo: AlertaCrear) -> dict:
         "vigente_hasta",
         "activa",
         "etiqueta",
+        "departamentos",
         *_CAMPOS_CLINICOS,
     ]
     valores = [getattr(cuerpo, col) for col in columnas]

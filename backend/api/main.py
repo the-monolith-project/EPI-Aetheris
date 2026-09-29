@@ -67,6 +67,7 @@ from .respiratorios import (
     serie_virus,
 )
 from .alertas import (
+    DEPARTAMENTOS_ALERTA,
     TIPOS_ALERTA,
     AlertaCrear,
     AlertaParche,
@@ -1396,12 +1397,19 @@ def alertas_publicas(
     hasta: date | None = None,
     incluir_inactivas: bool = False,
     incluir_etiquetadas: bool = False,
+    departamento: str | None = None,
 ):
     """Lista alertas. Sin parámetros extra: activa=TRUE y etiqueta IS NULL.
 
     Filtros opcionales combinados con AND: tipo, desde/hasta (solapamiento
-    de vigencia), incluir_inactivas, incluir_etiquetadas.
+    de vigencia), incluir_inactivas, incluir_etiquetadas, departamento
+    (nacionales más las que lo incluyen, ADR 0022).
     """
+    if departamento is not None and departamento not in DEPARTAMENTOS_ALERTA:
+        raise HTTPException(
+            status_code=422,
+            detail="El parámetro 'departamento' debe ser un código ISO 3166-2 de El Salvador (SV-AH..SV-US).",
+        )
     if tipo is not None and tipo not in TIPOS_ALERTA:
         raise HTTPException(
             status_code=422,
@@ -1416,6 +1424,7 @@ def alertas_publicas(
                 hasta=hasta,
                 incluir_inactivas=incluir_inactivas,
                 incluir_etiquetadas=incluir_etiquetadas,
+                departamento=departamento,
             )
     except Exception as exc:
         # Contrato propio ({aviso, ultima_revision, alertas}); no se degrada

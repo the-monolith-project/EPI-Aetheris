@@ -495,3 +495,104 @@ class AlertasApiTest(unittest.TestCase):
         self.assertIn("SIBASI", resp["contacto_vigilancia"])
         self.assertNotIn("@", resp["contacto_vigilancia"])
         self.assertNotIn("[PENDIENTE]", resp["contacto_vigilancia"])
+
+    def test_departamentos_siempre_presente_y_nulo_por_defecto(self):
+        titulo = self._titulo_fixture("nacional")
+        self._insertar(titulo=titulo)
+        r = self.client.get("/api/alertas")
+        fila = next(a for a in r.json()["alertas"] if a["titulo"] == titulo)
+        self.assertIn("departamentos", fila)
+        self.assertIsNone(fila["departamentos"])
+
+    def test_filtro_departamento_devuelve_nacionales_y_del_departamento(self):
+        nacional = self._titulo_fixture("dep-nacional")
+        en_ss = self._titulo_fixture("dep-ss")
+        en_sa = self._titulo_fixture("dep-sa")
+        self._insertar(titulo=nacional)
+        self._insertar(titulo=en_ss, departamentos=["SV-SS", "SV-LI"])
+        self._insertar(titulo=en_sa, departamentos=["SV-SA"])
+        titulos = self._titulos({"departamento": "SV-SS"})
+        self.assertIn(nacional, titulos)
+        self.assertIn(en_ss, titulos)
+        self.assertNotIn(en_sa, titulos)
+
+    def test_sin_filtro_devuelve_todas_como_antes(self):
+        en_sa = self._titulo_fixture("dep-todas")
+        self._insertar(titulo=en_sa, departamentos=["SV-SA"])
+        self.assertIn(en_sa, self._titulos())
+
+    def test_departamento_invalido_422(self):
+        r = self.client.get("/api/alertas", params={"departamento": "SV-XX"})
+        self.assertEqual(r.status_code, 422)
+
+    def test_post_con_departamentos_los_normaliza_y_los_devuelve(self):
+        titulo = self._titulo_fixture("post-dep")
+        cuerpo = {
+            "tipo": "dengue",
+            "nivel": "informativo",
+            "titulo": titulo,
+            "contexto": "Contexto de alta con alcance.",
+            "indicaciones": "- Revisar vigencia.",
+            "fuente": "Prueba automatizada",
+            "autor": "suite de tests",
+            "vigente_desde": "2026-09-07",
+            "departamentos": ["SV-SS", " SV-SS ", "SV-LI"],
+        }
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": TOKEN_DUMMY}):
+            r = self.client.post(
+                "/api/alertas", json=cuerpo, headers=self._auth()
+            )
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.json()["departamentos"], ["SV-SS", "SV-LI"])
+
+    def test_post_lista_vacia_es_alcance_nacional(self):
+        titulo = self._titulo_fixture("post-dep-vacio")
+        cuerpo = {
+            "tipo": "dengue",
+            "nivel": "informativo",
+            "titulo": titulo,
+            "contexto": "Contexto de alta sin alcance.",
+            "indicaciones": "- Revisar vigencia.",
+            "fuente": "Prueba automatizada",
+            "autor": "suite de tests",
+            "vigente_desde": "2026-09-07",
+            "departamentos": [],
+        }
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": TOKEN_DUMMY}):
+            r = self.client.post(
+                "/api/alertas", json=cuerpo, headers=self._auth()
+            )
+        self.assertEqual(r.status_code, 201)
+        self.assertIsNone(r.json()["departamentos"])
+
+    def test_post_departamento_desconocido_422_no_inserta(self):
+        titulo = self._titulo_fixture("post-dep-malo")
+        cuerpo = {
+            "tipo": "dengue",
+            "nivel": "informativo",
+            "titulo": titulo,
+            "contexto": "Contexto de alta con código inválido.",
+            "indicaciones": "- Revisar vigencia.",
+            "fuente": "Prueba automatizada",
+            "autor": "suite de tests",
+            "vigente_desde": "2026-09-07",
+            "departamentos": ["SV-ZZ"],
+        }
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": TOKEN_DUMMY}):
+            r = self.client.post(
+                "/api/alertas", json=cuerpo, headers=self._auth()
+            )
+        self.assertEqual(r.status_code, 422)
+        self.assertEqual(self._contar_titulo(titulo), 0)
+
+    def test_patch_cambia_departamentos(self):
+        titulo = self._titulo_fixture("patch-dep")
+        ident = self._insertar(titulo=titulo)
+        with patch.dict(os.environ, {"ALERTAS_TOKEN": TOKEN_DUMMY}):
+            r = self.client.patch(
+                f"/api/alertas/{ident}",
+                json={"departamentos": ["SV-US"]},
+                headers=self._auth(),
+            )
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["departamentos"], ["SV-US"])
