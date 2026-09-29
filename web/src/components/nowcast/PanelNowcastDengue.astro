@@ -1,4 +1,5 @@
 ---
+import AyudaTermino from '../AyudaTermino.astro';
 // Predicción de casos de dengue a corto plazo (GET /api/nowcast-dengue).
 // Artefacto precomputado por backend/ingestion/nowcast_tablero_dengue.py. Sobre
 // la serie del tablero de MINSAL (desde 2025) el método es la mezcla del modelo
@@ -36,8 +37,12 @@ const { variante = 'completo', demo = false } = Astro.props;
       class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
       aria-hidden="true"></span>
     <div>
-      <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
+      <h2
+        class="flex items-center gap-1 font-sans text-base font-semibold text-ink sm:text-lg"
+      >
         Predicción de casos a corto plazo
+        <AyudaTermino clave="bandas" />
+        <AyudaTermino clave="sospechoso" />
       </h2>
       <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
         Predicción estadística del conteo nacional de dengue para las próximas 1
@@ -47,11 +52,7 @@ const { variante = 'completo', demo = false } = Astro.props;
     </div>
   </div>
 
-  <div
-    data-nowcast-cuerpo
-    class="mt-4"
-    role="status"
-  >
+  <div data-nowcast-cuerpo class="mt-4" role="status" aria-busy="true">
     <div data-estado aria-hidden="true">
       <div class="skeleton h-56 w-full sm:h-64"></div>
       <div class="skeleton mt-3 h-3 w-2/5"></div>
@@ -114,116 +115,19 @@ const { variante = 'completo', demo = false } = Astro.props;
     renderErrorFuente,
     renderSinDato,
   } from '../estado-async';
+  import {
+    bandaPath,
+    crearSvg,
+    ejeY,
+    el,
+    fecha,
+    fmtFecha,
+    fmtNum,
+    linea,
+    type Escalas,
+  } from './svg-nowcast';
 
-  const SVG_NS = 'http://www.w3.org/2000/svg';
-  const fmtNum = new Intl.NumberFormat('es-SV', { maximumFractionDigits: 0 });
-  const fmtFecha = new Intl.DateTimeFormat('es-SV', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
   const OBS_VENTANA = 60; // semanas observadas de contexto en el abanico
-
-  function fecha(iso: string): Date {
-    return new Date(`${iso}T00:00:00`);
-  }
-
-  function el(
-    nombre: string,
-    attrs: Record<string, string | number> = {},
-  ): SVGElement {
-    const nodo = document.createElementNS(SVG_NS, nombre);
-    for (const [k, v] of Object.entries(attrs)) nodo.setAttribute(k, String(v));
-    return nodo;
-  }
-
-  interface Escalas {
-    x: (t: number) => number;
-    y: (v: number) => number;
-    ancho: number;
-    alto: number;
-    margen: { arriba: number; abajo: number; izq: number; der: number };
-  }
-
-  function crearSvg(ancho: number, alto: number, etiqueta: string): SVGSVGElement {
-    const svg = document.createElementNS(SVG_NS, 'svg');
-    svg.setAttribute('viewBox', `0 0 ${ancho} ${alto}`);
-    svg.setAttribute('class', 'w-full');
-    svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', etiqueta);
-    return svg;
-  }
-
-  function ejeY(svg: SVGElement, e: Escalas, maxV: number) {
-    const niveles = [0, maxV / 2, maxV];
-    for (const n of niveles) {
-      const y = e.y(n);
-      svg.appendChild(
-        el('line', {
-          x1: e.margen.izq,
-          x2: e.ancho - e.margen.der,
-          y1: y,
-          y2: y,
-          stroke: 'var(--color-border)',
-          'stroke-width': 1,
-        }),
-      );
-      const txt = el('text', {
-        x: e.margen.izq - 8,
-        y: y + 3,
-        'text-anchor': 'end',
-        'font-family': 'var(--font-sans)',
-        'font-size': 9,
-        fill: 'var(--color-ink-muted)',
-      });
-      (txt as SVGTextElement).style.fontVariantNumeric = 'tabular-nums';
-      txt.textContent = fmtNum.format(Math.round(n));
-      svg.appendChild(txt);
-    }
-  }
-
-  function bandaPath(
-    e: Escalas,
-    puntos: { t: number; lo: number; hi: number }[],
-  ): string {
-    const arriba = puntos.map((p) => `${e.x(p.t)},${e.y(p.hi)}`);
-    const abajo = puntos
-      .slice()
-      .reverse()
-      .map((p) => `${e.x(p.t)},${e.y(p.lo)}`);
-    return `M${arriba.join(' L')} L${abajo.join(' L')} Z`;
-  }
-
-  // Una semana sin dato (v null, como la 53 de 2025 en el tablero) corta la
-  // línea en lugar de unirla con las vecinas.
-  function linea(
-    e: Escalas,
-    puntos: { t: number; v: number | null }[],
-    color: string,
-    ancho: number,
-    guiones?: string,
-  ): SVGElement {
-    let d = '';
-    let enTramo = false;
-    for (const p of puntos) {
-      if (p.v === null || !Number.isFinite(p.v)) {
-        enTramo = false;
-        continue;
-      }
-      d += `${enTramo ? 'L' : 'M'}${e.x(p.t)},${e.y(p.v)} `;
-      enTramo = true;
-    }
-    const pl = el('path', {
-      d: d.trim(),
-      fill: 'none',
-      stroke: color,
-      'stroke-width': ancho,
-      'stroke-linejoin': 'round',
-      'stroke-linecap': 'round',
-    });
-    if (guiones) pl.setAttribute('stroke-dasharray', guiones);
-    return pl;
-  }
 
   // --- revelado animado ---------------------------------------------------
 
@@ -236,10 +140,7 @@ const { variante = 'completo', demo = false } = Astro.props;
 
   // Llama a aplicar(frac) con frac lineal de 0 a 1 sobre `dur` ms. Respeta
   // prefers-reduced-motion (salta al estado final). Resuelve al terminar.
-  function animar(
-    aplicar: (frac: number) => void,
-    dur: number,
-  ): Promise<void> {
+  function animar(aplicar: (frac: number) => void, dur: number): Promise<void> {
     const reduce =
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -297,15 +198,18 @@ const { variante = 'completo', demo = false } = Astro.props;
       b95: e.banda_95,
     }));
     // el abanico arranca pegado al último punto observado
-    const anclaPunto = { t: tAncla, med: casoAncla, b50: [casoAncla, casoAncla] as [number, number], b95: [casoAncla, casoAncla] as [number, number] };
+    const anclaPunto = {
+      t: tAncla,
+      med: casoAncla,
+      b50: [casoAncla, casoAncla] as [number, number],
+      b95: [casoAncla, casoAncla] as [number, number],
+    };
     const fanDesdeAncla = [anclaPunto, ...fan];
 
     const tMax = fan[fan.length - 1].t;
     const maxV =
-      Math.max(
-        ...serieObs.map((p) => p.v ?? 0),
-        ...fan.map((p) => p.b95[1]),
-      ) * 1.08;
+      Math.max(...serieObs.map((p) => p.v ?? 0), ...fan.map((p) => p.b95[1])) *
+      1.08;
 
     const areaX = ancho - margen.izq - margen.der;
     const areaY = alto - margen.arriba - margen.abajo;
@@ -592,8 +496,8 @@ const { variante = 'completo', demo = false } = Astro.props;
     // caja de zoom: últimas ~13 semanas observadas + el abanico, ajustada a la
     // razón de aspecto del viewBox base para que no haya letterbox.
     const vbBase: [number, number, number, number] = [0, 0, ancho, alto];
-    let zx = e.x(Math.max(0, tAncla - 13)) - 8;
-    let zw = e.x(tMax) + 16 - zx;
+    const zx = e.x(Math.max(0, tAncla - 13)) - 8;
+    const zw = e.x(tMax) + 16 - zx;
     // rango vertical: nos ceñimos a la banda del 50 % + mediana + ancla (mucho
     // más estrecho que el 95 %), con margen. Las colas del 95 % pueden sangrar
     // fuera del encuadre: es una vista "héroe" del abanico, no un recorte exacto.
@@ -655,9 +559,8 @@ const { variante = 'completo', demo = false } = Astro.props;
     const tMax = tEje(puntos[puntos.length - 1].fecha);
 
     const maxV =
-      Math.max(
-        ...puntos.map((p) => Math.max(p.observado, p.banda_95[1])),
-      ) * 1.08;
+      Math.max(...puntos.map((p) => Math.max(p.observado, p.banda_95[1]))) *
+      1.08;
 
     const areaX = ancho - margen.izq - margen.der;
     const areaY = alto - margen.arriba - margen.abajo;
@@ -749,8 +652,7 @@ const { variante = 'completo', demo = false } = Astro.props;
 
   function bloque(titulo: string): HTMLElement {
     const h = document.createElement('h3');
-    h.className =
-      'mt-6 font-sans text-sm font-semibold text-ink';
+    h.className = 'mt-6 font-sans text-sm font-semibold text-ink';
     h.textContent = titulo;
     return h;
   }
@@ -796,7 +698,7 @@ const { variante = 'completo', demo = false } = Astro.props;
         ? new URLSearchParams(location.search)
         : new URLSearchParams();
     const demo = completo && (demoForzado || busqueda.has('demo'));
-    // ?demo=lento (o ?lento en /demos) -> ritmo más pausado en TODA la secuencia.
+    // ?demo=lento (o ?lento en /demos) -> ritmo más pausado en toda la secuencia.
     const RITMO =
       busqueda.get('demo') === 'lento' || busqueda.has('lento') ? 1.6 : 1;
 
@@ -811,7 +713,7 @@ const { variante = 'completo', demo = false } = Astro.props;
         `<option>${fmtFecha.format(fecha(datos.ancla.fecha))} · última semana observada</option>` +
         '</select></label>' +
         '<button type="button" data-cargar class="rounded-full bg-accent px-5 py-2.5 font-sans text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-deep">Cargar predicción →</button>' +
-        '<button type="button" data-reiniciar hidden class="font-sans text-xs text-accent underline underline-offset-2">reiniciar</button>';
+        '<button type="button" data-reiniciar hidden class="font-sans text-xs text-accent underline underline-offset-2">Reiniciar</button>';
       cont.appendChild(barra);
     }
 
@@ -831,8 +733,14 @@ const { variante = 'completo', demo = false } = Astro.props;
     cont.appendChild(
       leyenda([
         ['var(--color-accent)', 'observado'],
-        ['color-mix(in srgb, var(--color-accent) 22%, transparent)', 'rango 50 %'],
-        ['color-mix(in srgb, var(--color-accent) 10%, transparent)', 'rango 95 %'],
+        [
+          'color-mix(in srgb, var(--color-accent) 22%, transparent)',
+          'rango 50 %',
+        ],
+        [
+          'color-mix(in srgb, var(--color-accent) 10%, transparent)',
+          'rango 95 %',
+        ],
       ]),
     );
 
@@ -851,7 +759,11 @@ const { variante = 'completo', demo = false } = Astro.props;
       (demo ? ' transition-opacity duration-500 opacity-0' : '');
     const pct = Math.round(d.reduccion_wis * 100);
     const signo = pct > 0 ? '−' : '+';
-    const contadores: { nodo: HTMLElement; plantilla: string; valor: number }[] = [];
+    const contadores: {
+      nodo: HTMLElement;
+      plantilla: string;
+      valor: number;
+    }[] = [];
     const chipCont = (plantilla: string, valor: number, fuerte = false) => {
       const nodo = chip(plantilla.replace('{n}', String(valor)), fuerte);
       contadores.push({ nodo, plantilla, valor });
@@ -863,14 +775,27 @@ const { variante = 'completo', demo = false } = Astro.props;
     const prueba = datos.prueba;
     if (d.dentro_de_muestra && prueba) {
       chips.append(
-        chipCont(`${signo}{n} % de error frente a la persistencia en ${tramoAnios}`, Math.abs(pct), true),
-        chip(`en prueba con semanas nuevas desde la semana ${prueba.inicio.semana} de ${prueba.inicio.anio}`),
+        chipCont(
+          `${signo}{n} % de error frente a la persistencia en ${tramoAnios}`,
+          Math.abs(pct),
+          true,
+        ),
+        chip(
+          `en prueba con semanas nuevas desde la semana ${prueba.inicio.semana} de ${prueba.inicio.anio}`,
+        ),
         chip(`horizonte de referencia: ${d.horizonte} semanas`),
       );
     } else {
       chips.append(
-        chipCont(`${signo}{n} % de error frente a la persistencia`, Math.abs(pct), true),
-        chipCont(`mejor en {n} de ${d.n_anios} temporadas de prueba`, d.anios_ganados),
+        chipCont(
+          `${signo}{n} % de error frente a la persistencia`,
+          Math.abs(pct),
+          true,
+        ),
+        chipCont(
+          `mejor en {n} de ${d.n_anios} temporadas de prueba`,
+          d.anios_ganados,
+        ),
         chip(`horizonte de referencia: ${d.horizonte} semanas`),
       );
     }
@@ -922,8 +847,14 @@ const { variante = 'completo', demo = false } = Astro.props;
         extra.appendChild(
           leyenda([
             ['var(--color-ink)', 'observado'],
-            ['color-mix(in srgb, var(--color-accent) 60%, transparent)', 'predicción (mediana)'],
-            ['color-mix(in srgb, var(--color-accent) 18%, transparent)', 'rango 50 %'],
+            [
+              'color-mix(in srgb, var(--color-accent) 60%, transparent)',
+              'predicción (mediana)',
+            ],
+            [
+              'color-mix(in srgb, var(--color-accent) 18%, transparent)',
+              'rango 50 %',
+            ],
           ]),
         );
       }
@@ -931,8 +862,7 @@ const { variante = 'completo', demo = false } = Astro.props;
       // detalle por año
       if (anios.length) {
         const tabla = document.createElement('div');
-        tabla.className =
-          'mt-4 grid gap-2 sm:grid-cols-5';
+        tabla.className = 'mt-4 grid gap-2 sm:grid-cols-5';
         for (const a of anios) {
           const celda = document.createElement('div');
           celda.className =
@@ -1033,8 +963,8 @@ const { variante = 'completo', demo = false } = Astro.props;
         render(cont, datos, completo, demoForzado),
       );
     } else {
-      requestAnimationFrame(() =>
-        void handleAbanico.revelar(completo ? 650 : 450),
+      requestAnimationFrame(
+        () => void handleAbanico.revelar(completo ? 650 : 450),
       );
     }
 
@@ -1054,12 +984,14 @@ const { variante = 'completo', demo = false } = Astro.props;
       const completo = sec.dataset.variante !== 'compacto';
       const demoForzado = sec.dataset.demo === 'true';
       try {
+        cont.setAttribute('aria-busy', 'true');
         const datos = await obtenerNowcastDengue();
         if (esNoDisponible(datos)) {
           renderSinDato(cont, motivoNoDisponible(datos));
           continue;
         }
         render(cont, datos, completo, demoForzado);
+        cont.removeAttribute('aria-busy');
       } catch {
         renderErrorFuente(cont, () => void iniciar());
       }

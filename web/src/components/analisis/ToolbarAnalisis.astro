@@ -1,3 +1,8 @@
+---
+import { DESCRIPCIONES_PRESETS } from '../../lib/analisis-layout-state';
+import BarraActividad from '../BarraActividad.astro';
+---
+
 <div
   id="toolbar-analisis-contenedor"
   class="sticky top-[6.5rem] z-30 mt-5 sm:top-24"
@@ -5,74 +10,175 @@
   <section
     id="toolbar-analisis"
     aria-label="Controles del workspace analítico"
-    class="relative rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur sm:flex sm:items-center sm:justify-between sm:gap-4"
+    class="relative overflow-hidden rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur sm:p-4"
   >
-    <p
-      id="toolbar-analisis-resumen"
-      class="min-w-0 font-sans text-xs leading-relaxed text-ink-muted"
-      aria-live="polite"
+    <BarraActividad
+      id="toolbar-actividad-barra"
+      class="absolute inset-x-0 top-0"
+      etiqueta="Actualizando datos del análisis…"
+    />
+    <div
+      class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
     >
-      Cargando estado del análisis…
-    </p>
-    <div class="mt-3 flex flex-wrap items-center gap-2 sm:mt-0 sm:shrink-0">
-      <label
-        class="flex items-center gap-2 font-sans text-xs font-semibold text-ink"
-      >
-        Vista
-        <select
-          id="analisis-vista"
-          class="rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-normal text-ink"
-        >
-          <option value="general">General</option>
-          <option value="territorial">Territorial</option>
-          <option value="temporal">Temporal</option>
-          <option value="clima">Clima</option>
-          <option value="calidad">Calidad de datos</option>
-        </select>
-      </label>
-      <slot name="selector-paneles" />
       <div
-        class="flex items-center gap-1 rounded-lg border border-border bg-bg px-1 py-1"
+        id="toolbar-analisis-resumen"
+        class="min-w-0 font-sans text-xs leading-relaxed text-ink-muted"
+        aria-live="polite"
       >
-        <span class="px-1 font-sans text-xs font-semibold text-ink-muted"
-          >Zoom</span
-        >
-        <button
-          id="analisis-zoom-menos"
-          type="button"
-          class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30 disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="Reducir zoom temporal"
-          title="Reducir zoom">−</button
-        >
-        <output
-          id="analisis-zoom-valor"
-          class="min-w-9 text-center font-mono text-xs text-ink">100%</output
-        >
-        <button
-          id="analisis-zoom-mas"
-          type="button"
-          class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30 disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="Aumentar zoom temporal"
-          title="Aumentar zoom">+</button
-        >
+        Cargando estado del análisis…
       </div>
-      <button
-        id="analisis-abrir-filtros"
-        type="button"
-        aria-expanded="false"
-        aria-controls="analisis-filtros-popover"
-        aria-haspopup="dialog"
-        class="rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+
+      <div class="flex items-start gap-2 sm:shrink-0 sm:items-center">
+        <div
+          id="toolbar-analisis-controles"
+          class="flex flex-1 flex-wrap items-center gap-2"
+        >
+          <label
+            class="flex items-center gap-2 font-sans text-xs font-semibold text-ink"
+          >
+            Vista
+            <select
+              id="analisis-vista"
+              class="min-h-[44px] rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-normal text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <option value="general">General</option>
+              <option value="territorial">Territorial</option>
+              <option value="temporal">Temporal</option>
+              <option value="clima">Clima</option>
+              <option value="calidad">Calidad de datos</option>
+            </select>
+          </label>
+          <slot name="selector-paneles" />
+          <div
+            data-solo-escritorio
+            class="flex items-center gap-1 rounded-lg border border-border bg-bg px-1 py-1"
+          >
+            <span class="px-1 font-sans text-xs font-semibold text-ink-muted"
+              >Zoom</span
+            >
+            <button
+              id="analisis-zoom-menos"
+              type="button"
+              class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Reducir zoom temporal"
+              title="Reducir zoom">−</button
+            >
+            <output
+              id="analisis-zoom-valor"
+              class="min-w-9 text-center font-mono text-xs text-ink"
+              >100%</output
+            >
+            <button
+              id="analisis-zoom-mas"
+              type="button"
+              class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded px-1.5 py-0.5 font-sans text-sm text-ink hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Aumentar zoom temporal"
+              title="Aumentar zoom">+</button
+            >
+          </div>
+          <button
+            id="analisis-abrir-filtros"
+            type="button"
+            aria-expanded="false"
+            aria-controls="analisis-filtros-popover"
+            aria-haspopup="dialog"
+            class="flex min-h-[44px] items-center rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Filtros
+          </button>
+          <button
+            id="analisis-restablecer-vista"
+            type="button"
+            class="flex min-h-[44px] items-center rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Restablecer vista
+          </button>
+        </div>
+        <button
+          id="toolbar-analisis-contraer"
+          type="button"
+          aria-expanded="true"
+          aria-controls="toolbar-analisis-controles toolbar-analisis-detalle"
+          aria-label="Contraer controles del análisis"
+          title="Contraer controles"
+          class="ml-auto flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-border bg-bg text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <svg
+            id="toolbar-analisis-contraer-icono"
+            class="h-4 w-4 rotate-180 transition-transform duration-200"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="toolbar-analisis-detalle">
+      <!-- I8: Descripción del preset activo -->
+      <p
+        id="toolbar-vista-descripcion"
+        class="mt-1.5 font-sans text-[11px] leading-tight text-ink-muted"
       >
-        Filtros
-      </button>
-      <button
-        id="analisis-restablecer-vista"
-        type="button"
-        class="rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+        {DESCRIPCIONES_PRESETS.general}
+      </p>
+
+      <!-- I6: Cinta de semanas epidemiológicas permanente -->
+      <div
+        class="cinta-semanas relative mt-2.5 select-none border-t border-border/80 pt-2"
       >
-        Restablecer vista
-      </button>
+        <div class="relative h-6 w-full">
+          <!-- Curva nacional del año como área tenue por detrás -->
+          <svg
+            id="analisis-cinta-curva"
+            class="pointer-events-none absolute inset-0 h-full w-full opacity-35"
+            preserveAspectRatio="none"
+            viewBox="0 0 53 100"
+            aria-hidden="true"
+          >
+            <path id="analisis-cinta-curva-path" fill="var(--color-border)" d=""
+            ></path>
+          </svg>
+
+          <!-- Banda del rango de comparación en color-secondary -->
+          <div
+            id="analisis-cinta-rango"
+            class="pointer-events-none absolute inset-y-0.5 rounded bg-secondary/70 transition-all duration-100"
+            style="left: 0%; width: 100%;"
+          >
+          </div>
+
+          <!-- Control deslizante de semana -->
+          <input
+            id="analisis-cinta-semana"
+            type="range"
+            min="1"
+            max="53"
+            value="1"
+            aria-label="Semana epidemiológica activa"
+            aria-valuetext="Semana epidemiológica 1"
+            class="relative z-10 h-full w-full cursor-pointer bg-transparent accent-[var(--color-accent)]"
+          />
+        </div>
+
+        <!-- Marcas de referencia en mono -->
+        <div
+          class="mt-0.5 flex items-center justify-between px-0.5 font-mono text-[10px] text-ink-muted"
+        >
+          <span>SE01</span>
+          <span>SE13</span>
+          <span>SE26</span>
+          <span>SE39</span>
+          <span>SE53</span>
+        </div>
+      </div>
     </div>
   </section>
   <slot name="filtros" />
@@ -80,12 +186,18 @@
 
 <script>
   import {
+    DESCRIPCIONES_PRESETS,
     aplicarVistaAnalisis,
     actualizarLayoutAnalisis,
     restablecerLayoutAnalisis,
     suscribirLayoutAnalisis,
   } from '../../lib/analisis-layout-state';
-  import { suscribirFiltrosAnalisis } from '../../lib/analisis-state';
+  import {
+    actualizarFiltrosAnalisis,
+    suscribirFiltrosAnalisis,
+  } from '../../lib/analisis-state';
+  import { obtenerDatasetAnalitico } from '../../lib/analisis-api';
+  import { DEPARTAMENTOS_POR_CODIGO } from '../../lib/departamentos';
   import type {
     EstadoLayoutAnalisis,
     VistaAnalisis,
@@ -96,6 +208,7 @@
     'analisis-vista',
   ) as HTMLSelectElement | null;
   const resumen = document.getElementById('toolbar-analisis-resumen');
+  const descripcionVista = document.getElementById('toolbar-vista-descripcion');
   const botonRestablecer = document.getElementById(
     'analisis-restablecer-vista',
   ) as HTMLButtonElement | null;
@@ -119,25 +232,118 @@
     'analisis-zoom-mas',
   ) as HTMLButtonElement | null;
 
+  const cintaSemana = document.getElementById(
+    'analisis-cinta-semana',
+  ) as HTMLInputElement | null;
+  const cintaRango = document.getElementById('analisis-cinta-rango');
+  const cintaCurvaPath = document.querySelector<SVGPathElement>(
+    '#analisis-cinta-curva-path',
+  );
+
   let filtrosActuales: FiltrosAnalisis | null = null;
   let layoutActual: EstadoLayoutAnalisis | null = null;
+  let timerThrottleCinta: ReturnType<typeof setTimeout> | null = null;
 
   function etiquetaSemana(semana: number): string {
     return `SE${String(semana).padStart(2, '0')}`;
   }
 
-  function actualizarResumen(): void {
+  function actualizarResumen(semanaManual?: number): void {
     if (!resumen || !filtrosActuales || !layoutActual) return;
-    const departamento =
-      filtrosActuales.departamento ?? 'Todos los departamentos';
-    resumen.textContent = [
-      `Dengue · ${departamento}`,
-      String(filtrosActuales.anio),
-      etiquetaSemana(filtrosActuales.semana),
-      filtrosActuales.serie === 'confirmado' ? 'Confirmado' : 'Probable',
-      `${etiquetaSemana(filtrosActuales.semanaDesde)}–${etiquetaSemana(filtrosActuales.semanaHasta)}`,
-      `Vista ${layoutActual.vista}`,
-    ].join(' · ');
+    const semana = semanaManual ?? filtrosActuales.semana;
+    const deptoObj = filtrosActuales.departamento
+      ? DEPARTAMENTOS_POR_CODIGO[filtrosActuales.departamento]
+      : null;
+    // Frase, no cadena de datos unidos por puntos medios: el resumen es la
+    // linea que dice donde estas parado, y se lee igual con los ojos que en voz
+    // alta (el contenedor es aria-live, asi que lo que se ve es lo que se
+    // anuncia -- por eso ya no hace falta una copia sr-only aparte). Los
+    // valores medidos van en mono via .cifra; las palabras, en Inter.
+    const donde = deptoObj ? deptoObj.nombre : 'los 14 departamentos';
+    const serie =
+      filtrosActuales.serie === 'confirmado' ? 'confirmado' : 'probable';
+    const semanaTexto = etiquetaSemana(semana);
+    const rangoTexto = `${etiquetaSemana(filtrosActuales.semanaDesde)}–${etiquetaSemana(filtrosActuales.semanaHasta)}`;
+
+    // La vista no entra en la frase: la linea de abajo
+    // (#toolbar-vista-descripcion) ya dice cual esta activa y que muestra.
+    resumen.innerHTML =
+      `Dengue ${serie} en <span class="font-medium text-ink">${donde}</span>, ` +
+      `semana <span class="cifra font-semibold text-accent">${semanaTexto}</span> ` +
+      `de <span class="cifra text-ink">${filtrosActuales.anio}</span>, ` +
+      `comparada con <span class="cifra text-ink">${rangoTexto}</span>.`;
+  }
+
+  function actualizarRangoCinta(desde: number, hasta: number): void {
+    if (!cintaRango) return;
+    const izquierda = ((desde - 1) / 52) * 100;
+    const ancho = Math.max(2, ((hasta - desde) / 52) * 100);
+    cintaRango.style.left = `${izquierda}%`;
+    cintaRango.style.width = `${ancho}%`;
+  }
+
+  let anioCurvaCargado: number | null = null;
+  async function cargarCurvaNacionalCinta(anio: number): Promise<void> {
+    if (anio === anioCurvaCargado || !cintaCurvaPath) return;
+    anioCurvaCargado = anio;
+    try {
+      const datos = await obtenerDatasetAnalitico(anio as any);
+      if (
+        !datos ||
+        !datos.departamentos ||
+        !Array.isArray(datos.departamentos)
+      ) {
+        cintaCurvaPath.setAttribute('d', '');
+        return;
+      }
+      const sumasPorSemana = new Array(53).fill(0);
+      for (const d of datos.departamentos) {
+        for (const s of d.semanas) {
+          const valor = s.presion_probable?.casos_observados ?? 0;
+          if (s.semana_epi >= 1 && s.semana_epi <= 53) {
+            sumasPorSemana[s.semana_epi - 1] += valor;
+          }
+        }
+      }
+      const maximo = Math.max(...sumasPorSemana, 1);
+      const puntos = sumasPorSemana.map((suma, idx) => {
+        const x = idx;
+        const y = 100 - (suma / maximo) * 90;
+        return `${x},${y.toFixed(1)}`;
+      });
+      cintaCurvaPath.setAttribute(
+        'd',
+        `M 0,100 L ${puntos.join(' L ')} L 52,100 Z`,
+      );
+    } catch {
+      cintaCurvaPath.setAttribute('d', '');
+    }
+  }
+
+  if (cintaSemana) {
+    cintaSemana.addEventListener('input', () => {
+      const sem = Number(cintaSemana.value);
+      cintaSemana.setAttribute(
+        'aria-valuetext',
+        `Semana epidemiológica ${sem}`,
+      );
+      actualizarResumen(sem);
+
+      if (timerThrottleCinta) clearTimeout(timerThrottleCinta);
+      timerThrottleCinta = setTimeout(() => {
+        actualizarFiltrosAnalisis({ semana: sem });
+      }, 100);
+    });
+
+    cintaSemana.addEventListener('change', () => {
+      if (timerThrottleCinta) clearTimeout(timerThrottleCinta);
+      const sem = Number(cintaSemana.value);
+      cintaSemana.setAttribute(
+        'aria-valuetext',
+        `Semana epidemiológica ${sem}`,
+      );
+      actualizarFiltrosAnalisis({ semana: sem });
+    });
   }
 
   selectorVista?.addEventListener('change', () => {
@@ -186,6 +392,12 @@
   botonAbrirFiltros?.addEventListener('click', () => {
     if (!popoverFiltros) return;
     if (popoverFiltros.hidden) {
+      // Los paneles abren los filtros desde su estado vacío con .click() sobre
+      // este botón, también con la barra contraída: se expande antes para que
+      // el botón sea visible y el foco pueda volver a él al cerrar.
+      if (botonContraer?.getAttribute('aria-expanded') === 'false') {
+        fijarToolbarExpandida(true);
+      }
       popoverFiltros.hidden = false;
       botonAbrirFiltros.setAttribute('aria-expanded', 'true');
       if (contenedorToolbar) contenedorToolbar.style.zIndex = '50';
@@ -215,6 +427,39 @@
     }
     cerrarFiltros();
   });
+  // Contraer deja solo la frase de resumen: la barra es pegajosa y en
+  // pantallas bajas (o en movil) la cinta y los controles tapan buena parte
+  // de los paneles mientras se recorre el workspace. aria-expanded, el texto
+  // del boton y el giro del chevron se mueven juntos para no divergir.
+  const botonContraer = document.getElementById('toolbar-analisis-contraer');
+  const iconoContraer = document.getElementById(
+    'toolbar-analisis-contraer-icono',
+  );
+  const controlesToolbar = document.getElementById(
+    'toolbar-analisis-controles',
+  );
+  const detalleToolbar = document.getElementById('toolbar-analisis-detalle');
+  function fijarToolbarExpandida(expandida: boolean): void {
+    if (!botonContraer) return;
+    if (!expandida && popoverFiltros?.hidden === false) cerrarFiltros();
+    if (controlesToolbar) controlesToolbar.hidden = !expandida;
+    if (detalleToolbar) detalleToolbar.hidden = !expandida;
+    botonContraer.setAttribute('aria-expanded', String(expandida));
+    const texto = expandida
+      ? 'Contraer controles del análisis'
+      : 'Expandir controles del análisis';
+    botonContraer.setAttribute('aria-label', texto);
+    botonContraer.title = expandida
+      ? 'Contraer controles'
+      : 'Expandir controles';
+    iconoContraer?.classList.toggle('rotate-180', expandida);
+  }
+  botonContraer?.addEventListener('click', () => {
+    fijarToolbarExpandida(
+      botonContraer.getAttribute('aria-expanded') !== 'true',
+    );
+  });
+
   function cambiarZoom(direccion: -1 | 1): void {
     const niveles = [100, 150, 200] as const;
     const actual = layoutActual?.zoomTemporal ?? 100;
@@ -229,14 +474,46 @@
 
   suscribirFiltrosAnalisis((filtros) => {
     filtrosActuales = filtros;
+    if (cintaSemana && Number(cintaSemana.value) !== filtros.semana) {
+      cintaSemana.value = String(filtros.semana);
+      cintaSemana.setAttribute(
+        'aria-valuetext',
+        `Semana epidemiológica ${filtros.semana}`,
+      );
+    }
+    actualizarRangoCinta(filtros.semanaDesde, filtros.semanaHasta);
+    void cargarCurvaNacionalCinta(filtros.anio);
     actualizarResumen();
   });
   suscribirLayoutAnalisis((layout) => {
     layoutActual = layout;
     if (selectorVista) selectorVista.value = layout.vista;
+    if (descripcionVista) {
+      descripcionVista.textContent = DESCRIPCIONES_PRESETS[layout.vista] ?? '';
+    }
     if (zoomValor) zoomValor.value = `${layout.zoomTemporal}%`;
     if (zoomMenos) zoomMenos.disabled = layout.zoomTemporal === 100;
     if (zoomMas) zoomMas.disabled = layout.zoomTemporal === 200;
     actualizarResumen();
   });
+
+  const barraActividad = document.getElementById('toolbar-actividad-barra');
+  const barraTexto =
+    barraActividad?.querySelector<HTMLElement>('[data-barra-texto]');
+  if (typeof window !== 'undefined') {
+    window.addEventListener('epi:actividad-red', ((
+      evento: CustomEvent<{ enVuelo: boolean; conteo: number }>,
+    ) => {
+      if (!barraActividad) return;
+      const activa = evento.detail.enVuelo;
+      barraActividad.dataset.activa = activa ? 'true' : 'false';
+      // Rellenar y vaciar el texto, no ocultar la región: es el cambio de
+      // contenido lo que el lector de pantalla anuncia.
+      if (barraTexto) {
+        barraTexto.textContent = activa
+          ? (barraActividad.dataset.etiqueta ?? 'Actualizando datos…')
+          : '';
+      }
+    }) as EventListener);
+  }
 </script>

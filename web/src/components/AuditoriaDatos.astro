@@ -43,8 +43,15 @@
       <dd
         id="auditoria-completitud"
         class="mt-1 font-sans text-sm leading-relaxed text-deep-ink"
+        aria-busy="true"
       >
-        Cargando semanas con los 14 departamentos…
+        <span class="sr-only" role="status"
+          >Cargando semanas con los 14 departamentos…</span
+        >
+        <div aria-hidden="true" class="space-y-1.5 pt-1">
+          <div class="skeleton h-3.5 w-4/5 rounded"></div>
+          <div class="skeleton h-3.5 w-3/5 rounded"></div>
+        </div>
       </dd>
     </div>
     <div class="rounded-xl border border-white/10 bg-white/5 p-3">
@@ -54,8 +61,15 @@
       <dd
         id="auditoria-antiguedad"
         class="mt-1 font-sans text-sm leading-relaxed text-deep-ink"
+        aria-busy="true"
       >
-        Cargando semanas desde la última observación de cada serie…
+        <span class="sr-only" role="status"
+          >Cargando semanas desde la última observación de cada serie…</span
+        >
+        <div aria-hidden="true" class="space-y-1.5 pt-1">
+          <div class="skeleton h-3.5 w-5/6 rounded"></div>
+          <div class="skeleton h-3.5 w-2/3 rounded"></div>
+        </div>
       </dd>
     </div>
   </dl>
@@ -126,6 +140,8 @@
   async function pintar() {
     if (!nodoCompletitud || !nodoAntiguedad) return;
     try {
+      nodoCompletitud.setAttribute('aria-busy', 'true');
+      nodoAntiguedad.setAttribute('aria-busy', 'true');
       const datos = await obtenerIntegridadVigilancia();
       nodoCompletitud.textContent = textoCompletitud(datos.resumen_anual ?? []);
       nodoAntiguedad.textContent = textoAntiguedad(datos.antiguedad);
@@ -134,6 +150,9 @@
         'No se pudo calcular la completitud geográfica en este momento.';
       nodoAntiguedad.textContent =
         'No se pudo calcular la antigüedad de las series en este momento.';
+    } finally {
+      nodoCompletitud.removeAttribute('aria-busy');
+      nodoAntiguedad.removeAttribute('aria-busy');
     }
   }
 

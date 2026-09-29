@@ -1,0 +1,124 @@
+---
+/**
+ * Aviso legal / Impressum: identificación pública de quién está detrás del
+ * dominio. Corto y factual a propósito; lo que necesita explicación se
+ * explica en las otras dos legales, y aquí solo se enlaza.
+ *
+ * Cada dato de la tabla tiene respaldo fuera de esta página: el dominio es el
+ * `site` de astro.config.mjs, el correo coincide con security.txt y con
+ * /contacto, y el alojamiento en Render (región de Oregón, EE. UU.) sale del
+ * render.yaml del monorepo. Si cambia alguno, hay que cambiarlo en todos.
+ *
+ * Lo que un aviso legal mercantil incluiría y aquí no aparece (domicilio
+ * comercial, datos de inscripción) se dice explícitamente en vez de omitirlo
+ * en silencio: quien busca ese dato tiene que saber por qué no está.
+ */
+import DocumentoTexto from '../../components/DocumentoTexto.astro';
+---
+
+<DocumentoTexto
+  seccion="Documento legal"
+  titulo="Aviso legal"
+  descripcion="Quién es responsable de este sitio, qué tipo de proyecto es, dónde está alojado, cómo contactar y qué ley se aplica."
+  actualizado="24 de septiembre de 2026"
+>
+  <h2>Responsable del sitio</h2>
+  <table>
+    <tbody>
+      <tr>
+        <th scope="row">Responsable</th>
+        <td>Eduardo Rivas</td>
+      </tr>
+      <tr>
+        <th scope="row">Correo de contacto</th>
+        <td
+          ><a href="mailto:epi-aetheris@epi-aetheris.dev"
+            >epi-aetheris@epi-aetheris.dev</a
+          ></td
+        >
+      </tr>
+      <tr>
+        <th scope="row">Dominio</th>
+        <td>epi-aetheris.dev</td>
+      </tr>
+      <tr>
+        <th scope="row">Código del sitio</th>
+        <td>
+          <a
+            href="https://github.com/the-monolith-project/aetheris-nitor"
+            target="_blank"
+            rel="noopener noreferrer"
+            >github.com/the-monolith-project/aetheris-nitor</a
+          >
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    El proyecto no es una actividad comercial. Por eso no tiene local abierto al
+    público, domicilio comercial ni datos de inscripción mercantil que publicar.
+    Quien necesite la dirección postal del responsable puede pedirla por correo
+    a{' '}
+    <a href="mailto:epi-aetheris@epi-aetheris.dev"
+      >epi-aetheris@epi-aetheris.dev</a
+    >.
+  </p>
+
+  <h2>Qué es el proyecto</h2>
+  <p>
+    EPI-Aetheris es un <strong>proyecto académico sin fines comerciales</strong
+    >. No vende productos ni servicios, no cobra, no muestra publicidad y no
+    hace transacciones con quien lo visita. El acceso es libre y gratuito. El
+    código se publica bajo licencia GPL-3.0.
+  </p>
+
+  <h2>Alojamiento</h2>
+  <p>
+    El sitio, la API y la base de datos se alojan en servidores de Render
+    Services, Inc., en Estados Unidos. Qué datos técnicos recibe ese proveedor
+    se explica en la <a href="/legal/privacidad">política de privacidad</a>.
+  </p>
+
+  <h2>Contenido y responsabilidad</h2>
+  <p>
+    Los datos epidemiológicos y climáticos vienen de fuentes públicas de
+    terceros: MINSAL, OpenDengue y Open-Meteo. Cada fuente se cita en{' '}
+    <a href="/biblioteca/04-fuentes-de-datos">de dónde salen los datos</a>.
+  </p>
+  <p>
+    Las condiciones de uso y los límites de responsabilidad están en los{' '}
+    <a href="/legal/terminos">términos de uso</a>. Lo que el sistema puede y no
+    puede afirmar con estos datos se explica en el{' '}
+    <a href="/biblioteca/05-sensibilidad-y-honestidad">aviso de sensibilidad</a
+    >.
+  </p>
+
+  <h2>Contacto</h2>
+  <p>
+    Hay dos canales: el correo, para consultas, y GitHub, para errores y
+    propuestas. Cuándo usar cada uno y en qué plazo se responde está en la{' '}
+    <a href="/contacto">página de contacto</a>.
+  </p>
+  <p>
+    Una vulnerabilidad de seguridad debe comunicarse antes de hacerla pública.
+    La vía preferida son los avisos de seguridad privados de GitHub; el correo
+    de contacto sirve como alternativa. Las condiciones están en{' '}
+    <a href="/.well-known/security.txt">/.well-known/security.txt</a>, según el
+    estándar RFC 9116.
+  </p>
+
+  <h2>Ley aplicable</h2>
+  <p>
+    Este aviso y el uso del sitio se rigen por las leyes de <strong
+      >la República de El Salvador</strong
+    >.
+  </p>
+
+  <hr />
+  <p>
+    Ver también: <a href="/legal/privacidad">política de privacidad</a> ·
+    <a href="/legal/terminos">términos de uso</a> ·
+    <a href="/contacto">contacto</a>.
+  </p>
+</DocumentoTexto>

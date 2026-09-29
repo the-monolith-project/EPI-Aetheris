@@ -50,6 +50,7 @@ export function marcarRegionEstado(contenedor: HTMLElement): void {
   ) {
     contenedor.setAttribute('role', 'status');
   }
+  contenedor.removeAttribute('aria-busy');
 }
 
 /**
@@ -96,4 +97,65 @@ export function renderErrorFuente(
 
   caja.append(p, boton);
   contenedor.replaceChildren(caja);
+}
+
+/**
+ * Pinta un esqueleto con forma de matriz (rejilla de barras) mientras carga.
+ */
+export function renderEsqueletoMatriz(
+  contenedor: HTMLElement,
+  filas = 7,
+): void {
+  const rejilla = document.createElement('div');
+  rejilla.className = 'flex h-full w-full flex-col justify-between gap-2.5 p-2';
+  rejilla.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < filas; i++) {
+    const barra = document.createElement('div');
+    barra.className = 'skeleton h-7 w-full rounded';
+    rejilla.appendChild(barra);
+  }
+  contenedor.replaceChildren(rejilla);
+}
+
+/**
+ * Pinta un esqueleto con forma de traza (tres líneas horizontales) mientras carga.
+ */
+export function renderEsqueletoTraza(contenedor: HTMLElement): void {
+  const contenedorTraza = document.createElement('div');
+  contenedorTraza.className =
+    'flex h-full w-full flex-col justify-around gap-4 p-4';
+  contenedorTraza.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 3; i++) {
+    const linea = document.createElement('div');
+    linea.className = 'skeleton h-5 w-full rounded';
+    contenedorTraza.appendChild(linea);
+  }
+  contenedor.replaceChildren(contenedorTraza);
+}
+
+/**
+ * Pinta un esqueleto con forma de visor (rectángulo a sangre) para mapa.
+ */
+export function renderEsqueletoVisor(contenedor: HTMLElement): void {
+  const bloque = document.createElement('div');
+  bloque.className = 'skeleton h-full w-full rounded-lg';
+  bloque.setAttribute('aria-hidden', 'true');
+  contenedor.replaceChildren(bloque);
+}
+
+/**
+ * Pinta un esqueleto para panel de registro.
+ */
+export function renderEsqueletoRegistro(contenedor: HTMLElement): void {
+  const contenedorReg = document.createElement('div');
+  contenedorReg.className = 'flex h-full w-full flex-col gap-3 p-3';
+  contenedorReg.setAttribute('aria-hidden', 'true');
+  const t = document.createElement('div');
+  t.className = 'skeleton h-4 w-1/3 rounded';
+  const c1 = document.createElement('div');
+  c1.className = 'skeleton h-10 w-full rounded';
+  const c2 = document.createElement('div');
+  c2.className = 'skeleton h-10 w-full rounded';
+  contenedorReg.append(t, c1, c2);
+  contenedor.replaceChildren(contenedorReg);
 }

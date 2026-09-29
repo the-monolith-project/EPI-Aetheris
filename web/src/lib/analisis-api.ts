@@ -2,6 +2,7 @@ import {
   esNoDisponible,
   type RespuestaNoDisponible,
 } from '../components/estado-async';
+import type { AlertaPublica } from './vista-alertas';
 import type {
   AnioAnalisisDengue,
   CasoNacionalSemanal,
@@ -10,6 +11,7 @@ import type {
   FiltrosAnalisis,
   IntegridadVigilancia,
   NowcastDengue,
+  NowcastDengueRetrospectivo,
   ProcedenciaAnalitica,
   RespuestaIraDepartamental,
   SerieRespiratoriaNacional,
@@ -26,6 +28,8 @@ let cacheCasosNacionales: Promise<CasoNacionalSemanal[]> | null = null;
 let cacheIraDepartamental: Promise<RespuestaIraDepartamental> | null = null;
 let cacheIntegridad: Promise<IntegridadVigilancia> | null = null;
 let cacheNowcastDengue: Promise<NowcastDengue> | null = null;
+let cacheAlertasDengue: Promise<AlertaPublica[]> | null = null;
+let cacheNowcastRetro: Promise<NowcastDengueRetrospectivo> | null = null;
 const cacheProcedencia = new Map<string, Promise<ProcedenciaAnalitica>>();
 const cacheSerieIdoneidad = new Map<string, Promise<SerieTemporalIdoneidad>>();
 const cacheSeriePresion = new Map<string, Promise<SerieTemporalPresion>>();
@@ -34,26 +38,64 @@ const cacheRespiratorioNacional = new Map<
   Promise<SerieRespiratoriaNacional | RespuestaNoDisponible>
 >();
 
+let peticionesEnVuelo = 0;
+
+function notificarActividad() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('epi:actividad-red', {
+        detail: {
+          enVuelo: peticionesEnVuelo > 0,
+          conteo: peticionesEnVuelo,
+        },
+      }),
+    );
+  }
+}
+
+function registrarPeticion<T>(promesa: Promise<T>): Promise<T> {
+  peticionesEnVuelo++;
+  notificarActividad();
+  return promesa.finally(() => {
+    peticionesEnVuelo = Math.max(0, peticionesEnVuelo - 1);
+    notificarActividad();
+  });
+}
+
+export function hayPeticionesEnVuelo(): boolean {
+  return peticionesEnVuelo > 0;
+}
+
 function cargarDataset(
   anio: AnioAnalisisDengue,
 ): Promise<DatasetAnaliticoDengue> {
-  return fetch(`${API_BASE}/api/v1/analisis/dengue?year=${anio}`).then(
-    async (respuesta) => {
-      if (!respuesta.ok) {
-        throw new Error(
-          `No se pudo cargar el dataset analítico (${respuesta.status}).`,
-        );
-      }
-      const datos: unknown = await respuesta.json();
-      if (
-        !datos ||
-        typeof datos !== 'object' ||
-        !Array.isArray((datos as { departamentos?: unknown }).departamentos)
-      ) {
-        throw new Error('El dataset analítico no tiene el contrato esperado.');
-      }
-      return datos as DatasetAnaliticoDengue;
-    },
+  return registrarPeticion(
+    fetch(`${API_BASE}/api/v1/analisis/dengue?year=${anio}`).then(
+      async (respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error(
+            `No se pudo cargar el dataset analítico (${respuesta.status}).`,
+          );
+        }
+        const datos: unknown = await respuesta.json();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('epi:datos-cargados'));
+        }
+        if (esNoDisponible(datos)) {
+          return datos as any;
+        }
+        if (
+          !datos ||
+          typeof datos !== 'object' ||
+          !Array.isArray((datos as { departamentos?: unknown }).departamentos)
+        ) {
+          throw new Error(
+            'El dataset analítico no tiene el contrato esperado.',
+          );
+        }
+        return datos as DatasetAnaliticoDengue;
+      },
+    ),
   );
 }
 
@@ -73,53 +115,63 @@ export function obtenerDatasetAnalitico(
 
 export function obtenerCasosNacionales(): Promise<CasoNacionalSemanal[]> {
   if (!cacheCasosNacionales) {
-    cacheCasosNacionales = fetch(`${API_BASE}/api/casos-nacional`)
-      .then(async (respuesta) => {
-        if (!respuesta.ok) {
-          throw new Error(
-            `No se pudo cargar la serie nacional (${respuesta.status}).`,
-          );
-        }
-        const datos: unknown = await respuesta.json();
-        if (!Array.isArray(datos)) {
-          throw new Error('La serie nacional no tiene el contrato esperado.');
-        }
-        return datos as CasoNacionalSemanal[];
-      })
-      .catch((error) => {
-        cacheCasosNacionales = null;
-        throw error;
-      });
+    cacheCasosNacionales = registrarPeticion(
+      fetch(`${API_BASE}/api/casos-nacional`)
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudo cargar la serie nacional (${respuesta.status}).`,
+            );
+          }
+          const datos: unknown = await respuesta.json();
+          if (esNoDisponible(datos)) {
+            return datos as any;
+          }
+          if (!Array.isArray(datos)) {
+            throw new Error('La serie nacional no tiene el contrato esperado.');
+          }
+          return datos as CasoNacionalSemanal[];
+        })
+        .catch((error) => {
+          cacheCasosNacionales = null;
+          throw error;
+        }),
+    );
   }
   return cacheCasosNacionales;
 }
 
 export function obtenerIntegridadVigilancia(): Promise<IntegridadVigilancia> {
   if (!cacheIntegridad) {
-    cacheIntegridad = fetch(`${API_BASE}/api/v1/vigilancia/integridad`)
-      .then(async (respuesta) => {
-        if (!respuesta.ok) {
-          throw new Error(
-            `No se pudo cargar la integridad de vigilancia (${respuesta.status}).`,
-          );
-        }
-        const datos: unknown = await respuesta.json();
-        if (
-          !datos ||
-          typeof datos !== 'object' ||
-          !('antiguedad' in datos) ||
-          !Array.isArray((datos as { resumen_anual?: unknown }).resumen_anual)
-        ) {
-          throw new Error(
-            'La integridad de vigilancia no tiene el contrato esperado.',
-          );
-        }
-        return datos as IntegridadVigilancia;
-      })
-      .catch((error) => {
-        cacheIntegridad = null;
-        throw error;
-      });
+    cacheIntegridad = registrarPeticion(
+      fetch(`${API_BASE}/api/v1/vigilancia/integridad`)
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudo cargar la integridad de vigilancia (${respuesta.status}).`,
+            );
+          }
+          const datos: unknown = await respuesta.json();
+          if (esNoDisponible(datos)) {
+            return datos as any;
+          }
+          if (
+            !datos ||
+            typeof datos !== 'object' ||
+            !('antiguedad' in datos) ||
+            !Array.isArray((datos as { resumen_anual?: unknown }).resumen_anual)
+          ) {
+            throw new Error(
+              'La integridad de vigilancia no tiene el contrato esperado.',
+            );
+          }
+          return datos as IntegridadVigilancia;
+        })
+        .catch((error) => {
+          cacheIntegridad = null;
+          throw error;
+        }),
+    );
   }
   return cacheIntegridad;
 }
@@ -130,27 +182,29 @@ export function obtenerIntegridadVigilancia(): Promise<IntegridadVigilancia> {
 // backend, ver informe de rendimiento) en una sola promesa compartida.
 export function obtenerIraDepartamental(): Promise<RespuestaIraDepartamental> {
   if (!cacheIraDepartamental) {
-    cacheIraDepartamental = fetch(`${API_BASE}/api/ira/departamental`)
-      .then(async (respuesta) => {
-        if (!respuesta.ok) {
-          throw new Error(
-            `No se pudo cargar la serie de IRA (${respuesta.status}).`,
-          );
-        }
-        const datos: unknown = await respuesta.json();
-        if (
-          !datos ||
-          typeof datos !== 'object' ||
-          !Array.isArray((datos as { departamentos?: unknown }).departamentos)
-        ) {
-          throw new Error('La serie de IRA no tiene el contrato esperado.');
-        }
-        return datos as RespuestaIraDepartamental;
-      })
-      .catch((error) => {
-        cacheIraDepartamental = null;
-        throw error;
-      });
+    cacheIraDepartamental = registrarPeticion(
+      fetch(`${API_BASE}/api/ira/departamental`)
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudo cargar la serie de IRA (${respuesta.status}).`,
+            );
+          }
+          const datos: unknown = await respuesta.json();
+          if (
+            !datos ||
+            typeof datos !== 'object' ||
+            !Array.isArray((datos as { departamentos?: unknown }).departamentos)
+          ) {
+            throw new Error('La serie de IRA no tiene el contrato esperado.');
+          }
+          return datos as RespuestaIraDepartamental;
+        })
+        .catch((error) => {
+          cacheIraDepartamental = null;
+          throw error;
+        }),
+    );
   }
   return cacheIraDepartamental;
 }
@@ -170,26 +224,28 @@ export function obtenerSerieRespiratoriaNacional(
 ): Promise<SerieRespiratoriaNacional | RespuestaNoDisponible> {
   let solicitud = cacheRespiratorioNacional.get(evento);
   if (!solicitud) {
-    solicitud = fetch(`${API_BASE}/api/${evento}/nacional`)
-      .then(async (respuesta) => {
-        if (!respuesta.ok) {
-          throw new Error(
-            `No se pudo cargar la serie nacional (${respuesta.status}).`,
-          );
-        }
-        const datos: unknown = await respuesta.json();
-        if (esNoDisponible(datos)) {
-          return datos;
-        }
-        if (!tieneSemanas(datos)) {
-          throw new Error('La serie nacional no tiene el contrato esperado.');
-        }
-        return datos as SerieRespiratoriaNacional;
-      })
-      .catch((error) => {
-        cacheRespiratorioNacional.delete(evento);
-        throw error;
-      });
+    solicitud = registrarPeticion(
+      fetch(`${API_BASE}/api/${evento}/nacional`)
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudo cargar la serie nacional (${respuesta.status}).`,
+            );
+          }
+          const datos: unknown = await respuesta.json();
+          if (esNoDisponible(datos)) {
+            return datos;
+          }
+          if (!tieneSemanas(datos)) {
+            throw new Error('La serie nacional no tiene el contrato esperado.');
+          }
+          return datos as SerieRespiratoriaNacional;
+        })
+        .catch((error) => {
+          cacheRespiratorioNacional.delete(evento);
+          throw error;
+        }),
+    );
     cacheRespiratorioNacional.set(evento, solicitud);
   }
   return solicitud;
@@ -204,27 +260,32 @@ export function obtenerSerieIdoneidad(
   const clave = `${codigo}:${anio}`;
   let solicitud = cacheSerieIdoneidad.get(clave);
   if (!solicitud) {
-    solicitud = fetch(
-      `${API_BASE}/api/v1/temporal/${encodeURIComponent(codigo)}?anio=${anio}`,
-    )
-      .then(async (respuesta) => {
-        if (!respuesta.ok) {
-          throw new Error(
-            `No se pudo cargar la serie de idoneidad (${respuesta.status}).`,
-          );
-        }
-        const datos: unknown = await respuesta.json();
-        if (!tieneSemanas(datos)) {
-          throw new Error(
-            'La serie de idoneidad no tiene el contrato esperado.',
-          );
-        }
-        return datos as SerieTemporalIdoneidad;
-      })
-      .catch((error) => {
-        cacheSerieIdoneidad.delete(clave);
-        throw error;
-      });
+    solicitud = registrarPeticion(
+      fetch(
+        `${API_BASE}/api/v1/temporal/${encodeURIComponent(codigo)}?anio=${anio}`,
+      )
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudo cargar la serie de idoneidad (${respuesta.status}).`,
+            );
+          }
+          const datos: unknown = await respuesta.json();
+          if (esNoDisponible(datos)) {
+            return datos as any;
+          }
+          if (!tieneSemanas(datos)) {
+            throw new Error(
+              'La serie de idoneidad no tiene el contrato esperado.',
+            );
+          }
+          return datos as SerieTemporalIdoneidad;
+        })
+        .catch((error) => {
+          cacheSerieIdoneidad.delete(clave);
+          throw error;
+        }),
+    );
     cacheSerieIdoneidad.set(clave, solicitud);
   }
   return solicitud;
@@ -239,25 +300,32 @@ export function obtenerSeriePresion(
   const clave = `${codigo}:${anio}`;
   let solicitud = cacheSeriePresion.get(clave);
   if (!solicitud) {
-    solicitud = fetch(
-      `${API_BASE}/api/v1/presion/temporal/${encodeURIComponent(codigo)}?anio=${anio}`,
-    )
-      .then(async (respuesta) => {
-        if (!respuesta.ok) {
-          throw new Error(
-            `No se pudo cargar la serie de presión (${respuesta.status}).`,
-          );
-        }
-        const datos: unknown = await respuesta.json();
-        if (!tieneSemanas(datos)) {
-          throw new Error('La serie de presión no tiene el contrato esperado.');
-        }
-        return datos as SerieTemporalPresion;
-      })
-      .catch((error) => {
-        cacheSeriePresion.delete(clave);
-        throw error;
-      });
+    solicitud = registrarPeticion(
+      fetch(
+        `${API_BASE}/api/v1/presion/temporal/${encodeURIComponent(codigo)}?anio=${anio}`,
+      )
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudo cargar la serie de presión (${respuesta.status}).`,
+            );
+          }
+          const datos: unknown = await respuesta.json();
+          if (esNoDisponible(datos)) {
+            return datos as any;
+          }
+          if (!tieneSemanas(datos)) {
+            throw new Error(
+              'La serie de presión no tiene el contrato esperado.',
+            );
+          }
+          return datos as SerieTemporalPresion;
+        })
+        .catch((error) => {
+          cacheSeriePresion.delete(clave);
+          throw error;
+        }),
+    );
     cacheSeriePresion.set(clave, solicitud);
   }
   return solicitud;
@@ -285,21 +353,25 @@ export function obtenerProcedenciaAnalitica(
       serie: filtros.serie,
       dept: filtros.departamento,
     });
-    solicitud = fetch(
-      `${API_BASE}/api/v1/analisis/dengue/procedencia?${parametros}`,
-    )
-      .then(async (respuesta) => {
-        if (!respuesta.ok) {
-          throw new Error(
-            `No se pudo cargar la procedencia (${respuesta.status}).`,
-          );
-        }
-        return (await respuesta.json()) as ProcedenciaAnalitica;
-      })
-      .catch((error) => {
-        cacheProcedencia.delete(clave);
-        throw error;
-      });
+    solicitud = registrarPeticion(
+      fetch(`${API_BASE}/api/v1/analisis/dengue/procedencia?${parametros}`)
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudo cargar la procedencia (${respuesta.status}).`,
+            );
+          }
+          const datos: unknown = await respuesta.json();
+          if (esNoDisponible(datos)) {
+            return datos as any;
+          }
+          return datos as ProcedenciaAnalitica;
+        })
+        .catch((error) => {
+          cacheProcedencia.delete(clave);
+          throw error;
+        }),
+    );
     cacheProcedencia.set(clave, solicitud);
   }
   return solicitud;
@@ -307,19 +379,87 @@ export function obtenerProcedenciaAnalitica(
 
 export function obtenerNowcastDengue(): Promise<NowcastDengue> {
   if (!cacheNowcastDengue) {
-    cacheNowcastDengue = fetch(`${API_BASE}/api/nowcast-dengue`)
-      .then(async (respuesta) => {
-        if (!respuesta.ok) {
-          throw new Error(
-            `No se pudo cargar la estimación de horizonte corto (${respuesta.status}).`,
-          );
-        }
-        return (await respuesta.json()) as NowcastDengue;
-      })
-      .catch((error) => {
-        cacheNowcastDengue = null;
-        throw error;
-      });
+    cacheNowcastDengue = registrarPeticion(
+      fetch(`${API_BASE}/api/nowcast-dengue`)
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudo cargar la estimación de horizonte corto (${respuesta.status}).`,
+            );
+          }
+          return (await respuesta.json()) as NowcastDengue;
+        })
+        .catch((error) => {
+          cacheNowcastDengue = null;
+          throw error;
+        }),
+    );
   }
   return cacheNowcastDengue;
+}
+
+export function obtenerNowcastRetrospectivo(): Promise<NowcastDengueRetrospectivo> {
+  if (!cacheNowcastRetro) {
+    cacheNowcastRetro = registrarPeticion(
+      fetch(`${API_BASE}/api/nowcast-dengue/retrospectivo`)
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudo cargar la predicción retrospectiva (${respuesta.status}).`,
+            );
+          }
+          const datos: unknown = await respuesta.json();
+          if (esNoDisponible(datos)) {
+            return datos as any;
+          }
+          const d = datos as Partial<NowcastDengueRetrospectivo> | null;
+          if (
+            !d ||
+            !Array.isArray(d.observado) ||
+            !Array.isArray(d.origenes) ||
+            !Array.isArray(d.horizontes)
+          ) {
+            throw new Error(
+              'La predicción retrospectiva no tiene el contrato esperado.',
+            );
+          }
+          return d as NowcastDengueRetrospectivo;
+        })
+        .catch((error) => {
+          cacheNowcastRetro = null;
+          throw error;
+        }),
+    );
+  }
+  return cacheNowcastRetro;
+}
+
+/**
+ * Alertas de dengue activas (sin etiquetadas), nacionales y regionales. El
+ * mapa las usa para marcar los departamentos con alerta vigente (ADR 0022).
+ */
+export function obtenerAlertasDengue(): Promise<AlertaPublica[]> {
+  if (!cacheAlertasDengue) {
+    cacheAlertasDengue = registrarPeticion(
+      fetch(`${API_BASE}/api/alertas?tipo=dengue`)
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudieron cargar las alertas de dengue (${respuesta.status}).`,
+            );
+          }
+          const datos: unknown = await respuesta.json();
+          const alertas = (datos as { alertas?: unknown }).alertas;
+          if (!Array.isArray(alertas)) {
+            throw new Error('Las alertas de dengue llegaron con otro formato.');
+          }
+          return alertas as AlertaPublica[];
+        })
+        .catch((error) => {
+          cacheAlertasDengue = null;
+          throw error;
+        }),
+    );
+  }
+  return cacheAlertasDengue;
 }

@@ -67,11 +67,13 @@ from .respiratorios import (
     serie_virus,
 )
 from .alertas import (
+    DEPARTAMENTOS_ALERTA,
     TIPOS_ALERTA,
     AlertaCrear,
     AlertaParche,
     comprobar_token_escritura,
     consultar_alertas_publicas,
+    construir_feed_atom,
     crear_alerta,
     parchear_alerta,
 )
@@ -1396,12 +1398,19 @@ def alertas_publicas(
     hasta: date | None = None,
     incluir_inactivas: bool = False,
     incluir_etiquetadas: bool = False,
+    departamento: str | None = None,
 ):
     """Lista alertas. Sin parámetros extra: activa=TRUE y etiqueta IS NULL.
 
     Filtros opcionales combinados con AND: tipo, desde/hasta (solapamiento
-    de vigencia), incluir_inactivas, incluir_etiquetadas.
+    de vigencia), incluir_inactivas, incluir_etiquetadas, departamento
+    (nacionales más las que lo incluyen, ADR 0022).
     """
+    if departamento is not None and departamento not in DEPARTAMENTOS_ALERTA:
+        raise HTTPException(
+            status_code=422,
+            detail="El parámetro 'departamento' debe ser un código ISO 3166-2 de El Salvador (SV-AH..SV-US).",
+        )
     if tipo is not None and tipo not in TIPOS_ALERTA:
         raise HTTPException(
             status_code=422,
@@ -1416,6 +1425,7 @@ def alertas_publicas(
                 hasta=hasta,
                 incluir_inactivas=incluir_inactivas,
                 incluir_etiquetadas=incluir_etiquetadas,
+                departamento=departamento,
             )
     except Exception as exc:
         # Contrato propio ({aviso, ultima_revision, alertas}); no se degrada
@@ -1425,6 +1435,29 @@ def alertas_publicas(
 
     _cache_control(response, CACHE_TTL_ALERTAS)
     return cuerpo
+
+
+@app.get("/api/alertas/feed.xml")
+def alertas_feed(request: Request):
+    """Feed Atom con las alertas activas sin etiqueta (mismo criterio que el GET público)."""
+    try:
+        with _conexion() as conn:
+            cuerpo = consultar_alertas_publicas(conn)
+    except Exception as exc:
+        _alertas_http_error(exc)
+
+    sitio = os.environ.get("SITIO_PUBLICO", "https://epi-aetheris.dev")
+    xml = construir_feed_atom(
+        cuerpo["alertas"],
+        cuerpo["ultima_revision"],
+        sitio=sitio,
+        api_url=str(request.url),
+    )
+    return Response(
+        content=xml,
+        media_type="application/atom+xml",
+        headers={"Cache-Control": f"public, max-age={CACHE_TTL_ALERTAS}"},
+    )
 
 
 @app.post("/api/alertas", status_code=201)

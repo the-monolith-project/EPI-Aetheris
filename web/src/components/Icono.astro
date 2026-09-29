@@ -1,0 +1,39 @@
+---
+/**
+ * Icono de la casa: Tabler via astro-icon, con tamaño y accesibilidad por
+ * defecto. Siempre trazo de 24 px a grosor 2, para que todos los iconos del
+ * sitio compartan peso con Inter.
+ *
+ * - Sin `etiqueta`, el icono es decorativo y va oculto para lectores de
+ *   pantalla: el texto de al lado ya lo nombra.
+ * - Con `etiqueta`, el icono va solo (boton sin texto) y la anuncia.
+ *
+ * Nombres: https://tabler.io/icons (se pasan sin el prefijo "tabler:").
+ * Para logotipos de tecnologias, `coleccion="simple-icons"` con el nombre de
+ * https://simpleicons.org (postgresql, fastapi, leaflet...). Son monocromos,
+ * asi que toman el color del texto igual que los de Tabler.
+ */
+import { Icon } from 'astro-icon/components';
+
+interface Props {
+  nombre: string;
+  coleccion?: 'tabler' | 'simple-icons';
+  etiqueta?: string;
+  class?: string;
+}
+
+const {
+  nombre,
+  coleccion = 'tabler',
+  etiqueta,
+  class: clase = 'h-5 w-5',
+} = Astro.props;
+---
+
+<Icon
+  name={`${coleccion}:${nombre}`}
+  class:list={['shrink-0', clase]}
+  aria-hidden={etiqueta ? undefined : 'true'}
+  aria-label={etiqueta}
+  role={etiqueta ? 'img' : undefined}
+/>

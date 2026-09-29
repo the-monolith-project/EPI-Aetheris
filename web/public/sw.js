@@ -13,8 +13,9 @@
  *  - GET /api/alertas: network-first con respaldo al cache. Una alerta que el
  *    equipo ya apagó SÍ tiene consecuencia clínica, así que la red siempre
  *    gana; el cache es el último recurso. Cuando se responde desde el cache
- *    se añade la cabecera X-EPI-Cache: sw para que la página muestre el sello
- *    "sin conexión — mostrando lo último guardado" (ver alertas.astro).
+ *    se marca el cuerpo con `_desde_cache` (y la cabecera X-EPI-Cache: sw)
+ *    para que la página muestre el sello "sin conexión — mostrando lo último
+ *    guardado" (ver alertas.astro).
  *
  * Escrito a mano, sin dependencias: el proyecto es de costo cero y no vale
  * añadir una cadena de build de PWA por ~90 líneas.

@@ -1,0 +1,29 @@
+---
+/**
+ * Cargador de curva epidemiológica (propuesta 2 del sistema de diseño).
+ * Ocupa el hueco del SVG mientras llega el fetch: el cometa recorre el trazo
+ * para sugerir que el dato se está dibujando, no que la página está trabada.
+ *
+ * Es decoración, no región viva: en todos los usos el contenedor anfitrión ya
+ * lleva role="status" y aria-busy, y duplicar ahí la semántica solo añadiría
+ * un anuncio de más. Por eso la raíz va aria-hidden y la etiqueta es un
+ * afianzamiento visual.
+ */
+interface Props {
+  texto?: string;
+  class?: string;
+  [atributo: string]: unknown;
+}
+
+const { texto = 'Cargando…', class: clase = '', ...resto } = Astro.props;
+const dCurva =
+  'M 8 40 C 24 40 36 34 46 22 C 54 12 60 8 68 8 C 76 8 82 18 90 28 C 98 38 106 40 112 40';
+---
+
+<div class:list={['ea-comet-cargador', clase]} aria-hidden="true" {...resto}>
+  <svg class="ea-comet-svg" viewBox="0 0 120 48" focusable="false">
+    <path class="ea-comet-pista" d={dCurva} pathLength="351"></path>
+    <path class="ea-comet-trazo" d={dCurva} pathLength="351"></path>
+  </svg>
+  <span class="ea-cargador-etiqueta">{texto}</span>
+</div>

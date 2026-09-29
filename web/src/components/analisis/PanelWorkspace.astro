@@ -1,0 +1,66 @@
+---
+interface Props {
+  tipo: 'visor' | 'matriz' | 'traza' | 'registro';
+  titulo?: string;
+  descripcion?: string;
+  idTitulo?: string;
+  clase?: string;
+  /** Para barras con varios selectores: pasan a una fila propia bajo el
+   *  título cuando no caben a su lado, y ahí se parten en varias líneas.
+   *  Sin esto los controles van siempre a la derecha y no se encogen, como
+   *  el botón de menú que PanelAnalisis añade en el espacio de dengue. */
+  controlesAnchos?: boolean;
+  [key: string]: unknown;
+}
+
+const {
+  tipo,
+  titulo,
+  descripcion,
+  idTitulo,
+  clase = '',
+  controlesAnchos = false,
+  ...resto
+} = Astro.props;
+
+const claseTipo = {
+  visor: 'panel-visor',
+  matriz: 'panel-matriz',
+  traza: 'panel-traza',
+  registro: 'panel-registro',
+}[tipo];
+---
+
+<article class:list={[claseTipo, clase]} aria-labelledby={idTitulo} {...resto}>
+  {
+    Astro.slots.has('cabecera') ? (
+      <slot name="cabecera" />
+    ) : (
+      (titulo || Astro.slots.has('controles')) && (
+        <header class:list={['panel-cabecera', controlesAnchos && 'flex-wrap']}>
+          <div>
+            {titulo && (
+              <h3 id={idTitulo} class="panel-titulo">
+                {titulo}
+              </h3>
+            )}
+            {descripcion && <p class="panel-descripcion">{descripcion}</p>}
+          </div>
+          <div
+            data-panel-controles
+            class:list={[
+              'relative flex items-center gap-2 shrink-0',
+              controlesAnchos && 'max-w-full',
+            ]}
+          >
+            <slot name="controles" />
+          </div>
+        </header>
+      )
+    )
+  }
+
+  <slot />
+
+  <slot name="pie" />
+</article>

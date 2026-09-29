@@ -1,0 +1,85 @@
+---
+import { entradaGlosario } from '../lib/glosario';
+
+interface Props {
+  clave: string;
+  class?: string;
+}
+
+const { clave, class: clase = '' } = Astro.props;
+const entrada = entradaGlosario(clave);
+if (!entrada) {
+  throw new Error(`AyudaTermino: la clave «${clave}» no está en el glosario`);
+}
+const id = `ayuda-${clave}-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<span class:list={['ayuda-termino', clase]} data-ayuda-termino={clave}>
+  <button
+    type="button"
+    class="ayuda-termino-boton"
+    popovertarget={id}
+    aria-label={`¿Qué es ${entrada.termino}?`}
+  >
+    <span aria-hidden="true">?</span>
+  </button>
+  <div id={id} popover="auto" class="ayuda-termino-popover">
+    <p class="font-sans text-xs font-semibold text-ink">{entrada.termino}</p>
+    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+      {entrada.definicion}
+    </p>
+    <a
+      href={entrada.enlace}
+      data-glosario-enlace
+      class="mt-2 inline-block font-sans text-xs font-semibold text-accent underline underline-offset-2"
+    >
+      Leer más en la Biblioteca
+    </a>
+  </div>
+</span>
+
+<style>
+  .ayuda-termino {
+    display: inline-flex;
+    vertical-align: middle;
+  }
+  .ayuda-termino-boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* Área táctil de 44 px con un círculo visible de 20 px. */
+    min-width: 44px;
+    min-height: 44px;
+    margin: -12px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--color-accent);
+  }
+  .ayuda-termino-boton > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--color-border);
+    border-radius: 9999px;
+    background: var(--color-surface);
+  }
+  .ayuda-termino-boton:hover > span {
+    border-color: var(--color-accent);
+  }
+  .ayuda-termino-popover {
+    max-width: min(20rem, calc(100vw - 2rem));
+    margin: auto;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+  }
+</style>

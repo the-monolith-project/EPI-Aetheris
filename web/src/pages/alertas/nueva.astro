@@ -1,9 +1,19 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import Icono from '../../components/Icono.astro';
+import { DEPARTAMENTOS } from '../../lib/departamentos';
 ---
 
-<Layout title="EPI-Aetheris — Nueva alerta">
-  <main id="contenido-principal" class="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
+{
+  /* noindex: es la ruta de operadores, no contenido público. Tampoco entra
+al sitemap (filtro en astro.config.mjs) ni se lista en robots.txt, que la
+anunciaría. */
+}
+<Layout title="EPI-Aetheris — Nueva alerta" noindex>
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10"
+  >
     <header class="mb-6">
       <p
         class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
@@ -31,14 +41,20 @@ import Layout from '../../layouts/Layout.astro';
     </header>
 
     <p class="mb-2 font-sans text-xs text-ink-muted">
-      Los campos marcados con <span aria-hidden="true">*</span
-      ><span class="sr-only"> (obligatorio)</span> son obligatorios.
+      Los campos marcados con <span aria-hidden="true">*</span><span
+        class="sr-only"
+      >
+        (obligatorio)</span
+      > son obligatorios.
     </p>
     <form data-form-alerta class="flex flex-col gap-4 font-sans text-sm">
       <fieldset class="rounded-2xl border border-border bg-surface p-4">
         <legend class="px-1 font-semibold">Autenticación</legend>
         <label class="mt-2 flex flex-col gap-1">
-          <span>Token de escritura (ALERTAS_TOKEN) <span aria-hidden="true">*</span></span>
+          <span
+            >Token de escritura (ALERTAS_TOKEN) <span aria-hidden="true">*</span
+            ></span
+          >
           <input
             type="password"
             name="token"
@@ -59,14 +75,16 @@ import Layout from '../../layouts/Layout.astro';
         <button
           type="button"
           data-alerta-cerrar-sesion
-          class="mt-3 rounded-full border border-border px-3 py-1.5"
+          class="mt-3 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5"
         >
+          <Icono nombre="logout" class="h-4 w-4" />
           Cerrar sesión (olvidar token)
         </button>
       </fieldset>
 
       <label class="flex flex-col gap-1">
-        <span class="font-semibold">Tipo <span aria-hidden="true">*</span></span>
+        <span class="font-semibold">Tipo <span aria-hidden="true">*</span></span
+        >
         <select
           name="tipo"
           required
@@ -78,7 +96,9 @@ import Layout from '../../layouts/Layout.astro';
         </select>
       </label>
       <label class="flex flex-col gap-1">
-        <span class="font-semibold">Nivel <span aria-hidden="true">*</span></span>
+        <span class="font-semibold"
+          >Nivel <span aria-hidden="true">*</span></span
+        >
         <select
           name="nivel"
           required
@@ -102,8 +122,26 @@ import Layout from '../../layouts/Layout.astro';
           <option value="historica">historica</option>
         </select>
       </label>
+      <fieldset class="rounded-2xl border border-border bg-surface p-4">
+        <legend class="px-1 font-semibold">Alcance (departamentos)</legend>
+        <p class="text-xs text-ink-muted">
+          Sin marcar ninguno, la alerta es nacional.
+        </p>
+        <div class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+          {
+            DEPARTAMENTOS.map((d) => (
+              <label class="inline-flex min-h-[32px] items-center gap-2">
+                <input type="checkbox" name="departamentos" value={d.codigo} />
+                <span>{d.nombre}</span>
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
       <label class="flex flex-col gap-1">
-        <span class="font-semibold">Título <span aria-hidden="true">*</span></span>
+        <span class="font-semibold"
+          >Título <span aria-hidden="true">*</span></span
+        >
         <input
           name="titulo"
           required
@@ -112,7 +150,9 @@ import Layout from '../../layouts/Layout.astro';
         />
       </label>
       <label class="flex flex-col gap-1">
-        <span class="font-semibold">Contexto <span aria-hidden="true">*</span></span>
+        <span class="font-semibold"
+          >Contexto <span aria-hidden="true">*</span></span
+        >
         <textarea
           name="contexto"
           required
@@ -122,7 +162,9 @@ import Layout from '../../layouts/Layout.astro';
         ></textarea>
       </label>
       <label class="flex flex-col gap-1">
-        <span class="font-semibold">Indicaciones <span aria-hidden="true">*</span></span>
+        <span class="font-semibold"
+          >Indicaciones <span aria-hidden="true">*</span></span
+        >
         <textarea
           name="indicaciones"
           required
@@ -132,7 +174,9 @@ import Layout from '../../layouts/Layout.astro';
         ></textarea>
       </label>
       <label class="flex flex-col gap-1">
-        <span class="font-semibold">Fuente (obligatoria) <span aria-hidden="true">*</span></span>
+        <span class="font-semibold"
+          >Fuente (obligatoria) <span aria-hidden="true">*</span></span
+        >
         <input
           name="fuente"
           required
@@ -141,7 +185,9 @@ import Layout from '../../layouts/Layout.astro';
         />
       </label>
       <label class="flex flex-col gap-1">
-        <span class="font-semibold">Autor <span aria-hidden="true">*</span></span>
+        <span class="font-semibold"
+          >Autor <span aria-hidden="true">*</span></span
+        >
         <input
           name="autor"
           required
@@ -150,7 +196,9 @@ import Layout from '../../layouts/Layout.astro';
         />
       </label>
       <label class="flex flex-col gap-1">
-        <span class="font-semibold">Vigente desde <span aria-hidden="true">*</span></span>
+        <span class="font-semibold"
+          >Vigente desde <span aria-hidden="true">*</span></span
+        >
         <input
           type="date"
           name="vigente_desde"
@@ -210,8 +258,9 @@ import Layout from '../../layouts/Layout.astro';
 
       <button
         type="submit"
-        class="rounded-full bg-accent px-5 py-2 font-semibold text-accent-ink"
+        class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 font-semibold text-accent-ink"
       >
+        <Icono nombre="send" class="h-4 w-4" />
         Publicar alerta
       </button>
       <p
@@ -261,6 +310,61 @@ import Layout from '../../layouts/Layout.astro';
     if (estado) estado.textContent = 'Token olvidado en este navegador.';
   });
 
+  class ErrorPublicacion extends Error {
+    constructor(
+      readonly status: number,
+      readonly payload: unknown,
+    ) {
+      super(`HTTP ${status}`);
+    }
+  }
+
+  // Nombre visible de un campo, tomado de su etiqueta en el formulario.
+  function etiquetaCampo(nombre: string): string {
+    const campo = form?.elements.namedItem(nombre);
+    const titulo =
+      campo instanceof Element
+        ? campo.closest('label')?.querySelector('.font-semibold')
+        : null;
+    const texto = titulo?.firstChild?.textContent?.trim() ?? '';
+    return texto.replace(/\s*\((opcional|obligatoria)\)$/, '') || nombre;
+  }
+
+  // FastAPI devuelve los errores de validación como detail[].loc = ['body', campo].
+  function camposRechazados(payload: unknown): string[] {
+    if (!payload || typeof payload !== 'object') return [];
+    const detalle = (payload as { detail?: unknown }).detail;
+    if (!Array.isArray(detalle)) return [];
+    const nombres = detalle
+      .map((item) =>
+        item && typeof item === 'object' && Array.isArray(item.loc)
+          ? item.loc[item.loc.length - 1]
+          : null,
+      )
+      .filter((nombre): nombre is string => typeof nombre === 'string');
+    return [...new Set(nombres)].map(etiquetaCampo);
+  }
+
+  function mensajeErrorPublicacion(error: unknown): string {
+    const prefijo = 'No se pudo publicar la alerta.';
+    if (!(error instanceof ErrorPublicacion)) {
+      return `${prefijo} No hay conexión con el servidor. Inténtalo de nuevo en unos minutos.`;
+    }
+    if (error.status === 401 || error.status === 403) {
+      return `${prefijo} El token no es válido o ha caducado. Revísalo e inténtalo de nuevo.`;
+    }
+    if (error.status === 400 || error.status === 422) {
+      const campos = camposRechazados(error.payload);
+      return campos.length > 0
+        ? `${prefijo} Revisa estos campos: ${campos.join(', ')}.`
+        : `${prefijo} Revisa los datos del formulario.`;
+    }
+    if (error.status === 429) {
+      return `${prefijo} Se enviaron demasiadas alertas seguidas. Espera un minuto e inténtalo de nuevo.`;
+    }
+    return `${prefijo} El servidor no puede guardarla ahora. Inténtalo de nuevo en unos minutos.`;
+  }
+
   form?.addEventListener('submit', (evento) => {
     evento.preventDefault();
     if (!form || !inputToken) return;
@@ -281,6 +385,7 @@ import Layout from '../../layouts/Layout.astro';
       vigente_desde: String(datos.get('vigente_desde') ?? ''),
       vigente_hasta: opcional('vigente_hasta'),
       etiqueta: opcional('etiqueta'),
+      departamentos: datos.getAll('departamentos').map(String),
       definicion_caso: opcional('definicion_caso'),
       signos_alarma: opcional('signos_alarma'),
       criterios_referencia: opcional('criterios_referencia'),
@@ -317,9 +422,7 @@ import Layout from '../../layouts/Layout.astro';
       .then(async (respuesta) => {
         const payload: unknown = await respuesta.json().catch(() => null);
         if (!respuesta.ok) {
-          throw new Error(
-            `${respuesta.status}${payload ? ` ${JSON.stringify(payload)}` : ''}`,
-          );
+          throw new ErrorPublicacion(respuesta.status, payload);
         }
         const id =
           payload &&
@@ -338,9 +441,11 @@ import Layout from '../../layouts/Layout.astro';
         }
       })
       .catch((error: unknown) => {
+        // El detalle técnico va a la consola; en pantalla, qué pasó y qué hacer.
+        console.error('No se pudo publicar la alerta', error);
         if (estado) {
           estado.setAttribute('role', 'alert');
-          estado.textContent = `No se pudo crear: ${String(error)}`;
+          estado.textContent = mensajeErrorPublicacion(error);
           estado.focus();
         }
       });

@@ -1,0 +1,35 @@
+---
+/**
+ * Barra de actividad indeterminada (propuesta 5 del sistema de diseño).
+ * Señala que hay peticiones en vuelo: en este sitio no hay enrutador de
+ * cliente, así que no indica navegación sino la recarga en bloque que dispara
+ * `epi:filters-changed` en el workspace de dengue.
+ *
+ * La región viva no se oculta con `hidden`: mostrar una región no cambia su
+ * contenido y la mayoría de los lectores de pantalla no anunciarían nada. Lo
+ * que se vacía y se rellena es el texto, y `data-activa` gobierna lo visual.
+ */
+interface Props {
+  id?: string;
+  class?: string;
+  etiqueta?: string;
+}
+
+const {
+  id = 'barra-actividad',
+  class: clase = '',
+  etiqueta = 'Actualizando datos…',
+} = Astro.props;
+---
+
+<div
+  id={id}
+  class:list={['ea-bar-sweep', clase]}
+  data-activa="false"
+  data-etiqueta={etiqueta}
+  role="status"
+  aria-live="polite"
+>
+  <div class="ea-bar-sweep-indicador" aria-hidden="true"></div>
+  <span class="sr-only" data-barra-texto></span>
+</div>

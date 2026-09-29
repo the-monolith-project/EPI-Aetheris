@@ -1,0 +1,79 @@
+---
+// Layout mínimo para gráficos que otras páginas incrustan en un <iframe>: sin
+// navegación ni pie, fuera del índice de buscadores y con la atribución a la
+// vista. Los enlaces internos se reescriben para abrir el sitio completo en
+// otra pestaña, porque dentro del marco un ancla relativa no lleva a ninguna parte.
+import { Font } from 'astro:assets';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  /** Ruta del sitio donde está la versión completa de este gráfico. */
+  rutaCompleta: string;
+}
+
+const { title, rutaCompleta } = Astro.props;
+const sitio = Astro.site ?? new URL('https://epi-aetheris.dev');
+const urlCompleta = new URL(rutaCompleta, sitio);
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <Font cssVariable="--font-inter" />
+    <Font cssVariable="--font-plex-mono" />
+    <Font cssVariable="--font-fraunces" />
+    <title>{title}</title>
+  </head>
+  <body class="bg-bg text-ink">
+    <main id="contenido-principal" class="p-3 sm:p-4" data-incrustado>
+      <slot />
+    </main>
+    <footer
+      class="border-t border-border px-4 py-2 font-sans text-xs text-ink-muted"
+    >
+      Datos públicos de MINSAL, OpenDengue y Open-Meteo ·
+      <a
+        href={urlCompleta.href}
+        target="_blank"
+        rel="noopener"
+        class="font-medium text-accent underline underline-offset-2"
+        data-atribucion>EPI-Aetheris</a
+      >
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  /* Dentro del marco no tiene sentido ofrecer incrustar de nuevo. */
+  [data-incrustado] [data-incrustar] {
+    display: none;
+  }
+</style>
+
+<script define:vars={{ origen: sitio.origin }}>
+  // Dentro del marco los enlaces relativos apuntan al propio iframe. Se llevan
+  // al sitio completo y se abren fuera.
+  function reescribir() {
+    document.querySelectorAll('a[href]').forEach((enlace) => {
+      const href = enlace.getAttribute('href') ?? '';
+      if (href.startsWith('#')) {
+        enlace.setAttribute('href', `${origen}/dengue${href}`);
+      } else if (href.startsWith('/')) {
+        enlace.setAttribute('href', `${origen}${href}`);
+      } else {
+        return;
+      }
+      enlace.setAttribute('target', '_blank');
+      enlace.setAttribute('rel', 'noopener');
+    });
+  }
+  reescribir();
+  new MutationObserver(reescribir).observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+</script>

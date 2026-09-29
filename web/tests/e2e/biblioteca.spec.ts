@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { existsSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,9 +11,16 @@ type DocBiblioteca = {
   orden: number;
 };
 
-const DIR_BIBLIOTECA = path.resolve(
+// Mismo criterio que src/content.config.ts: primero la copia propia del repo
+// y, si no esta, la del monorepo EPI-Aetheris. El test tiene que leer los
+// mismos markdown que consumio el build, o compara contra un arbol distinto.
+const DIR_PROPIO = path.resolve(
+  fileURLToPath(new URL('../../docs/biblioteca', import.meta.url)),
+);
+const DIR_MONOREPO = path.resolve(
   fileURLToPath(new URL('../../../docs/biblioteca', import.meta.url)),
 );
+const DIR_BIBLIOTECA = existsSync(DIR_PROPIO) ? DIR_PROPIO : DIR_MONOREPO;
 
 function campo(frontmatter: string, nombre: string): string {
   const coincidencia = frontmatter.match(

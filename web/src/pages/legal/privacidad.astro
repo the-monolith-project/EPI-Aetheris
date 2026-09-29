@@ -1,0 +1,382 @@
+---
+/**
+ * Política de privacidad. El contenido no es una plantilla: cada dato que
+ * enumera está verificado en el código, y si el código cambia esta página
+ * tiene que cambiar con él. Dónde mirar:
+ *
+ *  - Registros de acceso: Render aloja el sitio estático, la API y la base
+ *    (render.yaml del monorepo; región oregon para API y base).
+ *  - Límite de peticiones: backend/api/main.py, `_client_ip` como key_func de
+ *    slowapi con almacenamiento en memoria.
+ *  - Teselas de OSM: MapaDepartamentos.astro y MapaIRA.astro, montados en
+ *    portada, /dengue y /respiratorio (las fichas no tienen mapa).
+ *  - Tipografías: Fonts API de Astro en astro.config.mjs, descargadas en build.
+ *  - Formulario de operadores: src/pages/alertas/nueva.astro.
+ *  - Almacenamiento local: las dos claves `epi-aetheris:*` (nueva.astro y
+ *    src/lib/vista-alertas.ts) y las cachés de public/sw.js.
+ *  - Swagger: FastAPI sirve /docs con los recursos por defecto, que el
+ *    navegador descarga de jsDelivr.
+ *
+ * Estructura: arranca con un resumen en lenguaje llano y después sigue el
+ * contenido mínimo que la Ley para la Protección de Datos Personales de El
+ * Salvador (Decreto Legislativo n.º 144) exige a un aviso de privacidad:
+ * identificación del responsable, datos tratados señalando los sensibles,
+ * finalidades, encargados, uso de cookies, cómo ejercer los derechos ARCO-POL
+ * y cómo se comunican los cambios. Si se reordena la página, que no se pierda
+ * ninguno de esos bloques. RGPD y CCPA no se citan como obligaciones: el
+ * proyecto no tiene establecimiento ni público objetivo fuera de El Salvador.
+ *
+ * El responsable y el correo se publican literales, no como marcadores: el
+ * aviso legal es la fuente de esos datos y esta página los repite para que se
+ * lea sola.
+ */
+import DocumentoTexto from '../../components/DocumentoTexto.astro';
+---
+
+<DocumentoTexto
+  seccion="Documento legal"
+  titulo="Política de privacidad"
+  descripcion="Qué datos se tratan al usar EPI-Aetheris, para qué, quién más los recibe y cómo ejercer los derechos que reconoce la ley."
+  actualizado="24 de septiembre de 2026"
+>
+  <h2>En resumen</h2>
+  <ul>
+    <li>
+      No hay cuentas, ni analítica, ni publicidad. EPI-Aetheris no usa cookies.
+    </li>
+    <li>
+      Al navegar por el sitio, la dirección IP llega a dos servicios: Render,
+      que lo aloja, y OpenStreetMap, que sirve los mapas.
+    </li>
+    <li>
+      Las cifras de salud están agregadas por departamento y semana. No
+      identifican a ninguna persona.
+    </li>
+    <li>
+      Solo quien publica una alerta de campo envía datos propios, y lo que
+      escribe queda publicado.
+    </li>
+  </ul>
+
+  <h2>Quién es el responsable</h2>
+  <p>
+    El responsable de este sitio es Eduardo Rivas. Se le puede escribir a <a
+      href="mailto:epi-aetheris@epi-aetheris.dev"
+      >epi-aetheris@epi-aetheris.dev</a
+    >. El resto de datos de identificación están en el{' '}
+    <a href="/legal/aviso-legal">aviso legal</a>. La dirección postal se
+    facilita a quien la pida por correo.
+  </p>
+  <p>
+    Esta política sigue la Ley para la Protección de Datos Personales de El
+    Salvador (Decreto Legislativo n.º 144).
+  </p>
+
+  <h2>Qué es EPI-Aetheris</h2>
+  <p>
+    Es un proyecto académico sin fines comerciales. Publica datos agregados de
+    dengue y enfermedad respiratoria en El Salvador, a partir de fuentes
+    públicas. Se consulta sin registrarse y sin pagar.
+  </p>
+
+  <h2>Qué datos no se recogen</h2>
+  <ul>
+    <li>Cuentas, contraseñas o perfiles de usuario.</li>
+    <li>Pagos ni datos bancarios.</li>
+    <li>Analítica, píxeles de seguimiento ni cookies publicitarias.</li>
+    <li>Ubicación del dispositivo.</li>
+    <li>Mensajes: el sitio no tiene formulario de contacto.</li>
+  </ul>
+  <p>
+    Tampoco se venden ni se ceden datos, no se elaboran perfiles y no se toman
+    decisiones automatizadas sobre personas.
+  </p>
+
+  <h2>Qué datos se tratan y para qué</h2>
+  <p>
+    Aun sin cuentas ni analítica, hay cinco momentos en los que circulan datos
+    técnicos, aunque algunos no se vean en pantalla. Ninguno es un dato
+    sensible: no se tratan datos de salud, origen étnico, biométricos ni
+    creencias de quien visita el sitio.
+  </p>
+
+  <h3>1. Al abrir cualquier página</h3>
+  <p>
+    Render, la empresa que aloja el sitio y la API, registra cada visita. Guarda
+    la dirección IP, el navegador y sistema (user-agent), la fecha y la página
+    pedida.
+  </p>
+  <ul>
+    <li><strong>Para qué:</strong> servir las páginas y detectar abusos.</li>
+    <li><strong>Cuánto tiempo:</strong> el que fija Render en su política.</li>
+  </ul>
+
+  <h3>2. Al consultar datos</h3>
+  <p>
+    Las gráficas y tablas piden los datos a la API del proyecto. La API limita
+    cuántas consultas puede hacer una misma dirección IP por minuto.
+  </p>
+  <ul>
+    <li>
+      <strong>Para qué:</strong> evitar que un programa automático sature el servicio
+      y lo deje sin capacidad para el resto.
+    </li>
+    <li>
+      <strong>Cuánto tiempo:</strong> la IP se guarda solo en memoria mientras dura
+      el recuento. No se guarda en la base de datos ni se asocia a ninguna otra información.
+    </li>
+  </ul>
+
+  <h3>3. Al ver un mapa</h3>
+  <p>
+    Los mapas de la portada, de dengue y de respiratorio usan imágenes de fondo
+    (teselas) de OpenStreetMap. El navegador las pide directamente a la
+    OpenStreetMap Foundation, así que la IP, el user-agent y la dirección de
+    este sitio llegan a esa fundación cada vez que se dibuja un mapa. Aparte del
+    alojamiento, es el único tercero que recibe datos al navegar por el sitio.
+  </p>
+  <ul>
+    <li><strong>Para qué:</strong> mostrar el mapa.</li>
+    <li>
+      <strong>Cuánto tiempo:</strong> el que fija la{' '}
+      <a
+        href="https://wiki.osmfoundation.org/wiki/Privacy_Policy"
+        target="_blank"
+        rel="noopener noreferrer"
+        >política de privacidad de la OpenStreetMap Foundation</a
+      >.
+    </li>
+  </ul>
+
+  <h3>4. Tipografías</h3>
+  <p>
+    Las tres tipografías se descargan al construir el sitio y se sirven desde
+    este mismo dominio. Al abrir una página no se hace ninguna petición a Google
+    ni a otro proveedor de fuentes.
+  </p>
+
+  <h3>5. Al publicar una alerta de campo</h3>
+  <p>
+    Es el único lugar del sitio donde se envían datos escritos por una persona.
+    Lo usan solo los operadores del proyecto: la página no está enlazada en el
+    menú y pide una clave de publicación (token).
+  </p>
+  <ul>
+    <li>
+      <strong>Qué se envía:</strong> la clave y el contenido de la alerta, que incluye
+      el nombre de quien la firma y, si se rellena, un contacto de vigilancia.
+    </li>
+    <li>
+      <strong>Quién lo ve:</strong> todo el contenido, firma y contacto incluidos,
+      se publica y cualquiera puede leerlo.
+    </li>
+    <li>
+      <strong>Cuánto tiempo:</strong> la alerta se guarda en la base de datos y sigue
+      visible en el archivo de alertas. Se corrige o se retira a petición.
+    </li>
+  </ul>
+
+  <h2>Datos de salud</h2>
+  <p>
+    Todo lo que publica EPI-Aetheris son cifras agregadas por departamento y
+    semana epidemiológica, tomadas de fuentes públicas. Al sistema no entra
+    ningún registro de paciente, ninguna identidad y ninguna ubicación de
+    personas.
+  </p>
+  <p>
+    En los términos de la ley, estas cifras están disociadas: llegan ya
+    agregadas y no se pueden volver a asociar a nadie. Por eso no son datos
+    personales de salud. El origen de cada cifra está en{' '}
+    <a href="/biblioteca/04-fuentes-de-datos">de dónde salen los datos</a>.
+  </p>
+
+  <h2>Cookies y almacenamiento en el navegador</h2>
+  <p>
+    EPI-Aetheris no usa cookies, ni propias ni de terceros. Por eso no aparece
+    ningún aviso de consentimiento. Tampoco hay nada que rastrear, así que la
+    señal «No rastrear» (Do Not Track) no cambia nada.
+  </p>
+  <p>
+    Sí se guardan tres cosas en el propio navegador. Ninguna se envía al
+    proyecto:
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Qué se guarda</th>
+        <th scope="col">Para qué</th>
+        <th scope="col">Cómo borrarlo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>La clave de publicación de alertas</td>
+        <td>
+          Que un operador no tenga que escribirla cada vez. Solo se guarda si
+          marca «Recordar el token en este navegador» al publicar.
+        </td>
+        <td>Botón «Cerrar sesión (olvidar token)» del formulario.</td>
+      </tr>
+      <tr>
+        <td>La lista de alertas ya vistas (solo sus números)</td>
+        <td>Marcar como «Nueva» una alerta que no se había visto antes.</td>
+        <td>Borrar los datos del sitio en el navegador.</td>
+      </tr>
+      <tr>
+        <td>Copias de las páginas visitadas y de la última lista de alertas</td>
+        <td>Que la página de alertas abra sin conexión.</td>
+        <td>Borrar los datos del sitio en el navegador.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    Si algún día se añade analítica o cualquier medición que rastree a quien
+    visita el sitio, se pedirá consentimiento antes y esta sección se
+    reescribirá.
+  </p>
+
+  <h2>Quién más recibe datos</h2>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Quién</th>
+        <th scope="col">Papel</th>
+        <th scope="col">Qué recibe</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          Render Services, Inc. (EE. UU.).{' '}
+          <a
+            href="https://render.com/privacy"
+            target="_blank"
+            rel="noopener noreferrer">Política de privacidad de Render</a
+          >
+        </td>
+        <td>Aloja el sitio, la API y la base de datos</td>
+        <td>IP, user-agent, fecha y página de cada visita</td>
+      </tr>
+      <tr>
+        <td>
+          OpenStreetMap Foundation (Reino Unido).{' '}
+          <a
+            href="https://wiki.osmfoundation.org/wiki/Privacy_Policy"
+            target="_blank"
+            rel="noopener noreferrer">Política de privacidad de la OSMF</a
+          >
+        </td>
+        <td>Sirve las imágenes de fondo de los mapas</td>
+        <td>IP, user-agent y dirección del sitio al cargar un mapa</td>
+      </tr>
+      <tr>
+        <td>jsDelivr</td>
+        <td>
+          Sirve los archivos de la página de documentación de la API (Swagger),
+          enlazada en el pie
+        </td>
+        <td>IP y user-agent, solo si se abre esa página</td>
+      </tr>
+      <tr>
+        <td>
+          GitHub, Inc. (EE. UU.).{' '}
+          <a
+            href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+            target="_blank"
+            rel="noopener noreferrer">Política de privacidad de GitHub</a
+          >
+        </td>
+        <td>Aloja el código y recibe las sugerencias</td>
+        <td>Nada, salvo que se siga uno de sus enlaces</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    Las fuentes de datos (MINSAL, OpenDengue y Open-Meteo) no reciben nada. El
+    proyecto descarga sus cifras; el navegador de quien visita el sitio nunca se
+    conecta con ellas.
+  </p>
+
+  <h2>Datos fuera de El Salvador</h2>
+  <p>
+    La API y la base de datos están en servidores de Render en Estados Unidos.
+    Las páginas se sirven desde la red de distribución de Render, que tiene
+    servidores en varios países. Los mapas se piden a la OpenStreetMap
+    Foundation. Por eso, al navegar por este sitio, los datos técnicos descritos
+    arriba salen del país.
+  </p>
+
+  <h2>Seguridad</h2>
+  <p>
+    Todas las conexiones con el sitio y con la API van cifradas (HTTPS). Como no
+    hay cuentas, no existen contraseñas de visitantes que puedan filtrarse. La
+    clave de publicación de alertas no está en el código: la guarda el proyecto
+    aparte y solo la conocen los operadores.
+  </p>
+
+  <h2>Derechos del titular (ARCO-POL)</h2>
+  <p>
+    La ley reconoce siete derechos sobre los datos personales:{' '}
+    acceso, rectificación, cancelación, oposición, portabilidad, olvido y limitación.
+  </p>
+  <p>
+    <strong>Cómo ejercerlos.</strong> Basta con escribir al responsable, sin intermediarios,
+    a <a href="mailto:epi-aetheris@epi-aetheris.dev"
+      >epi-aetheris@epi-aetheris.dev</a
+    >. Conviene indicar qué derecho se ejerce y sobre qué dato. Si se trata de
+    un registro de visita, ayuda indicar la fecha aproximada y la dirección IP.
+  </p>
+  <p>
+    <strong>Plazo.</strong> La respuesta llega dentro de los veinte días hábiles que
+    fija la ley. Si hay causa justificada, el plazo puede ampliarse otros veinte,
+    y se avisa. Si la solicitud llega incompleta, se pide completarla una sola vez,
+    con diez días hábiles para hacerlo. Las consultas que no son solicitudes de derechos
+    tienen su propio plazo, indicado en la <a href="/contacto"
+      >página de contacto</a
+    >.
+  </p>
+  <p>
+    <strong>Qué datos pueden afectar a una persona.</strong> Como no hay cuentas,
+    solo dos cosas pueden asociarse a una persona:
+  </p>
+  <ul>
+    <li>
+      Los registros de visita que guarda Render. La solicitud se traslada a
+      Render.
+    </li>
+    <li>
+      La firma y el contacto de una alerta publicada. La alerta se corrige o se
+      retira.
+    </li>
+  </ul>
+
+  <h2>Menores de edad</h2>
+  <p>
+    El sitio no está dirigido a menores y no recoge datos de ellos a sabiendas.
+  </p>
+
+  <h2>Cambios en esta política</h2>
+  <p>
+    Cada cambio se publica en esta misma página y actualiza la fecha del
+    encabezado. No se avisa por correo porque no hay cuentas a las que escribir.
+    El código del sitio es público, así que el historial completo de este
+    documento puede consultarse en el repositorio.
+  </p>
+
+  <hr />
+  <p>
+    Ver también: <a href="/legal/terminos">términos de uso</a> ·
+    <a href="/legal/aviso-legal">aviso legal</a> ·
+    <a href="/contacto">contacto</a>.
+  </p>
+</DocumentoTexto>
+
+<style>
+  /* A 375 px la tabla de terceros no cabía: «OpenStreetMap», «user-agent» y
+     los nombres de las políticas fijan un ancho mínimo mayor que la columna.
+     anywhere (a diferencia de break-word) sí reduce ese mínimo en tablas. */
+  table {
+    hyphens: auto;
+    overflow-wrap: anywhere;
+  }
+</style>

@@ -453,4 +453,67 @@ test.describe('Ficha departamental imprimible', () => {
     await expect(cuerpo).not.toContainText('lineamientos generales');
     await expect(cuerpo).not.toContainText('OPS/OMS');
   });
+  test('solo muestra las alertas que aplican al departamento de la ficha', async ({
+    page,
+  }) => {
+    const base = MOCK_ALERTAS.alertas[0];
+    const payload = {
+      ...MOCK_ALERTAS,
+      alertas: [
+        { ...base, id: 201, titulo: 'Alerta nacional', departamentos: null },
+        {
+          ...base,
+          id: 202,
+          titulo: 'Alerta de San Salvador',
+          departamentos: ['SV-SS'],
+        },
+        {
+          ...base,
+          id: 203,
+          titulo: 'Alerta de Santa Ana',
+          departamentos: ['SV-SA'],
+        },
+      ],
+    };
+    await page.route('**/api/v1/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_TEMPORAL),
+      }),
+    );
+    await page.route('**/api/v1/presion/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_PRESION),
+      }),
+    );
+    await page.route('**/api/ira/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_IRA),
+      }),
+    );
+    await page.route('**/api/neumonias/temporal/SV-SS*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_NEUMONIAS),
+      }),
+    );
+    await page.route('**/api/alertas*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(payload),
+      }),
+    );
+    await page.goto('/analisis/ficha/SV-SS');
+    const cuerpo = page.locator('#seccion-prevencion-cuerpo');
+    await expect(cuerpo).toContainText('Alerta nacional', { timeout: 15_000 });
+    await expect(cuerpo).toContainText('Alerta de San Salvador');
+    await expect(cuerpo).not.toContainText('Alerta de Santa Ana');
+  });
 });

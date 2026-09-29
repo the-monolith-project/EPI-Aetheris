@@ -1,5 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
+import Icono from '../../components/Icono.astro';
 import type { CollectionEntry } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 
@@ -30,9 +31,12 @@ for (const entrada of entradas) {
 
 <Layout
   title="EPI-Aetheris — Biblioteca"
-  descripcion="Documentos del proyecto: qué es EPI-Aetheris, cómo llegó a su enfoque descriptivo, qué hace cada módulo, de dónde salen los datos y cómo se replica el sistema."
+  descripcion="Documentos del proyecto: qué es EPI-Aetheris, qué hace cada módulo, de dónde salen los datos, qué límites tiene y cómo se instala el sistema."
 >
-  <main id="contenido-principal" class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
+  >
     <header class="mb-10 max-w-3xl">
       <h1
         class="font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
@@ -40,11 +44,9 @@ for (const entrada of entradas) {
         Biblioteca
       </h1>
       <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
-        Aquí está el relato completo del sistema: qué es, cómo se construyó, qué
-        hace cada función, de dónde salen los datos y cómo se levanta en una
-        máquina nueva. Pensada para quien llega de afuera —estudiando,
-        investigando, evaluando o replicando el proyecto— y quiere leer el
-        producto con el mismo detalle que la interfaz.
+        Qué es el sistema, qué hace cada función, de dónde salen los datos, qué
+        límites tiene y cómo se instala en otra computadora. Para quien estudia,
+        investiga, evalúa o quiere replicar el proyecto.
       </p>
     </header>
 
@@ -52,7 +54,8 @@ for (const entrada of entradas) {
       {
         grupos.map((grupo) => (
           <section>
-            <h2 class="font-display text-lg font-semibold tracking-tight text-ink">
+            <h2 class="flex items-center gap-2.5 font-display text-lg font-semibold tracking-tight text-ink">
+              <Icono nombre="book-2" class="h-5 w-5 text-accent" />
               {grupo.categoria}
             </h2>
             <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

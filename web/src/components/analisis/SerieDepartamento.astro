@@ -1,17 +1,28 @@
-<article
-  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+---
+import PanelWorkspace from './PanelWorkspace.astro';
+---
+
+<PanelWorkspace
+  tipo="traza"
+  titulo="Serie del departamento"
+  descripcion="Los tres módulos descriptivos del departamento activo, semana a semana: presión epidemiológica relativa (M3), idoneidad biofísica contra su banda histórica (M1) y anomalía climática (M2). Cada uno compara al departamento con su propia historia; ninguno reparte un nivel de riesgo."
 >
-  <header>
-    <h3 class="font-sans text-base font-semibold text-ink">
-      Serie del departamento
-    </h3>
-    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
-      Los tres módulos descriptivos del departamento activo, semana a semana:
-      presión epidemiológica relativa (M3), idoneidad biofísica contra su banda
-      histórica (M1) y anomalía climática (M2). Cada uno compara al departamento
-      con su propia historia; ninguno reparte un nivel de riesgo.
+  <div
+    data-vacio-serie
+    class="mt-4 flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg/50 p-8 text-center"
+  >
+    <p class="font-sans text-sm text-ink-muted">
+      Elige un departamento en el mapa o en Filtros para ver sus tres módulos
+      temporales.
     </p>
-  </header>
+    <button
+      type="button"
+      data-abrir-filtros-accion
+      class="mt-3 rounded-lg border border-border bg-surface px-3 py-1.5 font-sans text-xs font-semibold text-accent transition-colors hover:border-accent/40"
+    >
+      Abrir filtros
+    </button>
+  </div>
 
   <div id="serie-departamento-grafica" class="mt-4 flex flex-col gap-5" hidden>
     <div
@@ -19,38 +30,86 @@
       class="min-h-[220px]"
       role="region"
       aria-label="Percentil de presión epidemiológica relativa por semana para el departamento activo"
+      aria-busy="true"
     >
+      <div
+        class="flex h-full min-h-[220px] w-full flex-col justify-around gap-4 p-4"
+        aria-hidden="true"
+      >
+        <div class="skeleton h-5 w-full rounded"></div>
+        <div class="skeleton h-5 w-full rounded"></div>
+        <div class="skeleton h-5 w-full rounded"></div>
+      </div>
     </div>
     <div
       id="serie-idoneidad"
       class="min-h-[220px]"
       role="region"
       aria-label="Idoneidad biofísica por semana contra la banda histórica del departamento activo"
+      aria-busy="true"
     >
+      <div
+        class="flex h-full min-h-[220px] w-full flex-col justify-around gap-4 p-4"
+        aria-hidden="true"
+      >
+        <div class="skeleton h-5 w-full rounded"></div>
+        <div class="skeleton h-5 w-full rounded"></div>
+        <div class="skeleton h-5 w-full rounded"></div>
+      </div>
     </div>
     <div
       id="serie-anomalia"
       class="min-h-[200px]"
       role="region"
       aria-label="Anomalía climática continua por semana para el departamento activo"
+      aria-busy="true"
     >
+      <div
+        class="flex h-full min-h-[200px] w-full flex-col justify-around gap-4 p-4"
+        aria-hidden="true"
+      >
+        <div class="skeleton h-5 w-full rounded"></div>
+        <div class="skeleton h-5 w-full rounded"></div>
+        <div class="skeleton h-5 w-full rounded"></div>
+      </div>
     </div>
   </div>
+
+  <details
+    id="serie-tabla-detalles"
+    class="mt-3 rounded-xl border border-border bg-bg p-3"
+  >
+    <summary
+      class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+    >
+      Ver los datos en tabla
+    </summary>
+    <div id="serie-tabla-contenedor"></div>
+  </details>
 
   <p
     id="serie-departamento-resumen"
     class="mt-3 font-sans text-xs text-ink-muted"
     role="status"
+    slot="pie"
   >
   </p>
   <p
     id="serie-departamento-aviso"
-    class="mt-2 font-sans text-[11px] leading-relaxed text-ink-muted"
+    class="mt-2 font-sans text-xs leading-relaxed text-ink-muted"
+    slot="pie"
   >
   </p>
-</article>
+</PanelWorkspace>
 
 <script>
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderErrorFuente,
+    renderEsqueletoTraza,
+    renderSinDato,
+  } from '../estado-async';
   import {
     obtenerSerieIdoneidad,
     obtenerSeriePresion,
@@ -59,6 +118,8 @@
     obtenerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
+  import { ESTILO_PLOT, ejeSemana, marcoPlot } from '../../lib/plot-tema';
+  import { TablaAlternativa } from '../../lib/tabla-alternativa';
   import {
     esAnioAnalisisDengue,
     notaAnioSoloClima,
@@ -75,6 +136,8 @@
   const COLOR_BANDA = 'var(--color-secondary)';
 
   const marco = document.getElementById('serie-departamento-grafica');
+  const vacioContenedor =
+    document.querySelector<HTMLElement>('[data-vacio-serie]');
   const nodoPresion = document.getElementById('serie-presion');
   const nodoIdoneidad = document.getElementById('serie-idoneidad');
   const nodoAnomalia = document.getElementById('serie-anomalia');
@@ -86,32 +149,74 @@
   type PlotNs = typeof import('@observablehq/plot');
   type Grafica = ReturnType<PlotNs['plot']>;
   let Plot: PlotNs | null = null;
+  let datosTabla: any[] = [];
 
-  function ejeSemana(filtros: FiltrosAnalisis) {
-    return {
-      domain: [filtros.semanaDesde, filtros.semanaHasta] as [number, number],
-      label: 'Semana epidemiológica',
-      tickFormat: (valor: number) => `SE${String(valor).padStart(2, '0')}`,
-      ticks: 10,
-    };
-  }
+  const detailsTabla = document.getElementById(
+    'serie-tabla-detalles',
+  ) as HTMLDetailsElement | null;
+  const contenedorTabla = document.getElementById('serie-tabla-contenedor');
 
-  function estiloPlot() {
-    return { background: 'transparent', color: 'var(--color-ink-muted)' };
-  }
+  const tablaAlternativa =
+    detailsTabla && contenedorTabla
+      ? new TablaAlternativa({
+          details: detailsTabla,
+          contenedorTabla,
+          caption: 'Series temporales del departamento por semana',
+          columnas: [
+            {
+              clave: 'semana',
+              encabezado: 'Semana',
+              alineacion: 'derecha',
+              formato: (v) => `SE${String(v).padStart(2, '0')}`,
+            },
+            {
+              clave: 'probable',
+              encabezado: 'Percentil probable',
+              alineacion: 'derecha',
+              formato: (v) => (v !== null ? `${v}%` : '—'),
+            },
+            {
+              clave: 'confirmado',
+              encabezado: 'Percentil confirmado',
+              alineacion: 'derecha',
+              formato: (v) => (v !== null ? `${v}%` : '—'),
+            },
+            {
+              clave: 'iv',
+              encabezado: 'Idoneidad (Iv)',
+              alineacion: 'derecha',
+              formato: (v) => (v !== null ? Number(v).toFixed(2) : '—'),
+            },
+            {
+              clave: 'anomalia',
+              encabezado: 'Anomalía',
+              alineacion: 'derecha',
+              formato: (v) => (v !== null ? Number(v).toFixed(2) : '—'),
+            },
+          ],
+          obtenerDatos: () => datosTabla,
+        })
+      : null;
 
-  function enRango(semana: number, filtros: FiltrosAnalisis): boolean {
+  vacioContenedor
+    ?.querySelector('[data-abrir-filtros-accion]')
+    ?.addEventListener('click', () => {
+      document.getElementById('analisis-abrir-filtros')?.click();
+    });
+
+  function enRango(semana: number, filtros: FiltrosAnalisis) {
     return semana >= filtros.semanaDesde && semana <= filtros.semanaHasta;
   }
 
-  function hayValores(valores: Array<number | null | undefined>): boolean {
-    return valores.some((valor) => valor !== null && valor !== undefined);
+  function hayValores(valores: (number | null)[]): boolean {
+    return valores.some((v) => v !== null && !Number.isNaN(v));
   }
 
   function marcadorSemana(P: PlotNs, filtros: FiltrosAnalisis) {
     return P.ruleX([filtros.semana], {
-      stroke: 'var(--color-ink)',
-      strokeOpacity: 0.4,
+      stroke: 'var(--color-seleccion)',
+      strokeWidth: 2,
+      strokeOpacity: 0.6,
       strokeDasharray: '3,3',
     });
   }
@@ -142,13 +247,13 @@
       height: 210,
       marginLeft: 52,
       marginBottom: 40,
-      x: ejeSemana(filtros),
+      x: ejeSemana(filtros.semanaDesde, filtros.semanaHasta),
       y: {
         label: 'Percentil frente a su historia (0–100)',
         domain: [0, 100],
         grid: true,
       },
-      style: estiloPlot(),
+      style: ESTILO_PLOT,
       marks: [
         P.ruleY([50, 75], {
           stroke: COLOR_CONTEXTO,
@@ -181,7 +286,7 @@
           },
         ),
         marcadorSemana(P, filtros),
-        P.frame({ stroke: 'var(--color-border)' }),
+        marcoPlot(Plot!),
       ],
     });
   }
@@ -202,23 +307,16 @@
       height: 210,
       marginLeft: 52,
       marginBottom: 40,
-      x: ejeSemana(filtros),
+      x: ejeSemana(filtros.semanaDesde, filtros.semanaHasta),
       y: { label: 'Iv (0–1)', grid: true, zero: true },
-      style: estiloPlot(),
+      style: ESTILO_PLOT,
       marks: [
         P.areaY(banda, {
           x: 'semana_epi',
           y1: 'p25_baseline',
           y2: 'p75_baseline',
           fill: COLOR_BANDA,
-          fillOpacity: 0.55,
-        }),
-        P.line(banda, {
-          x: 'semana_epi',
-          y: 'mediana_baseline',
-          stroke: COLOR_CONTEXTO,
-          strokeWidth: 1.25,
-          strokeDasharray: '4,3',
+          fillOpacity: 0.5,
         }),
         P.line(datos, {
           x: 'semana_epi',
@@ -235,14 +333,14 @@
             r: 2.5,
             title: (s: SemanaSerieIdoneidad) =>
               `SE${String(s.semana_epi).padStart(2, '0')} · Iv ${
-                s.iv_real !== null ? s.iv_real.toFixed(3) : '—'
-              } · banda ${
-                s.p25_baseline !== null ? s.p25_baseline.toFixed(3) : '—'
-              }–${s.p75_baseline !== null ? s.p75_baseline.toFixed(3) : '—'}`,
+                s.iv_real ?? '—'
+              } · banda P25–P75: ${s.p25_baseline ?? '—'} a ${
+                s.p75_baseline ?? '—'
+              }`,
           },
         ),
         marcadorSemana(P, filtros),
-        P.frame({ stroke: 'var(--color-border)' }),
+        marcoPlot(Plot!),
       ],
     });
   }
@@ -260,25 +358,34 @@
       height: 190,
       marginLeft: 52,
       marginBottom: 40,
-      x: ejeSemana(filtros),
-      y: { label: 'σ respecto a la historia', grid: true, zero: true },
-      style: estiloPlot(),
+      x: ejeSemana(filtros.semanaDesde, filtros.semanaHasta),
+      y: { label: 'Anomalía (σ)', grid: true },
+      style: ESTILO_PLOT,
       marks: [
-        P.areaY(datos, {
-          x: 'semana_epi',
-          y: 'anomaly_sigma',
-          fill: COLOR_ACENTO,
-          fillOpacity: 0.18,
-        }),
+        P.ruleY([0], { stroke: COLOR_CONTEXTO, strokeOpacity: 0.6 }),
         P.line(datos, {
           x: 'semana_epi',
           y: 'anomaly_sigma',
-          stroke: COLOR_ACENTO,
+          stroke: '#e65100',
           strokeWidth: 2,
         }),
-        P.ruleY([0], { stroke: 'var(--color-ink)', strokeOpacity: 0.35 }),
+        P.dot(
+          datos.filter((s) => s.anomaly_sigma !== null),
+          {
+            x: 'semana_epi',
+            y: 'anomaly_sigma',
+            fill: '#e65100',
+            r: 2.5,
+            title: (s: SemanaSerieIdoneidad) =>
+              `SE${String(s.semana_epi).padStart(2, '0')} · anomalía ${
+                s.anomaly_sigma !== null
+                  ? `${s.anomaly_sigma.toFixed(2)} σ`
+                  : 'sin dato'
+              }`,
+          },
+        ),
         marcadorSemana(P, filtros),
-        P.frame({ stroke: 'var(--color-border)' }),
+        marcoPlot(Plot!),
       ],
     });
   }
@@ -286,17 +393,20 @@
   function pintar(
     nodo: HTMLElement | null,
     grafica: Grafica | null,
-    etiquetaVacia: string,
-  ): void {
+    esError: boolean,
+    mensaje: string,
+  ) {
     if (!nodo) return;
+    nodo.setAttribute('aria-busy', 'false');
     if (grafica) {
       nodo.replaceChildren(grafica);
       return;
     }
-    const vacio = document.createElement('p');
-    vacio.className = 'font-sans text-xs text-ink-muted';
-    vacio.textContent = etiquetaVacia;
-    nodo.replaceChildren(vacio);
+    if (esError) {
+      renderErrorFuente(nodo, () => void renderizar(filtrosActuales), mensaje);
+    } else {
+      renderSinDato(nodo, mensaje);
+    }
   }
 
   async function renderizar(filtros: FiltrosAnalisis): Promise<void> {
@@ -305,14 +415,29 @@
 
     if (!filtros.departamento) {
       marco.hidden = true;
+      if (vacioContenedor) vacioContenedor.hidden = false;
       resumen.textContent =
-        'Seleccione un departamento en los filtros o en el mapa.';
+        'Selecciona un departamento en los filtros o en el mapa.';
       if (avisoNodo) avisoNodo.textContent = '';
       return;
     }
 
+    if (vacioContenedor) vacioContenedor.hidden = true;
     marco.hidden = false;
     resumen.textContent = 'Cargando series del departamento…';
+
+    if (nodoPresion) {
+      nodoPresion.setAttribute('aria-busy', 'true');
+      renderEsqueletoTraza(nodoPresion);
+    }
+    if (nodoIdoneidad) {
+      nodoIdoneidad.setAttribute('aria-busy', 'true');
+      renderEsqueletoTraza(nodoIdoneidad);
+    }
+    if (nodoAnomalia) {
+      nodoAnomalia.setAttribute('aria-busy', 'true');
+      renderEsqueletoTraza(nodoAnomalia);
+    }
 
     if (!Plot) Plot = await import('@observablehq/plot');
     if (idRevision !== revision || !Plot) return;
@@ -325,39 +450,105 @@
     if (idRevision !== revision) return;
 
     const ancho = Math.max(marco.clientWidth || 0, 320);
-    const presion = resPresion.status === 'fulfilled' ? resPresion.value : null;
+    const presion =
+      resPresion.status === 'fulfilled' && !esNoDisponible(resPresion.value)
+        ? resPresion.value
+        : null;
     const idoneidad =
-      resIdoneidad.status === 'fulfilled' ? resIdoneidad.value : null;
+      resIdoneidad.status === 'fulfilled' && !esNoDisponible(resIdoneidad.value)
+        ? resIdoneidad.value
+        : null;
 
-    pintar(
-      nodoPresion,
-      presion ? graficaPresion(P, presion.semanas, filtros, ancho) : null,
-      resPresion.status === 'rejected'
-        ? 'No fue posible cargar la presión epidemiológica.'
-        : 'Sin presión epidemiológica para este año (los casos MINSAL se detienen en 2023).',
-    );
-    pintar(
-      nodoIdoneidad,
-      idoneidad ? graficaIdoneidad(P, idoneidad.semanas, filtros, ancho) : null,
-      resIdoneidad.status === 'rejected'
-        ? 'No fue posible cargar la idoneidad biofísica.'
-        : 'Sin idoneidad biofísica para este departamento y año.',
-    );
-    pintar(
-      nodoAnomalia,
-      idoneidad ? graficaAnomalia(P, idoneidad.semanas, filtros, ancho) : null,
-      resIdoneidad.status === 'rejected'
-        ? 'No fue posible cargar la anomalía climática.'
-        : 'Sin anomalía climática para este departamento y año.',
-    );
+    if (resPresion.status === 'rejected') {
+      pintar(
+        nodoPresion,
+        null,
+        true,
+        'No se pudo cargar la presión epidemiológica.',
+      );
+    } else if (
+      resPresion.status === 'fulfilled' &&
+      esNoDisponible(resPresion.value)
+    ) {
+      pintar(nodoPresion, null, false, motivoNoDisponible(resPresion.value));
+    } else {
+      pintar(
+        nodoPresion,
+        presion ? graficaPresion(P, presion.semanas, filtros, ancho) : null,
+        false,
+        'Sin presión epidemiológica para este año (los casos MINSAL se detienen en 2023).',
+      );
+    }
+
+    if (resIdoneidad.status === 'rejected') {
+      pintar(
+        nodoIdoneidad,
+        null,
+        true,
+        'No se pudo cargar la idoneidad biofísica.',
+      );
+      pintar(
+        nodoAnomalia,
+        null,
+        true,
+        'No se pudo cargar la anomalía climática.',
+      );
+    } else if (
+      resIdoneidad.status === 'fulfilled' &&
+      esNoDisponible(resIdoneidad.value)
+    ) {
+      pintar(
+        nodoIdoneidad,
+        null,
+        false,
+        motivoNoDisponible(resIdoneidad.value),
+      );
+      pintar(nodoAnomalia, null, false, motivoNoDisponible(resIdoneidad.value));
+    } else {
+      pintar(
+        nodoIdoneidad,
+        idoneidad
+          ? graficaIdoneidad(P, idoneidad.semanas, filtros, ancho)
+          : null,
+        false,
+        'Sin idoneidad biofísica para este departamento y año.',
+      );
+      pintar(
+        nodoAnomalia,
+        idoneidad
+          ? graficaAnomalia(P, idoneidad.semanas, filtros, ancho)
+          : null,
+        false,
+        'Sin anomalía climática para este departamento y año.',
+      );
+    }
+
+    // Preparar datos para tabla alternativa
+    const filasTabla: any[] = [];
+    for (let sem = filtros.semanaDesde; sem <= filtros.semanaHasta; sem++) {
+      const pSem = presion?.semanas.find((s) => s.semana_epi === sem);
+      const iSem = idoneidad?.semanas.find((s) => s.semana_epi === sem);
+      filasTabla.push({
+        semana: sem,
+        probable: pSem?.probable.percentil ?? null,
+        confirmado: pSem?.confirmado.percentil ?? null,
+        iv: iSem?.iv_real ?? null,
+        anomalia: iSem?.anomaly_sigma ?? null,
+      });
+    }
+    datosTabla = filasTabla;
+    tablaAlternativa?.marcarCaducada();
 
     const nombre =
       idoneidad?.departamento_nombre ??
       presion?.departamento_nombre ??
       filtros.departamento;
-    resumen.textContent = `${nombre} · año ${filtros.anio} · rango SE${String(
+    resumen.innerHTML = `<span><strong class="font-medium text-ink">${nombre}</strong> · año <span class="cifra">${filtros.anio}</span> · rango <span class="cifra">SE${String(
       filtros.semanaDesde,
-    ).padStart(2, '0')}–SE${String(filtros.semanaHasta).padStart(2, '0')}.`;
+    ).padStart(
+      2,
+      '0',
+    )}–SE${String(filtros.semanaHasta).padStart(2, '0')}</span>.</span>`;
 
     if (avisoNodo) {
       const partes: string[] = [];
@@ -374,7 +565,19 @@
     filtrosActuales = filtros;
     void renderizar(filtros);
   });
+  let ultimoAncho = 0;
+  let timerResize: ReturnType<typeof setTimeout> | null = null;
   if (marco) {
-    new ResizeObserver(() => void renderizar(filtrosActuales)).observe(marco);
+    new ResizeObserver((entradas) => {
+      const entrada = entradas[0];
+      if (!entrada) return;
+      const nuevoAncho = Math.round(entrada.contentRect.width);
+      if (nuevoAncho === ultimoAncho) return;
+      ultimoAncho = nuevoAncho;
+      if (timerResize) clearTimeout(timerResize);
+      timerResize = setTimeout(() => {
+        void renderizar(filtrosActuales);
+      }, 150);
+    }).observe(marco);
   }
 </script>

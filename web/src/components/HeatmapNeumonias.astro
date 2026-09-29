@@ -1,78 +1,61 @@
 ---
+import PanelWorkspace from './analisis/PanelWorkspace.astro';
+import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
 // Heatmap departamento × semana de Neumonías. Una métrica: conteo notificado.
 // Celda sin dato = hueco, nunca cero.
 ---
 
-<section
-  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+<PanelWorkspace
+  tipo="matriz"
+  titulo="Mapa de calor de neumonías por departamento y semana"
+  descripcion="Unidad: conteo notificado (desacumulado). Celdas claras = hueco de la fuente MINSAL, no un cero."
   data-heatmap-neu
+  controlesAnchos
 >
-  <div class="flex flex-wrap items-start justify-between gap-3">
-    <div class="flex items-start gap-3">
-      <span
-        class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
-        aria-hidden="true"></span>
-      <div>
-        <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
-          Heatmap Neumonías — departamento × semana
-        </h2>
-        <p
-          class="mt-1 max-w-3xl font-sans text-sm leading-relaxed text-ink-muted"
-        >
-          Unidad: conteo notificado (desacumulado). Celdas claras = hueco de la
-          fuente MINSAL, no un cero.
-        </p>
-      </div>
-    </div>
-    <div class="flex flex-wrap items-center gap-2 font-sans text-sm">
-      <label class="flex flex-wrap items-center gap-2"
-        >Año
-        <select
-          data-hm-anio
-          class="rounded-lg border border-border bg-bg px-3 py-1.5"
-        >
-          <option value="2023">2023</option>
-          <option value="2022">2022</option>
-          <option value="2021">2021</option>
-          <option value="2019">2019</option>
-          <option value="2018">2018</option>
-        </select>
-      </label>
-      <span class="flex flex-wrap items-center gap-2">
-        SE
-        <input
-          id="hm-neu-desde"
-          data-hm-desde
-          type="range"
-          min="1"
-          max="52"
-          value="1"
-          aria-label="Semana epidemiológica inicial"
-          aria-valuetext="Semana 1"
-        />
-        <input
-          id="hm-neu-hasta"
-          data-hm-hasta
-          type="range"
-          min="1"
-          max="52"
-          value="52"
-          aria-label="Semana epidemiológica final"
-          aria-valuetext="Semana 52"
-        />
-        <span data-hm-rango class="font-sans tabular-nums text-xs"
-          >SE1–SE52</span
-        >
-      </span>
-      <button
-        type="button"
-        data-hm-export
-        aria-label="Exportar datos del mapa de calor a CSV"
-        class="rounded-lg border border-border bg-bg px-3 py-1.5 text-ink"
+  <div
+    slot="controles"
+    class="flex flex-wrap items-center gap-2 font-sans text-sm"
+  >
+    <label class="flex flex-wrap items-center gap-2"
+      >Año
+      <select
+        data-hm-anio
+        class="rounded-lg border border-border bg-bg px-3 py-1.5"
       >
-        Exportar CSV
-      </button>
-    </div>
+        {ANIOS_RESPIRATORIO.map((a) => <option value={String(a)}>{a}</option>)}
+      </select>
+    </label>
+    <span class="flex flex-wrap items-center gap-2">
+      SE
+      <input
+        id="hm-neu-desde"
+        data-hm-desde
+        type="range"
+        min="1"
+        max="52"
+        value="1"
+        aria-label="Semana epidemiológica inicial"
+        aria-valuetext="Semana 1"
+      />
+      <input
+        id="hm-neu-hasta"
+        data-hm-hasta
+        type="range"
+        min="1"
+        max="52"
+        value="52"
+        aria-label="Semana epidemiológica final"
+        aria-valuetext="Semana 52"
+      />
+      <span data-hm-rango class="font-sans tabular-nums text-xs">SE1–SE52</span>
+    </span>
+    <button
+      type="button"
+      data-hm-export
+      aria-label="Exportar datos del mapa de calor a CSV"
+      class="rounded-lg border border-border bg-bg px-3 py-1.5 hover:border-accent hover:text-accent"
+      >Exportar a CSV</button
+    >
   </div>
   <div
     data-hm-error
@@ -91,13 +74,39 @@
       Reintentar
     </button>
   </div>
-  <div data-hm-grid role="status" class="mt-4 overflow-x-auto scroll-shadow-x"></div>
-</section>
+  <div
+    data-hm-grid
+    role="status"
+    aria-busy="true"
+    class="mt-4 min-h-[380px] overflow-x-auto scroll-shadow-x"
+  >
+    <div
+      class="flex h-full min-h-[380px] w-full min-w-[760px] flex-col justify-between gap-2.5 p-2"
+      aria-hidden="true"
+    >
+      <div class="skeleton h-5 w-full rounded"></div>
+      <div class="skeleton h-5 w-full rounded"></div>
+      <div class="skeleton h-5 w-full rounded"></div>
+      <div class="skeleton h-5 w-full rounded"></div>
+      <div class="skeleton h-5 w-full rounded"></div>
+      <div class="skeleton h-5 w-full rounded"></div>
+      <div class="skeleton h-5 w-full rounded"></div>
+    </div>
+  </div>
+</PanelWorkspace>
 
 <script>
   import {
+    ANIOS_RESPIRATORIO,
+    actualizarFiltrosRespiratorio,
+    obtenerFiltrosRespiratorio,
+    suscribirFiltrosRespiratorio,
+    type FiltrosRespiratorio,
+  } from '../lib/respiratorio-state';
+  import {
     esNoDisponible,
     motivoNoDisponible,
+    renderEsqueletoMatriz,
     renderSinDato,
   } from './estado-async';
 
@@ -145,7 +154,8 @@
     inpDesde.setAttribute('aria-valuetext', `Semana ${inpDesde.value}`);
     inpHasta.setAttribute('aria-valuetext', `Semana ${inpHasta.value}`);
     const anio = sel.value;
-    grid.textContent = 'Cargando…';
+    grid.setAttribute('aria-busy', 'true');
+    renderEsqueletoMatriz(grid, 7);
     try {
       const resp = await fetch(`${API_BASE}/api/neumonias/heatmap/${anio}`);
       if (!resp.ok) throw new Error('no ok');
@@ -172,7 +182,7 @@
       table.className = 'border-collapse font-sans tabular-nums text-[11px]';
       table.setAttribute(
         'aria-label',
-        `Heatmap de neumonías notificadas por departamento y semana epidemiológica, año ${anio}`,
+        `Mapa de calor de neumonías notificadas por departamento y semana epidemiológica, año ${anio}`,
       );
       const caption = document.createElement('caption');
       caption.className = 'sr-only';
@@ -198,11 +208,20 @@
       const tbody = document.createElement('tbody');
       for (const d of departamentos) {
         const tr = document.createElement('tr');
+        // Fila del departamento elegido en el mapa o en las curvas.
+        if (d.codigo === obtenerFiltrosRespiratorio().departamento) {
+          tr.setAttribute('data-fila-seleccionada', '');
+          tr.style.outline = '2px solid var(--color-seleccion)';
+          tr.style.outlineOffset = '-1px';
+        }
         const name = document.createElement('th');
         name.scope = 'row';
         name.className =
           'pr-2 text-left font-sans text-xs font-medium text-ink sticky left-0 bg-surface';
         name.textContent = d.nombre;
+        if (tr.hasAttribute('data-fila-seleccionada')) {
+          name.textContent = `${d.nombre} (seleccionado)`;
+        }
         tr.appendChild(name);
         for (let s = desde; s <= hasta; s++) {
           const td = document.createElement('td');
@@ -229,9 +248,11 @@
       nota.className = 'mt-2 font-sans text-xs text-ink-muted';
       nota.textContent = `Conteo notificado · ${anio} · SE${desde}–SE${hasta} · MINSAL. Claro = hueco. Escala única de conteo, no positividad.`;
       grid.replaceChildren(table, nota);
+      grid.removeAttribute('aria-busy');
     } catch {
       error.classList.remove('hidden');
       grid.textContent = '';
+      grid.removeAttribute('aria-busy');
       ultimo = null;
     }
   }
@@ -259,17 +280,49 @@
     URL.revokeObjectURL(a.href);
   }
 
+  // El mapa de calor necesita un año concreto: con "todos" (curvas) muestra el
+  // más reciente.
+  function anioParaMapa(f: FiltrosRespiratorio): string {
+    return String(f.anio === 'todos' ? ANIOS_RESPIRATORIO[0] : f.anio);
+  }
+
   const root = document.querySelector<HTMLElement>('[data-heatmap-neu]');
   if (root) {
-    root
-      .querySelector('[data-hm-anio]')
-      ?.addEventListener('change', () => void pintar());
-    root
-      .querySelector('[data-hm-desde]')
-      ?.addEventListener('input', () => void pintar());
-    root
-      .querySelector('[data-hm-hasta]')
-      ?.addEventListener('input', () => void pintar());
+    const selAnio = root.querySelector<HTMLSelectElement>('[data-hm-anio]')!;
+    const inpDesde = root.querySelector<HTMLInputElement>('[data-hm-desde]')!;
+    const inpHasta = root.querySelector<HTMLInputElement>('[data-hm-hasta]')!;
+
+    const sincronizar = (f: FiltrosRespiratorio) => {
+      selAnio.value = anioParaMapa(f);
+      const actualDesde = Math.min(
+        Number(inpDesde.value),
+        Number(inpHasta.value),
+      );
+      const actualHasta = Math.max(
+        Number(inpDesde.value),
+        Number(inpHasta.value),
+      );
+      if (actualDesde !== f.semanaDesde || actualHasta !== f.semanaHasta) {
+        inpDesde.value = String(f.semanaDesde);
+        inpHasta.value = String(f.semanaHasta);
+      }
+    };
+    sincronizar(obtenerFiltrosRespiratorio());
+
+    const alCambiar = () => {
+      actualizarFiltrosRespiratorio({
+        anio: Number(selAnio.value),
+        semanaDesde: Number(inpDesde.value),
+        semanaHasta: Number(inpHasta.value),
+      });
+    };
+    selAnio.addEventListener('change', alCambiar);
+    inpDesde.addEventListener('input', alCambiar);
+    inpHasta.addEventListener('input', alCambiar);
+    suscribirFiltrosRespiratorio((f) => {
+      sincronizar(f);
+      void pintar();
+    }, false);
     root.querySelector('[data-hm-export]')?.addEventListener('click', exportar);
     root
       .querySelector('[data-hm-reintentar]')

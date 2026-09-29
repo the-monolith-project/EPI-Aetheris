@@ -5,9 +5,23 @@
     aria-haspopup="menu"
     aria-expanded="false"
     aria-controls="analisis-paneles-menu"
-    class="rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+    class="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
   >
-    Paneles
+    <span>Paneles</span>
+    <svg
+      id="analisis-paneles-icono"
+      class="h-3.5 w-3.5 text-ink-muted transition-transform duration-200"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke-width="2"
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+    </svg>
   </button>
   <div
     id="analisis-paneles-menu"
@@ -18,102 +32,148 @@
   >
     <p
       id="analisis-paneles-titulo"
-      class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
+      class="font-sans text-xs font-semibold text-ink-muted"
     >
       Paneles visibles
     </p>
-    <div class="mt-2 grid gap-1">
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
-      >
-        <input
-          class="accent-accent"
-          data-selector-panel
-          value="mapa"
-          type="checkbox"
-        /> Mapa departamental
-      </label>
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
-      >
-        <input
-          class="accent-accent"
-          data-selector-panel
-          value="presion"
-          type="checkbox"
-        /> Presión por semana
-      </label>
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
-      >
-        <input
-          class="accent-accent"
-          data-selector-panel
-          value="serie"
-          type="checkbox"
-        /> Serie del departamento
-      </label>
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
-      >
-        <input
-          class="accent-accent"
-          data-selector-panel
-          value="temporadas"
-          type="checkbox"
-        /> Comparación de temporadas
-      </label>
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
-      >
-        <input
-          class="accent-accent"
-          data-selector-panel
-          value="departamentos"
-          type="checkbox"
-        /> Comparación de departamentos
-      </label>
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
-      >
-        <input
-          class="accent-accent"
-          data-selector-panel
-          value="calendario"
-          type="checkbox"
-        /> Calendario epidémico
-      </label>
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
-      >
-        <input
-          class="accent-accent"
-          data-selector-panel
-          value="clima"
-          type="checkbox"
-        /> Clima × presión
-      </label>
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
-      >
-        <input
-          class="accent-accent"
-          data-selector-panel
-          value="disponibilidad"
-          type="checkbox"
-        /> Disponibilidad de datos
-      </label>
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 font-sans text-sm text-ink hover:bg-secondary/30"
-      >
-        <input
-          class="accent-accent"
-          data-selector-panel
-          value="calidad"
-          type="checkbox"
-        /> Perfil de calidad
-      </label>
+
+    <div class="mt-2.5 flex flex-col gap-2.5">
+      <!-- Territorio -->
+      <fieldset class="flex flex-col gap-1">
+        <legend class="font-sans text-[11px] font-medium text-ink-muted">
+          Territorio
+        </legend>
+        <label
+          class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-sans text-sm text-ink hover:bg-secondary/30"
+        >
+          <input
+            class="accent-accent"
+            data-selector-panel
+            value="mapa"
+            type="checkbox"
+          /> Mapa departamental
+        </label>
+      </fieldset>
+
+      <!-- Matrices -->
+      <fieldset class="flex flex-col gap-1 border-t border-border/70 pt-2">
+        <legend class="font-sans text-[11px] font-medium text-ink-muted">
+          Matrices
+        </legend>
+        <label
+          class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-sans text-sm text-ink hover:bg-secondary/30"
+        >
+          <input
+            class="accent-accent"
+            data-selector-panel
+            value="presion"
+            type="checkbox"
+          /> Presión por semana
+        </label>
+        <label
+          class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-sans text-sm text-ink hover:bg-secondary/30"
+        >
+          <input
+            class="accent-accent"
+            data-selector-panel
+            value="calendario"
+            type="checkbox"
+          /> Calendario epidémico
+        </label>
+        <label
+          class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-sans text-sm text-ink hover:bg-secondary/30"
+        >
+          <input
+            class="accent-accent"
+            data-selector-panel
+            value="disponibilidad"
+            type="checkbox"
+          /> Disponibilidad de datos
+        </label>
+      </fieldset>
+
+      <!-- Trazas -->
+      <fieldset class="flex flex-col gap-1 border-t border-border/70 pt-2">
+        <legend class="font-sans text-[11px] font-medium text-ink-muted">
+          Trazas temporales
+        </legend>
+        <label
+          class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-sans text-sm text-ink hover:bg-secondary/30"
+        >
+          <input
+            class="accent-accent"
+            data-selector-panel
+            value="canal"
+            type="checkbox"
+          /> Canal endémico
+        </label>
+        <label
+          class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-sans text-sm text-ink hover:bg-secondary/30"
+        >
+          <input
+            class="accent-accent"
+            data-selector-panel
+            value="temporadas"
+            type="checkbox"
+          /> Comparación de temporadas
+        </label>
+        <label
+          class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-sans text-sm text-ink hover:bg-secondary/30"
+        >
+          <input
+            class="accent-accent"
+            data-selector-panel
+            value="departamentos"
+            type="checkbox"
+          /> Comparación de departamentos
+        </label>
+        <label
+          class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-sans text-sm text-ink hover:bg-secondary/30"
+        >
+          <input
+            class="accent-accent"
+            data-selector-panel
+            value="serie"
+            type="checkbox"
+          /> Serie del departamento
+        </label>
+        <label
+          class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-sans text-sm text-ink hover:bg-secondary/30"
+        >
+          <input
+            class="accent-accent"
+            data-selector-panel
+            value="clima"
+            type="checkbox"
+          /> Clima × presión
+        </label>
+      </fieldset>
+
+      <!-- Registro -->
+      <fieldset class="flex flex-col gap-1 border-t border-border/70 pt-2">
+        <legend class="font-sans text-[11px] font-medium text-ink-muted">
+          Registro y auditoría
+        </legend>
+        <label
+          class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-sans text-sm text-ink hover:bg-secondary/30"
+        >
+          <input
+            class="accent-accent"
+            data-selector-panel
+            value="calidad"
+            type="checkbox"
+          /> Perfil de calidad
+        </label>
+      </fieldset>
     </div>
+
+    <!-- Contador al pie -->
+    <p
+      id="analisis-paneles-contador"
+      class="mt-2.5 border-t border-border pt-2 font-sans text-xs text-ink-muted"
+    >
+      4 de 9 visibles
+    </p>
   </div>
 </div>
 
@@ -129,6 +189,7 @@
     'analisis-paneles-boton',
   ) as HTMLButtonElement | null;
   const menu = document.getElementById('analisis-paneles-menu');
+  const contador = document.getElementById('analisis-paneles-contador');
   const casillas = document.querySelectorAll<HTMLInputElement>(
     '[data-selector-panel]',
   );
@@ -136,14 +197,24 @@
     PANELES_ANALITICOS.map(({ id }) => id),
   );
 
+  const icono = document.getElementById('analisis-paneles-icono');
+
   function estaAbierto(): boolean {
     return menu?.hidden === false;
+  }
+
+  // aria-expanded y el giro del chevron se mueven siempre juntos: el estado
+  // visual no puede divergir del anunciado al lector de pantalla.
+  function actualizarEstadoVisual(abierto: boolean): void {
+    if (!boton) return;
+    boton.setAttribute('aria-expanded', String(abierto));
+    icono?.classList.toggle('rotate-180', abierto);
   }
 
   function cerrarMenu(devolverFoco = false): void {
     if (!menu || !boton) return;
     menu.hidden = true;
-    boton.setAttribute('aria-expanded', 'false');
+    actualizarEstadoVisual(false);
     if (devolverFoco) boton.focus();
   }
 
@@ -151,7 +222,13 @@
     if (!menu || !boton) return;
     const abierto = !estaAbierto();
     menu.hidden = !abierto;
-    boton.setAttribute('aria-expanded', String(abierto));
+    actualizarEstadoVisual(abierto);
+  }
+
+  function actualizarContador(visibles: number): void {
+    if (contador) {
+      contador.textContent = `${visibles} de ${panelesValidos.size} visibles`;
+    }
   }
 
   boton?.addEventListener('click', alternarMenu);
@@ -198,5 +275,6 @@
         casilla.value as PanelAnalitico,
       );
     });
+    actualizarContador(layout.panelesVisibles.length);
   });
 </script>

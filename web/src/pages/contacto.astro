@@ -1,0 +1,150 @@
+---
+/**
+ * Página de contacto. Sin formulario, y se explica por qué: habilitarlo
+ * obligaría a almacenar texto libre de terceros, que es justo lo que la
+ * política de privacidad declara que este sitio no hace.
+ *
+ * Registro formal, sin disculpas sobre el tamaño del equipo ni sobre el nivel
+ * de soporte: los plazos se enuncian como compromiso, no como excusa.
+ *
+ * El aviso de vulnerabilidades no usa un segundo buzón: va por los avisos de
+ * seguridad privados de GitHub, que dejan el hilo cerrado hasta que hay
+ * arreglo. security.txt ofrece el correo como alternativa para quien no tenga
+ * cuenta.
+ */
+import Layout from '../layouts/Layout.astro';
+import Icono from '../components/Icono.astro';
+
+const CORREO_CONTACTO = 'epi-aetheris@epi-aetheris.dev';
+const AVISO_SEGURIDAD =
+  'https://github.com/the-monolith-project/EPI-Aetheris/security/advisories/new';
+
+const CANALES = [
+  {
+    titulo: 'Consultas generales y datos',
+    descripcion:
+      'Consultas sobre el contenido publicado, sobre el uso de los datos o sobre el ejercicio de los derechos en materia de protección de datos personales. Es también la vía para solicitar la corrección o la retirada de una alerta publicada.',
+    enlace: `mailto:${CORREO_CONTACTO}`,
+    cta: CORREO_CONTACTO,
+    icono: 'mail',
+    externo: false,
+  },
+  {
+    titulo: 'Errores y propuestas de mejora',
+    descripcion:
+      'Datos que no cuadran, mapas o gráficas que se leen mal, fallos de la API y funciones que faltan. Se tratan como issues (incidencias públicas en GitHub), así la conversación queda a la vista.',
+    enlace: '/sugerencias',
+    cta: 'Ver cómo se envían las sugerencias',
+    icono: 'message-2',
+    externo: false,
+  },
+  {
+    titulo: 'Vulnerabilidades de seguridad',
+    descripcion:
+      'Avísanos antes de hacer público un fallo de seguridad. El canal es un aviso privado de GitHub, que solo ve el equipo hasta que el fallo esté corregido; si no puedes usarlo, escribe al correo de contacto. Las condiciones están en security.txt (RFC 9116).',
+    enlace: AVISO_SEGURIDAD,
+    cta: 'Abrir un aviso de seguridad en GitHub',
+    icono: 'shield-lock',
+    externo: true,
+  },
+];
+---
+
+<Layout
+  title="EPI-Aetheris — Contacto"
+  descripcion="Cómo comunicarse con el equipo de EPI-Aetheris: consultas generales, propuestas de mejora y divulgación responsable de vulnerabilidades."
+>
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
+  >
+    <header class="mb-8 max-w-3xl">
+      <h1
+        class="font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
+      >
+        Contacto
+      </h1>
+      <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+        Este sitio no dispone de formulario de contacto: habilitarlo obligaría a
+        almacenar texto libre de terceros, algo que la{' '}
+        <a href="/legal/privacidad" class="text-accent underline"
+          >política de privacidad</a
+        > declara expresamente que no se hace. Los canales habilitados son el correo
+        electrónico y GitHub.
+      </p>
+      <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+        Las consultas ordinarias se atienden en un plazo aproximado de{' '}
+        <strong class="font-semibold text-ink">cinco días hábiles</strong>.
+      </p>
+      <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+        Las solicitudes de ejercicio de derechos sobre datos personales se rigen
+        por el plazo que fija la ley:{' '}
+        <strong class="font-semibold text-ink">veinte días hábiles</strong>,
+        prorrogables por otros veinte cuando concurra causa justificada. El
+        procedimiento se detalla en la{' '}
+        <a href="/legal/privacidad" class="text-accent underline"
+          >política de privacidad</a
+        >.
+      </p>
+    </header>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {
+        CANALES.map((canal) => (
+          <a
+            href={canal.enlace}
+            target={canal.externo ? '_blank' : undefined}
+            rel={canal.externo ? 'noopener noreferrer' : undefined}
+            class="card-elevated flex flex-col gap-2 rounded-2xl border border-border bg-surface p-5"
+          >
+            <h2 class="font-sans text-base font-semibold leading-snug text-ink">
+              {canal.titulo}
+            </h2>
+            <p class="font-sans text-sm leading-relaxed text-ink-muted">
+              {canal.descripcion}
+            </p>
+            <span class="mt-1 inline-flex items-center gap-1.5 break-all font-sans text-sm font-medium text-accent">
+              <Icono nombre={canal.icono} class="h-4 w-4" />
+              {canal.cta}
+            </span>
+          </a>
+        ))
+      }
+    </div>
+
+    <section class="mt-10 max-w-3xl">
+      <h2 class="font-sans text-base font-semibold text-ink">
+        Antes de escribir
+      </h2>
+      <ul
+        class="mt-3 space-y-2 font-sans text-sm leading-relaxed text-ink-muted"
+      >
+        <li>
+          Las preguntas sobre qué mide el sistema y qué deja fuera están
+          respondidas con mayor detalle en el{' '}
+          <a
+            href="/biblioteca/05-sensibilidad-y-honestidad"
+            class="text-accent underline">aviso de sensibilidad</a
+          >.
+        </li>
+        <li>
+          La procedencia y la licencia de cada dato están en{' '}
+          <a
+            href="/biblioteca/04-fuentes-de-datos"
+            class="text-accent underline">de dónde salen los datos</a
+          >.
+        </li>
+        <li>
+          Los datos identificativos del responsable del sitio están en el{' '}
+          <a href="/legal/aviso-legal" class="text-accent underline"
+            >aviso legal</a
+          >.
+        </li>
+      </ul>
+      <p class="mt-6 font-mono text-[11px] leading-relaxed text-ink-muted">
+        Nota de mantenimiento: el archivo /.well-known/security.txt lleva fecha
+        de expiración y deja de ser válido al vencer. Renovarla cada año.
+      </p>
+    </section>
+  </main>
+</Layout>

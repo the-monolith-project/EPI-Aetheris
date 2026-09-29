@@ -53,6 +53,10 @@ Responde qué tan alta es la presión de casos **ya observados** en un departame
 
 **Qué no hace.** No predice, no usa clima y no produce alerta binaria. Un percentil alto describe lo ya ocurrido frente a la historia observada del departamento.
 
+### Canal endémico
+
+El panel «Canal endémico» dibuja los mismos cortes de M3 como tres bandas: casos hasta el P50 (`baja`), entre el P50 y el P75 (`media`) y por encima del P75 (`alta`), con los casos observados encima. Usa la línea base de M3, que deja fuera el año descrito, así que la banda cambia de un año a otro. Las semanas sin línea base suficiente quedan en blanco.
+
 ## M4 — Integridad de la vigilancia
 
 Tres hechos verificables sobre la calidad del dato, **sin combinarlos en un índice**:

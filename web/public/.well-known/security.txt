@@ -1,0 +1,18 @@
+# Divulgación responsable de vulnerabilidades -- RFC 9116.
+# EPI-Aetheris es un proyecto académico de vigilancia epidemiológica
+# descriptiva. Si encuentras un fallo de seguridad, avísanos antes de
+# publicarlo; se responde en español o inglés.
+#
+# Vía preferida: los avisos de seguridad privados de GitHub, en el repositorio
+# del monorepo, que es donde vive también la API. El correo queda como
+# alternativa para quien no tenga cuenta de GitHub.
+#
+# Expires es obligatorio y un archivo vencido deja de ser válido:
+# renovar esta fecha cada año (recordatorio en /contacto).
+
+Contact: https://github.com/the-monolith-project/EPI-Aetheris/security/advisories/new
+Contact: mailto:epi-aetheris@epi-aetheris.dev
+Expires: 2027-09-20T00:00:00.000Z
+Preferred-Languages: es, en
+Canonical: https://epi-aetheris.dev/.well-known/security.txt
+Policy: https://epi-aetheris.dev/contacto

@@ -1,4 +1,5 @@
 ---
+import AyudaTermino from './AyudaTermino.astro';
 import { aniosClimaPresentacion } from '../lib/tipos-analisis';
 ---
 
@@ -9,14 +10,22 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
     aria-hidden="true"
   >
   </div>
+  {
+    /* El 18rem del max-h de escritorio no es arbitrario: el dialogo se ancla
+    bajo la barra pegajosa, que con la cinta de semanas mide 168px y se detiene
+    en top:96. Su borde superior cae en 96 + 168 + 8 = 272px, asi que restar
+    288px (18rem) es lo que deja el fondo dentro de la ventana. Si la barra
+    vuelve a cambiar de alto, hay que volver a derivar este numero: ningun test
+    lo cubre, porque las afirmaciones del dialogo son horizontales. */
+  }
   <aside
     id="analisis-filtros-dialogo"
     role="dialog"
     tabindex="-1"
     aria-labelledby="filtros-analisis-titulo"
-    class="fixed inset-x-0 bottom-0 z-50 max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-t-2xl border border-border bg-surface/95 p-5 shadow-2xl backdrop-blur sm:p-6 lg:absolute lg:inset-auto lg:right-0 lg:top-[calc(100%+0.5rem)] lg:max-h-[calc(100vh-7rem)] lg:w-[min(1180px,calc(100vw-3rem))] lg:rounded-2xl"
+    class="fixed inset-x-0 bottom-0 z-50 flex max-h-[calc(100dvh-5rem)] flex-col overflow-y-auto rounded-t-2xl border border-border bg-surface p-5 shadow-2xl backdrop-blur sm:p-6 lg:absolute lg:inset-auto lg:right-0 lg:top-[calc(100%+0.5rem)] lg:max-h-[calc(100vh-18rem)] lg:w-[min(1180px,calc(100vw-3rem))] lg:rounded-2xl"
   >
-    <section aria-labelledby="filtros-analisis-titulo">
+    <section aria-labelledby="filtros-analisis-titulo" class="flex flex-col">
       <div class="flex items-start justify-between gap-4">
         <div>
           <h2
@@ -33,205 +42,238 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
         <button
           id="analisis-cerrar-filtros"
           type="button"
-          class="shrink-0 rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-lg leading-none text-ink transition-colors hover:border-accent/50 hover:text-accent"
+          class="flex min-h-[44px] min-w-[44px] items-center justify-center shrink-0 rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-lg leading-none text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label="Cerrar filtros"
         >
           ×
         </button>
       </div>
 
-      <div class="mt-5 grid gap-4 md:grid-cols-12">
-        <label
-          class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted md:col-span-2"
-        >
-          Año
-          <select
-            id="analisis-anio"
-            class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal tabular-nums text-ink"
-          >
-            {
-              aniosClimaPresentacion().map((anio) => (
-                <option value={anio} selected={anio === 2023}>
-                  {anio}
-                </option>
-              ))
-            }
-          </select>
-        </label>
-
-        <label
-          class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted md:col-span-3"
-        >
-          Periodo MINSAL
-          <select
-            id="analisis-modo-minsal"
-            class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
-          >
-            <option value="semana">Semana seleccionada</option>
-            <option value="ytd">Acumulado del año (YTD)</option>
-            <option value="historico">Histórico completo</option>
-          </select>
-        </label>
-
-        <label
-          class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted md:col-span-3"
-        >
-          Departamento
-          <select
-            id="analisis-departamento"
-            class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
-          >
-            <option value="">Todos</option>
-          </select>
-        </label>
-
-        <fieldset class="flex flex-col gap-1 md:col-span-4">
-          <legend class="font-sans text-xs font-medium text-ink-muted">
-            Serie MINSAL
+      <div class="mt-5 flex flex-col gap-5">
+        <!-- Grupo 1: Periodo -->
+        <fieldset class="flex flex-col gap-3">
+          <legend class="font-sans text-xs font-semibold text-ink">
+            Periodo
           </legend>
-          <div
-            class="flex min-h-10 items-center gap-4 rounded-lg border border-border bg-bg px-3 py-2"
-          >
-            <label class="flex items-center gap-2 font-sans text-sm text-ink">
-              <input
-                type="radio"
-                name="analisis-serie"
-                value="probable"
-                checked
-              /> Probable
+          <div class="grid gap-3 md:grid-cols-12">
+            <label
+              class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted md:col-span-3"
+            >
+              Año
+              <select
+                id="analisis-anio"
+                class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal tabular-nums text-ink"
+              >
+                {
+                  aniosClimaPresentacion().map((anio) => (
+                    <option value={anio} selected={anio === 2023}>
+                      {anio}
+                    </option>
+                  ))
+                }
+              </select>
             </label>
-            <label class="flex items-center gap-2 font-sans text-sm text-ink">
-              <input type="radio" name="analisis-serie" value="confirmado" /> Confirmado
+
+            <label
+              class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted md:col-span-3"
+            >
+              Periodo MINSAL
+              <select
+                id="analisis-modo-minsal"
+                class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
+              >
+                <option value="semana">Semana seleccionada</option>
+                <option value="ytd">Acumulado del año (YTD)</option>
+                <option value="historico">Histórico completo</option>
+              </select>
+            </label>
+
+            <label
+              class="flex flex-col gap-2 rounded-xl border border-border bg-bg p-3 font-sans text-xs font-medium text-ink-muted md:col-span-6"
+            >
+              Semana activa: <output
+                id="analisis-semana-valor"
+                class="font-sans tabular-nums text-ink">SE01</output
+              >
+              <input
+                id="analisis-semana"
+                type="range"
+                min="1"
+                max="53"
+                value="1"
+                aria-valuetext="Semana epidemiológica 1"
+                class="w-full accent-accent"
+              />
+            </label>
+
+            <fieldset
+              class="grid grid-cols-2 gap-3 rounded-xl border border-border bg-bg p-3 md:col-span-12"
+            >
+              <legend class="px-1 font-sans text-xs font-medium text-ink-muted">
+                Rango de comparación
+              </legend>
+              <label
+                class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted"
+              >
+                Desde: <output
+                  id="analisis-desde-valor"
+                  class="font-sans tabular-nums text-ink">SE01</output
+                >
+                <input
+                  id="analisis-desde"
+                  type="range"
+                  min="1"
+                  max="53"
+                  value="1"
+                  aria-valuetext="Semana epidemiológica 1"
+                  class="w-full accent-accent"
+                />
+              </label>
+              <label
+                class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted"
+              >
+                Hasta: <output
+                  id="analisis-hasta-valor"
+                  class="font-sans tabular-nums text-ink">SE53</output
+                >
+                <input
+                  id="analisis-hasta"
+                  type="range"
+                  min="1"
+                  max="53"
+                  value="53"
+                  aria-valuetext="Semana epidemiológica 53"
+                  class="w-full accent-accent"
+                />
+              </label>
+            </fieldset>
+          </div>
+        </fieldset>
+
+        <!-- Grupo 2: Serie y territorio -->
+        <fieldset class="flex flex-col gap-3 border-t border-border pt-4">
+          <legend class="font-sans text-xs font-semibold text-ink">
+            Serie y territorio
+          </legend>
+          <div class="grid gap-3 md:grid-cols-12">
+            <fieldset class="flex flex-col gap-1 md:col-span-6">
+              <span
+                class="flex items-center gap-1 font-sans text-xs font-medium text-ink-muted"
+              >
+                Serie MINSAL
+                <AyudaTermino clave="probable" />
+                <AyudaTermino clave="confirmado" />
+              </span>
+              <div
+                class="flex min-h-10 items-center gap-4 rounded-lg border border-border bg-bg px-3 py-2"
+              >
+                <label
+                  class="flex items-center gap-2 font-sans text-sm text-ink"
+                >
+                  <input
+                    type="radio"
+                    name="analisis-serie"
+                    value="probable"
+                    checked
+                  /> Probable
+                </label>
+                <label
+                  class="flex items-center gap-2 font-sans text-sm text-ink"
+                >
+                  <input
+                    type="radio"
+                    name="analisis-serie"
+                    value="confirmado"
+                  /> Confirmado
+                </label>
+              </div>
+            </fieldset>
+
+            <label
+              class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted md:col-span-6"
+            >
+              Departamento
+              <select
+                id="analisis-departamento"
+                class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-sm font-normal normal-case text-ink"
+              >
+                <option value="">Todos</option>
+              </select>
             </label>
           </div>
         </fieldset>
 
-        <label
-          class="flex flex-col gap-2 rounded-xl border border-border bg-bg p-3 font-sans text-xs font-medium text-ink-muted md:col-span-6"
-        >
-          Semana activa: <output
-            id="analisis-semana-valor"
-            class="font-sans tabular-nums text-ink">SE01</output
-          >
-          <input
-            id="analisis-semana"
-            type="range"
-            min="1"
-            max="53"
-            value="1"
-            aria-label="Semana epidemiológica activa"
-            aria-valuetext="Semana epidemiológica 1"
-            class="w-full accent-accent"
-          />
-        </label>
-
+        <!-- Grupo 3: Comparación -->
         <fieldset
-          class="grid grid-cols-2 gap-3 rounded-xl border border-border bg-bg p-3 md:col-span-6"
-        >
-          <legend class="px-1 font-sans text-xs font-medium text-ink-muted">
-            Rango de comparación
-          </legend>
-          <label
-            class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted"
-          >
-            Desde: <output
-              id="analisis-desde-valor"
-              class="font-sans tabular-nums text-ink">SE01</output
-            >
-            <input
-              id="analisis-desde"
-              type="range"
-              min="1"
-              max="53"
-              value="1"
-              aria-label="Semana epidemiológica inicial"
-              aria-valuetext="Semana epidemiológica 1"
-              class="w-full accent-accent"
-            />
-          </label>
-          <label
-            class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted"
-          >
-            Hasta: <output
-              id="analisis-hasta-valor"
-              class="font-sans tabular-nums text-ink">SE53</output
-            >
-            <input
-              id="analisis-hasta"
-              type="range"
-              min="1"
-              max="53"
-              value="53"
-              aria-label="Semana epidemiológica final"
-              aria-valuetext="Semana epidemiológica 53"
-              class="w-full accent-accent"
-            />
-          </label>
-        </fieldset>
-
-        <fieldset
-          class="rounded-xl border border-border bg-bg p-3 md:col-span-12"
+          class="flex flex-col gap-3 border-t border-border pt-4"
           aria-describedby="analisis-comparar-ayuda"
         >
-          <legend class="px-1 font-sans text-xs font-medium text-ink-muted">
+          <legend class="font-sans text-xs font-semibold text-ink">
             Comparar departamentos
           </legend>
-          <div
-            id="analisis-comparar"
-            class="grid gap-x-5 gap-y-2 sm:grid-cols-2 lg:grid-cols-4"
-          >
+          <div class="rounded-xl border border-border bg-bg p-3">
+            <div
+              id="analisis-comparar"
+              class="grid gap-x-5 gap-y-2 sm:grid-cols-2 lg:grid-cols-4"
+            >
+            </div>
+            <span
+              id="analisis-comparar-ayuda"
+              class="mt-2 block font-sans text-[11px] font-normal normal-case text-ink-muted"
+            >
+              Selecciona hasta cuatro departamentos. 0 de 4 seleccionados.
+            </span>
           </div>
-          <span
-            id="analisis-comparar-ayuda"
-            class="mt-2 block font-sans text-[11px] font-normal normal-case text-ink-muted"
-          >
-            Selecciona hasta cuatro departamentos. 0 de 4 seleccionados.
-          </span>
         </fieldset>
       </div>
 
+      <!-- Barra de acciones fija al fondo -->
       <div
-        class="mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between"
+        class="sticky bottom-0 z-10 -mx-5 -mb-5 mt-5 border-t border-border bg-surface/95 px-5 py-3.5 backdrop-blur sm:-mx-6 sm:-mb-6 sm:px-6"
       >
-        <button
-          id="analisis-limpiar-filtros"
-          type="button"
-          class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+        <div
+          class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
         >
-          Limpiar filtros
-        </button>
-        <div class="flex flex-wrap gap-2">
           <button
-            id="analisis-exportar"
+            id="analisis-limpiar-filtros"
             type="button"
-            class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+            class="flex min-h-[44px] items-center rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            Descargar vista
+            Limpiar filtros
           </button>
-          <button
-            id="analisis-copiar-enlace"
-            type="button"
-            class="rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Copiar enlace
-          </button>
+          <div class="flex flex-wrap gap-2">
+            <button
+              id="analisis-exportar"
+              type="button"
+              class="flex min-h-[44px] items-center rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Descargar vista
+            </button>
+            <button
+              id="analisis-copiar-enlace"
+              type="button"
+              class="flex min-h-[44px] items-center rounded-lg border border-border bg-bg px-3 py-2 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Copiar enlace
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="mt-3 flex flex-col gap-1 sm:flex-row sm:justify-between">
-        <p
-          id="analisis-filtros-estado"
-          class="font-sans text-xs text-ink-muted"
-          role="status"
-        >
-          Cargando departamentos disponibles…
-        </p>
-        <p
-          id="analisis-acciones-estado"
-          class="min-h-4 font-sans text-xs text-ink-muted"
-          role="status"
-        >
-        </p>
+        <div class="mt-2 flex flex-col gap-1 sm:flex-row sm:justify-between">
+          <p
+            id="analisis-filtros-estado"
+            class="font-sans text-xs text-ink-muted"
+            role="status"
+          >
+            Cargando departamentos disponibles…
+          </p>
+          <p
+            id="analisis-acciones-estado"
+            class="min-h-4 font-sans text-xs text-ink-muted"
+            role="status"
+          >
+          </p>
+        </div>
       </div>
     </section>
   </aside>
@@ -409,7 +451,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
       if (idCarga !== cargaActual) return;
       if (estadoCarga)
         estadoCarga.textContent =
-          'No fue posible cargar la lista de departamentos.';
+          'No se pudo cargar la lista de departamentos. Recarga la página para reintentarlo.';
     }
   }
 
@@ -451,7 +493,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
     if (!botonExportar) return;
     const textoOriginal = 'Descargar vista actual';
     botonExportar.disabled = true;
-    botonExportar.textContent = 'Preparando...';
+    botonExportar.textContent = 'Preparando…';
     if (estadoAcciones) estadoAcciones.textContent = 'Preparando CSV…';
     try {
       const filas = await exportarAnalisisCsv(obtenerFiltrosAnalisis());
@@ -459,7 +501,8 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
         estadoAcciones.textContent = `CSV generado con ${filas} filas filtradas.`;
     } catch {
       if (estadoAcciones)
-        estadoAcciones.textContent = 'No fue posible generar el CSV.';
+        estadoAcciones.textContent =
+          'No se pudo generar el CSV. Inténtalo de nuevo.';
     } finally {
       botonExportar.disabled = false;
       botonExportar.textContent = textoOriginal;
@@ -470,7 +513,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
     try {
       await navigator.clipboard.writeText(window.location.href);
       if (estadoAcciones)
-        estadoAcciones.textContent = 'Enlace reproducible copiado.';
+        estadoAcciones.textContent = 'Enlace a esta vista copiado.';
       botonCopiar.textContent = '¡Copiado!';
       botonCopiar.classList.add('text-accent', 'border-accent/50');
       if (timerCopiado) clearTimeout(timerCopiado);
@@ -481,7 +524,7 @@ import { aniosClimaPresentacion } from '../lib/tipos-analisis';
     } catch {
       if (estadoAcciones)
         estadoAcciones.textContent =
-          'No se pudo copiar automáticamente; use la dirección del navegador.';
+          'No se pudo copiar el enlace. Cópialo desde la barra de direcciones.';
     }
   });
   botonLimpiar?.addEventListener('click', () => {

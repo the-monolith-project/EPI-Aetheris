@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Icono from '../components/Icono.astro';
 
 // Sin backend a propósito: recibir sugerencias con un formulario propio
 // obligaría a una tabla nueva (y un ADR antes de tocar el esquema) y a
@@ -13,7 +14,7 @@ const CANALES = [
   {
     titulo: 'Proponer una mejora o reportar un problema',
     descripcion:
-      'Abre un issue en GitHub. Sirve para señalar un dato que no cuadra, una capa del mapa que confunde, un error de la API o una función que echas en falta. No hace falta cuenta técnica: cualquiera con cuenta de GitHub puede escribir.',
+      'Abre un issue (una incidencia pública) en GitHub. Sirve para señalar un dato que no cuadra, una capa del mapa que confunde, un error de la API o una función que echas en falta. No hace falta cuenta técnica: cualquiera con cuenta de GitHub puede escribir.',
     enlace: `${REPO}/issues/new`,
     cta: 'Abrir un issue nuevo',
   },
@@ -27,7 +28,7 @@ const CANALES = [
   {
     titulo: 'Leer o modificar el código',
     descripcion:
-      'Todo el código está bajo licencia GPL-3.0. El repositorio tiene las instrucciones para levantarlo con Docker, los datos reales versionados y la documentación de cada decisión. Los pull requests son bienvenidos.',
+      'Todo el código está bajo licencia GPL-3.0. El repositorio incluye las instrucciones para levantarlo con Docker, una copia de la base de datos y la documentación de cada decisión. Los pull requests son bienvenidos.',
     enlace: REPO,
     cta: 'Ir al repositorio',
   },
@@ -35,7 +36,10 @@ const CANALES = [
 ---
 
 <Layout title="EPI-Aetheris — Sugerencias">
-  <main id="contenido-principal" class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
+  >
     <header class="mb-8 max-w-3xl">
       <h1
         class="font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
@@ -46,8 +50,12 @@ const CANALES = [
         EPI-Aetheris se construye a la vista de todos. Si algo de la interfaz te
         parece mejorable, confuso o incorrecto, cuéntalo: las sugerencias se
         gestionan en GitHub, de forma pública, para que la discusión quede
-        registrada y cualquier persona pueda seguirla o replicar el proyecto. No
-        recogemos formularios ni datos personales en este sitio.
+        registrada y cualquier persona pueda seguirla o replicar el proyecto.
+        Este sitio no tiene formularios de contacto ni cuentas de usuario; qué
+        datos técnicos se procesan al navegar está en la{' '}
+        <a href="/legal/privacidad" class="text-accent underline"
+          >política de privacidad</a
+        >.
       </p>
     </header>
 
@@ -66,8 +74,13 @@ const CANALES = [
             <p class="font-sans text-sm leading-relaxed text-ink-muted">
               {canal.descripcion}
             </p>
-            <span class="mt-1 font-sans text-sm font-medium text-accent">
+            <span class="mt-1 inline-flex items-center gap-1.5 font-sans text-sm font-medium text-accent">
+              <Icono nombre="brand-github" class="h-4 w-4" />
               {canal.cta}
+              <Icono
+                nombre="external-link"
+                class="h-3.5 w-3.5 text-ink-muted"
+              />
               <span class="sr-only"> (abre en una nueva pestaña)</span>
             </span>
           </a>
@@ -76,8 +89,8 @@ const CANALES = [
     </div>
 
     <p class="mt-8 max-w-3xl font-sans text-xs leading-relaxed text-ink-muted">
-      Las decisiones de metodología las cierra la coordinación y quedan
-      documentadas en la Biblioteca — toda propuesta se valora.
+      Las propuestas se comentan en su hilo de GitHub. Los cambios de método se
+      explican en la Biblioteca.
     </p>
   </main>
 </Layout>

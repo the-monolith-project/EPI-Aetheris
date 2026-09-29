@@ -145,7 +145,7 @@ test('restaura la URL, limita la comparación y exporta el filtro actual', async
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.locator('#analisis-copiar-enlace').click();
   await expect(page.locator('#analisis-acciones-estado')).toContainText(
-    'Enlace reproducible copiado',
+    'Enlace a esta vista copiado',
   );
 
   await page.reload();
@@ -252,19 +252,16 @@ test('optimiza la vista general y conserva el layout responsive', async ({
   ).toBe(true);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  const cajasMoviles = await Promise.all([
-    workspace.boundingBox(),
-    mapa.boundingBox(),
-    presion.boundingBox(),
-  ]);
-  expect(cajasMoviles[0]).not.toBeNull();
-  expect(cajasMoviles[1]).not.toBeNull();
-  expect(cajasMoviles[2]).not.toBeNull();
-  expect(cajasMoviles[0]!.x).toBeGreaterThanOrEqual(0);
-  expect(cajasMoviles[0]!.x + cajasMoviles[0]!.width).toBeLessThanOrEqual(390);
-  expect(cajasMoviles[2]!.y).toBeGreaterThan(
-    cajasMoviles[1]!.y + cajasMoviles[1]!.height,
-  );
+  // En teléfono el workspace muestra un panel a la vez (F6.2).
+  await expect(mapa).toBeVisible();
+  await expect(presion).toBeHidden();
+  const cajaMovil = await workspace.boundingBox();
+  expect(cajaMovil).not.toBeNull();
+  expect(cajaMovil!.x).toBeGreaterThanOrEqual(0);
+  expect(cajaMovil!.x + cajaMovil!.width).toBeLessThanOrEqual(390);
+  await page.locator('[data-panel-movil="presion"]').click();
+  await expect(presion).toBeVisible();
+  await expect(mapa).toBeHidden();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -361,7 +358,9 @@ test('integra el popover con el toolbar y permite cerrarlo', async ({
   expect(cajaDialogo!.x + cajaDialogo!.width).toBeLessThanOrEqual(1440);
   expect(cajaDialogo!.y).toBeGreaterThan(cajaToolbar!.y + cajaToolbar!.height);
 
-  await page.evaluate(() => window.scrollBy(0, 420));
+  // La franja de la última semana empuja el workspace: hay que bajar más para
+  // que el toolbar quede pegado.
+  await page.evaluate(() => window.scrollBy(0, 800));
   const [cajaDialogoSticky, cajaToolbarSticky] = await Promise.all([
     dialogo.boundingBox(),
     toolbar.boundingBox(),
@@ -381,6 +380,49 @@ test('integra el popover con el toolbar y permite cerrarlo', async ({
   await abrirFiltros(page);
   await page.locator('#analisis-cerrar-filtros').click();
   await expect(popover).toHaveAttribute('hidden');
+  await expect(page.locator('#analisis-abrir-filtros')).toBeFocused();
+});
+
+test('contrae y expande los controles de la barra pegajosa', async ({
+  page,
+}) => {
+  await page.goto(URL_INICIAL);
+  await esperarPanel(page);
+  await abrirFiltros(page);
+
+  const boton = page.locator('#toolbar-analisis-contraer');
+  await expect(boton).toHaveAttribute('aria-expanded', 'true');
+  await boton.click();
+  await expect(boton).toHaveAttribute('aria-expanded', 'false');
+  await expect(boton).toHaveAttribute(
+    'aria-label',
+    'Expandir controles del análisis',
+  );
+  // Contraer cierra el popover: su boton de apertura queda oculto.
+  await expect(page.locator('#analisis-filtros-popover')).toHaveAttribute(
+    'hidden',
+  );
+  await expect(page.locator('#analisis-abrir-filtros')).toBeHidden();
+  await expect(page.locator('#analisis-cinta-semana')).toBeHidden();
+  await expect(page.locator('#toolbar-analisis-resumen')).toBeVisible();
+
+  await boton.click();
+  await expect(boton).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#analisis-abrir-filtros')).toBeVisible();
+  await expect(page.locator('#analisis-cinta-semana')).toBeVisible();
+
+  // Los estados vacíos de los paneles abren los filtros con .click() aunque la
+  // barra esté contraída: la barra se expande y el foco vuelve al botón.
+  await boton.click();
+  await expect(boton).toHaveAttribute('aria-expanded', 'false');
+  await page.evaluate(() =>
+    document.getElementById('analisis-abrir-filtros')?.click(),
+  );
+  await expect(boton).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#analisis-filtros-popover')).not.toHaveAttribute(
+    'hidden',
+  );
+  await page.keyboard.press('Escape');
   await expect(page.locator('#analisis-abrir-filtros')).toBeFocused();
 });
 
@@ -525,7 +567,7 @@ test('el panel "Serie del departamento" dibuja los tres módulos del departament
 
   // Sin departamento, el panel pide seleccionar uno.
   await expect(page.locator('#serie-departamento-resumen')).toContainText(
-    'Seleccione un departamento',
+    'Selecciona un departamento',
   );
 
   // Al elegir un departamento, se dibujan las tres gráficas.

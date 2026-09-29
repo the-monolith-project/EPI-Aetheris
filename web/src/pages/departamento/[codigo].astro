@@ -1,0 +1,158 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CanalEndemico from '../../components/analisis/CanalEndemico.astro';
+import CurvaIRADepartamental from '../../components/CurvaIRADepartamental.astro';
+import DepartamentoAlertas from '../../components/DepartamentoAlertas.astro';
+import DepartamentoClima from '../../components/DepartamentoClima.astro';
+import { DEPARTAMENTOS, type DepartamentoInfo } from '../../lib/departamentos';
+import { ANIOS_ANALISIS_DENGUE } from '../../lib/tipos-analisis';
+
+export function getStaticPaths() {
+  return DEPARTAMENTOS.map((dep) => ({
+    params: { codigo: dep.codigo },
+    props: { departamento: dep },
+  }));
+}
+
+interface Props {
+  departamento: DepartamentoInfo;
+}
+
+const { departamento } = Astro.props;
+const { codigo, nombre } = departamento;
+const anioDengue = ANIOS_ANALISIS_DENGUE[ANIOS_ANALISIS_DENGUE.length - 1];
+---
+
+<Layout
+  title={`EPI-Aetheris — ${nombre}: alertas, dengue y respiratorio`}
+  descripcion={`Alertas de campo vigentes, canal endémico de dengue, clima y curvas respiratorias del departamento de ${nombre}, El Salvador.`}
+>
+  <main
+    id="contenido-principal"
+    data-pagina-departamento={codigo}
+    class="mx-auto flex max-w-[1400px] flex-col gap-8 px-4 py-6 sm:px-8 sm:py-8 lg:px-12"
+  >
+    <header class="flex flex-col gap-4">
+      <nav
+        aria-label="Migas de pan"
+        class="flex items-center gap-2 font-sans text-xs text-ink-muted"
+      >
+        <a
+          href="/analisis"
+          class="underline underline-offset-2 hover:text-accent">Análisis</a
+        >
+        <span aria-hidden="true">/</span>
+        <span class="font-semibold text-ink">{nombre}</span>
+      </nav>
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1
+            class="font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
+          >
+            {nombre}
+          </h1>
+          <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
+            Alertas, dengue y respiratorio del departamento en una página. Cada
+            serie se compara con la historia del propio departamento.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            data-recordar-departamento
+            data-codigo={codigo}
+            aria-pressed="false"
+            class="inline-flex min-h-[44px] items-center rounded-full border border-border bg-surface px-4 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/40 hover:text-accent"
+          >
+            Recordar este departamento
+          </button>
+          <a
+            href={`/analisis/ficha/${codigo}`}
+            data-enlace-ficha
+            class="inline-flex min-h-[44px] items-center font-sans text-xs font-semibold text-accent underline underline-offset-2"
+            >Ficha imprimible</a
+          >
+        </div>
+      </div>
+      <p
+        data-recordar-estado
+        role="status"
+        class="font-sans text-xs text-ink-muted"
+      >
+      </p>
+    </header>
+
+    <DepartamentoAlertas codigo={codigo} nombre={nombre} />
+
+    <section aria-labelledby="dep-dengue-titulo" class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h2
+          id="dep-dengue-titulo"
+          class="font-display text-xl font-semibold text-ink"
+        >
+          Dengue
+        </h2>
+        <a
+          href={`/dengue?dept=${codigo}&year=${anioDengue}`}
+          class="font-sans text-xs font-semibold text-accent underline underline-offset-2"
+          >Abrir en el análisis de dengue</a
+        >
+      </div>
+      <CanalEndemico departamento={codigo} anio={anioDengue} />
+      <DepartamentoClima codigo={codigo} nombre={nombre} />
+    </section>
+
+    <section
+      aria-labelledby="dep-respiratorio-titulo"
+      class="flex flex-col gap-4"
+    >
+      <h2
+        id="dep-respiratorio-titulo"
+        class="font-display text-xl font-semibold text-ink"
+      >
+        Respiratorio
+      </h2>
+      <CurvaIRADepartamental evento="ira" departamento={codigo} />
+      <CurvaIRADepartamental evento="neumonias" departamento={codigo} />
+    </section>
+  </main>
+</Layout>
+
+<script>
+  import {
+    guardarDepartamentoRecordado,
+    leerDepartamentoRecordado,
+  } from '../../lib/departamento-recordado';
+
+  const boton = document.querySelector<HTMLButtonElement>(
+    '[data-recordar-departamento]',
+  );
+  const estado = document.querySelector<HTMLElement>('[data-recordar-estado]');
+  const codigo = boton?.dataset.codigo ?? '';
+
+  function pintar(): void {
+    if (!boton) return;
+    const activo = leerDepartamentoRecordado() === codigo;
+    boton.setAttribute('aria-pressed', String(activo));
+    boton.textContent = activo
+      ? 'Departamento recordado'
+      : 'Recordar este departamento';
+  }
+
+  boton?.addEventListener('click', () => {
+    const activo = leerDepartamentoRecordado() === codigo;
+    const guardado = guardarDepartamentoRecordado(activo ? null : codigo);
+    if (!estado) return;
+    if (!guardado) {
+      estado.textContent =
+        'Este navegador no permite guardar la preferencia. La página funciona igual.';
+      return;
+    }
+    estado.textContent = activo
+      ? 'Se olvidó el departamento.'
+      : 'Este departamento se usará como inicial en las alertas, la portada y el análisis de dengue.';
+    pintar();
+  });
+
+  pintar();
+</script>

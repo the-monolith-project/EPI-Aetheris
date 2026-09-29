@@ -1,100 +1,97 @@
 ---
+import PanelWorkspace from './analisis/PanelWorkspace.astro';
+import CargadorCurva from './CargadorCurva.astro';
+import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
 interface Props {
   evento?: 'ira' | 'neumonias';
+  /**
+   * Código de departamento fijo (p. ej. en /departamento/[codigo]). Con él se
+   * oculta el selector y el componente no lee ni escribe el estado compartido.
+   */
+  departamento?: string;
 }
 const evento = Astro.props.evento ?? 'ira';
+const departamentoFijo = Astro.props.departamento;
 const etiqueta = evento === 'neumonias' ? 'Neumonías' : 'IRA';
 const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
 ---
 
-<section
-  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+<PanelWorkspace
+  tipo="traza"
+  titulo={`Casos semanales de ${etiqueta} por departamento`}
+  descripcion="Serie desacumulada de los boletines MINSAL (la fuente publica acumulados desde SE1). Unidad: conteo notificado. Un año por línea; los huecos se dejan vacíos, no se interpolan."
   data-curva-evento={evento}
   data-curva-api={apiBase}
+  data-curva-departamento={departamentoFijo}
+  controlesAnchos
 >
-  <div class="flex flex-wrap items-start justify-between gap-3">
-    <div class="flex items-start gap-3">
-      <span
-        class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
-        aria-hidden="true"></span>
-      <div>
-        <h2 class="font-sans text-base font-semibold text-ink sm:text-lg">
-          Casos semanales de {etiqueta} por departamento
-        </h2>
-        <p
-          class="mt-1 max-w-2xl font-sans text-sm leading-relaxed text-ink-muted"
-        >
-          Serie desacumulada de los boletines MINSAL (la fuente publica
-          acumulados desde SE1). Unidad: conteo notificado. Un año por línea;
-          los huecos se dejan vacíos, no se interpolan.
-        </p>
-      </div>
-    </div>
-    <div
-      class="flex flex-wrap items-center gap-2 font-sans text-sm text-ink-muted"
-    >
-      <label class="flex flex-wrap items-center gap-2"
-        >Departamento
-        <select
-          data-curva-depto
-          class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
-        ></select>
-      </label>
-      <label class="flex flex-wrap items-center gap-2"
-        >Año
-        <select
-          data-curva-anio
-          class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
-        >
-          <option value="todos">todos (comparar temporadas)</option>
-          <option value="2023">2023</option>
-          <option value="2022">2022</option>
-          <option value="2021">2021</option>
-          <option value="2019">2019</option>
-          <option value="2018">2018</option>
-        </select>
-      </label>
-      <label class="flex flex-wrap items-center gap-2"
-        >Comparar con
-        <select
-          data-curva-compare
-          class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
-        >
-          <option value="">(ningún otro departamento)</option>
-        </select>
-      </label>
-      <label class="flex flex-wrap items-center gap-2"
-        >SE
-        <input
-          data-curva-desde
-          type="range"
-          min="1"
-          max="52"
-          value="1"
-          aria-label="Semana epidemiológica inicial"
-          aria-valuetext="Semana epidemiológica 1"
-        />
-        <input
-          data-curva-hasta
-          type="range"
-          min="1"
-          max="52"
-          value="52"
-          aria-label="Semana epidemiológica final"
-          aria-valuetext="Semana epidemiológica 52"
-        />
-        <span data-curva-rango class="font-sans tabular-nums text-xs"
-          >SE1–SE52</span
-        >
-      </label>
-      <button
-        type="button"
-        data-curva-export
-        class="rounded-lg border border-border bg-bg px-3 py-1.5 text-ink"
+  <div
+    slot="controles"
+    class="flex flex-wrap items-center gap-2 font-sans text-sm text-ink-muted"
+  >
+    <label
+      class:list={[
+        'flex flex-wrap items-center gap-2',
+        { hidden: departamentoFijo },
+      ]}
+      >Departamento
+      <select
+        data-curva-depto
+        class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
+      ></select>
+    </label>
+    <label class="flex flex-wrap items-center gap-2"
+      >Año
+      <select
+        data-curva-anio
+        class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
       >
-        Exportar CSV
-      </button>
-    </div>
+        <option value="todos">todos (comparar temporadas)</option>
+        {ANIOS_RESPIRATORIO.map((a) => <option value={String(a)}>{a}</option>)}
+      </select>
+    </label>
+    <label class="flex flex-wrap items-center gap-2"
+      >Comparar con
+      <select
+        data-curva-compare
+        class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink"
+      >
+        <option value="">(ningún otro departamento)</option>
+      </select>
+    </label>
+    <label class="flex flex-wrap items-center gap-2"
+      >SE
+      <input
+        data-curva-desde
+        type="range"
+        min="1"
+        max="52"
+        value="1"
+        aria-label="Semana epidemiológica inicial"
+        aria-valuetext="Semana epidemiológica 1"
+      />
+      <input
+        data-curva-hasta
+        type="range"
+        min="1"
+        max="52"
+        value="52"
+        aria-label="Semana epidemiológica final"
+        aria-valuetext="Semana epidemiológica 52"
+      />
+      <span data-curva-rango class="font-sans tabular-nums text-xs"
+        >SE1–SE52</span
+      >
+    </label>
+    <button
+      type="button"
+      data-curva-export
+      aria-label={`Exportar datos de ${etiqueta} a CSV`}
+      disabled
+      class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      Exportar CSV
+    </button>
   </div>
 
   <div
@@ -103,11 +100,13 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     role="status"
   >
     <div data-estado aria-hidden="true">
-      <div class="skeleton h-40 w-full sm:h-52"></div>
-      <div class="skeleton mt-2 h-3 w-1/3"></div>
+      <CargadorCurva
+        class="h-40 w-full justify-center sm:h-52"
+        texto="Cargando la curva…"
+      />
     </div>
   </div>
-</section>
+</PanelWorkspace>
 
 <script>
   import type {
@@ -115,6 +114,12 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     RespuestaIraDepartamental,
   } from '../lib/tipos-analisis';
   import { colorCualitativo } from '../lib/colores';
+  import {
+    actualizarFiltrosRespiratorio,
+    obtenerFiltrosRespiratorio,
+    suscribirFiltrosRespiratorio,
+    type FiltrosRespiratorio,
+  } from '../lib/respiratorio-state';
   import {
     esNoDisponible,
     motivoNoDisponible,
@@ -393,7 +398,6 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       const opcion = document.createElement('option');
       opcion.value = d.codigo;
       opcion.textContent = d.nombre;
-      if (d.nombre === 'San Salvador') opcion.selected = true;
       selector.appendChild(opcion);
       const op2 = opcion.cloneNode(true) as HTMLOptionElement;
       op2.selected = false;
@@ -409,6 +413,34 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       inpHasta.setAttribute('aria-valuetext', `Semana epidemiológica ${hasta}`);
       return { desde, hasta };
     };
+
+    // Con departamento fijo el componente vive aparte del estado compartido.
+    const fijo = seccion.dataset.curvaDepartamento ?? null;
+
+    const sincronizarControles = (f: FiltrosRespiratorio) => {
+      selector.value = fijo ?? f.departamento;
+      selAnio.value = String(f.anio);
+      selCompare.value = f.comparar ?? '';
+      // Los deslizadores pueden cruzarse mientras se arrastran: solo se
+      // reasignan si el rango efectivo cambió, para no mover el que se sostiene.
+      const actualDesde = Math.min(
+        Number(inpDesde.value),
+        Number(inpHasta.value),
+      );
+      const actualHasta = Math.max(
+        Number(inpDesde.value),
+        Number(inpHasta.value),
+      );
+      if (actualDesde !== f.semanaDesde || actualHasta !== f.semanaHasta) {
+        inpDesde.value = String(f.semanaDesde);
+        inpHasta.value = String(f.semanaHasta);
+      }
+    };
+    sincronizarControles(
+      fijo
+        ? { ...obtenerFiltrosRespiratorio(), departamento: fijo }
+        : obtenerFiltrosRespiratorio(),
+    );
 
     const refrescar = async () => {
       const { desde, hasta } = rango();
@@ -455,6 +487,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
           }
         }
         ultimoCsv = lineas.join('\n');
+        if (btnExport) btnExport.disabled = false;
       } catch (err) {
         const noDisponible =
           err instanceof Error &&
@@ -469,16 +502,36 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
           renderErrorFuente(contenedor, () => void refrescar());
         }
         ultimoCsv = '';
+        if (btnExport) btnExport.disabled = true;
       } finally {
         contenedor.removeAttribute('aria-busy');
         contenedor.classList.remove('opacity-60');
       }
     };
-    selector.addEventListener('change', () => void refrescar());
-    selAnio.addEventListener('change', () => void refrescar());
-    selCompare.addEventListener('change', () => void refrescar());
-    inpDesde.addEventListener('input', () => void refrescar());
-    inpHasta.addEventListener('input', () => void refrescar());
+    const alCambiar = () => {
+      if (fijo) {
+        void refrescar();
+        return;
+      }
+      actualizarFiltrosRespiratorio({
+        departamento: selector.value,
+        anio: selAnio.value === 'todos' ? 'todos' : Number(selAnio.value),
+        comparar: selCompare.value || null,
+        semanaDesde: Number(inpDesde.value),
+        semanaHasta: Number(inpHasta.value),
+      });
+    };
+    selector.addEventListener('change', alCambiar);
+    selAnio.addEventListener('change', alCambiar);
+    selCompare.addEventListener('change', alCambiar);
+    inpDesde.addEventListener('input', alCambiar);
+    inpHasta.addEventListener('input', alCambiar);
+    if (!fijo) {
+      suscribirFiltrosRespiratorio((f) => {
+        sincronizarControles(f);
+        void refrescar();
+      }, false);
+    }
     btnExport?.addEventListener('click', () => {
       if (!ultimoCsv) return;
       const a = document.createElement('a');
@@ -492,7 +545,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
   }
 
   document
-    .querySelectorAll<HTMLElement>('section[data-curva-evento]')
+    .querySelectorAll<HTMLElement>('[data-curva-evento]')
     .forEach((seccion) => {
       void iniciarSeccion(seccion);
     });

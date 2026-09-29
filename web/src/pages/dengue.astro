@@ -1,11 +1,14 @@
 ---
+import NavSecciones from '../components/NavSecciones.astro';
 import Layout from '../layouts/Layout.astro';
 import CurvaEpidemicaNacional from '../components/CurvaEpidemicaNacional.astro';
 import MetricasModelo from '../components/MetricasModelo.astro';
 import ResumenNacional from '../components/ResumenNacional.astro';
+import UltimaSemanaDengue from '../components/UltimaSemanaDengue.astro';
 import AuditoriaDatos from '../components/AuditoriaDatos.astro';
 import PanelAnalisis from '../components/analisis/PanelAnalisis.astro';
 import PanelNowcastDengue from '../components/nowcast/PanelNowcastDengue.astro';
+import ContrasteNowcastDengue from '../components/nowcast/ContrasteNowcastDengue.astro';
 
 const TABS = [
   { id: 'vigilancia', etiqueta: 'Vigilancia' },
@@ -13,19 +16,27 @@ const TABS = [
 ];
 ---
 
-<Layout title="EPI-Aetheris — Dengue">
-  {/* Modo presentación para grabar el video de la demo (?demo=1, ?demo=lento).
-     Se activa lo antes posible para minimizar el parpadeo del header. */}
+<Layout mapa title="EPI-Aetheris — Dengue">
+  {
+    /* Modo presentación para grabar el video de la demo (?demo=1, ?demo=lento).
+     Se activa lo antes posible para minimizar el parpadeo del header. */
+  }
   <script is:inline>
     try {
       if (new URLSearchParams(location.search).has('demo')) {
         document.documentElement.classList.add('demo-presentacion');
       }
-    } catch (_) {}
+    } catch {
+      // Ignorar entornos sin soporte de URLSearchParams
+    }
   </script>
-  <main id="contenido-principal" class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+  <main
+    id="contenido-principal"
+    data-pagina-dengue
+    class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
+  >
     <h1 class="font-display text-2xl font-semibold text-ink sm:text-3xl">
-      Vigilancia de Dengue por Departamento
+      Vigilancia del dengue por departamento
     </h1>
     <p class="mb-6 mt-3 font-sans text-sm">
       <a
@@ -35,6 +46,10 @@ const TABS = [
         >¿Alerta activa? →</a
       >
     </p>
+
+    <div data-franja-ultima-semana>
+      <UltimaSemanaDengue />
+    </div>
 
     <div
       role="tablist"
@@ -67,15 +82,30 @@ const TABS = [
       tabindex="0"
       class="mt-6"
     >
+      <NavSecciones
+        etiqueta="Secciones de la vigilancia de dengue"
+        enlaces={[
+          { href: '#resumen', etiqueta: 'Resumen' },
+          { href: '#prediccion-corto-plazo', etiqueta: 'Predicción' },
+          { href: '#contexto', etiqueta: 'Contexto' },
+          { href: '#curva', etiqueta: 'Curva nacional' },
+          { href: '#historico', etiqueta: 'Histórico' },
+        ]}
+      />
+
       <div id="resumen" class="scroll-mt-24">
         <PanelAnalisis />
       </div>
 
-      <div class="mt-8">
+      <div id="prediccion-corto-plazo" class="mt-8 scroll-mt-24">
         <PanelNowcastDengue variante="compacto" />
       </div>
 
-      <section aria-labelledby="contexto-panel-titulo" class="mt-8 scroll-mt-24">
+      <section
+        id="contexto"
+        aria-labelledby="contexto-panel-titulo"
+        class="mt-8 scroll-mt-24"
+      >
         <h2
           id="contexto-panel-titulo"
           class="font-display text-xl font-semibold text-ink"
@@ -105,11 +135,26 @@ const TABS = [
       hidden
     >
       <PanelNowcastDengue variante="completo" />
+      <div class="mt-6">
+        <ContrasteNowcastDengue />
+      </div>
     </section>
   </main>
 </Layout>
 
 <script>
+  import { actualizarFiltrosAnalisis } from '../lib/analisis-state';
+  import { leerDepartamentoRecordado } from '../lib/departamento-recordado';
+  import { iniciarMovimiento } from '../lib/movimiento';
+
+  iniciarMovimiento();
+
+  // El departamento recordado es el inicial solo si el enlace no trae uno.
+  const recordado = leerDepartamentoRecordado();
+  if (recordado && !new URLSearchParams(location.search).has('dept')) {
+    actualizarFiltrosAnalisis({ departamento: recordado });
+  }
+
   const tablist = document.querySelector<HTMLElement>('[data-tabs]');
   if (tablist) {
     const tabs = Array.from(
@@ -145,7 +190,7 @@ const TABS = [
         (t) => t.getAttribute('aria-selected') === 'true',
       );
       if (i < 0) return;
-      let j = i;
+      let j: number;
       if (ev.key === 'ArrowRight') j = (i + 1) % tabs.length;
       else if (ev.key === 'ArrowLeft') j = (i - 1 + tabs.length) % tabs.length;
       else return;
@@ -154,7 +199,8 @@ const TABS = [
     });
 
     const inicial = new URLSearchParams(location.search).get('t');
-    if (inicial && tabs.some((t) => t.dataset.tab === inicial)) activar(inicial);
+    if (inicial && tabs.some((t) => t.dataset.tab === inicial))
+      activar(inicial);
   }
 </script>
 
@@ -183,6 +229,9 @@ const TABS = [
 <style is:global>
   /* ITEM 1: modo presentación (solo /dengue, solo con ?demo). Sin la clase
      en <html> la página queda idéntica. */
+  html.demo-presentacion [data-franja-ultima-semana] {
+    display: none;
+  }
   html.demo-presentacion body > header,
   html.demo-presentacion body > footer {
     display: none !important;
@@ -194,7 +243,8 @@ const TABS = [
   html.demo-presentacion body > main > p:has(a[data-enlace-alertas]) {
     display: none !important;
   }
-  html.demo-presentacion [data-tabs] {
+  html.demo-presentacion [data-tabs],
+  html.demo-presentacion #panel-prediccion > :has([data-contraste-nowcast]) {
     display: none !important;
   }
   html.demo-presentacion #panel-prediccion:not([hidden]) {

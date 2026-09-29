@@ -1,3 +1,5 @@
+import { textoAlcance } from './alcance-alertas';
+
 export const AVISO_HONESTIDAD_ALERTAS_INTRO =
   'Alertas redactadas por el equipo de vigilancia del proyecto (INSAMT, Equipo 4) a partir de datos públicos históricos (MINSAL, OpenDengue, Open-Meteo).';
 
@@ -61,6 +63,8 @@ export interface AlertaPublica {
   vigente_hasta: string | null;
   activa: boolean;
   etiqueta?: string | null;
+  /** ADR 0022: null o ausente = nacional; lista de códigos ISO 3166-2 = regional. */
+  departamentos?: string[] | null;
   // Campos clínicos opcionales (ADR 0014). El equipo los redacta a mano con
   // fuente MINSAL/OPS; null = el bloque no se muestra.
   signos_alarma?: string | null;
@@ -251,6 +255,9 @@ function pintarTarjeta(alerta: AlertaPublica, esNueva = false): HTMLElement {
       Emisión: <time data-alerta-emision datetime="${escapeHtml(alerta.vigente_desde)}">${escapeHtml(formatearFechaIso(alerta.vigente_desde))}</time>
       ·
       <span data-alerta-vigencia>${escapeHtml(textoVigencia(alerta))}</span>
+    </p>
+    <p class="mt-1 font-sans text-sm text-ink-muted">
+      Alcance: <span data-alerta-alcance>${escapeHtml(textoAlcance(alerta))}</span>
     </p>
   `;
   const titulo = encabezado.querySelector('[data-alerta-titulo]');

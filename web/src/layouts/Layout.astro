@@ -1,30 +1,40 @@
 ---
 import { Font } from 'astro:assets';
+import Icono from '../components/Icono.astro';
 import '../styles/global.css';
 
 interface Props {
   title?: string;
   descripcion?: string;
+  /** Imagen de vista previa al compartir. Absoluta en la salida -- una
+   *  og:image relativa la ignoran casi todos los rastreadores. */
+  imagen?: string;
   /** Saca la página del índice de los buscadores. Se usa en las rutas que no
-   *  son contenido público, como los recorridos de /demos. */
+   *  son contenido público: el formulario de operadores y la 404. */
   noindex?: boolean;
+  /** La página monta un mapa Leaflet. Emite preconnect a los tres subdominios
+   *  de tiles de OSM. Solo donde hay mapa: en el resto seria gasto. */
+  mapa?: boolean;
 }
 
 const {
   title = 'EPI-Aetheris',
   descripcion = 'Vigilancia epidemiológica descriptiva de dengue e IRA en El Salvador, sobre datos públicos de MINSAL, OpenDengue y Open-Meteo. Licencia GPL-3.0.',
+  imagen = '/og/og-default.png',
   noindex = false,
+  mapa = false,
 } = Astro.props;
 
-// API pública real -- FastAPI genera /docs (Swagger UI) gratis a partir de
-// los mismos endpoints que consume este frontend. Enlazarlo desde el
-// footer refuerza "aporte de ingeniería reproducible" sin escribir nada
-// nuevo en el backend.
+// FastAPI genera /docs (Swagger UI) a partir de los mismos endpoints que
+// consume este frontend; el pie lo enlaza sin añadir nada al backend.
 const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 
 const ruta = Astro.url.pathname;
 // URL absoluta de esta página -- Astro.site viene de astro.config.mjs.
 const urlCanonica = new URL(ruta, Astro.site);
+// Misma razón para la imagen de vista previa: WhatsApp, Slack, Telegram y
+// los rastreadores de redes descartan una og:image relativa.
+const urlImagen = new URL(imagen, Astro.site);
 // Nav de dos caras (ADR 0014). No es un "modo" con estado: son secciones, y
 // ninguna esconde a la otra. Arriba queda lo que sirve en consulta
 // (Alertas); las dos herramientas descriptivas se agrupan bajo /analisis en
@@ -57,9 +67,34 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={descripcion} />
-    {noindex && <meta name="robots" content="noindex, follow" />}
+    {
+      /* El SVG lo prefieren los navegadores modernos; el PNG de 32 es el
+    respaldo para los que no lo soportan y para la barra de favoritos, y el
+    apple-touch-icon es el que usa iOS al añadir el sitio a la pantalla de
+    inicio (no lee el manifest para eso). */
+    }
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="canonical" href={urlCanonica} />
+    {
+      /* Los tiles son el elemento LCP de las vistas con mapa, y el navegador
+        no los descubre hasta que Leaflet se ejecuta. El preconnect adelanta
+        DNS, TCP y TLS a esa espera. Van los tres subdominios porque {s} de
+        Leaflet rota entre a, b y c, y cada uno es un origen distinto. Sin
+        crossorigin a proposito: Leaflet pide los tiles como <img> sin CORS,
+        y una conexion en modo CORS no se reutilizaria. */
+    }
+    {
+      mapa && (
+        <>
+          <link rel="preconnect" href="https://a.tile.openstreetmap.org" />
+          <link rel="preconnect" href="https://b.tile.openstreetmap.org" />
+          <link rel="preconnect" href="https://c.tile.openstreetmap.org" />
+        </>
+      )
+    }
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     {
       /* PWA (ADR 0014): permite instalar el sitio y, sobre todo, que /alertas
       abra sin señal en zona rural. El service worker vive en public/sw.js. */
@@ -75,40 +110,62 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
     <Font cssVariable="--font-plex-mono" />
     <Font cssVariable="--font-fraunces" />
     <title>{title}</title>
+    <script is:inline>
+      // Tema elegido antes del primer pintado, para no parpadear en claro.
+      try {
+        const tema = localStorage.getItem('epi:tema');
+        if (tema === 'dark' || tema === 'light') {
+          document.documentElement.setAttribute('data-theme', tema);
+        }
+      } catch {
+        // Sin almacenamiento manda el tema del sistema.
+      }
+    </script>
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content={urlCanonica} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={descripcion} />
     <meta property="og:site_name" content="EPI-Aetheris" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:locale" content="es_SV" />
+    <meta property="og:image" content={urlImagen} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="EPI-Aetheris — vigilancia epidemiológica de dengue y enfermedad respiratoria en El Salvador"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={descripcion} />
+    <meta name="twitter:image" content={urlImagen} />
+    <slot name="head" />
   </head>
   <body class="min-h-screen bg-bg text-ink">
     <a
       href="#contenido-principal"
-      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-white"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-header focus:px-4 focus:py-2 focus:text-white"
     >
       Saltar al contenido principal
     </a>
     <header
-      class="sticky top-0 z-40 bg-accent shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+      class="sticky top-0 z-40 bg-header shadow-[0_1px_0_rgba(255,255,255,0.06)]"
     >
       <div
         class="mx-auto flex max-w-[1600px] flex-col items-stretch gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-8 sm:py-5 lg:px-12"
       >
-        <a href="/" class="flex items-center gap-3">
+        <a
+          href="/"
+          class="group flex items-center"
+          aria-label="EPI-Aetheris, inicio"
+        >
           <img
             src="/logo/logo-dark-bg.svg"
             alt="EPI-Aetheris"
-            class="h-11 w-auto shrink-0 sm:h-12"
+            class="h-11 w-auto shrink-0 transition-opacity duration-200 group-hover:opacity-80 sm:h-12"
             width="1066"
             height="424"
           />
-          <p class="hidden font-sans text-xs text-white/60 sm:block">
-            Vigilancia de dengue &middot; El Salvador
-          </p>
         </a>
 
         <nav
@@ -127,7 +184,7 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
                   href={item.href}
                   aria-current={activo ? 'page' : undefined}
                   class:list={[
-                    'flex min-h-[44px] shrink-0 items-center whitespace-nowrap rounded-full px-3 font-medium transition-colors sm:px-3.5',
+                    'flex min-h-[44px] shrink-0 items-center whitespace-nowrap rounded-full px-3 font-medium transition-[background-color,color] duration-200 sm:px-3.5',
                     activo
                       ? 'bg-white/15 text-white'
                       : 'text-white/70 hover:bg-white/10 hover:text-white',
@@ -139,54 +196,85 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
             })
           }
         </nav>
+        <button
+          type="button"
+          data-selector-tema
+          aria-pressed="false"
+          class="flex min-h-[44px] shrink-0 items-center gap-2 self-start rounded-full px-3 font-sans text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white sm:self-auto"
+        >
+          <span data-selector-tema-texto>Tema oscuro</span>
+        </button>
       </div>
     </header>
 
     <slot />
 
-    <footer class="mt-12 bg-deep">
-      <div class="mx-auto max-w-[1600px] px-4 py-10 sm:px-8 sm:py-12 lg:px-12">
+    <footer class="mt-16 bg-deep">
+      <div class="mx-auto max-w-[1600px] px-4 py-12 sm:px-8 sm:py-16 lg:px-12">
         <div
-          class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[1.25fr_repeat(3,1fr)] lg:gap-12"
+          class="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)] lg:gap-10"
         >
+          {
+            /* Columna de identidad: marca, que es el proyecto, procedencia de
+              los datos y licencia. Las fuentes viven aqui (metadato del
+              proyecto) y ya no colgando del enlace "Licencias de datos", que
+              es donde desequilibraban la ultima columna. */
+          }
           <div class="flex flex-col items-start">
             <a
               href="/"
-              class="rounded-xs font-display text-xl font-semibold tracking-tight text-white hover:text-white"
+              class="font-display text-2xl font-semibold tracking-tight text-secondary"
             >
               EPI-Aetheris
             </a>
             <p
-              class="mt-2.5 font-sans text-xs leading-relaxed text-deep-ink-muted"
+              class="mt-3 max-w-xs font-sans text-xs leading-relaxed text-deep-ink-muted"
             >
               Vigilancia epidemiológica de dengue y enfermedad respiratoria en
               El Salvador.
             </p>
-            <p class="mt-3 font-mono text-[11px] text-deep-ink-muted">
+            <p
+              class="mt-6 font-mono text-[11px] leading-relaxed text-deep-ink-muted"
+            >
+              MINSAL · OpenDengue · Open-Meteo CC BY 4.0
+            </p>
+            <p class="mt-1.5 font-mono text-[11px] text-deep-ink-muted">
               GPL-3.0 · 2026
             </p>
           </div>
 
+          {
+            /* Tres tramos de igual ancho, cada uno abierto por un filete: el
+              encabezado se distingue por peso y color, sin versalitas
+              espaciadas. Los enlaces responden con el filete compartido en
+              vez de llevar subrayado permanente. */
+          }
           <nav aria-label="Pie de página" class="contents">
-            <div>
-              <h2
-                class="font-sans text-[11px] font-semibold uppercase tracking-wider text-deep-ink-muted"
-              >
+            <div class="border-t border-white/12 pt-4">
+              <h2 class="font-sans text-xs font-semibold text-secondary">
                 El proyecto
               </h2>
-              <ul class="mt-3 space-y-2 font-sans text-xs">
+              <ul class="mt-4 space-y-2.5 font-sans text-xs">
                 <li>
                   <a
                     href="/biblioteca/01-que-es"
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
                   >
                     Qué es
                   </a>
                 </li>
                 <li>
                   <a
+                    href="/acerca-de"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
+                  >
+                    Acerca de
+                  </a>
+                </li>
+                <li>
+                  <a
                     href="/biblioteca/05-sensibilidad-y-honestidad"
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
                   >
                     Aviso de sensibilidad
                   </a>
@@ -194,7 +282,7 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
                 <li>
                   <a
                     href="/biblioteca/06-arquitectura-y-reproducibilidad"
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
                   >
                     Arquitectura y reproducibilidad
                   </a>
@@ -202,25 +290,26 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
                 <li>
                   <a
                     href="https://github.com/the-monolith-project/EPI-Aetheris"
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
                   >
-                    Código en GitHub
+                    <Icono
+                      nombre="brand-github"
+                      class="mr-1.5 inline h-3.5 w-3.5 align-[-2px]"
+                    />Código en GitHub
                   </a>
                 </li>
               </ul>
             </div>
 
-            <div>
-              <h2
-                class="font-sans text-[11px] font-semibold uppercase tracking-wider text-deep-ink-muted"
-              >
+            <div class="border-t border-white/12 pt-4">
+              <h2 class="font-sans text-xs font-semibold text-secondary">
                 Datos y método
               </h2>
-              <ul class="mt-3 space-y-2 font-sans text-xs">
+              <ul class="mt-4 space-y-2.5 font-sans text-xs">
                 <li>
                   <a
                     href="/biblioteca/04-fuentes-de-datos"
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
                   >
                     Fuentes de datos
                   </a>
@@ -228,7 +317,7 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
                 <li>
                   <a
                     href="/biblioteca/03-funciones"
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
                   >
                     Módulos M1–M3
                   </a>
@@ -236,38 +325,34 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
                 <li>
                   <a
                     href={`${API_BASE}/docs`}
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
                   >
-                    API pública (Swagger)
+                    <Icono
+                      nombre="api"
+                      class="mr-1.5 inline h-3.5 w-3.5 align-[-2px]"
+                    />API pública (Swagger)
                   </a>
                 </li>
                 <li>
                   <a
                     href="https://open-meteo.com/en/license"
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
                   >
                     Licencias de datos
                   </a>
-                  <span
-                    class="mt-0.5 block text-[11px] leading-normal text-deep-ink-muted"
-                  >
-                    MINSAL · OpenDengue · Open-Meteo CC BY 4.0
-                  </span>
                 </li>
               </ul>
             </div>
 
-            <div>
-              <h2
-                class="font-sans text-[11px] font-semibold uppercase tracking-wider text-deep-ink-muted"
-              >
+            <div class="border-t border-white/12 pt-4">
+              <h2 class="font-sans text-xs font-semibold text-secondary">
                 Vigilancia
               </h2>
-              <ul class="mt-3 space-y-2 font-sans text-xs">
+              <ul class="mt-4 space-y-2.5 font-sans text-xs">
                 <li>
                   <a
                     href="/alertas"
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
                   >
                     Alertas de campo
                   </a>
@@ -275,7 +360,7 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
                 <li>
                   <a
                     href="/analisis"
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
                   >
                     Análisis por departamento
                   </a>
@@ -283,9 +368,65 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
                 <li>
                   <a
                     href="/sugerencias"
-                    class="rounded-xs text-deep-ink transition-colors hover:text-white"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
                   >
                     Sugerencias (GitHub Issues)
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {
+              /* Tramo legal: obligatorio tenerlo a la vista en el pie de todas
+                las páginas. No repite deslindes -- los epidemiológicos viven en
+                el aviso de sensibilidad y los de uso, en los términos. */
+            }
+            <div class="border-t border-white/12 pt-4">
+              <h2 class="font-sans text-xs font-semibold text-secondary">
+                Legal y contacto
+              </h2>
+              <ul class="mt-4 space-y-2.5 font-sans text-xs">
+                <li>
+                  <a
+                    href="/legal/privacidad"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
+                  >
+                    Privacidad
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/legal/terminos"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
+                  >
+                    Términos de uso
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/legal/aviso-legal"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
+                  >
+                    Aviso legal
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/contacto"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
+                  >
+                    <Icono
+                      nombre="mail"
+                      class="mr-1.5 inline h-3.5 w-3.5 align-[-2px]"
+                    />Contacto
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/estado"
+                    class="enlace-filete text-deep-ink transition-colors hover:text-white"
+                  >
+                    Estado del servicio
                   </a>
                 </li>
               </ul>
@@ -293,8 +434,10 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
           </nav>
         </div>
 
-        <div class="mt-10 border-t border-white/10 pt-6 sm:mt-12">
-          <p class="font-sans text-xs leading-relaxed text-deep-ink-muted">
+        <div class="mt-12 border-t border-white/10 pt-6">
+          <p
+            class="max-w-4xl font-sans text-xs leading-relaxed text-deep-ink-muted"
+          >
             Proyecto académico · El Salvador · 2026. Ayuda de priorización sobre
             datos públicos agregados de MINSAL, OpenDengue y Open-Meteo, bajo
             licencia GPL-3.0; no reemplaza los lineamientos del MINSAL ni el
@@ -306,6 +449,47 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
     </footer>
 
     <script>
+      // Selector de tema: alterna entre claro y oscuro y recuerda la elección.
+      // Sin elección guardada manda el sistema (prefers-color-scheme).
+      const botonTema = document.querySelector<HTMLButtonElement>(
+        '[data-selector-tema]',
+      );
+      const textoTema = document.querySelector<HTMLElement>(
+        '[data-selector-tema-texto]',
+      );
+
+      function temaEfectivo(): 'dark' | 'light' {
+        const fijo = document.documentElement.getAttribute('data-theme');
+        if (fijo === 'dark' || fijo === 'light') return fijo;
+        return window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light';
+      }
+
+      function pintarSelectorTema(): void {
+        if (!botonTema || !textoTema) return;
+        const oscuro = temaEfectivo() === 'dark';
+        botonTema.setAttribute('aria-pressed', String(oscuro));
+        textoTema.textContent = oscuro ? 'Tema claro' : 'Tema oscuro';
+      }
+
+      botonTema?.addEventListener('click', () => {
+        const siguiente = temaEfectivo() === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', siguiente);
+        try {
+          localStorage.setItem('epi:tema', siguiente);
+        } catch {
+          // Sin almacenamiento el cambio vale solo para esta visita.
+        }
+        pintarSelectorTema();
+      });
+      window
+        .matchMedia('(prefers-color-scheme: dark)')
+        .addEventListener('change', pintarSelectorTema);
+      pintarSelectorTema();
+    </script>
+
+    <script>
       // Registro del service worker (ADR 0014). Solo en producción: en dev el
       // cache del shell tapa los cambios en caliente de Astro.
       const apiBase = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -315,7 +499,7 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
           try {
             await navigator.serviceWorker.register('/sw.js');
             const registro = await navigator.serviceWorker.ready;
-            // En la primera visita el service worker se activa DESPUÉS de que
+            // En la primera visita el service worker se activa después de que
             // el documento pidió sus scripts y estilos, así que esos no
             // pasaron por su `fetch` y no quedaron cacheados. Se le pasa la
             // lista de lo que esta página ya cargó para que la guarde; si no,

@@ -17,6 +17,10 @@
   --color-accent: #183e39;
   --color-accent-ink: #ffffff;
 
+  /* Cabecera del sitio: el acento oscuro de siempre, fijo en ambos temas
+     porque lleva texto y logotipo claros. */
+  --color-header: #183e39;
+
   /* "secundario" -- lavanda clara, para chips/estados suaves. */
   --color-secondary: #dddbff;
   --color-secondary-ink: #183e39;
@@ -30,6 +34,15 @@
      cambiar el tono. */
   --color-deep-ink-muted: rgba(221, 219, 255, 0.8);
 
+  /* Coral del propio logotipo (public/logo/logo-dark-bg.svg, .cls-5). No es
+     un color nuevo: ya estaba en la marca y no se usaba en la interfaz.
+     Tiene UN solo papel -- "esto es de ahora": la tira de alertas vigentes y
+     los marcadores de estado en curso. Nunca decorativo, nunca en texto
+     largo (sobre #011e1e da ~4.6:1, suficiente para rotulos cortos y
+     bordes, no para parrafos). */
+  --color-live: #ff5a45;
+  --color-live-ink: #2b0d08;
+
   /* Anillo de foco de teclado -- lavanda fija en vez de currentColor, que
      dentro de bg-deep hereda --ink (#040316) y queda casi invisible sobre
      #011e1e. La lavanda contrasta >12:1 sobre #011e1e; sobre el fondo claro
@@ -41,6 +54,13 @@
     0 1px 2px rgba(4, 3, 22, 0.04), 0 16px 32px -20px rgba(4, 3, 22, 0.35);
   --shadow-card-hover:
     0 1px 2px rgba(4, 3, 22, 0.05), 0 20px 40px -18px rgba(4, 3, 22, 0.4);
+
+  /* Primitivas de la sección de análisis (rediseño 2026-09) */
+  --color-seleccion: var(--color-accent);
+  --trazo-seleccion: 2px;
+  --radio-matriz: 6px;
+  --radio-traza: 12px;
+  --filete-traza: 2px;
 
   /* Las familias se auto-hospedan vía la Fonts API de Astro (astro.config.mjs);
      cada una expone su propia var con nombre hasheado -- aquí se remapean a los
@@ -54,4 +74,45 @@
      restricción: solo en H1 de página y los 2 H2 de sección de la landing,
      nunca en subtítulos de tarjeta ni en UI funcional. */
   --font-display: var(--font-fraunces), Georgia, serif;
+}
+
+/* Tema oscuro: sigue al sistema salvo que la persona haya elegido uno
+   (data-theme en <html>, guardado en localStorage por el selector del
+   encabezado). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-bg: #0e1412;
+    --color-surface: #161d1b;
+    --color-ink: #eceff1;
+    --color-ink-muted: #a5b3ae;
+    --color-border: #2a3531;
+    --color-accent: #8fd6c9;
+    --color-accent-ink: #04120f;
+    --color-header: #0b2a26;
+    --color-live-ink: #2b0d08;
+    --focus-ring: #dddbff;
+    --shadow-card:
+      0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 32px -20px rgba(0, 0, 0, 0.7);
+    --shadow-card-hover:
+      0 1px 2px rgba(0, 0, 0, 0.35), 0 20px 40px -18px rgba(0, 0, 0, 0.8);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #0e1412;
+  --color-surface: #161d1b;
+  --color-ink: #eceff1;
+  --color-ink-muted: #a5b3ae;
+  --color-border: #2a3531;
+  --color-accent: #8fd6c9;
+  --color-accent-ink: #04120f;
+  --color-header: #0b2a26;
+  --color-live-ink: #2b0d08;
+  --focus-ring: #dddbff;
+  --shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 32px -20px rgba(0, 0, 0, 0.7);
+  --shadow-card-hover:
+    0 1px 2px rgba(0, 0, 0, 0.35), 0 20px 40px -18px rgba(0, 0, 0, 0.8);
+  color-scheme: dark;
 }

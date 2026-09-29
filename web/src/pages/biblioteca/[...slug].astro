@@ -21,7 +21,10 @@ const { titulo, descripcion } = entrada.data;
 ---
 
 <Layout title={`EPI-Aetheris — ${titulo}`} descripcion={descripcion}>
-  <main id="contenido-principal" class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
+  >
     <a
       href="/biblioteca"
       class="inline-flex items-center gap-1.5 font-sans text-sm font-medium text-accent hover:underline"
@@ -125,6 +128,8 @@ const { titulo, descripcion } = entrada.data;
     border: 1px solid var(--color-border);
     border-radius: 4px;
     padding: 0.1em 0.35em;
+    /* Nombres de columna y URL largos no deben ensanchar la página en móvil. */
+    overflow-wrap: anywhere;
   }
   .doc-md :global(pre) {
     background: var(--color-deep);
