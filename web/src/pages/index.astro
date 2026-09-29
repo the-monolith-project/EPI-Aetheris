@@ -2,25 +2,20 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Layout from '../layouts/Layout.astro';
+import Icono from '../components/Icono.astro';
 
-// Landing de presentación (antes de entrar a la vista dengue en /dengue). No
-// repite el dashboard: explica qué es el proyecto, qué pregunta responde y
-// qué explícitamente NO hace, antes de que alguien vea un mapa sin contexto.
-// Mismo lenguaje de estatuto que el resto del sitio: descriptivo, no
-// predictivo, ayuda de priorización — nunca diagnóstico ni pronóstico.
+// Portada. Habla primero a la poblacion general, despues a quien evalua el
+// proyecto y al final a prensa. No repite el dashboard: presenta el sistema
+// y enruta. Los deslindes vinculantes viven en el pie de pagina y, con su
+// argumento entero, en la Biblioteca (RUTA_SENSIBILIDAD en src/lib/enlaces.ts).
 //
-// Contenedor a max-w-[1600px] (mismo ancho que el header/footer del Layout):
-// en pantallas anchas una versión angosta dejaba la mitad de la pantalla en
-// blanco.
+// Firma visual (rediseno 2026-09): el hero es el mapa de los 14 departamentos
+// a pantalla completa, proyectado en build desde el mismo geojson que consume
+// MapaDepartamentos.astro en /dengue, con el titular encima. Cada silueta es
+// un enlace real a su ficha. El mapa se traza departamento por departamento
+// al cargar; es el unico movimiento del sitio que no responde a una accion.
 //
-// Firma visual (revisión de diseño 2026-08-22): el hero ya NO usa el patrón
-// genérico "número grande + etiqueta + stats" — ese patrón describía el
-// proyecto desde afuera. En su lugar, la mitad derecha es el propio mapa
-// departamental (14 siluetas reales, del mismo geojson que consume
-// MapaDepartamentos.astro en /dengue), proyectado a SVG en build time. Es el
-// objeto central del proyecto mostrándose a sí mismo, no una cifra sobre él.
-// Las 4 cifras que antes eran una grilla de tarjetas ahora son una sola
-// línea de texto (ver <CIFRAS>) — información de pie, no la pieza visual.
+// Contenedor a max-w-[1600px] (mismo ancho que el header/footer del Layout).
 
 interface DepartamentoGeo {
   codigo: string;
@@ -127,478 +122,499 @@ function construirSiluetaDepartamentos(): {
 const { paths: DEPARTAMENTOS_SVG, viewBox: MAPA_VIEWBOX } =
   construirSiluetaDepartamentos();
 
+// --- Contenido de la portada ----------------------------------------------
+// Redaccion para poblacion general: verbos llanos, nada de jerga tecnica en
+// la mitad superior. Lo que le habla a evaluadores (arquitectura, stack,
+// replicar) va al final, ya con su propio tono.
+
+const CIFRAS = [
+  { valor: 14, texto: '14', etiqueta: 'departamentos vigilados' },
+  { valor: 13, texto: '13', etiqueta: 'años de historia, 2014 a 2026' },
+  { valor: 3, texto: '3', etiqueta: 'fuentes públicas de datos' },
+  { valor: 4, texto: '4', etiqueta: 'preguntas por semana y departamento' },
+];
+
+// Secuencia real de tres pasos: por eso va numerada.
+const PASOS = [
+  {
+    titulo: 'Reúne lo que ya es público',
+    texto:
+      'Los casos semanales que publica el Ministerio de Salud, el historial de OpenDengue y el clima de Open-Meteo, para cada departamento.',
+  },
+  {
+    titulo: 'Compara cada departamento consigo mismo',
+    texto:
+      'Lo de esta semana se mide contra lo que ese mismo lugar vivió en años anteriores, no contra el promedio del país.',
+  },
+  {
+    titulo: 'Señala lo que se sale de lo normal',
+    texto:
+      'El mapa marca dónde el clima favorece al zancudo y dónde los casos suben más de lo habitual, para que la atención llegue antes.',
+  },
+];
+
 const MODULOS = [
   {
     id: 'M1',
-    nombre: 'Idoneidad biofísica',
-    estado: 'Activo',
+    pregunta: '¿El clima le conviene al zancudo?',
     texto:
-      'Índice continuo de qué tan favorables son la temperatura, precipitación y humedad de cada departamento para el vector del dengue, semana a semana.',
+      'Temperatura, lluvia y humedad de la semana, resumidas en un índice de qué tan favorable es el momento para el mosquito.',
   },
   {
     id: 'M2',
-    nombre: 'Anomalía climática',
-    estado: 'Activo',
+    pregunta: '¿Es un clima raro para esta época?',
     texto:
-      'Compara la idoneidad biofísica actual contra la historia climática del propio departamento (desde 2014). Serie continua, sin alerta binaria ni lenguaje de "cruce de umbral".',
+      'Compara esa semana con el historial climático del propio departamento, con registros desde 2014.',
   },
   {
     id: 'M3',
-    nombre: 'Presión epidemiológica relativa',
-    estado: 'Activo',
+    pregunta: '¿Hay más casos de lo habitual?',
     texto:
-      'Ubica los casos observados (probable y confirmado, por separado) contra la propia historia del departamento — un percentil, no una alerta de riesgo.',
+      'Sitúa los casos de la semana, probables y confirmados por separado, frente a los años anteriores del mismo departamento.',
   },
   {
     id: 'M4',
-    nombre: 'Integridad de la vigilancia',
-    estado: 'Activo',
+    pregunta: 'Integridad de la vigilancia',
     texto:
-      'Tres hechos verificables sobre la calidad del dato —completitud geográfica, cuadre del boletín y antigüedad de cada serie— sin combinarlos en un índice opaco ni afirmar nada sobre transmisión.',
+      'Tres indicadores de la calidad del dato: si informaron todos los departamentos, si el boletín cuadra y qué tan reciente es cada serie.',
   },
 ];
 
-const CIFRAS = [
-  '14 departamentos cubiertos',
-  '3 fuentes públicas: MINSAL, OpenDengue, Open-Meteo',
-  'datos desde 2014 hasta 2026',
-  '$0 de costo para replicar el sistema',
-];
-
-const APORTES = [
-  {
-    titulo: 'Un comando levanta el sistema entero',
-    texto:
-      'Datos públicos, cero costo de licencias, código abierto bajo GPL-3.0. Un solo comando levanta el sistema completo con datos reales — no una demo.',
-  },
-  {
-    titulo: 'Cada departamento contra su propia historia',
-    texto:
-      'Catorce departamentos, cada uno leído contra sus propios años anteriores — nunca contra un promedio nacional que borra las diferencias regionales.',
-  },
-  {
-    titulo: 'Rigor por encima de conveniencia',
-    texto:
-      'Se valida contra los años de brote reales y se retira lo que no sostiene su promesa.',
-  },
-];
-
-const ALCANCE_NO = [
-  'Describe lo ya publicado; no anticipa brotes ni asigna un nivel de riesgo automatizado por departamento.',
-  'El clasificador piloto quedó como archivo histórico en la vista dengue, para consultar su evaluación.',
-];
-
-const ALCANCE_SI = [
-  'Ingeniería sobre datos públicos, en contenedores Docker.',
-  'Ayuda de priorización: compara cada departamento contra su propia historia.',
-];
-
+// Logotipos de Simple Icons, en el orden en que se nombran en `tecnologia`.
 const STACK = [
   {
-    capa: 'Backend',
-    tecnologia: 'Python · FastAPI',
-    texto:
-      'API REST sobre PostgreSQL directo (sin ORM, psycopg2) — todas las capas del mapa se calculan on-request, nada queda precomputado ni oculto.',
-  },
-  {
-    capa: 'Base de datos',
+    capa: 'Datos',
     tecnologia: 'PostgreSQL 15',
+    logos: ['postgresql'],
     texto:
-      'Esquema deliberadamente agnóstico a enfermedad y región (catálogos, no columnas fijas) — dengue e IRA comparten la misma tabla de casos.',
+      'Un esquema que no depende de la enfermedad ni de la región: dengue y respiratorio comparten la misma tabla de casos.',
   },
   {
-    capa: 'Frontend',
+    capa: 'Cálculo',
+    tecnologia: 'Python · FastAPI',
+    logos: ['python', 'fastapi'],
+    texto:
+      'Cada capa del mapa se calcula al momento de pedirla. La misma interfaz pública alimenta este sitio y está documentada.',
+  },
+  {
+    capa: 'Sitio',
     tecnologia: 'Astro · TypeScript · Leaflet',
+    logos: ['astro', 'typescript', 'leaflet'],
     texto:
-      'Sitio estático con mapa interactivo departamental; consume la misma API pública que cualquiera puede llamar directamente.',
+      'Páginas estáticas con el mapa interactivo encima. Se instala como aplicación y las alertas abren sin señal.',
   },
   {
-    capa: 'Infraestructura',
+    capa: 'Despliegue',
     tecnologia: 'Docker Compose',
+    logos: ['docker'],
     texto:
-      '3 servicios (base de datos, backend, frontend) orquestados con un solo comando — sin API de pago, sin suscripción obligatoria.',
+      'Tres servicios que se levantan juntos, con los datos ya cargados. Ninguna capa usa servicios de pago.',
   },
 ];
 ---
 
-<Layout title="EPI-Aetheris">
-  <main id="contenido-principal" class="mx-auto max-w-[1600px] px-4 py-12 sm:px-8 sm:py-16 lg:px-12">
+<Layout
+  mapa
+  title="EPI-Aetheris"
+  descripcion="Sistema de análisis y prevención de brotes de dengue en El Salvador. Cruza los casos que publica el Ministerio de Salud con el clima de cada departamento, sobre datos públicos y código abierto."
+>
+  <main id="contenido-principal">
+    {
+      /* ---------------------------------------------------------------
+        Hero a pantalla completa. Orden del DOM: primero el texto y sus
+        botones, despues el mapa (14 enlaces), asi el teclado llega antes
+        a las llamadas a la accion. El mapa va detras (z-0), el velo
+        encima del mapa (z-10, sin eventos) y el texto arriba (z-20). El
+        contenedor de texto no recibe punteros, solo sus enlaces, para que
+        los departamentos bajo el titular sigan siendo pulsables.
+        --------------------------------------------------------------- */
+    }
     <section
-      class="grid grid-cols-1 gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center"
+      class="relative isolate flex min-h-[calc(100svh-4.5rem)] items-center overflow-hidden bg-deep"
+      aria-labelledby="hero-titulo"
     >
-      <div class="max-w-xl">
-        <p
-          class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
-        >
-          Vigilancia epidemiológica &middot; dengue en El Salvador
-        </p>
-        <h1
-          class="mt-2 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl"
-        >
-          Qué está pasando con el dengue, departamento por departamento
-        </h1>
-        <p class="mt-4 font-sans text-base leading-relaxed text-ink-muted">
-          EPI-Aetheris cruza los casos que reporta el MINSAL con datos de clima
-          de Open-Meteo. Cada semana describe qué tan inusual es lo que pasa en
-          un departamento, comparado contra su propia historia — y qué tan
-          completo es el dato detrás de esa lectura.
-        </p>
-
-        <div class="mt-6 flex flex-wrap gap-3">
-          <a
-            href="/dengue"
-            class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-sans text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-deep"
-          >
-            Ver dengue
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 20 20"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M4 10h12M11 5l5 5-5 5"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"></path>
-            </svg>
-          </a>
-          <a
-            href="https://github.com/the-monolith-project/EPI-Aetheris"
-            class="inline-flex items-center rounded-full border border-border bg-surface px-5 py-2.5 font-sans text-sm font-medium text-ink transition-colors hover:border-accent/40 hover:bg-secondary/30"
-          >
-            Ver el código
-          </a>
-        </div>
-      </div>
-
-      <a
-        href="/dengue"
-        class="group block"
-        aria-label="Ver el mapa departamental completo en la vista dengue"
+      <div
+        class="hero-mapa absolute inset-y-0 left-0 right-0 z-0 opacity-70 sm:opacity-100 lg:left-auto lg:w-[68%]"
       >
-        <div class="rounded-[28px] bg-deep p-4 sm:p-6">
-          <svg
-            viewBox={MAPA_VIEWBOX}
-            role="img"
-            aria-label="Silueta de los 14 departamentos de El Salvador que cubre el sistema"
-            class="h-auto w-full"
+        <svg
+          viewBox={MAPA_VIEWBOX}
+          preserveAspectRatio="xMidYMid meet"
+          role="group"
+          aria-label="Mapa de los 14 departamentos de El Salvador. Cada uno abre su ficha departamental."
+          class="p-4 sm:p-8 lg:p-6"
+        >
+          {
+            DEPARTAMENTOS_SVG.map((d, i) => (
+              <a
+                href={`/analisis/ficha/${d.codigo}`}
+                aria-label={`Ficha departamental de ${d.nombre}`}
+                class="depto"
+                style={`--retraso:${i * 90}ms`}
+              >
+                <title>{d.nombre}</title>
+                <path d={d.d} pathLength="1" class="depto-forma" />
+                <text
+                  x={d.cx}
+                  y={d.cy}
+                  text-anchor="middle"
+                  dominant-baseline="middle"
+                  font-size="11"
+                  class="depto-nombre"
+                >
+                  {d.nombre}
+                </text>
+              </a>
+            ))
+          }
+        </svg>
+      </div>
+
+      {
+        /* Velo: en escritorio va de izquierda (opaco, bajo el texto) a
+          derecha (transparente, el mapa entero); en movil es vertical. */
+      }
+      <div
+        class="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,var(--color-deep)_0%,color-mix(in_srgb,var(--color-deep)_82%,transparent)_45%,color-mix(in_srgb,var(--color-deep)_55%,transparent)_100%)] lg:bg-[linear-gradient(90deg,var(--color-deep)_0%,var(--color-deep)_24%,color-mix(in_srgb,var(--color-deep)_55%,transparent)_46%,transparent_66%)]"
+        aria-hidden="true"
+      >
+      </div>
+
+      <div
+        class="pointer-events-none relative z-20 mx-auto w-full max-w-[1600px] px-4 py-16 sm:px-8 sm:py-20 lg:px-12 [&_a]:pointer-events-auto"
+      >
+        <div class="max-w-[38rem] lg:max-w-[44rem]">
+          <h1
+            id="hero-titulo"
+            class="titular-hero text-secondary [text-wrap:balance]"
           >
-            {
-              DEPARTAMENTOS_SVG.map((d, i) => (
-                <g class="group/dep">
-                  <path
-                    d={d.d}
-                    class="hero-depto origin-center fill-secondary/90 stroke-deep transition-colors duration-200 group-hover:fill-secondary/70 group-hover/dep:!fill-[#eeecff] group-hover/dep:!stroke-accent"
-                    style={`stroke-width:1.5; animation-delay:${i * 45}ms`}
-                  >
-                    <title>{d.nombre}</title>
-                  </path>
-                  <text
-                    x={d.cx}
-                    y={d.cy}
-                    text-anchor="middle"
-                    dominant-baseline="middle"
-                    font-size="11"
-                    class="pointer-events-none select-none fill-deep font-semibold opacity-0 transition-opacity duration-200 group-hover/dep:opacity-100"
-                  >
-                    {d.nombre}
-                  </text>
-                </g>
-              ))
-            }
-          </svg>
-          <p class="mt-3 font-sans text-xs leading-snug text-deep-ink-muted">
-            Los 14 departamentos, tal como se ven en el mapa de dengue — cada
-            uno comparado contra su propia historia, nunca entre sí.
+            <span class="hero-entra block" style="--retraso:700ms"
+              >Sistema de análisis</span
+            >
+            <span class="hero-entra block" style="--retraso:820ms"
+              >y prevención de</span
+            >
+            <span class="hero-entra block" style="--retraso:940ms"
+              >brotes de dengue</span
+            >
+          </h1>
+          <p
+            class="hero-entra mt-7 max-w-[34rem] font-sans text-base leading-relaxed text-deep-ink-muted sm:text-lg"
+            style="--retraso:1120ms"
+          >
+            Cruza los casos que publica el Ministerio de Salud con el clima de
+            cada departamento y muestra, semana a semana, dónde está pasando
+            algo fuera de lo normal en El Salvador. Sin registro ni pago.
+          </p>
+
+          <div
+            class="hero-entra mt-9 flex flex-wrap items-center gap-3"
+            style="--retraso:1260ms"
+          >
+            <a
+              href="/dengue"
+              class="boton-principal inline-flex min-h-[48px] items-center rounded-full bg-secondary px-7 font-sans text-sm font-semibold text-secondary-ink"
+            >
+              Ver el mapa
+            </a>
+            <a
+              href="/alertas"
+              class="boton-secundario inline-flex min-h-[48px] items-center rounded-full border border-white/30 px-7 font-sans text-sm font-medium text-deep-ink"
+            >
+              Alertas de campo
+            </a>
+          </div>
+          <p
+            class="hero-entra mt-8 font-sans text-xs text-deep-ink-muted"
+            style="--retraso:1500ms"
+          >
+            Tocá un departamento del mapa para abrir su ficha.
           </p>
         </div>
-      </a>
-    </section>
-
-    <p class="mt-6 font-sans text-xs leading-relaxed text-ink-muted">
-      {CIFRAS.join('  ·  ')}
-    </p>
-
-    {
-      /* Enfoque dual (ADR 0014). Dos puertas, no un modo con estado: son
-      enlaces normales, así que un enlace compartido funciona igual para
-      cualquiera y no hay dos arquitecturas que mantener sincronizadas. */
-    }
-    <section class="mt-10" aria-labelledby="puertas-titulo">
-      <h2 id="puertas-titulo" class="sr-only">Por dónde entrar</h2>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <a
-          href="/alertas"
-          data-puerta="consulta"
-          class="card-elevated flex flex-col rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-accent/40 sm:p-6"
-        >
-          <p
-            class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
-          >
-            Personal de salud
-          </p>
-          <h3 class="mt-1 font-display text-lg font-semibold text-ink">
-            Qué hay vigente y qué hacer
-          </h3>
-          <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
-            Alertas de campo redactadas por el equipo de vigilancia, con
-            indicaciones para la unidad. Sirve en consulta, se puede imprimir y
-            queda disponible sin señal.
-          </p>
-          <span
-            class="mt-4 font-sans text-sm font-medium text-accent underline underline-offset-2"
-            >Ver alertas de campo</span
-          >
-        </a>
-
-        <a
-          href="/analisis"
-          data-puerta="analisis"
-          class="card-elevated flex flex-col rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-accent/40 sm:p-6"
-        >
-          <p
-            class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
-          >
-            Investigación y datos
-          </p>
-          <h3 class="mt-1 font-display text-lg font-semibold text-ink">
-            Explorar las series
-          </h3>
-          <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
-            Dengue, respiratorio e IRA por departamento, contra la propia
-            historia de cada uno. Mismos datos que expone la API pública.
-          </p>
-          <span
-            class="mt-4 font-sans text-sm font-medium text-accent underline underline-offset-2"
-            >Abrir herramientas de análisis</span
-          >
-        </a>
       </div>
     </section>
 
-    {
-      /* Tira de alertas vigentes: el estado que cambia, arriba del material
-      estático de presentación. Si el backend no responde, la sección entera
-      se oculta -- la landing no depende de la API para tener sentido. */
-    }
-    <section data-tira-alertas hidden class="mt-8">
-      <div class="rounded-2xl border border-border bg-secondary/20 p-5 sm:p-6">
-        <div class="flex flex-wrap items-baseline justify-between gap-2">
+    <div class="mx-auto max-w-[1600px] px-4 sm:px-8 lg:px-12">
+      {
+        /* Tira de alertas vigentes: el unico estado que cambia en la portada,
+          y el unico lugar donde aparece el coral de la marca. Si el backend
+          no responde, la seccion entera se queda oculta. */
+      }
+      <section data-tu-departamento hidden class="mt-6">
+        <div
+          class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-6"
+        >
           <h2 class="font-sans text-sm font-semibold text-ink">
-            Alertas de campo vigentes
+            Tu departamento
           </h2>
           <a
-            href="/alertas"
-            class="font-sans text-sm font-medium text-accent underline underline-offset-2"
-            >Ver todas</a
+            href="/analisis"
+            data-tu-departamento-enlace
+            class="font-sans text-sm font-medium text-accent"
           >
+            <span class="enlace-filete" data-tu-departamento-texto></span>
+          </a>
         </div>
-        <ul data-tira-alertas-lista class="mt-3 space-y-2"></ul>
-        <p class="mt-3 font-sans text-xs leading-relaxed text-ink-muted">
-          Redactadas por el equipo de vigilancia sobre datos públicos.
-        </p>
-      </div>
-    </section>
+      </section>
 
-    <section class="mt-12 rounded-2xl bg-accent p-6 sm:p-8 lg:p-10">
-      <p
-        class="font-sans text-xs font-semibold uppercase tracking-wide text-white/60"
-      >
-        Qué aporta el proyecto
-      </p>
-      <h2 class="mt-1 font-sans text-2xl font-semibold text-white sm:text-3xl">
-        Aportes del proyecto
-      </h2>
-      <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-8">
-        {
-          APORTES.map((a, i) => (
-            <div
-              class:list={[i > 0 && 'sm:border-l sm:border-white/15 sm:pl-8']}
+      <section data-tira-alertas hidden class="mt-6">
+        <div class="rounded-2xl border border-live/40 bg-surface p-6 sm:p-8">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2
+              class="flex items-center gap-2.5 font-sans text-sm font-semibold text-ink"
             >
-              <p class="font-sans text-sm font-semibold text-white">
-                {a.titulo}
-              </p>
-              <p class="mt-1.5 font-sans text-sm leading-relaxed text-white/75">
-                {a.texto}
-              </p>
-            </div>
-          ))
-        }
-      </div>
-    </section>
-
-    <section class="mt-12">
-      <h2 class="font-display text-xl font-semibold text-ink">
-        Cuatro preguntas, cuatro módulos
-      </h2>
-      <p class="mt-1 max-w-2xl font-sans text-sm text-ink-muted">
-        En vez de "¿va a haber un brote?", cada módulo responde una pregunta más
-        chica y verificable contra la propia historia del departamento.
-      </p>
-      <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {
-          MODULOS.map((m) => (
-            <div class="card-elevated rounded-2xl border border-border bg-surface p-4">
-              <div class="flex items-center justify-between gap-2">
-                <span class="font-mono text-xs font-semibold text-accent">
-                  {m.id}
-                </span>
-                <span
-                  class:list={[
-                    'rounded-full px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide',
-                    m.estado === 'Activo'
-                      ? 'bg-secondary text-secondary-ink'
-                      : 'bg-ink-muted/10 text-ink-muted',
-                  ]}
-                >
-                  {m.estado}
-                </span>
-              </div>
-              <p class="mt-2 font-sans text-sm font-semibold text-ink">
-                {m.nombre}
-              </p>
-              <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
-                {m.texto}
-              </p>
-            </div>
-          ))
-        }
-      </div>
-    </section>
-
-    <section class="mt-12">
-      <h2 class="font-display text-xl font-semibold text-ink">
-        Con qué está construido
-      </h2>
-      <p class="mt-1 max-w-2xl font-sans text-sm text-ink-muted">
-        El aporte de este proyecto es de ingeniería de software: por eso el
-        stack importa tanto como los módulos.
-      </p>
-      <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {
-          STACK.map((s) => (
-            <div class="card-elevated rounded-2xl border border-border bg-surface p-4">
-              <p class="font-sans text-xs font-semibold uppercase tracking-wide text-accent">
-                {s.capa}
-              </p>
-              <p class="mt-1 font-sans text-sm font-semibold text-ink">
-                {s.tecnologia}
-              </p>
-              <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
-                {s.texto}
-              </p>
-            </div>
-          ))
-        }
-      </div>
-    </section>
-
-    <section
-      class="mt-12 overflow-hidden rounded-2xl border border-border bg-surface"
-      aria-labelledby="alcance-sistema-titulo"
-    >
-      <h2
-        id="alcance-sistema-titulo"
-        class="border-b border-border px-5 py-4 font-sans text-sm font-semibold text-ink sm:px-8"
-      >
-        Alcance del sistema
-      </h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2">
-        <div class="p-5 sm:p-6 lg:p-8">
-          <p
-            class="flex items-center gap-2 font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted"
-          >
-            <svg
-              class="h-4 w-4 shrink-0"
-              viewBox="0 0 20 20"
-              fill="none"
-              aria-hidden="true"
+              <span class="punto-vigente" aria-hidden="true"></span>
+              Alertas vigentes ahora
+            </h2>
+            <a
+              href="/alertas"
+              class="font-sans text-sm font-medium text-accent"
             >
-              <path
-                d="M6 6l8 8M14 6l-8 8"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"></path>
-            </svg>
-            No hace esto
-          </p>
-          <ul class="mt-3 space-y-3">
-            {
-              ALCANCE_NO.map((item) => (
-                <li class="font-sans text-sm leading-relaxed text-ink-muted">
-                  {item}
-                </li>
-              ))
-            }
-          </ul>
+              <span class="enlace-filete">Ver todas</span>
+            </a>
+          </div>
+          <ul data-tira-alertas-lista class="mt-4 space-y-2.5"></ul>
         </div>
-        <div
-          class="border-t border-border p-5 sm:border-l sm:border-t-0 sm:p-6 lg:p-8 bg-secondary/20"
-        >
-          <p
-            class="flex items-center gap-2 font-sans text-xs font-semibold uppercase tracking-wide text-accent"
-          >
-            <svg
-              class="h-4 w-4 shrink-0"
-              viewBox="0 0 20 20"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M4.5 10.5l3.5 3.5 7-8"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"></path>
-            </svg>
-            Sí es esto
-          </p>
-          <ul class="mt-3 space-y-3">
-            {
-              ALCANCE_SI.map((item) => (
-                <li class="font-sans text-sm leading-relaxed text-ink">
-                  {item}
-                </li>
-              ))
-            }
-          </ul>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <section
-      class="mt-12 flex flex-col items-start gap-4 rounded-2xl bg-deep p-6 sm:flex-row sm:items-center sm:justify-between lg:p-8"
-      aria-labelledby="datos-publicos-titulo"
-    >
-      <div class="max-w-2xl">
-        <h2
-          id="datos-publicos-titulo"
-          class="font-sans text-sm font-semibold text-deep-ink"
-        >
-          Datos públicos, sin costo de replicar
-        </h2>
-        <p class="mt-1 font-sans text-sm leading-relaxed text-deep-ink-muted">
-          MINSAL, OpenDengue y Open-Meteo — ninguna API de pago, ningún dato
-          personal, todo agregado. `docker compose up` levanta el sistema
-          completo con datos reales incluidos. ¿Querés el porqué de cada
-          decisión, no solo el resultado? Está en la
+      {
+        /* Enfoque dual (ADR 0014). Dos puertas, no un modo con estado: son
+          enlaces normales, asi que un enlace compartido funciona igual para
+          cualquiera y no hay dos arquitecturas que mantener sincronizadas. */
+      }
+      <section class="aparece mt-14 sm:mt-16" aria-labelledby="puertas-titulo">
+        <h2 id="puertas-titulo" class="sr-only">Por dónde entrar</h2>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <a
-            href="/biblioteca"
-            class="font-semibold text-deep-ink underline underline-offset-2"
-            >Biblioteca</a
-          >.
-        </p>
-      </div>
-      <a
-        href="/dengue"
-        class="shrink-0 rounded-full bg-secondary px-5 py-2.5 font-sans text-sm font-semibold text-secondary-ink transition-colors hover:brightness-95"
+            href="/alertas"
+            data-puerta="consulta"
+            class="superficie-pulsable flex flex-col rounded-2xl border border-border bg-surface p-6 sm:p-8"
+          >
+            <span
+              class="insignia-icono mb-5 flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-ink"
+            >
+              <Icono nombre="bell" class="h-6 w-6" />
+            </span>
+            <h3 class="titular-seccion text-ink">Alertas por departamento</h3>
+            <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+              Avisos redactados por el equipo de vigilancia, con lo que conviene
+              hacer en cada departamento. Se leen desde el teléfono, se imprimen
+              y funcionan sin señal.
+            </p>
+            <span class="mt-6 font-sans text-sm font-semibold text-accent">
+              <span class="enlace-filete">Ver alertas</span>
+            </span>
+          </a>
+
+          <a
+            href="/analisis"
+            data-puerta="analisis"
+            class="superficie-pulsable flex flex-col rounded-2xl border border-border bg-surface p-6 sm:p-8"
+          >
+            <span
+              class="insignia-icono mb-5 flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-ink"
+            >
+              <Icono nombre="chart-line" class="h-6 w-6" />
+            </span>
+            <h3 class="titular-seccion text-ink">Explorá los datos</h3>
+            <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+              Dengue, neumonías e infecciones respiratorias por departamento,
+              cada uno comparado con sus propios años anteriores, y una ficha
+              imprimible por departamento.
+            </p>
+            <span class="mt-6 font-sans text-sm font-semibold text-accent">
+              <span class="enlace-filete">Abrir análisis</span>
+            </span>
+          </a>
+        </div>
+      </section>
+
+      {
+        /* Cifras que cuentan hacia arriba al entrar en pantalla. El valor
+          final ya esta en el HTML; data-cifra solo lo repite en numero. */
+      }
+      <section
+        class="aparece mt-16 border-y border-border py-10 sm:mt-20"
+        aria-label="El sistema en cifras"
       >
-        Entrar a dengue
-      </a>
-    </section>
+        <dl class="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4">
+          {
+            CIFRAS.map((c) => (
+              <div>
+                <dt class="font-display text-5xl font-semibold tracking-tight text-accent sm:text-6xl">
+                  <span data-cifra={c.valor}>{c.texto}</span>
+                </dt>
+                <dd class="mt-2 max-w-[14rem] font-sans text-sm leading-snug text-ink-muted">
+                  {c.etiqueta}
+                </dd>
+              </div>
+            ))
+          }
+        </dl>
+      </section>
+
+      {/* Como funciona: tres pasos en secuencia real, por eso numerados. */}
+      <section class="aparece mt-16 sm:mt-20" aria-labelledby="pasos-titulo">
+        <h2 id="pasos-titulo" class="titular-seccion max-w-2xl text-ink">
+          Cómo funciona
+        </h2>
+        <ol class="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-10">
+          {
+            PASOS.map((paso, i) => (
+              <li class="relative pl-14">
+                <span
+                  class="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-full bg-accent font-display text-lg font-semibold text-accent-ink"
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </span>
+                <h3 class="font-sans text-base font-semibold text-ink">
+                  {paso.titulo}
+                </h3>
+                <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
+                  {paso.texto}
+                </p>
+              </li>
+            ))
+          }
+        </ol>
+      </section>
+
+      {
+        /* Modulos: cuatro preguntas paralelas. Filetes en vez de cuatro
+          tarjetas identicas: no son pulsables, asi que no llevan la
+          superficie elevada. */
+      }
+      <section
+        class="aparece mt-16 rounded-2xl bg-header p-8 sm:mt-20 sm:p-10 lg:p-12"
+        aria-labelledby="modulos-titulo"
+      >
+        <h2 id="modulos-titulo" class="titular-seccion max-w-2xl text-white">
+          Cuatro preguntas para cada departamento, cada semana
+        </h2>
+        <p
+          class="mt-3 max-w-2xl font-sans text-base leading-relaxed text-white/75"
+        >
+          En vez de una sola predicción, el sistema responde cuatro preguntas
+          concretas que cualquiera puede comprobar contra la historia del lugar.
+        </p>
+        <div
+          class="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10"
+        >
+          {
+            MODULOS.map((m, i) => (
+              <div
+                class:list={[
+                  'border-t border-white/25 pt-4',
+                  i > 0 && 'lg:border-l lg:border-l-white/15 lg:pl-8',
+                ]}
+              >
+                <p class="font-mono text-xs font-semibold text-secondary">
+                  {m.id}
+                </p>
+                <h3 class="mt-2 font-sans text-base font-semibold text-white">
+                  {m.pregunta}
+                </h3>
+                <p class="mt-2 font-sans text-sm leading-relaxed text-white/75">
+                  {m.texto}
+                </p>
+              </div>
+            ))
+          }
+        </div>
+      </section>
+
+      {
+        /* Para quien evalua o quiere replicar: aqui si cabe el vocabulario
+          tecnico, con una hoja de especificaciones en vez de tarjetas. */
+      }
+      <section class="aparece mt-16 sm:mt-20" aria-labelledby="abierto-titulo">
+        <div class="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
+          <div>
+            <h2 id="abierto-titulo" class="titular-seccion text-ink">
+              Para revisar o replicar el sistema
+            </h2>
+            <p class="mt-4 font-sans text-base leading-relaxed text-ink-muted">
+              El código, los datos y el método están publicados. Cualquier
+              persona puede revisarlos, levantar el sistema completo en su
+              propia computadora con un solo paso, o consultar la misma interfaz
+              de datos que alimenta este sitio.
+            </p>
+            <p class="mt-4 font-sans text-base leading-relaxed text-ink-muted">
+              Cada capa se contrastó con los años de brote documentados del país
+              antes de entrar al sistema. El método se explica en la Biblioteca
+              y las decisiones de diseño están registradas en el repositorio.
+            </p>
+            <div class="mt-7 flex flex-wrap gap-3">
+              <a
+                href="https://github.com/the-monolith-project/EPI-Aetheris"
+                class="boton-principal inline-flex min-h-[44px] items-center rounded-full bg-accent px-6 font-sans text-sm font-semibold text-accent-ink"
+              >
+                Ver el código
+              </a>
+              <a
+                href="/biblioteca"
+                class="boton-secundario inline-flex min-h-[44px] items-center rounded-full border border-accent/40 px-6 font-sans text-sm font-medium text-accent"
+              >
+                Leer la Biblioteca
+              </a>
+            </div>
+          </div>
+          <dl class="border-t border-border">
+            {
+              STACK.map((s) => (
+                <div class="grid grid-cols-1 gap-1 border-b border-border py-5 sm:grid-cols-[7rem_13rem_1fr] sm:items-baseline sm:gap-6">
+                  <dt class="font-sans text-sm font-semibold text-ink">
+                    {s.capa}
+                  </dt>
+                  <dd class="flex items-center gap-2.5 font-mono text-sm text-accent">
+                    <span class="flex items-center gap-1.5" aria-hidden="true">
+                      {s.logos.map((logo) => (
+                        <Icono
+                          nombre={logo}
+                          coleccion="simple-icons"
+                          class="h-4 w-4"
+                        />
+                      ))}
+                    </span>
+                    {s.tecnologia}
+                  </dd>
+                  <dd class="font-sans text-sm leading-relaxed text-ink-muted">
+                    {s.texto}
+                  </dd>
+                </div>
+              ))
+            }
+          </dl>
+        </div>
+      </section>
+
+      {/* Cierre: prensa e investigacion en una linea, y la vuelta al mapa. */}
+      <section
+        class="aparece mt-16 flex flex-col items-start gap-6 rounded-2xl bg-deep p-8 sm:mt-20 sm:flex-row sm:items-center sm:justify-between lg:p-12"
+        aria-labelledby="cierre-titulo"
+      >
+        <div class="max-w-2xl">
+          <h2 id="cierre-titulo" class="titular-seccion text-secondary">
+            Datos públicos y citables
+          </h2>
+          <p class="mt-3 font-sans text-sm leading-relaxed text-deep-ink-muted">
+            Para prensa, docencia e investigación: las series se pueden
+            descargar, la interfaz de datos es pública y el método está
+            documentado paso a paso en la <a
+              href="/biblioteca"
+              class="font-semibold text-deep-ink"
+              ><span class="enlace-filete">Biblioteca</span></a
+            >.
+          </p>
+        </div>
+        <a
+          href="/dengue"
+          class="boton-principal inline-flex min-h-[48px] shrink-0 items-center rounded-full bg-secondary px-7 font-sans text-sm font-semibold text-secondary-ink"
+        >
+          Ver el mapa
+        </a>
+      </section>
+    </div>
   </main>
 </Layout>
 
@@ -608,6 +624,30 @@ const STACK = [
     ETIQUETAS_TIPO,
     type PayloadAlertas,
   } from '../lib/vista-alertas';
+  import { alertaAplicaA, esAlertaNacional } from '../lib/alcance-alertas';
+  import { DEPARTAMENTOS_POR_CODIGO } from '../lib/departamentos';
+  import { leerDepartamentoRecordado } from '../lib/departamento-recordado';
+  import { iniciarMovimiento } from '../lib/movimiento';
+
+  iniciarMovimiento();
+
+  const tuDepartamento = document.querySelector<HTMLElement>(
+    '[data-tu-departamento]',
+  );
+  const departamentoRecordado = leerDepartamentoRecordado();
+  if (tuDepartamento && departamentoRecordado) {
+    const enlace = tuDepartamento.querySelector<HTMLAnchorElement>(
+      '[data-tu-departamento-enlace]',
+    );
+    const texto = tuDepartamento.querySelector<HTMLElement>(
+      '[data-tu-departamento-texto]',
+    );
+    if (enlace && texto) {
+      enlace.href = `/departamento/${departamentoRecordado}`;
+      texto.textContent = `Ver ${DEPARTAMENTOS_POR_CODIGO[departamentoRecordado].nombre}: alertas, dengue y respiratorio`;
+      tuDepartamento.hidden = false;
+    }
+  }
 
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const seccion = document.querySelector<HTMLElement>('[data-tira-alertas]');
@@ -622,54 +662,44 @@ const STACK = [
         const datos = (await respuesta.json()) as PayloadAlertas;
         if (!Array.isArray(datos.alertas) || datos.alertas.length === 0) return;
 
-        for (const alerta of datos.alertas.slice(0, 3)) {
+        // Con un departamento recordado se muestran las que le aplican, las
+        // propias primero; sin él, la lista completa (ADR 0022).
+        const recordado = leerDepartamentoRecordado();
+        const ordenadas = recordado
+          ? datos.alertas
+              .filter((a) => alertaAplicaA(a, recordado))
+              .sort(
+                (a, b) =>
+                  Number(esAlertaNacional(a)) - Number(esAlertaNacional(b)),
+              )
+          : datos.alertas;
+        if (ordenadas.length === 0) return;
+
+        for (const alerta of ordenadas.slice(0, 3)) {
           const item = document.createElement('li');
-          item.className = 'font-sans text-sm leading-relaxed';
-          const enlace = document.createElement('a');
-          enlace.href = `/alertas?tipo=${encodeURIComponent(alerta.tipo)}#alerta-${alerta.id}`;
-          enlace.className = 'text-ink underline underline-offset-2';
-          // textContent, no innerHTML: el título lo redacta una persona y
-          // llega como texto plano desde la API.
-          enlace.textContent = alerta.titulo;
+          item.className =
+            'flex flex-wrap items-baseline gap-x-2.5 font-sans text-sm leading-relaxed';
           const etiqueta = document.createElement('span');
           etiqueta.className =
-            'mr-2 font-semibold uppercase tracking-wide text-accent';
+            'font-mono text-xs font-semibold uppercase tracking-wide text-accent';
           const etiquetaNivel =
             alerta.nivel in ETIQUETAS_NIVEL
               ? ETIQUETAS_NIVEL[alerta.nivel as keyof typeof ETIQUETAS_NIVEL]
               : alerta.nivel;
           etiqueta.textContent = `${ETIQUETAS_TIPO[alerta.tipo] ?? alerta.tipo} · ${etiquetaNivel}`;
+          const enlace = document.createElement('a');
+          enlace.href = `/alertas?tipo=${encodeURIComponent(alerta.tipo)}#alerta-${alerta.id}`;
+          enlace.className = 'enlace-filete text-ink';
+          // textContent, no innerHTML: el titulo lo redacta una persona y
+          // llega como texto plano desde la API.
+          enlace.textContent = alerta.titulo;
           item.append(etiqueta, enlace);
           lista.appendChild(item);
         }
         seccion.hidden = false;
       })
       .catch(() => {
-        // Backend caído o dormido: la landing se queda sin la tira y ya.
+        // Backend caido o dormido: la portada se queda sin la tira y ya.
       });
   }
 </script>
-
-<style>
-  /* Entrada escalonada de los 14 departamentos — una sola vez al cargar,
-     nunca en loop. prefers-reduced-motion la desactiva por completo (los
-     departamentos aparecen ya visibles, sin animación). */
-  @keyframes hero-depto-entra {
-    from {
-      opacity: 0;
-      transform: scale(0.94);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-  .hero-depto {
-    animation: hero-depto-entra 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .hero-depto {
-      animation: none;
-    }
-  }
-</style>

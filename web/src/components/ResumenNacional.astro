@@ -2,16 +2,16 @@
 // Fila de cifras reales -- mismos datos que ya carga CurvaEpidemicaNacional.astro
 // (GET /api/casos-nacional), agregados del lado del cliente. No inventa ninguna
 // métrica nueva ni implica lectura de riesgo: es un resumen histórico ("lo que
-// ya pasó"), no una alerta. Diseño horizontal inspirado en la fila de tarjetas
-// de resumen de referencias_no_trakear/boceto_dashboard_pre-pivote_DESACTUALIZADO.png
-// (layout reciclado, contenido de riesgo de ese boceto NO -- ver LEEME.md ahí).
+// ya pasó"), no una alerta. La disposición en fila horizontal viene del boceto
+// antiguo del panel (referencias_no_trakear/); de ese boceto no se reutiliza
+// el contenido de riesgo.
 ---
 
 <section
   aria-label="Resumen histórico nacional"
   class="grid grid-cols-2 gap-4 lg:grid-cols-4"
 >
-  <div id="resumen-nacional" class="contents" role="status">
+  <div id="resumen-nacional" class="contents" role="status" aria-busy="true">
     <div data-estado aria-hidden="true" class="contents">
       <div class="skeleton h-24 border border-border"></div>
       <div class="skeleton h-24 border border-border"></div>
@@ -47,6 +47,7 @@
 
     let datos: CasoNacionalSemanal[];
     try {
+      contenedor.setAttribute('aria-busy', 'true');
       datos = await obtenerCasosNacionales();
     } catch {
       renderErrorFuente(contenedor, () => void iniciar());
@@ -86,6 +87,7 @@
           </p>
         </div>
       `;
+    contenedor.removeAttribute('aria-busy');
   }
 
   iniciar();

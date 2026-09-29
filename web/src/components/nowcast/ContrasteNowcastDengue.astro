@@ -1,0 +1,801 @@
+---
+// Contraste de la predicción de dengue con lo observado (ADR 0020).
+//
+// Permite mover el punto de partida de la predicción a cualquier semana de la
+// serie nacional (OpenDengue hasta 2024, tablero de MINSAL desde 2025) y ver,
+// junto al abanico de 1 a 8 semanas, lo que se observó después. Cada abanico se
+// calculó solo con los datos anteriores a su semana de partida
+// (GET /api/nowcast-dengue/retrospectivo); la última semana usa la estimación
+// publicada (GET /api/nowcast-dengue). Desde `retro.tablero.inicio` el método
+// es la mezcla con la tendencia amortiguada y la referencia es la persistencia
+// con márgenes aprendidos de la historia promediada.
+//
+// La semana se elige con el año, el deslizador, los botones de semana anterior
+// y siguiente o arrastrando sobre la gráfica. La tabla es la alternativa textual
+// de la gráfica.
+---
+
+<section
+  aria-labelledby="contraste-nowcast-titulo"
+  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+  data-contraste-nowcast
+>
+  <div class="flex items-start gap-3">
+    <span
+      class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
+      aria-hidden="true"></span>
+    <div>
+      <h2
+        id="contraste-nowcast-titulo"
+        class="font-sans text-base font-semibold text-ink sm:text-lg"
+      >
+        Contrastar la predicción con lo observado
+      </h2>
+      <p class="mt-1 font-sans text-sm leading-relaxed text-ink-muted">
+        Elige una semana de partida. La gráfica muestra lo que el modelo habría
+        predicho con los datos disponibles hasta esa semana y lo que se observó
+        después.
+      </p>
+    </div>
+  </div>
+
+  <div
+    class="mt-4 grid gap-3 sm:grid-cols-[auto_1fr] sm:items-end"
+    data-controles
+  >
+    <label
+      class="flex flex-col gap-1 font-sans text-xs font-medium text-ink-muted"
+    >
+      Año
+      <select
+        data-anio
+        disabled
+        class="rounded-lg border border-border bg-surface px-3 py-2 font-sans text-sm text-ink"
+      ></select>
+    </label>
+    <div class="flex items-end gap-2">
+      <button
+        type="button"
+        data-anterior
+        disabled
+        aria-label="Semana anterior"
+        class="rounded-lg border border-border bg-surface px-3 py-2 font-sans text-sm text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-40"
+      >
+        ‹
+      </button>
+      <label
+        class="flex grow flex-col gap-1 font-sans text-xs font-medium text-ink-muted"
+      >
+        <span
+          >Semana de partida: <span
+            data-semana-valor
+            class="font-sans tabular-nums text-ink">—</span
+          ></span
+        >
+        <input
+          data-semana
+          type="range"
+          min="1"
+          max="52"
+          value="1"
+          disabled
+          class="w-full accent-accent"
+        />
+      </label>
+      <button
+        type="button"
+        data-siguiente
+        disabled
+        aria-label="Semana siguiente"
+        class="rounded-lg border border-border bg-surface px-3 py-2 font-sans text-sm text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-40"
+      >
+        ›
+      </button>
+    </div>
+  </div>
+
+  <div data-contraste-cuerpo class="mt-4" aria-busy="true">
+    <div data-estado aria-hidden="true">
+      <div class="skeleton h-56 w-full sm:h-64"></div>
+      <div class="skeleton mt-3 h-3 w-2/5"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import {
+    obtenerNowcastDengue,
+    obtenerNowcastRetrospectivo,
+  } from '../../lib/analisis-api';
+  import type {
+    NowcastDengue,
+    NowcastDengueRetrospectivo,
+    OrigenRetro,
+    ValoresHorizonteRetro,
+  } from '../../lib/tipos-analisis';
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderErrorFuente,
+    renderSinDato,
+  } from '../estado-async';
+  import {
+    bandaPath,
+    crearSvg,
+    ejeY,
+    el,
+    fecha,
+    fmtFecha,
+    fmtNum,
+    linea,
+    type Escalas,
+  } from './svg-nowcast';
+
+  const SEMANA_MS = 7 * 86_400_000;
+  const MARGEN_SEMANAS = 8; // contexto antes y después del año elegido
+
+  const NOMBRE_REFERENCIA: Record<string, string> = {
+    persistencia_rw: 'repetir el último valor',
+    persistencia_suavizada: 'repetir el último valor',
+    persistencia_estacional:
+      'repetir el último valor ajustado a la época del año',
+    climatologia_estacional: 'la misma semana de años anteriores',
+  };
+
+  interface Horizonte {
+    h: number;
+    fecha: string;
+    mediana: number;
+    b50: [number, number];
+    b95: [number, number];
+    observado: number | null;
+    /** la semana está en la serie pero la fuente no la publicó */
+    sinPublicar: boolean;
+    wisModelo: number | null;
+    wisReferencia: number | null;
+  }
+
+  interface Origen {
+    idx: number;
+    fecha: string;
+    anio: number;
+    semana: number;
+    casos: number | null;
+    /** null: sin predicción desde esta semana. */
+    horizontes: (Horizonte | null)[] | null;
+    motivo?: OrigenRetro['motivo'];
+    esAncla: boolean;
+  }
+
+  interface Modelo {
+    origenes: Origen[];
+    porAnio: Map<number, Origen[]>;
+    observado: { fecha: string; casos: number | null }[];
+    retro: NowcastDengueRetrospectivo;
+  }
+
+  function sumarSemanas(iso: string, n: number): string {
+    const d = new Date(fecha(iso).getTime() + n * SEMANA_MS);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  }
+
+  function construirModelo(
+    retro: NowcastDengueRetrospectivo,
+    principal: NowcastDengue,
+  ): Modelo | null {
+    if (!retro.observado?.length || !retro.origenes || !retro.horizontes) {
+      return null;
+    }
+    const observado = retro.observado.map(([f, c]) => ({ fecha: f, casos: c }));
+    const origenes: Origen[] = retro.origenes.map((o, idx) => ({
+      idx,
+      fecha: o.fecha,
+      anio: o.anio,
+      semana: o.semana,
+      casos: observado[idx].casos,
+      motivo: o.motivo,
+      esAncla: false,
+      horizontes: o.h
+        ? o.h.map((v: ValoresHorizonteRetro | null, k) => {
+            if (!v) return null;
+            const obs = observado[idx + k + 1];
+            return {
+              h: k + 1,
+              fecha: obs?.fecha ?? sumarSemanas(o.fecha, k + 1),
+              mediana: v[0],
+              b50: [v[1], v[2]],
+              b95: [v[3], v[4]],
+              observado: obs ? obs.casos : null,
+              sinPublicar: obs !== undefined && obs.casos === null,
+              wisModelo: v[5],
+              wisReferencia: v[6],
+            };
+          })
+        : null,
+    }));
+
+    // la última semana observada usa la estimación publicada
+    const ancla = principal.ancla;
+    if (ancla && principal.estimacion?.length) {
+      origenes.push({
+        idx: origenes.length,
+        fecha: ancla.fecha,
+        anio: ancla.anio,
+        semana: ancla.semana,
+        casos: ancla.casos,
+        esAncla: true,
+        horizontes: principal.estimacion.map((e) => ({
+          h: e.h,
+          fecha: e.fecha,
+          mediana: e.mediana,
+          b50: e.banda_50,
+          b95: e.banda_95,
+          observado: null,
+          sinPublicar: false,
+          wisModelo: null,
+          wisReferencia: null,
+        })),
+      });
+    }
+
+    const porAnio = new Map<number, Origen[]>();
+    for (const o of origenes) {
+      const arr = porAnio.get(o.anio) ?? [];
+      arr.push(o);
+      porAnio.set(o.anio, arr);
+    }
+    return { origenes, porAnio, observado, retro };
+  }
+
+  // --- gráfica ---------------------------------------------------------------
+
+  interface Grafica {
+    svg: SVGSVGElement;
+    /** índice del origen más cercano a una coordenada x del cliente */
+    origenEnX: (clientX: number) => number | null;
+  }
+
+  function dibujar(modelo: Modelo, origen: Origen): Grafica {
+    const ancho = 720;
+    const alto = 280;
+    const margen = { arriba: 22, abajo: 30, izq: 42, der: 12 };
+
+    const delAnio = modelo.porAnio.get(origen.anio) ?? [origen];
+    const iIni = Math.max(0, delAnio[0].idx - MARGEN_SEMANAS);
+    const iFin = Math.min(
+      modelo.observado.length - 1,
+      delAnio[delAnio.length - 1].idx + MARGEN_SEMANAS,
+    );
+    const obs = modelo.observado.slice(iIni, iFin + 1);
+    const t0 = fecha(obs[0].fecha).getTime();
+    const tEje = (iso: string) => (fecha(iso).getTime() - t0) / SEMANA_MS;
+
+    // escala fija para todo el año elegido: no salta al arrastrar
+    let maxV = Math.max(...obs.map((p) => p.casos ?? 0));
+    let tMax = tEje(obs[obs.length - 1].fecha);
+    for (const o of delAnio) {
+      for (const hz of o.horizontes ?? []) {
+        if (!hz) continue;
+        maxV = Math.max(maxV, hz.b95[1]);
+        tMax = Math.max(tMax, tEje(hz.fecha));
+      }
+    }
+    maxV *= 1.08;
+
+    const areaX = ancho - margen.izq - margen.der;
+    const areaY = alto - margen.arriba - margen.abajo;
+    const e: Escalas = {
+      ancho,
+      alto,
+      margen,
+      x: (t) => margen.izq + (t / (tMax || 1)) * areaX,
+      y: (v) => alto - margen.abajo - (v / (maxV || 1)) * areaY,
+    };
+
+    const svg = crearSvg(
+      ancho,
+      alto,
+      `Casos de dengue observados en ${origen.anio} y predicción de 1 a 8 semanas desde el ${fmtFecha.format(fecha(origen.fecha))}. Los valores están en la tabla siguiente.`,
+    );
+    svg.style.touchAction = 'pan-y';
+    svg.style.cursor = 'ew-resize';
+    ejeY(svg, e, maxV);
+
+    // etiquetas del eje X: inicio de cada año y semanas 13, 26 y 39
+    // origenes[i] y observado[i] son la misma semana
+    for (const [k, p] of obs.entries()) {
+      const d = fecha(p.fecha);
+      const semana = modelo.origenes[iIni + k]?.semana;
+      let texto: string | null = null;
+      if (semana === 1) texto = String(d.getFullYear());
+      else if (semana && [13, 26, 39].includes(semana)) texto = `S${semana}`;
+      if (!texto) continue;
+      const txt = el('text', {
+        x: e.x(tEje(p.fecha)),
+        y: alto - 8,
+        'text-anchor': 'middle',
+        'font-family': 'var(--font-sans)',
+        'font-size': 10,
+        fill: 'var(--color-ink-muted)',
+      });
+      txt.style.fontVariantNumeric = 'tabular-nums';
+      txt.textContent = texto;
+      svg.appendChild(txt);
+    }
+
+    // abanico desde la semana de partida (con predicción, la semana tiene dato)
+    const fan = (origen.horizontes ?? []).filter(
+      (h): h is Horizonte => h !== null,
+    );
+    const casosOrigen = origen.casos ?? 0;
+    if (fan.length) {
+      const desdeAncla = [
+        {
+          t: tEje(origen.fecha),
+          med: casosOrigen,
+          b50: [casosOrigen, casosOrigen],
+          b95: [casosOrigen, casosOrigen],
+        },
+        ...fan.map((h) => ({
+          t: tEje(h.fecha),
+          med: h.mediana,
+          b50: h.b50,
+          b95: h.b95,
+        })),
+      ];
+      svg.appendChild(
+        el('path', {
+          d: bandaPath(
+            e,
+            desdeAncla.map((p) => ({ t: p.t, lo: p.b95[0], hi: p.b95[1] })),
+          ),
+          fill: 'var(--color-accent)',
+          'fill-opacity': 0.12,
+          stroke: 'none',
+        }),
+      );
+      svg.appendChild(
+        el('path', {
+          d: bandaPath(
+            e,
+            desdeAncla.map((p) => ({ t: p.t, lo: p.b50[0], hi: p.b50[1] })),
+          ),
+          fill: 'var(--color-accent)',
+          'fill-opacity': 0.26,
+          stroke: 'none',
+        }),
+      );
+      svg.appendChild(
+        linea(
+          e,
+          desdeAncla.map((p) => ({ t: p.t, v: p.med })),
+          'var(--color-accent)',
+          1.8,
+          '3 3',
+        ),
+      );
+    }
+
+    // observado de todo el tramo
+    svg.appendChild(
+      linea(
+        e,
+        obs.map((p) => ({ t: tEje(p.fecha), v: p.casos })),
+        'var(--color-ink)',
+        1.6,
+      ),
+    );
+    // puntos observados en las semanas predichas
+    for (const h of fan) {
+      if (h.observado === null) continue;
+      svg.appendChild(
+        el('circle', {
+          cx: e.x(tEje(h.fecha)),
+          cy: e.y(h.observado),
+          r: 2.6,
+          fill: 'var(--color-ink)',
+          stroke: 'var(--color-bg)',
+          'stroke-width': 1,
+        }),
+      );
+    }
+
+    // semana de partida
+    const xO = e.x(tEje(origen.fecha));
+    svg.appendChild(
+      el('line', {
+        x1: xO,
+        x2: xO,
+        y1: margen.arriba,
+        y2: alto - margen.abajo,
+        stroke: 'var(--color-ink-muted)',
+        'stroke-width': 1,
+        'stroke-dasharray': '2 2',
+      }),
+    );
+    if (origen.casos !== null) {
+      svg.appendChild(
+        el('circle', {
+          cx: xO,
+          cy: e.y(origen.casos),
+          r: 3.2,
+          fill: 'var(--color-accent)',
+          stroke: 'var(--color-surface)',
+          'stroke-width': 1.5,
+        }),
+      );
+    }
+    // asa: indica que la línea se puede arrastrar
+    svg.appendChild(
+      el('rect', {
+        x: xO - 5,
+        y: margen.arriba - 14,
+        width: 10,
+        height: 12,
+        rx: 3,
+        fill: 'var(--color-accent)',
+      }),
+    );
+    const lbl = el('text', {
+      x: xO + (xO > ancho * 0.7 ? -9 : 9),
+      y: margen.arriba - 4,
+      'text-anchor': xO > ancho * 0.7 ? 'end' : 'start',
+      'font-family': 'var(--font-sans)',
+      'font-size': 10,
+      fill: 'var(--color-ink-muted)',
+    });
+    lbl.textContent = `S${origen.semana} · ${fmtFecha.format(fecha(origen.fecha))}`;
+    svg.appendChild(lbl);
+
+    // origenes seleccionables dentro del tramo, para arrastrar
+    const candidatos = modelo.origenes.slice(iIni, iFin + 1);
+    const origenEnX = (clientX: number) => {
+      const caja = svg.getBoundingClientRect();
+      if (!caja.width) return null;
+      const xSvg = ((clientX - caja.left) / caja.width) * ancho;
+      let mejor: number | null = null;
+      let dist = Infinity;
+      for (const o of candidatos) {
+        const d = Math.abs(e.x(tEje(o.fecha)) - xSvg);
+        if (d < dist) {
+          dist = d;
+          mejor = o.idx;
+        }
+      }
+      return mejor;
+    };
+
+    return { svg, origenEnX };
+  }
+
+  // --- texto y tabla -----------------------------------------------------------
+
+  function dentro(h: Horizonte): string {
+    if (h.observado === null)
+      return h.sinPublicar ? 'semana sin publicar' : 'sin dato todavía';
+    if (h.observado >= h.b50[0] && h.observado <= h.b50[1]) return 'rango 50 %';
+    if (h.observado >= h.b95[0] && h.observado <= h.b95[1]) return 'rango 95 %';
+    return 'fuera';
+  }
+
+  function enTablero(retro: NowcastDengueRetrospectivo, iso: string): boolean {
+    return Boolean(retro.tablero && iso >= retro.tablero.inicio.fecha);
+  }
+
+  function nombreReferencia(
+    retro: NowcastDengueRetrospectivo,
+    origen: Origen,
+  ): string {
+    if (retro.tablero && enTablero(retro, origen.fecha)) {
+      return (
+        NOMBRE_REFERENCIA[retro.tablero.referencia] ?? retro.tablero.referencia
+      );
+    }
+    const nombres = new Set(
+      Object.values(retro.referencia_por_horizonte ?? {}),
+    );
+    if (nombres.size === 1) {
+      const [n] = nombres;
+      return NOMBRE_REFERENCIA[n] ?? n;
+    }
+    return 'la referencia más fuerte en cada horizonte';
+  }
+
+  function resumenOrigen(modelo: Modelo, origen: Origen): HTMLElement {
+    const p = document.createElement('p');
+    p.className = 'font-sans text-sm leading-relaxed text-ink';
+    p.setAttribute('aria-live', 'polite');
+    const casos =
+      origen.casos === null
+        ? 'sin dato publicado'
+        : `${fmtNum.format(origen.casos)} casos`;
+    const cabeza = `Semana ${origen.semana} de ${origen.anio} (${fmtFecha.format(fecha(origen.fecha))}, ${casos}).`;
+
+    if (!origen.horizontes && origen.motivo === 'hueco_en_serie') {
+      p.textContent = `${cabeza} Sin predicción desde esta semana: el modelo usa las ocho semanas anteriores y a esa ventana le falta una semana que la fuente no publicó.`;
+      return p;
+    }
+    if (!origen.horizontes) {
+      const primera = modelo.retro.primera_semana_con_prediccion;
+      p.textContent =
+        `${cabeza} Sin predicción desde esta semana: el modelo necesita unos tres años de datos para entrenarse.` +
+        (primera
+          ? ` La primera semana con predicción es la ${primera.semana} de ${primera.anio}.`
+          : '');
+      return p;
+    }
+    if (origen.esAncla) {
+      p.textContent = `${cabeza} Es la última semana publicada de la serie: todavía no hay valores observados para contrastar.`;
+      return p;
+    }
+
+    const conDato = origen.horizontes.filter(
+      (h): h is Horizonte => h !== null && h.observado !== null,
+    );
+    const en50 = conDato.filter((h) => dentro(h) === 'rango 50 %').length;
+    const en95 = conDato.filter((h) => dentro(h) !== 'fuera').length;
+    const pares = conDato.filter(
+      (h) => h.wisModelo !== null && h.wisReferencia !== null,
+    );
+    let error = '';
+    if (pares.length) {
+      const wm =
+        pares.reduce((s, h) => s + (h.wisModelo ?? 0), 0) / pares.length;
+      const wr =
+        pares.reduce((s, h) => s + (h.wisReferencia ?? 0), 0) / pares.length;
+      error = ` Error medio del modelo: ${fmtNum.format(wm)}, frente a ${fmtNum.format(wr)} de ${nombreReferencia(modelo.retro, origen)}.`;
+    }
+    p.textContent =
+      `${cabeza} De ${conDato.length} semanas observadas después, ` +
+      `${en50} quedaron dentro del rango del 50 % y ${en95} dentro del 95 %.${error}`;
+    return p;
+  }
+
+  function tabla(origen: Origen): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'mt-3 overflow-x-auto scroll-shadow-x';
+    const t = document.createElement('table');
+    t.className =
+      'w-full min-w-[34rem] font-sans text-xs tabular-nums text-ink';
+    const cap = document.createElement('caption');
+    cap.className = 'sr-only';
+    cap.textContent = `Predicción desde la semana ${origen.semana} de ${origen.anio} y casos observados`;
+    t.appendChild(cap);
+    const thead = document.createElement('thead');
+    thead.innerHTML =
+      '<tr class="border-b border-border text-left text-ink-muted">' +
+      '<th scope="col" class="py-1.5 pr-3 font-medium">Semana</th>' +
+      '<th scope="col" class="py-1.5 pr-3 text-right font-medium">Predicción</th>' +
+      '<th scope="col" class="py-1.5 pr-3 text-right font-medium">Rango 50 %</th>' +
+      '<th scope="col" class="py-1.5 pr-3 text-right font-medium">Rango 95 %</th>' +
+      '<th scope="col" class="py-1.5 pr-3 text-right font-medium">Observado</th>' +
+      '<th scope="col" class="py-1.5 font-medium">Dentro de</th>' +
+      '</tr>';
+    t.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    for (const h of origen.horizontes ?? []) {
+      if (!h) continue;
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-border/60';
+      const celdas: [string, string][] = [
+        [`+${h.h} · ${fmtFecha.format(fecha(h.fecha))}`, 'text-left'],
+        [fmtNum.format(h.mediana), 'text-right'],
+        [`${fmtNum.format(h.b50[0])}–${fmtNum.format(h.b50[1])}`, 'text-right'],
+        [`${fmtNum.format(h.b95[0])}–${fmtNum.format(h.b95[1])}`, 'text-right'],
+        [h.observado === null ? '—' : fmtNum.format(h.observado), 'text-right'],
+        [dentro(h), 'text-left'],
+      ];
+      celdas.forEach(([texto, alinear], i) => {
+        const td = document.createElement(i === 0 ? 'th' : 'td');
+        if (i === 0) td.setAttribute('scope', 'row');
+        td.className = `py-1.5 pr-3 font-normal ${alinear}`;
+        td.textContent = texto;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+    t.appendChild(tbody);
+    wrap.appendChild(t);
+    return wrap;
+  }
+
+  function notaAnio(modelo: Modelo, anio: number): HTMLElement {
+    const retro = modelo.retro;
+    const p = document.createElement('p');
+    p.className = 'mt-3 font-sans text-xs leading-relaxed text-ink-muted';
+    const partes: string[] = [];
+
+    const tablero = retro.tablero?.anios.includes(anio)
+      ? retro.tablero
+      : undefined;
+    if (anio === retro.anio_excluido && retro.aviso_anio_excluido) {
+      partes.push(retro.aviso_anio_excluido);
+    } else if (tablero) {
+      const { inicio } = tablero.prueba;
+      partes.push(
+        `Desde ${tablero.inicio.anio} la serie es la del tablero de MINSAL y la predicción combina el modelo con una tendencia amortiguada. ` +
+          `${tablero.anios.join(' y ')} sirvieron para elegir ese método; la prueba con semanas nuevas empieza en la semana ${inicio.semana} de ${inicio.anio}.`,
+      );
+    } else if (retro.anios_prueba?.includes(anio)) {
+      partes.push(
+        `${anio} es una de las temporadas de la validación publicada.`,
+      );
+    }
+
+    const r4 = retro.resumen_por_anio?.[String(anio)]?.['4'];
+    const referencia = tablero
+      ? tablero.referencia
+      : (retro.referencia_por_horizonte?.['4'] ?? '');
+    if (r4 && r4.skill !== null) {
+      const pct = Math.round(Math.abs(r4.skill) * 100);
+      const comparacion = r4.skill >= 0 ? `${pct} % menos` : `${pct} % más`;
+      partes.push(
+        `A 4 semanas, en ${anio} el modelo tuvo ${comparacion} error que ${NOMBRE_REFERENCIA[referencia] ?? 'la referencia'}; ` +
+          `lo observado quedó dentro del rango del 50 % en el ${Math.round(r4.cobertura_50 * 100)} % de las semanas y dentro del 95 % en el ${Math.round(r4.cobertura_95 * 100)} %.`,
+      );
+    }
+    p.textContent = partes.join(' ');
+    return p;
+  }
+
+  // --- montaje -----------------------------------------------------------------
+
+  function montar(sec: HTMLElement, cont: HTMLElement, modelo: Modelo) {
+    const selAnio = sec.querySelector<HTMLSelectElement>('[data-anio]')!;
+    const rango = sec.querySelector<HTMLInputElement>('[data-semana]')!;
+    const salida = sec.querySelector<HTMLElement>('[data-semana-valor]')!;
+    const btnAnt = sec.querySelector<HTMLButtonElement>('[data-anterior]')!;
+    const btnSig = sec.querySelector<HTMLButtonElement>('[data-siguiente]')!;
+
+    const anios = [...modelo.porAnio.keys()].sort((a, b) => a - b);
+    selAnio.replaceChildren(
+      ...anios.map((a) => {
+        const op = document.createElement('option');
+        op.value = String(a);
+        op.textContent = String(a);
+        return op;
+      }),
+    );
+
+    const contGrafica = document.createElement('div');
+    contGrafica.className =
+      'overflow-hidden rounded-xl border border-border bg-bg p-3 sm:p-4';
+    const contResumen = document.createElement('div');
+    contResumen.className = 'mt-3';
+    const leyenda = document.createElement('p');
+    leyenda.className =
+      'mt-2 font-sans text-[11px] leading-relaxed text-ink-muted';
+    leyenda.textContent =
+      'Línea oscura: casos observados. Línea punteada y bandas: predicción (mediana, rangos del 50 % y del 95 %). Arrastra sobre la gráfica para mover la semana de partida.';
+    const contTabla = document.createElement('div');
+    const contNota = document.createElement('div');
+    cont.replaceChildren(
+      contGrafica,
+      leyenda,
+      contResumen,
+      contTabla,
+      contNota,
+    );
+    cont.removeAttribute('aria-busy');
+
+    let actual = modelo.origenes[modelo.origenes.length - 1];
+    let grafica: Grafica | null = null;
+    let anioDibujado: number | null = null;
+
+    const pintar = (idx: number) => {
+      const o =
+        modelo.origenes[Math.max(0, Math.min(idx, modelo.origenes.length - 1))];
+      actual = o;
+      const delAnio = modelo.porAnio.get(o.anio) ?? [o];
+      selAnio.value = String(o.anio);
+      rango.min = String(delAnio[0].semana);
+      rango.max = String(delAnio[delAnio.length - 1].semana);
+      rango.value = String(o.semana);
+      const texto = `Semana ${o.semana} de ${o.anio}, ${fmtFecha.format(fecha(o.fecha))}`;
+      rango.setAttribute('aria-valuetext', texto);
+      salida.textContent = `S${o.semana} · ${fmtFecha.format(fecha(o.fecha))}`;
+      btnAnt.disabled = o.idx === 0;
+      btnSig.disabled = o.idx === modelo.origenes.length - 1;
+
+      grafica = dibujar(modelo, o);
+      contGrafica.replaceChildren(grafica.svg);
+      contResumen.replaceChildren(resumenOrigen(modelo, o));
+      contTabla.replaceChildren(
+        o.horizontes ? tabla(o) : document.createElement('div'),
+      );
+      if (anioDibujado !== o.anio) {
+        contNota.replaceChildren(notaAnio(modelo, o.anio));
+        anioDibujado = o.anio;
+      }
+    };
+
+    selAnio.addEventListener('change', () => {
+      const delAnio = modelo.porAnio.get(Number(selAnio.value));
+      if (!delAnio?.length) return;
+      // conserva la semana si existe en el año nuevo
+      const misma = delAnio.find((o) => o.semana === actual.semana);
+      pintar((misma ?? delAnio[delAnio.length - 1]).idx);
+    });
+    rango.addEventListener('input', () => {
+      const delAnio = modelo.porAnio.get(actual.anio) ?? [];
+      const o = delAnio.find((x) => x.semana === Number(rango.value));
+      if (o) pintar(o.idx);
+    });
+    btnAnt.addEventListener('click', () => pintar(actual.idx - 1));
+    btnSig.addEventListener('click', () => pintar(actual.idx + 1));
+
+    // arrastrar sobre la gráfica
+    let arrastrando = false;
+    const mover = (ev: PointerEvent) => {
+      const idx = grafica?.origenEnX(ev.clientX);
+      if (idx !== null && idx !== undefined && idx !== actual.idx) pintar(idx);
+    };
+    contGrafica.addEventListener('pointerdown', (ev) => {
+      arrastrando = true;
+      contGrafica.setPointerCapture(ev.pointerId);
+      mover(ev);
+    });
+    contGrafica.addEventListener('pointermove', (ev) => {
+      if (arrastrando) mover(ev);
+    });
+    const soltar = () => {
+      arrastrando = false;
+    };
+    contGrafica.addEventListener('pointerup', soltar);
+    contGrafica.addEventListener('pointercancel', soltar);
+
+    for (const control of [selAnio, rango, btnAnt, btnSig])
+      control.disabled = false;
+    pintar(actual.idx);
+  }
+
+  async function iniciar(sec: HTMLElement) {
+    const cont = sec.querySelector<HTMLElement>('[data-contraste-cuerpo]');
+    if (!cont) return;
+    try {
+      cont.setAttribute('aria-busy', 'true');
+      const [retro, principal] = await Promise.all([
+        obtenerNowcastRetrospectivo(),
+        obtenerNowcastDengue(),
+      ]);
+      if (esNoDisponible(retro)) {
+        renderSinDato(cont, motivoNoDisponible(retro));
+        return;
+      }
+      const modelo = construirModelo(
+        retro,
+        esNoDisponible(principal) ? ({} as NowcastDengue) : principal,
+      );
+      if (!modelo) {
+        renderSinDato(
+          cont,
+          'La predicción retrospectiva no está disponible todavía.',
+        );
+        return;
+      }
+      montar(sec, cont, modelo);
+    } catch {
+      renderErrorFuente(cont, () => void iniciar(sec));
+    }
+  }
+
+  // Carga diferida: el componente vive en una pestaña oculta de /dengue y el
+  // artefacto pesa unos cientos de KB; se pide al hacerse visible.
+  for (const sec of document.querySelectorAll<HTMLElement>(
+    '[data-contraste-nowcast]',
+  )) {
+    if (!('IntersectionObserver' in window)) {
+      void iniciar(sec);
+      continue;
+    }
+    const obs = new IntersectionObserver((entradas) => {
+      if (entradas.some((e) => e.isIntersecting)) {
+        obs.disconnect();
+        void iniciar(sec);
+      }
+    });
+    obs.observe(sec);
+  }
+</script>

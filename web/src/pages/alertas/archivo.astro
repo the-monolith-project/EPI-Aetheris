@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import Icono from '../../components/Icono.astro';
 
 const tipoPedido = Astro.url.searchParams.get('tipo');
 const desdePedido = Astro.url.searchParams.get('desde') ?? '';
@@ -9,7 +10,10 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
 ---
 
 <Layout title="EPI-Aetheris — Archivo de alertas">
-  <main id="contenido-principal" class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
+  >
     <header class="mb-8 max-w-3xl">
       <p
         class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
@@ -24,8 +28,8 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
       <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
         Consulta qué se emitió y cuándo. Una alerta vencida o apagada no se ve
         igual que una vigente: lleva el texto
-        <strong>NO VIGENTE</strong>. Esta página no se usa como material de
-        decisión offline.
+        <strong>NO VIGENTE</strong>. Esta página no se usa como material para
+        decisiones tomadas sin conexión.
       </p>
       <p class="mt-2 font-sans text-sm">
         <a
@@ -78,8 +82,9 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
       </label>
       <button
         type="submit"
-        class="rounded-full border border-accent bg-accent px-4 py-1.5 font-medium text-accent-ink"
+        class="inline-flex items-center gap-2 rounded-full border border-accent bg-accent px-4 py-1.5 font-medium text-accent-ink"
       >
+        <Icono nombre="filter" class="h-4 w-4" />
         Filtrar
       </button>
       <p
@@ -106,7 +111,8 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
         class="rounded-lg border border-secondary bg-secondary/25 p-3 font-sans text-sm text-ink"
         role="status"
       >
-        No se pudo cargar el archivo de alertas.
+        No se pudo cargar el archivo de alertas. Recarga la página para
+        reintentarlo.
       </p>
       <p
         data-alertas-vacio

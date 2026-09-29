@@ -1,0 +1,344 @@
+---
+import AyudaTermino from '../AyudaTermino.astro';
+import BotonExportarGrafico from '../BotonExportarGrafico.astro';
+import PanelWorkspace from './PanelWorkspace.astro';
+
+interface Props {
+  /** Departamento fijo (código SV-XX). Si viene, ignora el store de filtros. */
+  departamento?: string;
+  /** Año fijo; solo se usa junto con `departamento`. */
+  anio?: number;
+}
+
+const { departamento, anio } = Astro.props;
+---
+
+<PanelWorkspace
+  tipo="traza"
+  titulo="Canal endémico"
+  descripcion="Los cortes de M3 dibujados como bandas: casos por semana frente al P50 y el P75 de la propia historia del departamento. La banda cambia con el año porque la línea base deja fuera el año que se describe."
+  data-canal-endemico
+  data-departamento-fijo={departamento}
+  data-anio-fijo={anio}
+>
+  <div
+    data-canal-vacio
+    class="mt-4 flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg/50 p-8 text-center"
+  >
+    <p class="font-sans text-sm text-ink-muted">
+      Elige un departamento en el mapa o en Filtros para ver su canal endémico.
+    </p>
+  </div>
+
+  <div
+    data-canal-grafica
+    class="mt-4 min-h-[240px]"
+    role="region"
+    aria-label="Canal endémico semanal: casos observados frente a los cortes P50 y P75 del departamento"
+    aria-busy="true"
+    hidden
+  >
+  </div>
+
+  <BotonExportarGrafico
+    class="mt-3"
+    titulo="Canal endémico"
+    fuente="Boletines epidemiológicos de MINSAL"
+    filtros={departamento ? `${departamento} · ${anio}` : 'analisis'}
+  />
+
+  <details
+    class="mt-3 rounded-xl border border-border bg-bg p-3"
+    data-canal-detalles
+  >
+    <summary
+      class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+    >
+      Ver los datos en tabla
+    </summary>
+    <div data-canal-tabla></div>
+  </details>
+
+  <p
+    data-canal-resumen
+    class="mt-3 font-sans text-xs text-ink-muted"
+    role="status"
+    slot="pie"
+  >
+  </p>
+  <p class="mt-2 font-sans text-xs text-ink-muted" slot="pie">
+    ¿Qué es el canal endémico? <AyudaTermino clave="canal-endemico" />
+  </p>
+  <p
+    data-canal-aviso
+    class="mt-2 font-sans text-xs leading-relaxed text-ink-muted"
+    slot="pie"
+  >
+  </p>
+</PanelWorkspace>
+
+<script>
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderErrorFuente,
+    renderEsqueletoTraza,
+    renderSinDato,
+  } from '../estado-async';
+  import { obtenerSeriePresion } from '../../lib/analisis-api';
+  import {
+    obtenerFiltrosAnalisis,
+    suscribirFiltrosAnalisis,
+  } from '../../lib/analisis-state';
+  import { categoriaCanal, construirCanal } from '../../lib/canal-endemico';
+  import type { PuntoCanal } from '../../lib/canal-endemico';
+  import { ESTILO_PLOT, ejeSemana, marcoPlot } from '../../lib/plot-tema';
+  import { TablaAlternativa } from '../../lib/tabla-alternativa';
+  import {
+    esAnioAnalisisDengue,
+    notaAnioSoloClima,
+  } from '../../lib/tipos-analisis';
+  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+
+  type PlotNs = typeof import('@observablehq/plot');
+  let Plot: PlotNs | null = null;
+
+  // Tres tonos de una misma rampa secuencial: ordenan magnitudes respecto de
+  // la historia propia y no representan niveles de alarma.
+  const COLOR_BAJA = '#c6dbef';
+  const COLOR_MEDIA = '#6baed6';
+  const COLOR_ALTA = '#2171b5';
+  const COLOR_OBSERVADO = 'var(--color-accent)';
+
+  function montar(raiz: HTMLElement): void {
+    const fijo = raiz.dataset.departamentoFijo || null;
+    const anioFijo = raiz.dataset.anioFijo
+      ? Number(raiz.dataset.anioFijo)
+      : null;
+    const vacio = raiz.querySelector<HTMLElement>('[data-canal-vacio]');
+    const grafica = raiz.querySelector<HTMLElement>('[data-canal-grafica]');
+    const resumen = raiz.querySelector<HTMLElement>('[data-canal-resumen]');
+    const aviso = raiz.querySelector<HTMLElement>('[data-canal-aviso]');
+    const details = raiz.querySelector<HTMLDetailsElement>(
+      '[data-canal-detalles]',
+    );
+    const contenedorTabla =
+      raiz.querySelector<HTMLElement>('[data-canal-tabla]');
+    if (!grafica || !resumen || !vacio) return;
+
+    let revision = 0;
+    let filtrosActuales = obtenerFiltrosAnalisis();
+    let filasTabla: PuntoCanal[] = [];
+
+    const tabla =
+      details && contenedorTabla
+        ? new TablaAlternativa({
+            details,
+            contenedorTabla,
+            caption:
+              'Canal endémico por semana: casos observados y cortes P50 y P75',
+            columnas: [
+              {
+                clave: 'semana',
+                encabezado: 'Semana',
+                alineacion: 'derecha',
+                formato: (v) => `SE${String(v).padStart(2, '0')}`,
+              },
+              {
+                clave: 'observado',
+                encabezado: 'Casos',
+                alineacion: 'derecha',
+                formato: (v) => (v !== null ? String(v) : '—'),
+              },
+              {
+                clave: 'p50',
+                encabezado: 'P50',
+                alineacion: 'derecha',
+                formato: (v) => (v !== null ? Number(v).toFixed(1) : '—'),
+              },
+              {
+                clave: 'p75',
+                encabezado: 'P75',
+                alineacion: 'derecha',
+                formato: (v) => (v !== null ? Number(v).toFixed(1) : '—'),
+              },
+              {
+                clave: 'banda',
+                encabezado: 'Banda',
+                formato: (v) => (v ? String(v) : '—'),
+              },
+            ],
+            obtenerDatos: () => filasTabla,
+          })
+        : null;
+
+    async function renderizar(filtros: FiltrosAnalisis): Promise<void> {
+      const departamento = fijo ?? filtros.departamento;
+      const anio = fijo && anioFijo ? anioFijo : filtros.anio;
+      const idRevision = ++revision;
+
+      if (!departamento) {
+        grafica!.hidden = true;
+        vacio!.hidden = false;
+        resumen!.textContent =
+          'Selecciona un departamento en los filtros o en el mapa.';
+        if (aviso) aviso.textContent = '';
+        return;
+      }
+
+      vacio!.hidden = true;
+      grafica!.hidden = false;
+      grafica!.setAttribute('aria-busy', 'true');
+      renderEsqueletoTraza(grafica!);
+      resumen!.textContent = 'Cargando el canal endémico…';
+
+      if (!esAnioAnalisisDengue(anio)) {
+        grafica!.setAttribute('aria-busy', 'false');
+        renderSinDato(grafica!, notaAnioSoloClima(anio));
+        resumen!.textContent = '';
+        filasTabla = [];
+        tabla?.marcarCaducada();
+        return;
+      }
+
+      if (!Plot) Plot = await import('@observablehq/plot');
+      if (idRevision !== revision) return;
+      const P = Plot;
+
+      let respuesta;
+      try {
+        respuesta = await obtenerSeriePresion(departamento, anio);
+      } catch {
+        if (idRevision !== revision) return;
+        grafica!.setAttribute('aria-busy', 'false');
+        renderErrorFuente(
+          grafica!,
+          () => void renderizar(filtrosActuales),
+          'No se pudo cargar el canal endémico.',
+        );
+        resumen!.textContent = '';
+        return;
+      }
+      if (idRevision !== revision) return;
+      grafica!.setAttribute('aria-busy', 'false');
+
+      if (esNoDisponible(respuesta)) {
+        renderSinDato(grafica!, motivoNoDisponible(respuesta));
+        resumen!.textContent = '';
+        filasTabla = [];
+        tabla?.marcarCaducada();
+        return;
+      }
+
+      const serie = filtros.serie === 'confirmado' ? 'confirmado' : 'probable';
+      const desde = fijo ? 1 : filtros.semanaDesde;
+      const hasta = fijo ? 53 : filtros.semanaHasta;
+      const canal = construirCanal(respuesta.semanas, serie).filter(
+        (p) => p.semana >= desde && p.semana <= hasta,
+      );
+      const conBase = canal.filter((p) => p.p50 !== null && p.p75 !== null);
+      const conCasos = canal.filter((p) => p.observado !== null);
+
+      filasTabla = canal.map((p) => ({
+        ...p,
+        banda: categoriaCanal(p),
+      })) as PuntoCanal[];
+      tabla?.marcarCaducada();
+
+      if (conBase.length === 0 && conCasos.length === 0) {
+        renderSinDato(
+          grafica!,
+          'Sin casos ni línea base para este departamento y año.',
+        );
+        resumen!.textContent = '';
+        return;
+      }
+
+      const ancho = Math.max(grafica!.clientWidth || 0, 320);
+      const maximo = Math.max(
+        1,
+        ...conBase.map((p) => p.p75 as number),
+        ...conCasos.map((p) => p.observado as number),
+      );
+      const figura = P.plot({
+        width: ancho,
+        height: 240,
+        marginLeft: 52,
+        marginBottom: 40,
+        x: ejeSemana(desde, hasta),
+        y: {
+          label: 'Casos por semana',
+          grid: true,
+          domain: [0, maximo * 1.05],
+        },
+        style: ESTILO_PLOT,
+        marks: [
+          P.areaY(conBase, { x: 'semana', y1: 0, y2: 'p50', fill: COLOR_BAJA }),
+          P.areaY(conBase, {
+            x: 'semana',
+            y1: 'p50',
+            y2: 'p75',
+            fill: COLOR_MEDIA,
+          }),
+          P.areaY(conBase, {
+            x: 'semana',
+            y1: 'p75',
+            y2: maximo * 1.05,
+            fill: COLOR_ALTA,
+            fillOpacity: 0.35,
+          }),
+          P.line(conCasos, {
+            x: 'semana',
+            y: 'observado',
+            stroke: COLOR_OBSERVADO,
+            strokeWidth: 2.5,
+          }),
+          P.dot(conCasos, {
+            x: 'semana',
+            y: 'observado',
+            fill: COLOR_OBSERVADO,
+            r: 2.5,
+            title: (p: PuntoCanal) =>
+              `SE${String(p.semana).padStart(2, '0')} · ${p.observado} casos · P50 ${
+                p.p50 !== null ? p.p50.toFixed(1) : '—'
+              } · P75 ${p.p75 !== null ? p.p75.toFixed(1) : '—'}`,
+          }),
+          marcoPlot(P),
+        ],
+      });
+      // Plot etiqueta cada marca con su nombre ("area", "frame");
+      // axe lo rechaza en elementos SVG sin rol. La tabla es la alternativa textual.
+      figura
+        .querySelectorAll('svg [aria-label]')
+        .forEach((g) => g.removeAttribute('aria-label'));
+      grafica!.replaceChildren(figura);
+
+      const nombre = respuesta.departamento_nombre ?? departamento;
+      resumen!.innerHTML = `<strong class="font-medium text-ink">${nombre}</strong> · año <span class="cifra">${anio}</span> · serie ${serie}. Bandas: hasta P50 baja, entre P50 y P75 media, por encima de P75 alta.`;
+      if (aviso) aviso.textContent = respuesta.aviso ?? '';
+    }
+
+    if (!fijo) {
+      suscribirFiltrosAnalisis((filtros) => {
+        filtrosActuales = filtros;
+        void renderizar(filtros);
+      });
+    } else {
+      void renderizar(filtrosActuales);
+    }
+
+    let ultimoAncho = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    new ResizeObserver((entradas) => {
+      const nuevo = Math.round(entradas[0]?.contentRect.width ?? 0);
+      if (nuevo === ultimoAncho) return;
+      ultimoAncho = nuevo;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void renderizar(filtrosActuales), 150);
+    }).observe(grafica);
+  }
+
+  document
+    .querySelectorAll<HTMLElement>('[data-canal-endemico]')
+    .forEach(montar);
+</script>

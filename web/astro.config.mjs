@@ -1,12 +1,17 @@
 import { defineConfig, fontProviders } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
+import icon from 'astro-icon';
+import sitemap from '@astrojs/sitemap';
 
 // Configuración principal del framework Astro
 export default defineConfig({
-  // Dominio de producción -- inferido de render.yaml (servicio estático
-  // "epi-aetheris-web", CORS_ALLOWED_ORIGINS). Habilita canonical/og:url
-  // absolutos y sitemaps. Verificar contra la URL real tras el deploy.
-  site: 'https://epi-aetheris-web.onrender.com',
+  // Dominio de producción de ESTE repo. aetheris-nitor es el fork-vitrina de
+  // web/: se despliega solo, en su propio Static Site de Render, y su dominio
+  // propio es epi-aetheris.dev (ya listado en CORS_ALLOWED_ORIGINS del
+  // backend). El valor anterior, epi-aetheris-web.onrender.com, es el
+  // despliegue del monorepo: con él, cada página emitía canonical y og:url
+  // apuntando a OTRO sitio, y el sitemap habría heredado el error.
+  site: 'https://epi-aetheris.dev',
   // Precarga el HTML de cualquier enlace del sitio al pasar el cursor /
   // entrar en viewport -- navegación casi instantánea entre las 5 vistas.
   prefetch: {
@@ -58,6 +63,24 @@ export default defineConfig({
       variationSettings: '"opsz" 144',
       fallbacks: ['Georgia', 'serif'],
     },
+  ],
+  // Iconos: Tabler (MIT) y Simple Icons (CC0, logotipos) via astro-icon. El SVG se inserta inline en build,
+  // solo los iconos usados, sin JavaScript ni fuente de iconos en cliente.
+  // Se usan a traves de src/components/Icono.astro, no de <Icon> directo.
+  integrations: [
+    icon({ include: { tabler: ['*'], 'simple-icons': ['*'] } }),
+    // Sitemap a partir de `site`. Quedan fuera las rutas que no son
+    // contenido público: /alertas/nueva (formulario de operadores, además
+    // marcado noindex en su propia página), /demos (recorridos animados para
+    // enseñar o grabar, también noindex) y /panel, que no es una página sino
+    // la redirección generada por `redirects` a /dengue.
+    sitemap({
+      filter: (pagina) =>
+        !pagina.includes('/alertas/nueva') &&
+        !pagina.includes('/panel') &&
+        !pagina.includes('/demos') &&
+        !pagina.includes('/incrustar'),
+    }),
   ],
   server: {
     // Permite que el servidor sea accesible desde fuera del contenedor Docker

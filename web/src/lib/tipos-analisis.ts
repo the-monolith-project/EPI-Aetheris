@@ -213,7 +213,7 @@ export interface IntegridadVigilancia {
 // Artefacto precomputado por backend/ingestion/nowcast_tablero_dengue.py sobre
 // la base de nowcast_estimacion_dengue.py. Desde 2025 la serie es la del
 // tablero de MINSAL y el método es la mezcla del experimento
-// docs/experimentos/experimento-nowcast-tendencia.md.
+// docs/experimentos/experimento-nowcast-tendencia.md del monorepo.
 // No es clasificación de riesgo ni aviso epidemiológico; ver
 // docs/biblioteca/05-sensibilidad-y-honestidad.md.
 
@@ -287,4 +287,73 @@ export interface NowcastDengue {
   desempeno?: DesempenoNowcast;
   prueba?: PruebaNowcast;
   nota_alcance?: string;
+}
+
+// --- Predicción retrospectiva (GET /api/nowcast-dengue/retrospectivo) --------
+// Abanico h = 1..8 que el modelo habría dado desde cada semana de la serie con
+// los datos disponibles hasta esa semana. Precomputado por
+// backend/ingestion/nowcast_retrospectivo_dengue.py con el método de ADR 0020
+// hasta 2024 y por nowcast_tablero_dengue.py con la mezcla desde 2025.
+// Formato compacto: los valores de cada horizonte van por posición, en el
+// orden de `campos_horizonte`.
+
+/** [mediana, b50_inf, b50_sup, b95_inf, b95_sup, wis_modelo, wis_referencia] */
+export type ValoresHorizonteRetro = [
+  number,
+  number,
+  number,
+  number,
+  number,
+  number | null,
+  number | null,
+];
+
+export interface OrigenRetro {
+  fecha: string;
+  anio: number;
+  semana: number;
+  /** Ausente cuando `motivo` explica por qué no hay predicción. */
+  h?: (ValoresHorizonteRetro | null)[];
+  /** hueco_en_serie: a las 8 semanas previas les falta una sin publicar. */
+  motivo?: 'historia_insuficiente' | 'hueco_en_serie';
+}
+
+export interface ResumenAnioHorizonteRetro {
+  n: number;
+  wis_modelo: number;
+  wis_referencia: number;
+  skill: number | null;
+  cobertura_50: number;
+  cobertura_95: number;
+}
+
+export interface NowcastDengueRetrospectivo {
+  disponible: boolean;
+  motivo?: string;
+  aviso: string;
+  generado?: string;
+  horizontes?: number[];
+  anios_prueba?: number[];
+  anio_excluido?: number;
+  aviso_anio_excluido?: string;
+  referencia_por_horizonte?: Record<string, string>;
+  primera_semana_con_prediccion?: {
+    fecha: string;
+    anio: number;
+    semana: number;
+  };
+  campos_horizonte?: string[];
+  /** [fecha, casos] de toda la serie, hasta la semana de anclaje. */
+  observado?: [string, number | null][];
+  origenes?: OrigenRetro[];
+  /** año del objetivo -> horizonte -> resumen */
+  resumen_por_anio?: Record<string, Record<string, ResumenAnioHorizonteRetro>>;
+  /** Tramo del tablero de MINSAL: desde `inicio` el método es la mezcla. */
+  tablero?: {
+    inicio: { fecha: string; anio: number; semana: number };
+    metodo: string;
+    referencia: string;
+    anios: number[];
+    prueba: PruebaNowcast;
+  };
 }

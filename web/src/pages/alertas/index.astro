@@ -1,5 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import Icono from '../../components/Icono.astro';
+import { DEPARTAMENTOS } from '../../lib/departamentos';
 import {
   AVISO_HONESTIDAD_ALERTAS,
   AVISO_HONESTIDAD_ALERTAS_CLINICO,
@@ -9,13 +11,24 @@ import {
   SIGNIFICADO_NIVEL,
 } from '../../lib/vista-alertas';
 
+const urlFeed = `${import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000'}/api/alertas/feed.xml`;
 const tipoPedido = Astro.url.searchParams.get('tipo');
 const filtroDengue = tipoPedido === 'dengue';
 const filtroRespiratorio = tipoPedido === 'respiratorio';
 ---
 
 <Layout title="EPI-Aetheris — Alertas de campo">
-  <main id="contenido-principal" class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+  <link
+    slot="head"
+    rel="alternate"
+    type="application/atom+xml"
+    title="Alertas de campo vigentes"
+    href={urlFeed}
+  />
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
+  >
     <header class="mb-8 max-w-3xl">
       <p
         class="font-sans text-xs font-semibold uppercase tracking-wider text-accent"
@@ -97,7 +110,33 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
         class="rounded-full border border-border bg-surface px-3 py-1.5"
         >Archivo de alertas emitidas</a
       >
+      <a
+        href={urlFeed}
+        data-enlace-feed
+        class="rounded-full border border-border bg-surface px-3 py-1.5"
+        >Suscribirse por feed (Atom)</a
+      >
     </nav>
+
+    <div class="mb-4 font-sans text-sm print:hidden">
+      <label class="inline-flex flex-wrap items-center gap-2">
+        <span class="font-semibold text-ink">Departamento</span>
+        <select
+          data-filtro-departamento
+          class="rounded-lg border border-border bg-surface px-3 py-1.5"
+        >
+          <option value="">Todos</option>
+          {
+            DEPARTAMENTOS.map((d) => (
+              <option value={d.codigo}>{d.nombre}</option>
+            ))
+          }
+        </select>
+      </label>
+      <p class="mt-1 text-xs text-ink-muted">
+        Muestra las alertas nacionales y las de ese departamento.
+      </p>
+    </div>
 
     <div
       class="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden"
@@ -111,8 +150,9 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
       <button
         type="button"
         data-imprimir
-        class="rounded-full border border-border bg-surface px-4 py-1.5 font-sans text-sm font-medium text-ink transition-colors hover:border-accent/40"
+        class="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-1.5 font-sans text-sm font-medium text-ink transition-colors hover:border-accent/40"
       >
+        <Icono nombre="printer" class="h-4 w-4 text-accent" />
         Imprimir cartel
       </button>
     </div>
@@ -155,6 +195,9 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
     type PayloadAlertas,
     type PintarAlertas,
   } from '../../lib/vista-alertas';
+  import { alertaAplicaA } from '../../lib/alcance-alertas';
+  import { DEPARTAMENTOS_POR_CODIGO } from '../../lib/departamentos';
+  import { leerDepartamentoRecordado } from '../../lib/departamento-recordado';
 
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const root = document.querySelector<HTMLElement>('[data-alertas]');
@@ -201,13 +244,41 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
   }
 
   if (root) {
+    const selectorDepartamento = document.querySelector<HTMLSelectElement>(
+      '[data-filtro-departamento]',
+    );
+    // El departamento viene de ?dept= y, si falta, del recordado en este
+    // dispositivo. El filtro es solo de vista: se filtra en el cliente sobre la
+    // respuesta completa para que también funcione desde el cache sin conexión.
+    const deptUrl = new URLSearchParams(window.location.search).get('dept');
+    const deptInicial =
+      deptUrl !== null ? deptUrl : (leerDepartamentoRecordado() ?? '');
+    if (selectorDepartamento && DEPARTAMENTOS_POR_CODIGO[deptInicial]) {
+      selectorDepartamento.value = deptInicial;
+    }
+    let ultimoPayload: PayloadAlertas | null = null;
+
     const pintar: PintarAlertas = (payload) => {
+      ultimoPayload = payload;
       const vistas = leerAlertasVistas();
       const nuevas = calcularNuevas(payload.alertas, vistas);
-      aplicarVistaAlertas(root, payload, nuevas);
+      const dept = selectorDepartamento?.value ?? '';
+      const visibles = dept
+        ? payload.alertas.filter((a) => alertaAplicaA(a, dept))
+        : payload.alertas;
+      const textoVacio = dept
+        ? `No hay alertas vigentes para ${DEPARTAMENTOS_POR_CODIGO[dept]?.nombre ?? dept}.`
+        : undefined;
+      aplicarVistaAlertas(
+        root,
+        { ...payload, alertas: visibles },
+        nuevas,
+        textoVacio,
+      );
       // Union, no reemplazo: payload.alertas viene filtrado por `tipo`. Con
       // reemplazo, entrar por /alertas?tipo=dengue borraría del historial las
       // respiratorias ya vistas y al volver a /alertas saldrían como "Nueva".
+      // Se guardan todas las recibidas, no solo las del departamento visible.
       guardarAlertasVistas([...vistas, ...payload.alertas.map((a) => a.id)]);
       // Ancla #alerta-<id> de un enlace compartido: las tarjetas se pintan
       // después de la carga, así que el salto nativo del navegador ya pasó.
@@ -216,6 +287,15 @@ const filtroRespiratorio = tipoPedido === 'respiratorio';
     };
     (root as HTMLElement & { pintarAlertas?: PintarAlertas }).pintarAlertas =
       pintar;
+
+    selectorDepartamento?.addEventListener('change', () => {
+      const url = new URL(window.location.href);
+      if (selectorDepartamento.value)
+        url.searchParams.set('dept', selectorDepartamento.value);
+      else url.searchParams.set('dept', '');
+      history.replaceState(null, '', url);
+      if (ultimoPayload) pintar(ultimoPayload);
+    });
 
     const tipoPedido = new URLSearchParams(window.location.search).get('tipo');
     const tipo =

@@ -12,11 +12,14 @@
   --color-border: var(--color-border);
   --color-accent: var(--color-accent);
   --color-accent-ink: var(--color-accent-ink);
+  --color-header: var(--color-header);
   --color-secondary: var(--color-secondary);
   --color-secondary-ink: var(--color-secondary-ink);
   --color-deep: var(--color-deep);
   --color-deep-ink: var(--color-deep-ink);
   --color-deep-ink-muted: var(--color-deep-ink-muted);
+  --color-live: var(--color-live);
+  --color-live-ink: var(--color-live-ink);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-display: var(--font-display);
@@ -92,6 +95,328 @@
     var(--shadow-card-hover);
 }
 
+/* ---------------------------------------------------------------------------
+   Primitivas de interaccion compartidas (rediseno 2026-09).
+   Regla de la casa: el movimiento es notorio pero tiene un solo momento
+   orquestado (la carga de la portada: mapa, titular, botones) y despues
+   responde a la persona: hover, foco, apertura, scroll. Cada animacion deja
+   el estado final visible por defecto, asi que sin JavaScript y con
+   prefers-reduced-motion el contenido se ve igual. El piso global de
+   reduced-motion vive al final de este archivo y neutraliza todo esto.
+   --------------------------------------------------------------------------- */
+
+/* Superficie pulsable: solo para destinos navegables (tarjetas que son un
+   enlace). El contenido que NO se puede pulsar no lleva esta clase -- asi la
+   elevacion significa "esto te lleva a algun lado" en vez de ser decoracion. */
+.superficie-pulsable {
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  transition:
+    box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 260ms ease;
+}
+/* Filete de acento que crece desde la izquierda por el borde inferior: es la
+   respuesta evidente al hover, ademas de la elevacion. */
+.superficie-pulsable::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background-color: var(--color-accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.superficie-pulsable:hover,
+.superficie-pulsable:focus-visible {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+.superficie-pulsable:hover::after,
+.superficie-pulsable:focus-visible::after {
+  transform: scaleX(1);
+}
+.superficie-pulsable:active {
+  transform: translateY(0);
+  transition-duration: 80ms;
+}
+.superficie-pulsable:focus-visible {
+  box-shadow:
+    0 0 0 4px rgba(1, 30, 30, 0.55),
+    var(--shadow-card-hover);
+}
+
+/* Botones. El principal responde con elevacion y un brillo corto; el
+   secundario, con borde y fondo. Ambos vuelven al sitio al pulsar. */
+.boton-principal,
+.boton-secundario {
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 220ms ease,
+    background-color 220ms ease,
+    border-color 220ms ease;
+}
+.boton-principal:hover,
+.boton-principal:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px -14px rgba(4, 3, 22, 0.55);
+  filter: brightness(1.06);
+}
+.boton-secundario:hover,
+.boton-secundario:focus-visible {
+  transform: translateY(-3px);
+  border-color: currentColor;
+  background-color: color-mix(in srgb, currentColor 10%, transparent);
+}
+.boton-principal:active,
+.boton-secundario:active {
+  transform: translateY(0);
+  transition-duration: 80ms;
+}
+
+/* Insignia de icono dentro de una superficie pulsable: al apuntar la
+   tarjeta, pasa de lavanda a verde. Es la misma respuesta que el filete
+   inferior, en el otro extremo de la tarjeta. */
+.insignia-icono {
+  transition:
+    background-color 260ms ease,
+    color 260ms ease,
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.superficie-pulsable:hover .insignia-icono,
+.superficie-pulsable:focus-visible .insignia-icono {
+  background-color: var(--color-accent);
+  color: var(--color-accent-ink);
+  transform: scale(1.08);
+}
+
+/* Filete que se dibuja de izquierda a derecha al pasar el cursor. Es el
+   gesto de enlace de todo el sitio: sustituye al subrayado permanente en
+   listas largas (pie de pagina) y da una respuesta clara sin mover el texto
+   ni cambiar la altura de linea. */
+.enlace-filete {
+  position: relative;
+  display: inline-block;
+}
+.enlace-filete::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background-color: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.enlace-filete:hover::after,
+.enlace-filete:focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* Punto de "esto es de ahora". Unico uso del coral de la marca. El halo
+   late despacio; con reduced-motion queda como punto fijo, que sigue
+   comunicando lo mismo. */
+.punto-vigente {
+  position: relative;
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background-color: var(--color-live);
+  flex: none;
+}
+.punto-vigente::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--color-live);
+  animation: latido-vigente 2.4s ease-out infinite;
+}
+@keyframes latido-vigente {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Hero de la portada: el mapa de los 14 departamentos a pantalla completa
+   detras del titular. Cada silueta se traza (stroke-dashoffset con
+   pathLength=1) y despues se rellena, escalonada por --retraso; el titular y
+   los botones entran cuando el mapa va por la mitad. Es el unico movimiento
+   del sitio que no responde a una accion de la persona.
+   --------------------------------------------------------------------------- */
+.hero-mapa svg {
+  width: 100%;
+  height: 100%;
+}
+.depto {
+  cursor: pointer;
+  outline: none;
+}
+.depto-forma {
+  fill: color-mix(in srgb, var(--color-secondary) 16%, transparent);
+  stroke: color-mix(in srgb, var(--color-secondary) 70%, transparent);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation:
+    depto-traza 1100ms cubic-bezier(0.4, 0, 0.2, 1) both,
+    depto-rellena 700ms ease-out both;
+  animation-delay: var(--retraso, 0ms), calc(var(--retraso, 0ms) + 650ms);
+  transition:
+    fill 220ms ease,
+    stroke 220ms ease,
+    stroke-width 220ms ease;
+}
+@keyframes depto-traza {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes depto-rellena {
+  from {
+    fill: transparent;
+  }
+}
+/* El nombre solo aparece cuando la persona apunta o enfoca ese
+   departamento: el mapa se mantiene limpio y el rotulo responde al gesto. */
+.depto-nombre {
+  fill: var(--color-deep);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 180ms ease;
+}
+.depto:hover .depto-forma,
+.depto:focus-visible .depto-forma {
+  fill: var(--color-secondary);
+  stroke: var(--color-live);
+  stroke-width: 2.4;
+}
+.depto:hover .depto-nombre,
+.depto:focus-visible .depto-nombre {
+  opacity: 1;
+}
+/* Foco de teclado dentro del SVG: el outline no se dibuja bien en <a> de
+   SVG, asi que el anillo lo hace el propio trazo, doble y en coral. */
+.depto:focus-visible .depto-forma {
+  stroke-width: 3.2;
+  filter: drop-shadow(0 0 0 1.5px #ffffff);
+}
+.hero-mapa:hover .depto:not(:hover) .depto-forma {
+  fill: color-mix(in srgb, var(--color-secondary) 9%, transparent);
+}
+
+/* Secuencia del titular: cada linea sube desde abajo, escalonada. */
+.hero-entra {
+  animation: hero-sube 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--retraso, 0ms);
+}
+@keyframes hero-sube {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Entrada por scroll. Solo actua cuando el script (src/lib/movimiento.ts)
+   marca <html data-animar>: sin JavaScript o con reduced-motion el bloque
+   ya esta en su estado final. */
+html[data-animar] .aparece {
+  opacity: 0;
+  transform: translateY(32px);
+  transition:
+    opacity 700ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+html[data-animar] .aparece.visto {
+  opacity: 1;
+  transform: none;
+}
+
+/* Paneles y menus de la vista de analisis entran con un pequeno ascenso
+   cuando se muestran explicitamente o en la revelacion inicial orquestada. */
+html[data-animar] [data-panel-workspace][data-panel-nuevo] {
+  animation: panel-entra 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+html[data-animar] .workspace-revelacion [data-panel-workspace]:not([hidden]) {
+  animation: panel-entra 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--revelacion-retraso, 0ms);
+}
+
+/* Transicion suave en resumenes cuando cambia el valor */
+[role='status'] {
+  transition: opacity 160ms ease;
+}
+@keyframes panel-entra {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+[role='menu']:not([hidden]),
+[role='group'][aria-labelledby='analisis-paneles-titulo']:not([hidden]) {
+  transform-origin: top right;
+  animation: menu-entra 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes menu-entra {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Escala tipografica de titular. clamp() en vez de tres breakpoints: el
+   titular es la pieza de diseno del hero, no un h1 de documento. */
+.titular-hero {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 7.5vw, 5.25rem);
+  line-height: 0.96;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+.titular-seccion {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2.125rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
 /* Sombras de desvanecimiento para contenedores con overflow-x-auto que
    recortan gráficos de ancho fijo en pantallas angostas -- sin esto no hay
    ninguna pista visual de que el contenido se puede desplazar horizontalmente
@@ -108,21 +433,13 @@
     20px 100%,
     10px 100%,
     10px 100%;
-  background-position:
-    left,
-    right,
-    left,
-    right;
+  background-position: left, right, left, right;
   background-attachment: local, local, scroll, scroll;
   background-image:
     linear-gradient(to right, var(--scroll-shadow-bg), transparent),
     linear-gradient(to left, var(--scroll-shadow-bg), transparent),
     radial-gradient(farthest-side at 0% 50%, rgba(4, 3, 22, 0.2), transparent),
-    radial-gradient(
-      farthest-side at 100% 50%,
-      rgba(4, 3, 22, 0.2),
-      transparent
-    );
+    radial-gradient(farthest-side at 100% 50%, rgba(4, 3, 22, 0.2), transparent);
 }
 .scroll-shadow-x.bg-bg {
   --scroll-shadow-bg: var(--color-bg);
@@ -159,6 +476,396 @@
   }
 }
 
+.bg-deep .skeleton,
+[class*='bg-deep'] .skeleton {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+.bg-deep .skeleton::after,
+[class*='bg-deep'] .skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+}
+
+/* Cargador de curva epidemiológica (propuesta 2: ea-comet).
+   Trazo de curva epidemiológica con un cometa animado a lo largo de la curva.
+   Fallback estático declarado: en reduced-motion el cometa descansa visible al
+   inicio del trazo sin desaparecer. */
+.ea-comet-cargador {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.ea-comet-svg {
+  width: 120px;
+  height: 48px;
+  overflow: visible;
+}
+
+.ea-comet-pista {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ea-comet-trazo {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 70 281;
+  stroke-dashoffset: 351;
+  animation: ea-comet-anim 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes ea-comet-anim {
+  0% {
+    stroke-dashoffset: 351;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.ea-cargador-etiqueta {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ea-comet-trazo {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Cargador de puntos en cascada (propuesta 4: ea-dot-bounce).
+   Para esperas cortas o compactas donde no cabe un skeleton.
+   Tres puntos con pulsación secuencial; en reduced-motion se fijan en
+   opacidad completa sin parpadeo. */
+.ea-dot-cargador {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ea-dot-bounce {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ea-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--color-accent);
+  opacity: 1;
+  animation: ea-dot-bounce-anim 1.2s ease-in-out infinite;
+}
+
+.ea-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+.ea-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.ea-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes ea-dot-bounce-anim {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ea-dot {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Barra de actividad superior (propuesta 5: ea-bar-sweep).
+   Indicador indeterminado para peticiones de datos en vuelo.
+   En reduced-motion muestra una barra continua visible (ancho 100% estático)
+   evitando la desaparición que sufriría sin estilos base declarados. */
+.ea-bar-sweep {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  background-color: var(--color-border);
+}
+/* En reposo la región sigue en el DOM -- es la que anuncia -- pero no deja
+   rastro visual: sin esto quedaría un filete gris permanente. */
+.ea-bar-sweep[data-activa='false'] {
+  background-color: transparent;
+}
+.ea-bar-sweep[data-activa='false'] .ea-bar-sweep-indicador {
+  display: none;
+}
+
+.ea-bar-sweep-indicador {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 30%;
+  border-radius: 9999px;
+  background-color: var(--color-accent);
+  animation: ea-bar-sweep-anim 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes ea-bar-sweep-anim {
+  0% {
+    left: -35%;
+    width: 30%;
+  }
+  50% {
+    left: 35%;
+    width: 45%;
+  }
+  100% {
+    left: 105%;
+    width: 30%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ea-bar-sweep-indicador {
+    animation: none;
+    left: 0;
+    width: 100%;
+    opacity: 0.8;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Primitivas del workspace de análisis (rediseño 2026-09).
+   La forma codifica el tipo de contenido: visor, matriz, traza o registro.
+   --------------------------------------------------------------------------- */
+
+.panel-visor {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radio-traza);
+  overflow: hidden;
+}
+.panel-visor > .panel-cabecera {
+  padding: 1.25rem 1.25rem 0.75rem 1.25rem;
+  margin-bottom: 0;
+}
+@media (min-width: 640px) {
+  .panel-visor > .panel-cabecera {
+    padding: 1.5rem 1.5rem 1rem 1.5rem;
+  }
+}
+
+.panel-matriz {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radio-matriz);
+  padding: 1.25rem;
+}
+@media (min-width: 640px) {
+  .panel-matriz {
+    padding: 1.5rem;
+  }
+}
+
+.panel-traza {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: var(--filete-traza) solid var(--color-accent);
+  border-radius: var(--radio-traza);
+  padding: 1.25rem;
+}
+@media (min-width: 640px) {
+  .panel-traza {
+    padding: 1.5rem;
+  }
+}
+
+.panel-registro {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radio-matriz);
+  padding: 1.25rem;
+}
+@media (min-width: 640px) {
+  .panel-registro {
+    padding: 1.5rem;
+  }
+}
+
+.panel-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.panel-titulo {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.panel-descripcion {
+  margin-top: 0.25rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--color-ink-muted);
+  max-width: 68ch;
+}
+
+.cifra {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Prosa compartida para documentos de Biblioteca y páginas legales */
+.doc-md {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+.doc-md h1 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+  margin-bottom: 1rem;
+}
+.doc-md h2 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-ink);
+  margin-top: 2.25rem;
+  margin-bottom: 0.6rem;
+}
+.doc-md h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--color-ink);
+  margin-top: 1.5rem;
+  margin-bottom: 0.4rem;
+}
+.doc-md p {
+  margin-top: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+.doc-md ul,
+.doc-md ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-left: 1.25rem;
+}
+.doc-md ul {
+  list-style: disc;
+}
+.doc-md ol {
+  list-style: decimal;
+}
+.doc-md li {
+  margin-top: 0.35rem;
+}
+.doc-md a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.doc-md strong {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.doc-md code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.doc-md pre {
+  background: var(--color-deep);
+  color: var(--color-deep-ink);
+  border-radius: 12px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+.doc-md pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+}
+.doc-md blockquote {
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-secondary);
+  color: var(--color-secondary-ink);
+  padding: 0.75rem 1rem;
+  border-radius: 0 8px 8px 0;
+  margin: 1rem 0;
+}
+.doc-md blockquote p {
+  margin: 0;
+}
+.doc-md hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5rem 0;
+}
+.doc-md table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.85em;
+}
+.doc-md th,
+.doc-md td {
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+.doc-md th {
+  background: var(--color-bg);
+  font-weight: 600;
+}
+
 /* Piso global de "reduced motion" -- va al final, DESPUÉS de las excepciones
    intencionales de arriba (.skeleton::after ya se apaga con animation:none,
    que este bloque no revierte). Neutraliza cualquier animación/transición
@@ -170,8 +877,20 @@
   ::before,
   ::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Mapa en tema oscuro: se oscurecen los tiles con un filtro en lugar de sumar
+   un proveedor de tiles distinto. Los controles y marcadores no se tocan. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+  }
+}
+:root[data-theme='dark'] .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
 }

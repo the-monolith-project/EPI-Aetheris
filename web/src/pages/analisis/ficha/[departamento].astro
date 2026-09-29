@@ -1,5 +1,7 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
+import Icono from '../../../components/Icono.astro';
+import CargadorPuntos from '../../../components/CargadorPuntos.astro';
 import {
   DEPARTAMENTOS,
   type DepartamentoInfo,
@@ -31,7 +33,10 @@ const { codigo, nombre } = departamento;
   title={`EPI-Aetheris — Ficha departamental: ${nombre} (${codigo})`}
   descripcion={`Ficha epidemiológica descriptiva para campo del departamento de ${nombre} (${codigo}), El Salvador.`}
 >
-  <main id="contenido-principal" class="mx-auto max-w-[1400px] px-4 py-6 sm:px-8 sm:py-8 lg:px-12">
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-[1400px] px-4 py-6 sm:px-8 sm:py-8 lg:px-12"
+  >
     <!-- Barra superior de navegacion y controles (oculta en impresion) -->
     <div
       class="print:hidden mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
@@ -81,20 +86,9 @@ const { codigo, nombre } = departamento;
           aria-disabled="true"
           class="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-1.5 font-sans text-xs font-semibold text-ink transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:border-accent/40 hover:text-accent"
         >
-          <svg
-            class="h-4 w-4 shrink-0 text-accent"
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M5 7V3h10v4M5 14H4a2 2 0 01-2-2V9a2 2 0 012-2h12a2 2 0 012 2v3a2 2 0 01-2 2h-1M5 11h10v6H5v-6z"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"></path>
-          </svg>
+          <Icono nombre="printer" class="h-4 w-4 text-accent" />
           <span data-imprimir-texto>Cargando datos…</span>
+          <CargadorPuntos data-imprimir-puntos />
         </button>
       </div>
     </div>
@@ -446,7 +440,7 @@ const { codigo, nombre } = departamento;
               <h3
                 class="font-sans text-xs font-semibold text-ink print:text-black"
               >
-                Idoneidad biofísica (Iv) vs Banda histórica P25–P75
+                Idoneidad biofísica (Iv) frente a la banda histórica P25–P75
               </h3>
               <span
                 class="font-sans text-[10px] text-ink-muted print:text-black"
@@ -499,8 +493,8 @@ const { codigo, nombre } = departamento;
           >
             <caption class="sr-only">
               Observaciones recientes de las últimas semanas registradas: Iv
-              real, mediana histórica, anomalía, casos probables y
-              confirmados con sus percentiles
+              real, mediana histórica, anomalía, casos probables y confirmados
+              con sus percentiles
             </caption>
             <thead>
               <tr
@@ -541,7 +535,7 @@ const { codigo, nombre } = departamento;
           <h2
             class="font-sans text-sm font-bold uppercase tracking-wide text-ink print:text-black"
           >
-            3. Infecciones Respiratorias (IRA y Neumonías)
+            3. Infecciones respiratorias (IRA y neumonías)
           </h2>
           <span class="font-sans text-xs text-ink-muted print:text-black"
             >Series MINSAL notificadas (ADR 0011)</span
@@ -560,7 +554,7 @@ const { codigo, nombre } = departamento;
             <div>
               <div class="flex items-center justify-between">
                 <span class="font-semibold text-ink print:text-black"
-                  >Infección Respiratoria Aguda (IRA)</span
+                  >Infección respiratoria aguda (IRA)</span
                 >
                 <span class="text-[10px] text-ink-muted print:text-black"
                   >Notificado total</span
@@ -645,7 +639,7 @@ const { codigo, nombre } = departamento;
           <h2
             class="font-sans text-sm font-bold uppercase tracking-wide text-ink print:text-black"
           >
-            4. Guías de Prevención Oficiales Citadas
+            4. Guías oficiales de prevención citadas
           </h2>
           <span class="font-sans text-xs text-ink-muted print:text-black"
             >Contenedores de material oficial publicado</span
@@ -708,6 +702,7 @@ const { codigo, nombre } = departamento;
     escapeHtml,
     renderTextoAccionable,
   } from '../../../lib/vista-alertas';
+  import { alertaAplicaA, textoAlcance } from '../../../lib/alcance-alertas';
 
   // Rellena un slot de aviso con el texto `aviso` que ya trae la respuesta del
   // endpoint (los AVISO_HONESTIDAD_* canonicos del backend). La constante local
@@ -1040,7 +1035,7 @@ const { codigo, nombre } = departamento;
           m1Comp.textContent =
             ult.mediana_baseline !== null
               ? `Mediana histórica: ${ult.mediana_baseline.toFixed(3)} (P25–P75: ${ult.p25_baseline?.toFixed(3)}–${ult.p75_baseline?.toFixed(3)})`
-              : 'Sin baseline suficiente';
+              : 'Sin línea base suficiente';
         }
 
         const m2Val = document.querySelector<HTMLElement>('[data-m2-valor]');
@@ -1363,8 +1358,13 @@ const { codigo, nombre } = departamento;
         AVISO_DEFECTO_PREVENCION,
       );
 
-      // Filtrar alertas activas
-      const activas = (payload.alertas || []).filter((a) => a.activa);
+      // Solo las activas que aplican a este departamento: las nacionales y las
+      // regionales que lo nombran (ADR 0022).
+      const activas = (payload.alertas || []).filter(
+        (a) =>
+          a.activa &&
+          alertaAplicaA(a as { departamentos?: string[] | null }, codigo),
+      );
       if (activas.length > 0 && prevLista) {
         prevLista.innerHTML = '';
         activas.forEach((alerta) => {
@@ -1409,7 +1409,7 @@ const { codigo, nombre } = departamento;
             <div class="text-ink-muted print:text-black text-xs leading-relaxed space-y-1">${renderTextoAccionable(alerta.indicaciones || alerta.contexto || '')}</div>
             ${bloquesClinicos}
             <div class="border-t border-border/60 pt-1.5 text-[10px] text-ink-muted print:text-black">
-              <strong>Fuente citada:</strong> ${escapeHtml(alerta.fuente)} · Emitida: ${escapeHtml(alerta.vigente_desde)}
+              <strong>Fuente citada:</strong> ${escapeHtml(alerta.fuente)} · Emitida: ${escapeHtml(alerta.vigente_desde)} · Alcance: ${escapeHtml(textoAlcance(alerta as { departamentos?: string[] | null }))}
             </div>
           `;
           prevLista.appendChild(caja);
@@ -1441,6 +1441,7 @@ const { codigo, nombre } = departamento;
     if (textoImprimir) {
       textoImprimir.textContent = 'Imprimir ficha';
     }
+    document.querySelector<HTMLElement>('[data-imprimir-puntos]')?.remove();
     root?.setAttribute('data-cargado', '1');
   });
 </script>

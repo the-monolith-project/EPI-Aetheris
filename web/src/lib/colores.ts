@@ -1,6 +1,7 @@
 import chroma from 'chroma-js';
 
 export const COLOR_SIN_DATO = '#e4e4e7';
+export const COLOR_DATO_DISPONIBLE = '#256abf';
 
 // Rampas secuenciales basadas en ColorBrewer. No representan niveles de
 // alarma: solo ordenan magnitudes continuas dentro de cada visualización.

@@ -1,7 +1,7 @@
 {
   "name": "aetheris-web",
   "type": "module",
-  "version": "1.0.0",
+  "version": "0.5.0",
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "astro dev",
@@ -11,9 +11,11 @@
     "lint": "eslint \"src/**/*.{astro,js,ts}\" \"tests/**/*.{js,ts}\" \"*.{js,mjs,ts}\"",
     "format": "prettier --write \"src/**/*.{astro,js,ts,css}\" \"tests/**/*.{js,ts}\" \"*.{js,mjs,ts,json}\"",
     "format:check": "prettier --check \"src/**/*.{astro,js,ts,css}\" \"tests/**/*.{js,ts}\" \"*.{js,mjs,ts,json}\"",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:unit": "node --experimental-strip-types --test \"tests/unit/**/*.test.ts\""
   },
   "dependencies": {
+    "@astrojs/sitemap": "^3.7.4",
     "@observablehq/plot": "^0.6.17",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.2.8",
@@ -25,10 +27,13 @@
     "@astrojs/check": "^0.9.10",
     "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.1",
+    "@iconify-json/simple-icons": "^1.2.96",
+    "@iconify-json/tabler": "^1.2.38",
     "@playwright/test": "^1.62.1",
     "@types/chroma-js": "^3.1.2",
     "@types/leaflet": "^1.9.12",
     "@types/node": "^26.3.0",
+    "astro-icon": "^1.2.0",
     "eslint": "^10.9.1",
     "eslint-plugin-astro": "^3.1.0",
     "globals": "^17.11.0",

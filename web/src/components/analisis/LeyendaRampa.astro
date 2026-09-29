@@ -1,0 +1,85 @@
+---
+import {
+  COLOR_DATO_DISPONIBLE,
+  COLOR_SIN_DATO,
+  gradienteCss,
+} from '../../lib/colores';
+
+interface Props {
+  rampa?: readonly string[];
+  etiquetaMin?: string;
+  etiquetaMax?: string;
+  descripcionLectores: string;
+  idRampa?: string;
+  clase?: string;
+  mostrarSinDato?: boolean;
+  modo?: 'rampa' | 'disponibilidad';
+}
+
+const {
+  rampa,
+  etiquetaMin = '',
+  etiquetaMax = '',
+  descripcionLectores,
+  idRampa,
+  clase = '',
+  mostrarSinDato = true,
+  modo = 'rampa',
+} = Astro.props;
+
+const fondoRampa = rampa ? gradienteCss([...rampa]) : undefined;
+---
+
+<div
+  class:list={[
+    'mt-3 flex flex-wrap items-center gap-2 font-sans text-xs text-ink-muted',
+    clase,
+  ]}
+>
+  {
+    modo === 'disponibilidad' ? (
+      <>
+        <span class="inline-flex items-center gap-1.5">
+          <span
+            class="h-2.5 w-2.5 rounded-sm ring-1 ring-black/10"
+            style={`background-color: ${COLOR_DATO_DISPONIBLE};`}
+            aria-hidden="true"
+          />
+          Dato disponible
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <span
+            class="h-2.5 w-2.5 rounded-sm ring-1 ring-black/10"
+            style={`background-color: ${COLOR_SIN_DATO};`}
+            aria-hidden="true"
+          />
+          Sin dato
+        </span>
+      </>
+    ) : (
+      <>
+        <span class="cifra">{etiquetaMin}</span>
+        <span
+          id={idRampa}
+          class="h-2.5 w-44 rounded-full ring-1 ring-black/10"
+          style={fondoRampa ? `background: ${fondoRampa};` : undefined}
+          aria-hidden="true"
+        />
+        <span class="cifra">{etiquetaMax}</span>
+        {mostrarSinDato && (
+          <span class="ml-2 inline-flex items-center gap-1.5">
+            <span
+              class="h-2.5 w-2.5 rounded-sm ring-1 ring-black/10"
+              style={`background-color: ${COLOR_SIN_DATO};`}
+              aria-hidden="true"
+            />
+            Sin dato
+          </span>
+        )}
+      </>
+    )
+  }
+  <span class="sr-only">
+    {descripcionLectores}
+  </span>
+</div>

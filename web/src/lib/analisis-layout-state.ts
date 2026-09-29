@@ -4,6 +4,7 @@ export const PANELES_ANALITICOS = [
   { id: 'mapa', etiqueta: 'Mapa departamental' },
   { id: 'presion', etiqueta: 'Presión por semana' },
   { id: 'serie', etiqueta: 'Serie del departamento' },
+  { id: 'canal', etiqueta: 'Canal endémico' },
   { id: 'temporadas', etiqueta: 'Comparación de temporadas' },
   { id: 'departamentos', etiqueta: 'Comparación de departamentos' },
   { id: 'calendario', etiqueta: 'Calendario epidémico' },
@@ -58,8 +59,13 @@ const PRESETS: Record<
     tamanos: { mapa: 'grande', presion: 'grande', departamentos: 'grande' },
   },
   temporal: {
-    panelesVisibles: ['serie', 'temporadas', 'calendario'],
-    tamanos: { serie: 'grande', temporadas: 'grande', calendario: 'grande' },
+    panelesVisibles: ['serie', 'canal', 'temporadas', 'calendario'],
+    tamanos: {
+      serie: 'grande',
+      canal: 'grande',
+      temporadas: 'grande',
+      calendario: 'grande',
+    },
   },
   clima: {
     panelesVisibles: ['mapa', 'clima'],
@@ -71,10 +77,24 @@ const PRESETS: Record<
   },
 };
 
+export const DESCRIPCIONES_PRESETS: Record<VistaAnalisis, string> = {
+  general:
+    'General: mapa, matriz de presión y comparaciones temporales y territoriales.',
+  territorial:
+    'Territorial: mapa, matriz de presión y comparación entre departamentos.',
+  temporal:
+    'Temporal: serie histórica y canal endémico del departamento, temporadas y calendario nacional.',
+  clima:
+    'Clima: mapa territorial y dispersión de anomalía climática contra presión.',
+  calidad:
+    'Calidad de datos: disponibilidad de observaciones y auditoría de procedencia.',
+};
+
 const TAMANOS_PREDETERMINADOS: Record<PanelAnalitico, TamanoPanel> = {
   mapa: 'mediano',
   presion: 'grande',
   serie: 'grande',
+  canal: 'grande',
   temporadas: 'grande',
   departamentos: 'grande',
   calendario: 'grande',

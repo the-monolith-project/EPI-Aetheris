@@ -1,0 +1,95 @@
+---
+/**
+ * Página 404. Render la sirve automáticamente para cualquier ruta que no
+ * exista, siempre que el build la deje en dist/404.html -- es el único
+ * documento que Astro emite plano en vez de como directorio, así que no
+ * "corregir" esa ruta a dist/404/index.html.
+ *
+ * Va con noindex: sin él emitiría un canonical propio y los buscadores
+ * podrían indexar la página de error.
+ */
+import Layout from '../layouts/Layout.astro';
+import Icono from '../components/Icono.astro';
+
+const SALIDAS = [
+  {
+    href: '/',
+    titulo: 'Portada',
+    descripcion: 'El mapa de los 14 departamentos y el estado general.',
+    icono: 'home',
+  },
+  {
+    href: '/alertas',
+    titulo: 'Alertas de campo',
+    descripcion: 'Lo que el equipo ha publicado y sigue vigente.',
+    icono: 'bell',
+  },
+  {
+    href: '/analisis',
+    titulo: 'Análisis',
+    descripcion: 'Dengue, enfermedad respiratoria y fichas por departamento.',
+    icono: 'chart-line',
+  },
+  {
+    href: '/biblioteca',
+    titulo: 'Biblioteca',
+    descripcion:
+      'Qué es el sistema, de dónde salen los datos y qué deja fuera.',
+    icono: 'book-2',
+  },
+];
+---
+
+<Layout
+  title="EPI-Aetheris — Página no encontrada"
+  descripcion="La dirección solicitada no existe en EPI-Aetheris."
+  noindex
+>
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-[1600px] px-4 py-12 sm:px-8 sm:py-16 lg:px-12"
+  >
+    <header class="max-w-2xl">
+      <p class="font-mono text-xs font-semibold tracking-wider text-accent">
+        Error 404
+      </p>
+      <h1
+        class="mt-2 font-display text-2xl font-semibold tracking-tight text-ink sm:text-[2rem]"
+      >
+        Esta página no existe
+      </h1>
+      <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+        La dirección puede haber cambiado, o el enlace que la trajo aquí estar
+        desactualizado. El resto del sitio funciona con normalidad; abajo están
+        las cuatro entradas principales.
+      </p>
+    </header>
+
+    <nav
+      aria-label="Secciones principales"
+      class="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:max-w-4xl"
+    >
+      {
+        SALIDAS.map((salida) => (
+          <a
+            href={salida.href}
+            class="card-elevated flex flex-col gap-1.5 rounded-2xl border border-border bg-surface p-5"
+          >
+            <span class="inline-flex items-center gap-2 font-sans text-base font-semibold text-ink">
+              <Icono nombre={salida.icono} class="h-4 w-4 text-accent" />
+              {salida.titulo}
+            </span>
+            <span class="font-sans text-sm leading-relaxed text-ink-muted">
+              {salida.descripcion}
+            </span>
+          </a>
+        ))
+      }
+    </nav>
+
+    <p class="mt-8 max-w-2xl font-sans text-sm leading-relaxed text-ink-muted">
+      Si el enlace procede de este mismo sitio, se agradece comunicarlo en{' '}
+      <a href="/contacto" class="text-accent underline">contacto</a> para su corrección.
+    </p>
+  </main>
+</Layout>

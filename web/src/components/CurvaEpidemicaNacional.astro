@@ -5,7 +5,11 @@
 // de la red de Docker) contra GET /api/casos-nacional: total nacional de
 // OpenDengue y, desde 2025, sospechosos del tablero de MINSAL (cada fila trae
 // su `fuente`). No es clasificación de riesgo: el
-// corte de percentil sigue abierto.
+// corte de percentil sigue abierto (docs/contexto/02-decisiones-abiertas.md,
+// punto A).
+import BotonExportarGrafico from './BotonExportarGrafico.astro';
+import BotonIncrustar from './BotonIncrustar.astro';
+import CargadorCurva from './CargadorCurva.astro';
 ---
 
 <section
@@ -31,11 +35,22 @@
       type="button"
       id="curva-descargar-csv"
       disabled
-      title="Cargando datos para descargar..."
+      title="Cargando datos para descargar…"
       class="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 font-sans text-xs font-medium text-ink transition-colors hover:border-accent/40 hover:bg-secondary/30 disabled:cursor-not-allowed disabled:opacity-50"
     >
       Descargar CSV
     </button>
+  </div>
+  <div class="mt-3 flex flex-wrap items-center gap-2">
+    <BotonExportarGrafico
+      titulo="Curva epidémica nacional de dengue"
+      fuente="OpenDengue hasta 2024; tablero de MINSAL desde 2025"
+    />
+    <BotonIncrustar
+      ruta="/incrustar/curva-nacional"
+      titulo="Curva epidémica nacional de dengue en El Salvador"
+      alto={520}
+    />
   </div>
   <div class="mt-4 flex items-center gap-2 font-sans text-xs text-ink-muted">
     <span>Detalle</span>
@@ -61,12 +76,15 @@
     id="curva-epidemica"
     class="mt-3 overflow-x-auto scroll-shadow-x rounded-xl border border-border bg-bg p-3 sm:p-4"
     role="status"
+    aria-busy="true"
   >
-    <!-- Skeleton con la misma altura aproximada del SVG final (viewBox 720x240,
-         w-full) para que la página no salte al llegar los datos. -->
+    <!-- El cargador ocupa la misma altura aproximada del SVG final (viewBox
+         720x240, w-full) para que la página no salte al llegar los datos. -->
     <div data-estado aria-hidden="true">
-      <div class="skeleton h-40 w-full sm:h-52"></div>
-      <div class="skeleton mt-2 h-3 w-1/3"></div>
+      <CargadorCurva
+        class="h-40 w-full justify-center sm:h-52"
+        texto="Cargando la curva…"
+      />
     </div>
   </div>
   <p id="curva-epidemica-resumen" class="sr-only" role="status"></p>
@@ -312,9 +330,11 @@
     if (!contenedor) return;
 
     try {
+      contenedor.setAttribute('aria-busy', 'true');
       const datos = await obtenerCasosNacionales();
       datosActuales = datos;
       dibujar(contenedor, datos);
+      contenedor.removeAttribute('aria-busy');
       if (botonDescarga && datos.length > 0) {
         botonDescarga.disabled = false;
         botonDescarga.removeAttribute('title');

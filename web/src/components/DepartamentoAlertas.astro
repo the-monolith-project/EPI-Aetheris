@@ -1,0 +1,101 @@
+---
+interface Props {
+  codigo: string;
+  nombre: string;
+}
+const { codigo, nombre } = Astro.props;
+---
+
+<section
+  data-departamento-alertas={codigo}
+  aria-labelledby="dep-alertas-titulo"
+  class="rounded-2xl border border-border bg-surface p-5"
+>
+  <h2
+    id="dep-alertas-titulo"
+    class="font-display text-xl font-semibold text-ink"
+  >
+    Alertas de campo vigentes
+  </h2>
+  <p class="mt-1 font-sans text-xs text-ink-muted">
+    Las nacionales y las que nombran a {nombre}.
+  </p>
+  <div
+    data-alertas-estado
+    role="status"
+    aria-busy="true"
+    class="mt-3 font-sans text-sm text-ink-muted"
+  >
+    Cargando alertas…
+  </div>
+  <ul data-alertas-lista class="mt-3 flex flex-col gap-3" hidden></ul>
+</section>
+
+<script>
+  import {
+    alertaAplicaA,
+    esAlertaNacional,
+    textoAlcance,
+  } from '../lib/alcance-alertas';
+  import {
+    ETIQUETAS_NIVEL,
+    ETIQUETAS_TIPO,
+    type PayloadAlertas,
+  } from '../lib/vista-alertas';
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+
+  document
+    .querySelectorAll<HTMLElement>('[data-departamento-alertas]')
+    .forEach(async (raiz) => {
+      const codigo = raiz.dataset.departamentoAlertas ?? '';
+      const estado = raiz.querySelector<HTMLElement>('[data-alertas-estado]');
+      const lista = raiz.querySelector<HTMLElement>('[data-alertas-lista]');
+      if (!estado || !lista) return;
+      try {
+        const respuesta = await fetch(`${API_BASE}/api/alertas`);
+        if (!respuesta.ok) throw new Error(String(respuesta.status));
+        const datos = (await respuesta.json()) as PayloadAlertas;
+        // Las que nombran al departamento van antes que las nacionales.
+        const aplican = (datos.alertas ?? [])
+          .filter((a) => alertaAplicaA(a, codigo))
+          .sort(
+            (a, b) => Number(esAlertaNacional(a)) - Number(esAlertaNacional(b)),
+          );
+        estado.setAttribute('aria-busy', 'false');
+        if (aplican.length === 0) {
+          estado.textContent =
+            'Sin alertas de campo vigentes para este departamento.';
+          return;
+        }
+        estado.hidden = true;
+        for (const alerta of aplican) {
+          const item = document.createElement('li');
+          item.className =
+            'rounded-lg border border-border bg-bg p-3 font-sans text-sm';
+          const etiqueta = document.createElement('p');
+          etiqueta.className =
+            'font-mono text-xs font-semibold uppercase tracking-wide text-accent';
+          const nivel =
+            alerta.nivel in ETIQUETAS_NIVEL
+              ? ETIQUETAS_NIVEL[alerta.nivel as keyof typeof ETIQUETAS_NIVEL]
+              : alerta.nivel;
+          etiqueta.textContent = `${ETIQUETAS_TIPO[alerta.tipo] ?? alerta.tipo} · ${nivel}`;
+          const enlace = document.createElement('a');
+          enlace.href = `/alertas?tipo=${encodeURIComponent(alerta.tipo)}#alerta-${alerta.id}`;
+          enlace.className = 'enlace-filete mt-1 inline-block text-ink';
+          enlace.textContent = alerta.titulo;
+          const alcance = document.createElement('p');
+          alcance.className = 'mt-1 text-xs text-ink-muted';
+          alcance.textContent = `Alcance: ${textoAlcance(alerta)}`;
+          item.append(etiqueta, enlace, alcance);
+          lista.appendChild(item);
+        }
+        lista.hidden = false;
+      } catch {
+        estado.setAttribute('aria-busy', 'false');
+        estado.textContent =
+          'No se pudieron cargar las alertas en este momento.';
+      }
+    });
+</script>

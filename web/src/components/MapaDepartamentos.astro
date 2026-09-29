@@ -1,6 +1,9 @@
 ---
-// Mapa departamental -- selector de capas DESCRIPTIVAS (módulos M1–M3).
-// Leaflet necesita el DOM del navegador (no hay forma de
+import AyudaTermino from './AyudaTermino.astro';
+import Icono from './Icono.astro';
+import PanelWorkspace from './analisis/PanelWorkspace.astro';
+// Mapa departamental -- selector de capas descriptivas (módulos M1–M3,
+// docs/contexto). Leaflet necesita el DOM del navegador (no hay forma de
 // renderizarlo en el servidor), así que todo el trabajo con L.* vive en el
 // <script> de abajo, que Astro procesa y ejecuta solo en el cliente. No se
 // agregó React/Preact para esto -- un componente .astro + <script> ya
@@ -13,209 +16,183 @@
 // de la vigilancia (M4: presencia de dato / hueco / boletín que no cuadra).
 // M4 no es un semáforo de riesgo ni un índice compuesto.
 //
-// La capa de anomalía climática es deliberadamente NO un semáforo de
-// alerta -- este proyecto retiró un diseño de alerta binaria porque se
-// demostró empíricamente que no discriminaba nada. Escala continua,
+// La capa de anomalía climática no es un semáforo de alerta: el umbral
+// binario que se probó se cruzaba todos los años y no distinguía nada. Escala continua,
 // colores neutros (azul/gris/naranja), sin rojo de urgencia ni lenguaje de
 // "cruce de umbral".
 ---
 
-<section
-  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
->
-  <div class="flex items-start gap-3">
-    <span
-      class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
-      aria-hidden="true"></span>
-    <div>
-      <h3 class="font-sans text-base font-semibold text-ink sm:text-lg">
-        Mapa departamental
-      </h3>
-    </div>
-  </div>
-
-  <div
-    class="mt-4 flex gap-2 rounded-lg border border-dashed border-border bg-bg p-3"
-  >
-    <svg
-      class="mt-0.5 h-4 w-4 shrink-0 text-accent"
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M4 6h12M4 10h12M4 14h8"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"></path>
-    </svg>
-    <p class="font-sans text-xs leading-relaxed text-ink-muted">
-      <strong class="font-semibold text-ink">Cómo interpretar el mapa:</strong> el
-      significado del color depende de la capa seleccionada. La explicación específica
-      aparece en “Aviso de la capa”. El gris indica ausencia de dato.
-    </p>
-  </div>
-
-  <div
-    id="mapa-selector"
-    class="mt-4 flex flex-wrap gap-2"
-    role="tablist"
-    aria-label="Capas del mapa"
-  >
-  </div>
-
-  <div class="mt-3 flex gap-2 rounded-lg border border-border bg-bg p-3">
-    <svg
-      class="mt-0.5 h-4 w-4 shrink-0 text-accent"
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle cx="10" cy="10" r="8.25" stroke="currentColor" stroke-width="1.5"
-      ></circle>
-      <path
-        d="M10 9v4.5"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"></path>
-      <circle cx="10" cy="6.75" r="0.9" fill="currentColor"></circle>
-    </svg>
-    <div>
-      <p
-        class="font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted"
-      >
-        Aviso de la capa
-      </p>
-      <p
-        id="mapa-aviso"
-        role="status"
-        aria-live="polite"
-        class="mt-0.5 font-sans text-sm text-ink"
-      ></p>
-    </div>
-  </div>
-
-  <div
-    id="mapa-no-disponible"
-    class="mt-2 hidden rounded-lg border border-secondary bg-secondary/25 p-3"
-  >
-    <div class="flex gap-2">
-      <svg
-        class="mt-0.5 h-4 w-4 shrink-0 text-secondary-ink"
-        viewBox="0 0 20 20"
-        fill="none"
-        aria-hidden="true"
-      >
-        <path
-          d="M10 2.5 18 16.5H2L10 2.5Z"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linejoin="round"></path>
-        <path
-          d="M10 8v3.5"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"></path>
-        <circle cx="10" cy="14" r="0.9" fill="currentColor"></circle>
-      </svg>
-      <p class="font-sans text-sm text-ink">
-        No fue posible cargar esta capa. El mapa se muestra en gris hasta que
-        los datos vuelvan a estar disponibles.
-      </p>
-    </div>
-  </div>
-
+<PanelWorkspace tipo="visor" titulo="Mapa departamental" idTitulo="mapa-titulo">
   <div
     id="mapa-departamentos"
     role="region"
     aria-label="Mapa interactivo de departamentos de El Salvador"
     aria-busy="true"
-    class="mt-4 h-[300px] w-full overflow-hidden rounded-xl border border-border shadow-inner sm:h-[420px] lg:h-[540px]"
+    class="h-[340px] w-full overflow-hidden shadow-inner sm:h-[460px] lg:h-[580px]"
   >
     <div class="skeleton h-full w-full" aria-hidden="true"></div>
   </div>
-  <div id="mapa-leyenda" class="mt-3"></div>
 
-  <details class="mt-3 rounded-xl border border-border bg-bg p-3">
-    <summary class="cursor-pointer font-sans text-xs font-medium text-ink-muted">
-      Ver los valores por departamento en una tabla
-    </summary>
-    <div class="mt-2 overflow-x-auto">
-      <table
-        id="mapa-tabla-valores"
-        class="w-full border-collapse font-sans text-xs tabular-nums text-ink"
-      >
-        <caption class="sr-only" id="mapa-tabla-caption"></caption>
-        <thead>
-          <tr class="text-left text-ink-muted">
-            <th scope="col" class="border-b border-border py-1 pr-4">Departamento</th>
-            <th scope="col" class="border-b border-border py-1" id="mapa-tabla-columna-valor">Valor</th>
-          </tr>
-        </thead>
-        <tbody id="mapa-tabla-cuerpo"></tbody>
-      </table>
-    </div>
-  </details>
-
-  <p id="mapa-detalle-anuncio" role="status" aria-live="polite" class="sr-only"></p>
-  <div
-    id="mapa-detalle"
-    role="region"
-    aria-labelledby="mapa-detalle-nombre"
-    tabindex="-1"
-    class="mt-4 hidden rounded-xl border border-accent/30 bg-secondary/20 p-4 sm:p-5"
-  >
-    <div class="flex items-start justify-between gap-3">
-      <div>
-        <p
-          class="font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted"
-        >
-          Detalle de departamento
-        </p>
-        <h3
-          id="mapa-detalle-nombre"
-          class="mt-0.5 font-display text-lg font-semibold text-ink"
-        >
-        </h3>
-      </div>
-      <div class="flex items-center gap-2">
-        <a
-          id="mapa-detalle-ficha"
-          href="#"
-          class="rounded-full border border-border bg-surface px-3 py-1 font-sans text-xs font-semibold text-accent transition-colors hover:border-accent/40 hover:underline"
-        >
-          Ficha imprimible
-        </a>
-        <button
-          type="button"
-          id="mapa-detalle-cerrar"
-          class="rounded-full border border-border bg-surface px-2.5 py-1 font-sans text-xs text-ink-muted transition-colors hover:border-accent/40 hover:text-ink"
-          aria-label="Cerrar detalle de departamento"
-        >
-          Cerrar
-        </button>
-      </div>
-    </div>
-
-    <dl
-      id="mapa-detalle-snapshot"
-      class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
+  <div class="flex flex-col gap-3 border-t border-border bg-bg p-4 sm:p-5">
+    <div
+      class="flex gap-2 rounded-lg border border-dashed border-border bg-surface p-3"
     >
-    </dl>
-
-    <div class="mt-4">
-      <p
-        class="font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted"
-      >
-        Idoneidad biofísica (Iv). Banda histórica P25-P75 frente al año
-        seleccionado
+      <Icono
+        nombre="list-details"
+        class="mt-0.5 h-4 w-4 shrink-0 text-accent"
+      />
+      <p class="font-sans text-xs leading-relaxed text-ink-muted">
+        <strong class="font-semibold text-ink">Cómo interpretar el mapa:</strong
+        > el significado del color depende de la capa seleccionada. La explicación
+        específica aparece en el aviso de la capa. El gris indica ausencia de dato.
       </p>
-      <div id="mapa-detalle-curva" class="mt-2 h-24 w-full">
-        <div class="skeleton h-full w-full" aria-hidden="true"></div>
+      <div class="flex shrink-0 items-start gap-2" data-ayudas-mapa>
+        <AyudaTermino clave="iv" />
+        <AyudaTermino clave="anomalia" />
+        <AyudaTermino clave="percentil-presion" />
+        <AyudaTermino clave="integridad" />
+      </div>
+    </div>
+
+    <div
+      id="mapa-selector"
+      class="flex flex-wrap gap-2"
+      role="tablist"
+      aria-label="Capas del mapa"
+    >
+    </div>
+
+    <div class="flex gap-2 rounded-lg border border-border bg-surface p-3">
+      <Icono nombre="info-circle" class="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+      <div class="min-w-0 flex-1">
+        <p
+          id="mapa-aviso"
+          role="status"
+          aria-live="polite"
+          class="font-sans text-sm text-ink"
+        >
+        </p>
+      </div>
+    </div>
+
+    <div
+      id="mapa-no-disponible"
+      class="hidden rounded-lg border border-secondary bg-secondary/25 p-3"
+    >
+      <div class="flex gap-2">
+        <Icono
+          nombre="alert-triangle"
+          class="mt-0.5 h-4 w-4 shrink-0 text-secondary-ink"
+        />
+        <p class="font-sans text-sm text-ink">
+          No se pudo cargar esta capa. El mapa se muestra en gris hasta que los
+          datos vuelvan a estar disponibles.
+        </p>
+      </div>
+    </div>
+
+    <p
+      id="mapa-alertas-nacionales"
+      class="hidden font-sans text-xs text-ink-muted"
+    >
+    </p>
+
+    <div id="mapa-leyenda"></div>
+
+    <details class="rounded-xl border border-border bg-surface p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver los valores por departamento en una tabla
+      </summary>
+      <div class="mt-2 overflow-x-auto">
+        <table
+          id="mapa-tabla-valores"
+          class="w-full border-collapse font-sans text-xs tabular-nums text-ink"
+        >
+          <caption class="sr-only" id="mapa-tabla-caption"></caption>
+          <thead>
+            <tr class="text-left text-ink-muted">
+              <th scope="col" class="border-b border-border py-1 pr-4"
+                >Departamento</th
+              >
+              <th
+                scope="col"
+                class="border-b border-border py-1 pr-4"
+                id="mapa-tabla-columna-valor">Valor</th
+              >
+              <th scope="col" class="border-b border-border py-1"
+                >Alerta vigente</th
+              >
+            </tr>
+          </thead>
+          <tbody id="mapa-tabla-cuerpo"></tbody>
+        </table>
+      </div>
+    </details>
+
+    <p
+      id="mapa-detalle-anuncio"
+      role="status"
+      aria-live="polite"
+      class="sr-only"
+    >
+    </p>
+    <div
+      id="mapa-detalle"
+      role="region"
+      aria-labelledby="mapa-detalle-nombre"
+      tabindex="-1"
+      class="hidden rounded-xl border border-accent/30 bg-secondary/20 p-4 sm:p-5"
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="font-sans text-xs font-semibold text-ink-muted">
+            Detalle de departamento
+          </p>
+          <h3
+            id="mapa-detalle-nombre"
+            class="mt-0.5 font-display text-lg font-semibold text-ink"
+          >
+          </h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <a
+            id="mapa-detalle-ficha"
+            href="#"
+            class="rounded-full border border-border bg-surface px-3 py-1 font-sans text-xs font-semibold text-accent transition-colors hover:border-accent/40 hover:underline"
+          >
+            Ficha imprimible
+          </a>
+          <button
+            type="button"
+            id="mapa-detalle-cerrar"
+            class="rounded-full border border-border bg-surface px-2.5 py-1 font-sans text-xs text-ink-muted transition-colors hover:border-accent/40 hover:text-ink"
+            aria-label="Cerrar detalle de departamento"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+
+      <dl
+        id="mapa-detalle-snapshot"
+        class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
+      >
+      </dl>
+
+      <div class="mt-4">
+        <p class="font-sans text-xs font-semibold text-ink-muted">
+          Idoneidad biofísica (Iv). Banda histórica P25-P75 frente al año
+          seleccionado
+        </p>
+        <div id="mapa-detalle-curva" class="mt-2 h-24 w-full">
+          <div class="skeleton h-full w-full" aria-hidden="true"></div>
+        </div>
       </div>
     </div>
   </div>
-</section>
+</PanelWorkspace>
 
 <style>
   :global(.leaflet-container) {
@@ -266,7 +243,12 @@
   // volviendo a bloquear el render): solo da la URL del archivo, y el
   // <link> se crea a mano dentro de iniciar().
   import leafletCssHref from 'leaflet/dist/leaflet.css?url';
-  import { obtenerDatasetAnalitico } from '../lib/analisis-api';
+  import {
+    obtenerAlertasDengue,
+    obtenerDatasetAnalitico,
+  } from '../lib/analisis-api';
+  import { alertaEstaVigente } from '../lib/vista-alertas';
+  import { esAlertaNacional } from '../lib/alcance-alertas';
   import {
     actualizarFiltrosAnalisis,
     obtenerFiltrosAnalisis,
@@ -277,6 +259,7 @@
     esAnioAnalisisDengue,
     type AnioAnalisisDengue,
   } from '../lib/tipos-analisis';
+  import { renderErrorFuente } from './estado-async';
   import { escapeHtml } from '../utils/security';
 
   // ---------------------------------------------------------------------
@@ -570,7 +553,7 @@
       for (const [codigo, fila] of datos) valores.set(codigo, fila.iv);
       return valores;
     },
-    // Iv está acotado en [0,1] por definición, pero eso NO significa que los
+    // Iv está acotado en [0,1] por definición, pero eso no significa que los
     // valores reales usen ese rango completo -- medido en vivo (SE01/2023):
     // Iv real va de 0.076 a 0.277 en los 14 departamentos, muy por debajo de
     // los cortes fijos que había antes (0.2/0.4/0.6/0.8), así que casi todo
@@ -651,7 +634,7 @@
   // cobertura (misma serie que colorea la capa de volumen MINSAL). Ambas
   // comparten un único fetch cacheado.
   //
-  // El color viene de la CATEGORÍA (baja/media/alta contra P50/P75 del
+  // El color viene de la categoría (baja/media/alta contra P50/P75 del
   // propio baseline del departamento), no del percentil crudo -- el
   // percentil exacto y el conteo observado van en el tooltip. Rampa verde
   // azulada neutra: sin rojo de urgencia, esto no es una alerta.
@@ -863,7 +846,7 @@
   // Tooltip unificado de los módulos M1–M3: al pasar sobre un departamento en
   // cualquiera de las capas M1/M2/M3 se ven los cuatro valores a la vez
   // (Iv, anomalía, presión probable y confirmado), no solo el de la capa
-  // activa -- la capa activa solo decide el COLOR del mapa. La línea de la
+  // activa -- la capa activa solo decide el color del mapa. La línea de la
   // capa activa va al final con el detalle extra de su baseline.
   // ---------------------------------------------------------------------
 
@@ -909,7 +892,7 @@
       const celda = pres?.[serie];
       if (celda && celda.percentil !== null) {
         lineas.push(
-          `Casos observados (${serie}): ${celda.casos_observados} · baseline P50/P75: ` +
+          `Casos observados (${serie}): ${celda.casos_observados} · línea base P50/P75: ` +
             `${celda.p50_baseline} / ${celda.p75_baseline}`,
         );
       } else if (celda?.nota) {
@@ -1109,8 +1092,8 @@
     function celdaSnapshot(etiqueta: string, valor: string): string {
       return (
         `<div class="rounded-lg border border-border bg-surface px-3 py-2">` +
-        `<dt class="font-sans text-[11px] font-medium uppercase tracking-wide text-ink-muted">${escapeHtml(etiqueta)}</dt>` +
-        `<dd class="mt-0.5 font-mono text-sm text-ink">${escapeHtml(valor)}</dd></div>`
+        `<dt class="font-sans text-xs font-medium text-ink-muted">${escapeHtml(etiqueta)}</dt>` +
+        `<dd class="mt-0.5 cifra text-sm text-ink">${escapeHtml(valor)}</dd></div>`
       );
     }
 
@@ -1193,7 +1176,7 @@
     }).observe(contenedorMapa);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        '&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 12,
     }).addTo(mapa);
 
@@ -1222,6 +1205,57 @@
       Map<string, number | undefined> | null
     >();
 
+    // Departamentos con una alerta de dengue vigente que los nombra (ADR 0022).
+    // Las nacionales no marcan ninguno: se resumen en un aviso sobre la leyenda.
+    let departamentosConAlerta = new Set<string>();
+
+    function pintarAlertasEnTabla() {
+      tablaCuerpo
+        ?.querySelectorAll<HTMLElement>('[data-celda-alerta]')
+        .forEach((celda) => {
+          const codigo = celda.dataset.celdaAlerta ?? '';
+          if (departamentosConAlerta.has(codigo)) {
+            const enlace = document.createElement('a');
+            enlace.href = `/alertas?tipo=dengue&dept=${encodeURIComponent(codigo)}`;
+            enlace.className = 'font-medium text-accent underline';
+            enlace.textContent = 'Sí, ver alertas';
+            celda.replaceChildren(enlace);
+          } else {
+            celda.textContent = 'No';
+          }
+        });
+    }
+
+    async function cargarAlertasVigentes() {
+      const avisoNacional = document.getElementById('mapa-alertas-nacionales');
+      try {
+        const alertas = (await obtenerAlertasDengue()).filter((a) =>
+          alertaEstaVigente(a),
+        );
+        const nuevas = new Set<string>();
+        let nacionales = 0;
+        for (const alerta of alertas) {
+          if (esAlertaNacional(alerta)) nacionales += 1;
+          else
+            for (const codigo of alerta.departamentos ?? []) nuevas.add(codigo);
+        }
+        departamentosConAlerta = nuevas;
+        if (avisoNacional && nacionales > 0) {
+          avisoNacional.classList.remove('hidden');
+          avisoNacional.innerHTML = `Hay ${nacionales} ${nacionales === 1 ? 'alerta nacional vigente' : 'alertas nacionales vigentes'} de dengue. Los departamentos con contorno punteado tienen además una alerta propia. <a href="/alertas?tipo=dengue" class="font-medium text-accent underline">Ver alertas</a>`;
+        } else if (avisoNacional && nuevas.size > 0) {
+          avisoNacional.classList.remove('hidden');
+          avisoNacional.textContent =
+            'Los departamentos con contorno punteado tienen una alerta de dengue vigente.';
+        }
+      } catch {
+        // Sin alertas el mapa sigue igual: la marca es un añadido.
+        departamentosConAlerta = new Set();
+      }
+      pintarAlertasEnTabla();
+      resaltarDepartamento(obtenerFiltrosAnalisis().departamento);
+    }
+
     function resaltarDepartamento(codigoActivo: string | null) {
       capaGeoJsonActiva?.eachLayer((capa) => {
         const ruta = capa as Leaflet.Path & {
@@ -1230,9 +1264,12 @@
         };
         const codigo = ruta.feature?.properties?.codigo ?? '';
         const activa = codigoActivo !== null && codigo === codigoActivo;
+        const conAlerta = departamentosConAlerta.has(codigo);
         ruta.setStyle({
-          color: activa ? '#18181b' : '#8a8a90',
-          weight: activa ? 3 : 1,
+          color: activa || conAlerta ? 'var(--color-seleccion)' : '#8a8a90',
+          weight: activa ? 2 : conAlerta ? 2.5 : 1,
+          // Contorno punteado: la marca de alerta no depende solo del color.
+          dashArray: conAlerta && !activa ? '5 4' : undefined,
         });
         if (activa) ruta.bringToFront?.();
       });
@@ -1349,7 +1386,7 @@
           const nombre = feature.properties?.shapeName
             ? normalizarNombreDepto(feature.properties.shapeName)
             : codigo;
-          return { nombre, valor: valores?.get(codigo) };
+          return { codigo, nombre, valor: valores?.get(codigo) };
         })
         .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
       for (const fila of filas) {
@@ -1359,11 +1396,15 @@
         th.className = 'border-b border-border py-1 pr-4 text-left font-normal';
         th.textContent = fila.nombre;
         const td = document.createElement('td');
-        td.className = 'border-b border-border py-1';
+        td.className = 'border-b border-border py-1 pr-4';
         td.textContent = capa.tooltipValor(fila.valor);
-        tr.append(th, td);
+        const tdAlerta = document.createElement('td');
+        tdAlerta.className = 'border-b border-border py-1';
+        tdAlerta.dataset.celdaAlerta = fila.codigo;
+        tr.append(th, td, tdAlerta);
         tablaCuerpo.appendChild(tr);
       }
+      pintarAlertasEnTabla();
     }
 
     async function activarCapa(id: IdCapa) {
@@ -1379,6 +1420,7 @@
         '<div class="skeleton h-4 w-40"></div><div class="skeleton h-4 w-24"></div><div class="skeleton h-4 w-24"></div>' +
         '</div>';
       contenedorNoDisponible!.classList.add('hidden');
+      contenedorNoDisponible!.replaceChildren();
 
       let valores = cacheValoresPorCapa.get(id);
       if (valores === undefined) {
@@ -1386,7 +1428,7 @@
         cacheValoresPorCapa.set(id, valores);
       }
 
-      // Para las capas de los módulos M1–M3 el tooltip muestra los CUATRO valores
+      // Para las capas de los módulos M1–M3 el tooltip muestra los cuatro valores
       // (Iv, anomalía, presión probable/confirmado) a la vez -- se esperan
       // ambos endpoints aquí (cacheados: 2 fetch en total como máximo) para
       // que el tooltip no dependa de qué capa se visitó antes.
@@ -1402,6 +1444,11 @@
       if (!valores) {
         contenedorNoDisponible!.classList.remove('hidden');
         contenedorLeyenda!.innerHTML = '';
+        renderErrorFuente(
+          contenedorNoDisponible!,
+          () => void activarCapa(id),
+          'No se pudo cargar esta capa. El mapa se muestra en gris hasta que los datos vuelvan a estar disponibles.',
+        );
         pintarTablaValores(capa, null);
         // Se sigue dibujando el contorno departamental, todo en "sin dato",
         // para que el mapa no se sienta roto.
@@ -1495,6 +1542,7 @@
     }
 
     pintarSelector(capaMinsal.id);
+    void cargarAlertasVigentes();
     await activarCapa(capaMinsal.id);
 
     let filtrosAplicados = obtenerFiltrosAnalisis();

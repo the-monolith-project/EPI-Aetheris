@@ -1,0 +1,56 @@
+---
+// Copia el <iframe> que incrusta una de las vistas de /incrustar.
+interface Props {
+  ruta: string;
+  titulo: string;
+  alto: number;
+  class?: string;
+}
+
+const { ruta, titulo, alto, class: clase = '' } = Astro.props;
+const sitio = Astro.site ?? new URL('https://epi-aetheris.dev');
+const src = new URL(ruta, sitio).href;
+---
+
+<div class:list={['flex flex-wrap items-center gap-2', clase]} data-incrustar>
+  <button
+    type="button"
+    data-incrustar-copiar
+    data-src={src}
+    data-titulo={titulo}
+    data-alto={alto}
+    class="min-h-[44px] rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+  >
+    Incrustar
+  </button>
+  <span
+    data-incrustar-estado
+    role="status"
+    class="font-sans text-xs text-ink-muted"></span>
+</div>
+
+<script>
+  import { codigoIncrustacion } from '../lib/incrustar';
+
+  document.addEventListener('click', async (evento) => {
+    const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>(
+      '[data-incrustar-copiar]',
+    );
+    if (!boton) return;
+    const estado = boton
+      .closest('[data-incrustar]')
+      ?.querySelector<HTMLElement>('[data-incrustar-estado]');
+    const codigo = codigoIncrustacion({
+      src: boton.dataset.src ?? '',
+      titulo: boton.dataset.titulo ?? '',
+      alto: Number(boton.dataset.alto) || 400,
+    });
+    try {
+      await navigator.clipboard.writeText(codigo);
+      if (estado) estado.textContent = 'Código copiado.';
+    } catch {
+      // Sin permiso de portapapeles: se muestra para copiarlo a mano.
+      if (estado) estado.textContent = codigo;
+    }
+  });
+</script>

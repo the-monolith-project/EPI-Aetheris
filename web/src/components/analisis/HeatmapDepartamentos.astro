@@ -1,56 +1,79 @@
-<article
-  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
->
-  <header>
-    <h3 class="font-sans text-base font-semibold text-ink">
-      Presión por departamento y semana
-    </h3>
-    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
-      Percentil del conteo observado respecto a la historia del mismo
-      departamento. Las celdas grises indican que falta la observación o que no
-      hay historial suficiente para calcular el percentil.
-    </p>
-  </header>
+---
+import LeyendaRampa from './LeyendaRampa.astro';
+import PanelWorkspace from './PanelWorkspace.astro';
+import { RAMPA_PRESION } from '../../lib/colores';
+---
 
+<PanelWorkspace
+  tipo="matriz"
+  titulo="Presión por departamento y semana"
+  descripcion="Percentil del conteo observado respecto a la historia del mismo departamento. Las celdas grises indican que falta la observación o que no hay historial suficiente para calcular el percentil."
+>
   <div class="mt-4 overflow-x-auto scroll-shadow-x">
     <div
       id="heatmap-departamentos"
       class="min-h-[420px] min-w-[760px]"
       role="region"
-      aria-label="Heatmap de presión epidemiológica relativa por departamento y semana"
+      aria-label="Mapa de calor de presión epidemiológica relativa por departamento y semana"
+      aria-busy="true"
     >
+      <div
+        class="flex h-full min-h-[420px] w-full min-w-[760px] flex-col justify-between gap-2.5 p-2"
+        aria-hidden="true"
+      >
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+      </div>
     </div>
   </div>
 
-  <div
-    class="mt-3 flex flex-wrap items-center gap-2 font-sans text-[11px] text-ink-muted"
+  <LeyendaRampa
+    rampa={RAMPA_PRESION}
+    idRampa="heatmap-leyenda-rampa"
+    etiquetaMin="Percentil 0"
+    etiquetaMax="Percentil 100"
+    descripcionLectores="El color de cada celda va de un tono claro en el percentil 0 a un tono oscuro en el percentil 100, en una escala continua; las celdas grises indican que falta el dato."
+  />
+
+  <details
+    id="heatmap-tabla-detalles"
+    class="mt-3 rounded-xl border border-border bg-bg p-3"
   >
-    <span>Percentil 0</span>
-    <span
-      id="heatmap-leyenda-rampa"
-      class="h-2.5 w-44 rounded-full ring-1 ring-black/10"
-      aria-hidden="true"></span>
-    <span>Percentil 100</span>
-    <span class="ml-2 inline-flex items-center gap-1.5">
-      <span class="h-2.5 w-2.5 rounded-sm bg-zinc-200 ring-1 ring-black/10"
-      ></span> Sin dato
-    </span>
-    <span class="sr-only">
-      El color de cada celda va de un tono claro en el percentil 0 a un tono
-      oscuro en el percentil 100, en una escala continua; las celdas grises
-      indican que falta el dato.
-    </span>
-  </div>
+    <summary
+      class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+    >
+      Ver los datos en tabla
+    </summary>
+    <div id="heatmap-tabla-contenedor"></div>
+  </details>
+
   <p
     id="heatmap-resumen"
     class="mt-3 font-sans text-xs text-ink-muted"
     role="status"
+    slot="pie"
   >
   </p>
-</article>
+</PanelWorkspace>
 
 <script>
-  import * as Plot from '@observablehq/plot';
+  // Plot entra por import dinamico, como en el resto de paneles: cuando
+  // un solo componente lo importa de forma estatica, Vite lo arrastra al
+  // grafo inicial y anula los await import de los demas -- 391 KB de Plot
+  // y d3 quedaban en la carga critica de /dengue.
+  let Plot: typeof import('@observablehq/plot') | null = null;
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderErrorFuente,
+    renderEsqueletoMatriz,
+    renderSinDato,
+  } from '../estado-async';
   import { obtenerDatasetAnalitico } from '../../lib/analisis-api';
   import {
     actualizarFiltrosAnalisis,
@@ -58,7 +81,9 @@
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { colorPresion, gradienteCss, RAMPA_PRESION } from '../../lib/colores';
+  import { ESTILO_PLOT, MARGENES, marcoPlot } from '../../lib/plot-tema';
   import { vincularMarcasPlot } from '../../lib/plot-interacciones';
+  import { TablaAlternativa } from '../../lib/tabla-alternativa';
   import {
     esAnioAnalisisDengue,
     notaAnioSoloClima,
@@ -82,6 +107,48 @@
 
   let revision = 0;
   let filtrosActuales = obtenerFiltrosAnalisis();
+  let datosTabla: any[] = [];
+
+  const detailsTabla = document.getElementById(
+    'heatmap-tabla-detalles',
+  ) as HTMLDetailsElement | null;
+  const contenedorTabla = document.getElementById('heatmap-tabla-contenedor');
+
+  const tablaAlternativa =
+    detailsTabla && contenedorTabla
+      ? new TablaAlternativa({
+          details: detailsTabla,
+          contenedorTabla,
+          caption: 'Presión epidemiológica relativa por departamento y semana',
+          columnas: [
+            { clave: 'departamento', encabezado: 'Departamento' },
+            {
+              clave: 'semana',
+              encabezado: 'Semana',
+              alineacion: 'derecha',
+              formato: (v) => `SE${String(v).padStart(2, '0')}`,
+            },
+            {
+              clave: 'casos',
+              encabezado: 'Casos observados',
+              alineacion: 'derecha',
+              formato: (v) => (v !== null ? String(v) : '—'),
+            },
+            {
+              clave: 'percentil',
+              encabezado: 'Percentil',
+              alineacion: 'derecha',
+              formato: (v) => (v !== null ? `${v}%` : '—'),
+            },
+            {
+              clave: 'p50_p75',
+              encabezado: 'P50 / P75',
+              alineacion: 'derecha',
+            },
+          ],
+          obtenerDatos: () => datosTabla,
+        })
+      : null;
 
   function textoCelda(celda: CeldaHeatmap, filtros: FiltrosAnalisis): string {
     if (celda.percentil === null) {
@@ -101,15 +168,21 @@
       resumen.textContent = `Cargando ${filtros.anio}, serie ${filtros.serie}…`;
 
     if (!esAnioAnalisisDengue(filtros.anio)) {
-      contenedor.replaceChildren();
+      renderSinDato(contenedor, notaAnioSoloClima(filtros.anio));
       if (resumen) resumen.textContent = notaAnioSoloClima(filtros.anio);
+      contenedor.setAttribute('aria-busy', 'false');
       return;
     }
 
     contenedor.setAttribute('aria-busy', 'true');
+    renderEsqueletoMatriz(contenedor);
     try {
       const datos = await obtenerDatasetAnalitico(filtros.anio);
       if (idRevision !== revision) return;
+      if (esNoDisponible(datos)) {
+        renderSinDato(contenedor, motivoNoDisponible(datos));
+        return;
+      }
       const celdas: CeldaHeatmap[] = datos.departamentos.flatMap(
         (departamento) =>
           departamento.semanas
@@ -139,11 +212,18 @@
           (!filtros.departamento || celda.codigo === filtros.departamento),
       );
 
-      const grafica = Plot.plot({
+      datosTabla = celdas.map((c) => ({
+        ...c,
+        p50_p75: `${c.presion.p50_baseline ?? '—'} / ${c.presion.p75_baseline ?? '—'}`,
+      }));
+      tablaAlternativa?.marcarCaducada();
+
+      Plot ??= await import('@observablehq/plot');
+      const grafica = Plot!.plot({
         width: Math.max(contenedor.clientWidth, 760),
         height: 430,
-        marginLeft: 110,
-        marginBottom: 48,
+        marginLeft: MARGENES.matriz.marginLeft,
+        marginBottom: MARGENES.matriz.marginBottom,
         x: {
           domain: Array.from(
             { length: filtros.semanaHasta - filtros.semanaDesde + 1 },
@@ -159,7 +239,7 @@
           ),
           label: null,
         },
-        style: { background: 'transparent', color: 'var(--color-ink-muted)' },
+        style: ESTILO_PLOT,
         marks: [
           Plot.cell(celdas, {
             className: 'epi-heatmap-celdas',
@@ -173,12 +253,12 @@
             x: 'semana',
             y: 'departamento',
             fill: 'none',
-            stroke: 'var(--color-ink)',
+            stroke: 'var(--color-seleccion)',
             strokeWidth: 2,
             inset: 0.5,
             pointerEvents: 'none',
           }),
-          Plot.frame({ stroke: 'var(--color-border)' }),
+          marcoPlot(Plot!),
         ],
       });
       vincularMarcasPlot(
@@ -202,15 +282,30 @@
                 celda.semana === filtros.semana,
             )
           : null;
-        resumen.textContent = celdaActiva
-          ? textoCelda(celdaActiva, filtros).replaceAll('\n', ' · ')
-          : `${datos.departamentos.length} departamentos · SE${String(filtros.semanaDesde).padStart(2, '0')}–SE${String(filtros.semanaHasta).padStart(2, '0')} · ${filtros.anio} · serie ${filtros.serie}.`;
+        if (celdaActiva) {
+          const pTexto =
+            celdaActiva.percentil !== null
+              ? `percentil ${celdaActiva.percentil}`
+              : 'sin percentil';
+          const casosTexto =
+            celdaActiva.casos !== null
+              ? `${celdaActiva.casos} casos observados`
+              : 'sin dato de casos';
+          resumen.innerHTML = `
+            <span>${celdaActiva.departamento} · <span class="cifra font-semibold text-accent">${pTexto}</span> con <span class="cifra">${casosTexto}</span> (${filtros.serie}) en la semana <span class="cifra font-semibold text-accent">SE${String(celdaActiva.semana).padStart(2, '0')}</span> de <span class="cifra">${filtros.anio}</span>.</span>
+          `;
+        } else {
+          resumen.innerHTML = `
+            <span><span class="cifra">${datos.departamentos.length}</span> departamentos en el rango <span class="cifra">SE${String(filtros.semanaDesde).padStart(2, '0')}–SE${String(filtros.semanaHasta).padStart(2, '0')}</span> del año <span class="cifra">${filtros.anio}</span> (serie ${filtros.serie}).</span>
+          `;
+        }
       }
     } catch {
       if (idRevision !== revision) return;
-      contenedor.replaceChildren();
+      renderErrorFuente(contenedor, () => void renderizar(filtrosActuales));
       if (resumen)
-        resumen.textContent = 'No fue posible cargar el heatmap departamental.';
+        resumen.textContent =
+          'No se pudo cargar el mapa de calor departamental.';
     } finally {
       contenedor.setAttribute('aria-busy', 'false');
     }
@@ -220,7 +315,20 @@
     filtrosActuales = filtros;
     void renderizar(filtros);
   });
-  new ResizeObserver(() => void renderizar(filtrosActuales)).observe(
-    contenedor!,
-  );
+
+  let ultimoAncho = 0;
+  let timerResize: ReturnType<typeof setTimeout> | null = null;
+  if (contenedor) {
+    new ResizeObserver((entradas) => {
+      const entrada = entradas[0];
+      if (!entrada) return;
+      const nuevoAncho = Math.round(entrada.contentRect.width);
+      if (nuevoAncho === ultimoAncho) return;
+      ultimoAncho = nuevoAncho;
+      if (timerResize) clearTimeout(timerResize);
+      timerResize = setTimeout(() => {
+        void renderizar(filtrosActuales);
+      }, 150);
+    }).observe(contenedor);
+  }
 </script>

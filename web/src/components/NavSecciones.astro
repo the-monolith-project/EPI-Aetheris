@@ -1,0 +1,30 @@
+---
+interface Enlace {
+  href: string;
+  etiqueta: string;
+}
+
+interface Props {
+  etiqueta: string;
+  enlaces: Enlace[];
+}
+
+const { etiqueta, enlaces } = Astro.props;
+---
+
+<nav
+  class="mb-6 flex flex-wrap gap-2 font-sans text-sm"
+  aria-label={etiqueta}
+  data-nav-secciones
+>
+  {
+    enlaces.map((enlace) => (
+      <a
+        href={enlace.href}
+        class="inline-flex min-h-[44px] items-center rounded-full border border-border bg-surface px-3 py-1.5 transition-colors hover:border-accent/50 hover:text-accent"
+      >
+        {enlace.etiqueta}
+      </a>
+    ))
+  }
+</nav>

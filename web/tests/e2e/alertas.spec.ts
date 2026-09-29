@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import {
   AVISO_HONESTIDAD_ALERTAS,
   ROTULO_ALERTA_PRUEBA,
+  esNivelAlerta,
   renderTextoAccionable,
   SIGNIFICADO_NIVEL,
   textoEstadoVacio,
@@ -31,6 +32,18 @@ test('nivel meanings match INDICACIONES §4', () => {
   );
   expect(textoSignificadoNivel('atencion')).toBe(SIGNIFICADO_NIVEL.atencion);
   expect(textoSignificadoNivel('otro')).toBe('');
+});
+
+test('esNivelAlerta identifies valid alert levels and rejects invalid values', () => {
+  expect(esNivelAlerta('informativo')).toBe(true);
+  expect(esNivelAlerta('atencion')).toBe(true);
+  expect(esNivelAlerta('intensificacion')).toBe(true);
+
+  expect(esNivelAlerta('')).toBe(false);
+  expect(esNivelAlerta('urgente')).toBe(false);
+  expect(esNivelAlerta('INFORMATIVO')).toBe(false);
+  expect(esNivelAlerta('atención')).toBe(false);
+  expect(esNivelAlerta(' atencion ')).toBe(false);
 });
 
 test('empty-state copy is the list-empty view branch', () => {
@@ -276,4 +289,24 @@ test('archive non-vigente row shows NO VIGENTE', async ({ page }) => {
   await expect(inactiva.locator('[data-alerta-no-vigente]')).toContainText(
     '31/08/2026',
   );
+});
+
+test('/alertas anuncia el feed Atom en la cabecera y con un enlace visible', async ({
+  page,
+}) => {
+  await page.route('**/api/alertas?**', (ruta) =>
+    ruta.fulfill({
+      json: {
+        aviso: AVISO_HONESTIDAD_ALERTAS,
+        ultima_revision: null,
+        alertas: [],
+      },
+    }),
+  );
+  await page.goto('/alertas');
+  const cabecera = page.locator(
+    'head link[rel="alternate"][type="application/atom+xml"]',
+  );
+  await expect(cabecera).toHaveAttribute('href', /\/api\/alertas\/feed\.xml$/);
+  await expect(page.locator('[data-enlace-feed]')).toBeVisible();
 });

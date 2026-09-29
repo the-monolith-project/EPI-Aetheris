@@ -1,0 +1,26 @@
+---
+/**
+ * Cargador de puntos en cascada (propuesta 4 del sistema de diseño).
+ * Para esperas en línea donde no cabe un skeleton: un botón que dispara un
+ * cálculo, una celda, una capa que se está resolviendo.
+ *
+ * Decorativo por el mismo motivo que CargadorCurva: quien anuncia el estado es
+ * el contenedor anfitrión con role="status" y aria-busy.
+ */
+interface Props {
+  texto?: string;
+  class?: string;
+  [atributo: string]: unknown;
+}
+
+const { texto = '', class: clase = '', ...resto } = Astro.props;
+---
+
+<span class:list={['ea-dot-cargador', clase]} aria-hidden="true" {...resto}>
+  <span class="ea-dot-bounce">
+    <span class="ea-dot"></span>
+    <span class="ea-dot"></span>
+    <span class="ea-dot"></span>
+  </span>
+  {texto && <span class="ea-cargador-etiqueta">{texto}</span>}
+</span>

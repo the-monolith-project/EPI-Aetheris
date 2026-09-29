@@ -1,61 +1,74 @@
-<article
-  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
->
-  <header>
-    <h3 class="font-sans text-base font-semibold text-ink">
-      Calendario epidémico nacional
-    </h3>
-    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
-      Vista semanal de los casos nacionales registrados en OpenDengue. El año
-      2020 se conserva en la serie nacional, aunque no se utiliza en las
-      referencias departamentales.
-    </p>
-  </header>
+---
+import LeyendaRampa from './LeyendaRampa.astro';
+import PanelWorkspace from './PanelWorkspace.astro';
+import { RAMPA_CASOS } from '../../lib/colores';
+---
 
+<PanelWorkspace
+  tipo="matriz"
+  titulo="Calendario epidémico nacional"
+  descripcion="Vista semanal de los casos nacionales: OpenDengue hasta 2024 y casos sospechosos del tablero de MINSAL desde 2025. El año 2020 se conserva en la serie nacional, aunque no se utiliza en las referencias departamentales."
+>
   <div class="mt-4 overflow-x-auto scroll-shadow-x">
     <div
       id="calendario-epidemico"
       class="min-h-[300px] min-w-[760px]"
       role="region"
       aria-label="Calendario de casos nacionales por año y semana epidemiológica"
+      aria-busy="true"
     >
+      <div
+        class="flex h-full min-h-[300px] w-full min-w-[760px] flex-col justify-between gap-2.5 p-2"
+        aria-hidden="true"
+      >
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+      </div>
     </div>
   </div>
 
-  <div
-    class="mt-3 flex flex-wrap items-center gap-2 font-sans text-[11px] text-ink-muted"
+  <LeyendaRampa
+    rampa={RAMPA_CASOS}
+    idRampa="calendario-leyenda-rampa"
+    etiquetaMin="Menor conteo"
+    etiquetaMax="Mayor conteo"
+    descripcionLectores="El color de cada celda va de un tono claro para el conteo más bajo de la serie a un tono oscuro para el conteo más alto, en una escala continua; las celdas grises indican que falta el dato."
+  />
+
+  <details
+    id="calendario-tabla-detalles"
+    class="mt-3 rounded-xl border border-border bg-bg p-3"
   >
-    <span>Menor conteo</span>
-    <span
-      id="calendario-leyenda-rampa"
-      class="h-2.5 w-44 rounded-full ring-1 ring-black/10"
-      aria-hidden="true"></span>
-    <span>Mayor conteo</span>
-    <span class="ml-2 inline-flex items-center gap-1.5">
-      <span class="h-2.5 w-2.5 rounded-sm bg-zinc-200 ring-1 ring-black/10"
-      ></span> Sin dato
-    </span>
-    <span class="sr-only">
-      El color de cada celda va de un tono claro para el conteo más bajo de la
-      serie a un tono oscuro para el conteo más alto, en una escala continua;
-      las celdas grises indican que falta el dato.
-    </span>
-  </div>
+    <summary
+      class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+    >
+      Ver los datos en tabla
+    </summary>
+    <div id="calendario-tabla-contenedor"></div>
+  </details>
+
   <p
     id="calendario-resumen"
     class="mt-3 font-sans text-xs text-ink-muted"
     role="status"
+    slot="pie"
   >
   </p>
-</article>
+</PanelWorkspace>
 
 <script>
-  // @observablehq/plot (~pesado) se carga de forma perezosa: este panel
-  // arranca oculto (ver PanelAnalisis.astro) y en /dengue no se muestra por
-  // defecto. Se difiere la importación, el fetch y el render hasta que el
-  // panel entra en viewport -- mismo criterio que el `await import('leaflet')`
-  // de MapaDepartamentos.astro.
   let Plot: typeof import('@observablehq/plot') | null = null;
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderErrorFuente,
+    renderEsqueletoMatriz,
+    renderSinDato,
+  } from '../estado-async';
   import { obtenerCasosNacionales } from '../../lib/analisis-api';
   import {
     actualizarFiltrosAnalisis,
@@ -63,7 +76,9 @@
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { colorCasos, gradienteCss, RAMPA_CASOS } from '../../lib/colores';
+  import { ESTILO_PLOT, marcoPlot } from '../../lib/plot-tema';
   import { vincularMarcasPlot } from '../../lib/plot-interacciones';
+  import { TablaAlternativa } from '../../lib/tabla-alternativa';
   import { ANIOS_ANALISIS_DENGUE } from '../../lib/tipos-analisis';
   import type {
     AnioAnalisisDengue,
@@ -83,6 +98,39 @@
 
   let revision = 0;
   let filtrosActuales = obtenerFiltrosAnalisis();
+  let datosTabla: CeldaCalendario[] = [];
+
+  const detailsTabla = document.getElementById(
+    'calendario-tabla-detalles',
+  ) as HTMLDetailsElement | null;
+  const contenedorTabla = document.getElementById(
+    'calendario-tabla-contenedor',
+  );
+
+  const tablaAlternativa =
+    detailsTabla && contenedorTabla
+      ? new TablaAlternativa({
+          details: detailsTabla,
+          contenedorTabla,
+          caption: 'Calendario de casos nacionales por año y semana',
+          columnas: [
+            { clave: 'anio', encabezado: 'Año' },
+            {
+              clave: 'semana',
+              encabezado: 'Semana',
+              alineacion: 'derecha',
+              formato: (v) => `SE${String(v).padStart(2, '0')}`,
+            },
+            {
+              clave: 'conteo',
+              encabezado: 'Casos nacionales',
+              alineacion: 'derecha',
+              formato: (v) => (v !== null ? String(v) : '—'),
+            },
+          ],
+          obtenerDatos: () => datosTabla,
+        })
+      : null;
 
   async function renderizar(filtros: FiltrosAnalisis) {
     if (!contenedor) return;
@@ -90,9 +138,14 @@
     if (resumen) resumen.textContent = 'Cargando serie nacional…';
 
     contenedor.setAttribute('aria-busy', 'true');
+    renderEsqueletoMatriz(contenedor, 6);
     try {
       const filas = await obtenerCasosNacionales();
       if (idRevision !== revision) return;
+      if (esNoDisponible(filas)) {
+        renderSinDato(contenedor, motivoNoDisponible(filas));
+        return;
+      }
       const anios = [...new Set(filas.map((fila) => fila.anio))].sort(
         (a, b) => a - b,
       );
@@ -117,6 +170,9 @@
           celda.anio === filtros.anio && celda.semana === filtros.semana,
       );
 
+      datosTabla = celdas;
+      tablaAlternativa?.marcarCaducada();
+
       const grafica = Plot!.plot({
         width: Math.max(contenedor.clientWidth, 760),
         height: 310,
@@ -129,7 +185,7 @@
           ticks: 10,
         },
         y: { domain: anios, label: 'Año', tickFormat: String },
-        style: { background: 'transparent', color: 'var(--color-ink-muted)' },
+        style: ESTILO_PLOT,
         marks: [
           Plot.cell(celdas, {
             className: 'epi-calendario-celdas',
@@ -144,12 +200,12 @@
             x: 'semana',
             y: 'anio',
             fill: 'none',
-            stroke: 'var(--color-ink)',
+            stroke: 'var(--color-seleccion)',
             strokeWidth: 2,
             inset: 0.5,
             pointerEvents: 'none',
           }),
-          Plot.frame({ stroke: 'var(--color-border)' }),
+          marcoPlot(Plot!),
         ],
       });
       vincularMarcasPlot(
@@ -175,15 +231,15 @@
 
       const activa = seleccion[0];
       if (resumen) {
-        resumen.textContent = activa
-          ? `${activa.anio} · SE${String(activa.semana).padStart(2, '0')} · ${activa.conteo === null ? 'sin dato nacional' : `${activa.conteo} casos nacionales`}.`
-          : `${anios.length} años disponibles en la serie nacional.`;
+        resumen.innerHTML = activa
+          ? `<span>Año <span class="cifra">${activa.anio}</span> · semana <span class="cifra font-semibold text-accent">SE${String(activa.semana).padStart(2, '0')}</span> · <span class="cifra">${activa.conteo === null ? 'sin dato nacional' : `${activa.conteo} casos nacionales`}</span>.</span>`
+          : `<span><span class="cifra">${anios.length}</span> años disponibles en la serie nacional.</span>`;
       }
     } catch {
       if (idRevision !== revision) return;
-      contenedor.replaceChildren();
+      renderErrorFuente(contenedor, () => void renderizar(filtrosActuales));
       if (resumen)
-        resumen.textContent = 'No fue posible cargar el calendario epidémico.';
+        resumen.textContent = 'No se pudo cargar el calendario epidémico.';
     } finally {
       contenedor.setAttribute('aria-busy', 'false');
     }
@@ -198,9 +254,20 @@
       filtrosActuales = filtros;
       void renderizar(filtros);
     });
-    new ResizeObserver(() => void renderizar(filtrosActuales)).observe(
-      contenedor,
-    );
+
+    let ultimoAncho = 0;
+    let timerResize: ReturnType<typeof setTimeout> | null = null;
+    new ResizeObserver((entradas) => {
+      const entrada = entradas[0];
+      if (!entrada) return;
+      const nuevoAncho = Math.round(entrada.contentRect.width);
+      if (nuevoAncho === ultimoAncho) return;
+      ultimoAncho = nuevoAncho;
+      if (timerResize) clearTimeout(timerResize);
+      timerResize = setTimeout(() => {
+        void renderizar(filtrosActuales);
+      }, 150);
+    }).observe(contenedor);
   }
 
   const panel = contenedor?.closest('[data-panel-workspace]') ?? contenedor;

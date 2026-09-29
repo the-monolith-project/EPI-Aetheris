@@ -1,0 +1,8 @@
+# EPI-Aetheris -- todo el contenido del sitio es público y puede indexarse.
+# /alertas/nueva no se lista aquí a propósito: un Disallow la anunciaría.
+# Queda fuera del índice por <meta name="robots" content="noindex"> en su
+# propia página y fuera del sitemap por el filtro de astro.config.mjs.
+User-agent: *
+Allow: /
+
+Sitemap: https://epi-aetheris.dev/sitemap-index.xml

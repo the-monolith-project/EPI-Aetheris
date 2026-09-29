@@ -1,53 +1,81 @@
-<article
-  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
->
-  <header>
-    <h3 class="font-sans text-base font-semibold text-ink">
-      Disponibilidad de observaciones
-    </h3>
-    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
-      Muestra qué semanas tienen dato MINSAL y cuáles no, por departamento.
-    </p>
-  </header>
+---
+import LeyendaRampa from './LeyendaRampa.astro';
+import PanelWorkspace from './PanelWorkspace.astro';
+---
 
-  <div class="mt-3 flex flex-wrap gap-3 font-sans text-xs text-ink-muted">
-    <span class="inline-flex items-center gap-1.5">
-      <span class="h-3 w-3 rounded-sm bg-[#256abf]"></span> dato disponible
-    </span>
-    <span class="inline-flex items-center gap-1.5">
-      <span class="h-3 w-3 rounded-sm bg-[#e4e4e7]"></span> dato ausente
-    </span>
-  </div>
+<PanelWorkspace
+  tipo="matriz"
+  titulo="Disponibilidad de observaciones"
+  descripcion="Muestra qué semanas tienen dato MINSAL y cuáles no, por departamento."
+>
+  <LeyendaRampa
+    modo="disponibilidad"
+    descripcionLectores="Las celdas azules indican la presencia de una observación en la semana; las celdas grises indican ausencia de dato."
+  />
+
   <div class="mt-4 overflow-x-auto scroll-shadow-x">
     <div
       id="disponibilidad-datos"
       class="min-h-[390px] min-w-[900px]"
       role="region"
-      aria-label="Heatmap de disponibilidad de observaciones por departamento y semana"
+      aria-label="Mapa de calor de disponibilidad de observaciones por departamento y semana"
+      aria-busy="true"
     >
+      <div
+        class="flex h-full min-h-[390px] w-full min-w-[900px] flex-col justify-between gap-2.5 p-2"
+        aria-hidden="true"
+      >
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+        <div class="skeleton h-7 w-full rounded"></div>
+      </div>
     </div>
   </div>
+
+  <details
+    id="disponibilidad-tabla-detalles"
+    class="mt-3 rounded-xl border border-border bg-bg p-3"
+  >
+    <summary
+      class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+    >
+      Ver los datos en tabla
+    </summary>
+    <div id="disponibilidad-tabla-contenedor"></div>
+  </details>
+
   <p
     id="disponibilidad-datos-resumen"
     class="mt-3 font-sans text-xs text-ink-muted"
     role="status"
+    slot="pie"
   >
   </p>
-</article>
+</PanelWorkspace>
 
 <script>
-  // Carga perezosa de @observablehq/plot: este panel arranca oculto y no se
-  // muestra por defecto en /dengue. Import + fetch + render se difieren hasta
-  // que el panel entra en viewport (ver PanelAnalisis.astro y el
-  // `await import('leaflet')` de MapaDepartamentos.astro).
   let Plot: typeof import('@observablehq/plot') | null = null;
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderErrorFuente,
+    renderEsqueletoMatriz,
+    renderSinDato,
+  } from '../estado-async';
   import { obtenerDatasetAnalitico } from '../../lib/analisis-api';
   import {
     actualizarFiltrosAnalisis,
     obtenerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
+  import { COLOR_DATO_DISPONIBLE, COLOR_SIN_DATO } from '../../lib/colores';
+  import { ESTILO_PLOT, marcoPlot } from '../../lib/plot-tema';
   import { vincularMarcasPlot } from '../../lib/plot-interacciones';
+  import { TablaAlternativa } from '../../lib/tabla-alternativa';
   import {
     esAnioAnalisisDengue,
     notaAnioSoloClima,
@@ -65,6 +93,39 @@
   const resumen = document.getElementById('disponibilidad-datos-resumen');
   let revision = 0;
   let filtrosActuales = obtenerFiltrosAnalisis();
+  let datosTabla: CeldaDisponibilidad[] = [];
+
+  const detailsTabla = document.getElementById(
+    'disponibilidad-tabla-detalles',
+  ) as HTMLDetailsElement | null;
+  const contenedorTabla = document.getElementById(
+    'disponibilidad-tabla-contenedor',
+  );
+
+  const tablaAlternativa =
+    detailsTabla && contenedorTabla
+      ? new TablaAlternativa({
+          details: detailsTabla,
+          contenedorTabla,
+          caption: 'Disponibilidad de observaciones por departamento y semana',
+          columnas: [
+            { clave: 'departamento', encabezado: 'Departamento' },
+            {
+              clave: 'semana',
+              encabezado: 'Semana',
+              alineacion: 'derecha',
+              formato: (v) => `SE${String(v).padStart(2, '0')}`,
+            },
+            {
+              clave: 'casos',
+              encabezado: 'Estado de observación',
+              alineacion: 'derecha',
+              formato: (v) => (v !== null ? `${v} casos` : 'Sin dato'),
+            },
+          ],
+          obtenerDatos: () => datosTabla,
+        })
+      : null;
 
   function etiqueta(celda: CeldaDisponibilidad, serie: string): string {
     const semana = `SE${String(celda.semana).padStart(2, '0')}`;
@@ -78,16 +139,23 @@
     if (!contenedor) return;
     const idRevision = ++revision;
     if (resumen) resumen.textContent = 'Cargando cobertura semanal…';
+
     if (!esAnioAnalisisDengue(filtros.anio)) {
-      contenedor.replaceChildren();
+      renderSinDato(contenedor, notaAnioSoloClima(filtros.anio));
       if (resumen) resumen.textContent = notaAnioSoloClima(filtros.anio);
+      contenedor.setAttribute('aria-busy', 'false');
       return;
     }
 
     contenedor.setAttribute('aria-busy', 'true');
+    renderEsqueletoMatriz(contenedor, 7);
     try {
       const dataset = await obtenerDatasetAnalitico(filtros.anio);
       if (idRevision !== revision) return;
+      if (esNoDisponible(dataset)) {
+        renderSinDato(contenedor, motivoNoDisponible(dataset));
+        return;
+      }
       const celdas: CeldaDisponibilidad[] = dataset.departamentos.flatMap(
         (departamento) =>
           departamento.semanas
@@ -108,6 +176,10 @@
           celda.codigo === filtros.departamento &&
           celda.semana === filtros.semana,
       );
+
+      datosTabla = celdas;
+      tablaAlternativa?.marcarCaducada();
+
       const grafica = Plot!.plot({
         width: Math.max(contenedor.clientWidth, 900),
         height: 400,
@@ -125,14 +197,14 @@
           ),
           label: null,
         },
-        style: { background: 'transparent', color: 'var(--color-ink-muted)' },
+        style: ESTILO_PLOT,
         marks: [
           Plot.cell(celdas, {
             className: 'epi-disponibilidad-celdas',
             x: 'semana',
             y: 'departamento',
             fill: (celda: CeldaDisponibilidad) =>
-              celda.casos === null ? '#e4e4e7' : '#256abf',
+              celda.casos === null ? COLOR_SIN_DATO : COLOR_DATO_DISPONIBLE,
             inset: 0.75,
             title: (celda: CeldaDisponibilidad) =>
               etiqueta(celda, filtros.serie),
@@ -141,12 +213,12 @@
             x: 'semana',
             y: 'departamento',
             fill: 'none',
-            stroke: 'var(--color-ink)',
+            stroke: 'var(--color-seleccion)',
             strokeWidth: 2,
             inset: 0.5,
             pointerEvents: 'none',
           }),
-          Plot.frame({ stroke: 'var(--color-border)' }),
+          marcoPlot(Plot!),
         ],
       });
       vincularMarcasPlot(
@@ -166,14 +238,13 @@
         const disponibles = celdas.filter(
           (celda) => celda.casos !== null,
         ).length;
-        resumen.textContent = `${filtros.anio} · ${filtros.serie} · ${disponibles}/${celdas.length} celdas con observación en SE${String(filtros.semanaDesde).padStart(2, '0')}–SE${String(filtros.semanaHasta).padStart(2, '0')}.`;
+        resumen.innerHTML = `<span>Año <span class="cifra">${filtros.anio}</span> · serie ${filtros.serie} · <span class="cifra font-semibold text-accent">${disponibles}/${celdas.length}</span> celdas con observación en <span class="cifra">SE${String(filtros.semanaDesde).padStart(2, '0')}–SE${String(filtros.semanaHasta).padStart(2, '0')}</span>.</span>`;
       }
     } catch {
       if (idRevision !== revision) return;
-      contenedor.replaceChildren();
+      renderErrorFuente(contenedor, () => void renderizar(filtrosActuales));
       if (resumen)
-        resumen.textContent =
-          'No fue posible cargar la disponibilidad de datos.';
+        resumen.textContent = 'No se pudo cargar la disponibilidad de datos.';
     } finally {
       contenedor.setAttribute('aria-busy', 'false');
     }
@@ -188,9 +259,20 @@
       filtrosActuales = filtros;
       void renderizar(filtros);
     });
-    new ResizeObserver(() => void renderizar(filtrosActuales)).observe(
-      contenedor,
-    );
+
+    let ultimoAncho = 0;
+    let timerResize: ReturnType<typeof setTimeout> | null = null;
+    new ResizeObserver((entradas) => {
+      const entrada = entradas[0];
+      if (!entrada) return;
+      const nuevoAncho = Math.round(entrada.contentRect.width);
+      if (nuevoAncho === ultimoAncho) return;
+      ultimoAncho = nuevoAncho;
+      if (timerResize) clearTimeout(timerResize);
+      timerResize = setTimeout(() => {
+        void renderizar(filtrosActuales);
+      }, 150);
+    }).observe(contenedor);
   }
 
   const panel = contenedor?.closest('[data-panel-workspace]') ?? contenedor;

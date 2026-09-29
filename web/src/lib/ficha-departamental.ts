@@ -75,7 +75,7 @@ export interface PayloadAlertasRespuesta {
   alertas: AlertaRespuesta[];
 }
 
-// Reservas SOLO para cuando la respuesta del endpoint no llega (fallo de red).
+// Reservas solo para cuando la respuesta del endpoint no llega (fallo de red).
 // Son copia literal de los AVISO_HONESTIDAD_* del backend (backend/api/main.py,
 // ira.py, neumonias.py, alertas.py); no se redactan ni se resumen aquí. Si el
 // endpoint responde, la ficha usa el campo `aviso` de esa respuesta.

@@ -1,36 +1,58 @@
-<article
-  class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
-  aria-labelledby="perfil-calidad-titulo"
->
-  <header>
-    <h3
-      id="perfil-calidad-titulo"
-      class="font-sans text-base font-semibold text-ink"
-    >
-      Perfil de calidad y procedencia
-    </h3>
-    <p class="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
-      Cada componente —cobertura, referencia histórica, extracción— se muestra
-      por separado y auditable.
-    </p>
-  </header>
+---
+import PanelWorkspace from './PanelWorkspace.astro';
+---
 
-  <div id="perfil-calidad-contenido" class="mt-4"></div>
+<PanelWorkspace
+  tipo="registro"
+  titulo="Perfil de calidad y procedencia"
+  idTitulo="perfil-calidad-titulo"
+  descripcion="Cobertura, referencia histórica y extracción, cada una por separado y con su origen."
+>
+  <div
+    data-vacio-calidad
+    class="mt-4 flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg/50 p-8 text-center"
+  >
+    <p class="font-sans text-sm text-ink-muted">
+      Elige un departamento en el mapa o en Filtros para revisar la procedencia
+      y calidad de sus observaciones.
+    </p>
+    <button
+      type="button"
+      data-abrir-filtros-accion
+      class="mt-3 rounded-lg border border-border bg-surface px-3 py-1.5 font-sans text-xs font-semibold text-accent transition-colors hover:border-accent/40"
+    >
+      Abrir filtros
+    </button>
+  </div>
+
+  <div id="perfil-calidad-contenido" class="mt-4" role="status"></div>
+
   <p
     id="perfil-calidad-estado"
     class="mt-3 font-sans text-xs text-ink-muted"
     role="status"
+    slot="pie"
   >
-    Seleccione un departamento para revisar una observación.
+    Selecciona un departamento para revisar una observación.
   </p>
-</article>
+</PanelWorkspace>
 
 <script>
+  import {
+    esNoDisponible,
+    motivoNoDisponible,
+    renderErrorFuente,
+    renderEsqueletoRegistro,
+    renderSinDato,
+  } from '../estado-async';
   import {
     obtenerDatasetAnalitico,
     obtenerProcedenciaAnalitica,
   } from '../../lib/analisis-api';
-  import { suscribirFiltrosAnalisis } from '../../lib/analisis-state';
+  import {
+    obtenerFiltrosAnalisis,
+    suscribirFiltrosAnalisis,
+  } from '../../lib/analisis-state';
   import {
     esAnioAnalisisDengue,
     notaAnioSoloClima,
@@ -40,8 +62,18 @@
   } from '../../lib/tipos-analisis';
 
   const contenedor = document.getElementById('perfil-calidad-contenido');
+  const vacioContenedor = document.querySelector<HTMLElement>(
+    '[data-vacio-calidad]',
+  );
   const estado = document.getElementById('perfil-calidad-estado');
   let revision = 0;
+  let filtrosActuales = obtenerFiltrosAnalisis();
+
+  vacioContenedor
+    ?.querySelector('[data-abrir-filtros-accion]')
+    ?.addEventListener('click', () => {
+      document.getElementById('analisis-abrir-filtros')?.click();
+    });
 
   function elemento<K extends keyof HTMLElementTagNameMap>(
     etiqueta: K,
@@ -55,14 +87,17 @@
   }
 
   function tarjeta(titulo: string, valor: string, detalle: string) {
-    const bloque = elemento('div', 'rounded-xl border border-border bg-bg p-4');
+    const bloque = elemento(
+      'div',
+      'rounded-xl border border-border bg-surface p-4',
+    );
     bloque.append(
+      elemento('p', 'font-sans text-xs font-semibold text-ink-muted', titulo),
       elemento(
         'p',
-        'font-sans text-[11px] font-semibold uppercase tracking-wide text-ink-muted',
-        titulo,
+        'mt-1 font-mono cifra text-lg font-semibold text-ink',
+        valor,
       ),
-      elemento('p', 'mt-1 font-mono text-lg font-semibold text-ink', valor),
       elemento(
         'p',
         'mt-1 font-sans text-xs leading-relaxed text-ink-muted',
@@ -106,7 +141,7 @@
   function detalleProcedencia(procedencia: ProcedenciaAnalitica): HTMLElement {
     const seccion = elemento(
       'section',
-      'mt-4 rounded-xl border border-border bg-bg p-4',
+      'mt-4 rounded-xl border border-border bg-surface p-4',
     );
     seccion.append(
       elemento(
@@ -126,47 +161,55 @@
       return seccion;
     }
 
-    const lista = elemento('ul', 'mt-3 grid gap-3');
+    const lista = elemento('dl', 'mt-3 grid gap-3');
     for (const registro of procedencia.registros) {
       const item = elemento(
-        'li',
-        'font-sans text-xs leading-relaxed text-ink-muted',
+        'div',
+        'rounded-lg border border-border/70 bg-bg p-3 font-sans text-xs leading-relaxed text-ink-muted',
       );
-      const fuente = elemento('p');
-      fuente.append(
-        'Fuente: ',
+      const dtFuente = elemento('dt', 'font-semibold text-ink', 'Fuente');
+      const ddFuente = elemento('dd', 'mt-0.5');
+      ddFuente.append(
         enlaceSeguro(registro.fuente.url_referencia, registro.fuente.nombre),
         ` · ${registro.conteo} casos`,
       );
-      item.append(fuente);
+      item.append(dtFuente, ddFuente);
+
       if (registro.boletin) {
-        const boletin = elemento('p', 'mt-1');
-        boletin.append(
-          'Boletín: ',
+        const dtBoletin = elemento(
+          'dt',
+          'mt-2 font-semibold text-ink',
+          'Boletín',
+        );
+        const ddBoletin = elemento('dd', 'mt-0.5');
+        ddBoletin.append(
           enlaceSeguro(
             registro.boletin.url_origen,
             registro.boletin.nombre_archivo,
           ),
           ` · extracción ${etiquetaEstadoExtraccion(registro.boletin.estado_extraccion)}`,
         );
-        item.append(boletin);
+        item.append(dtBoletin, ddBoletin);
       } else {
-        item.append(
-          elemento(
-            'p',
-            'mt-1',
-            'Esta fila no tiene un boletín asociado almacenado.',
-          ),
+        const ddSinBoletin = elemento(
+          'dd',
+          'mt-1 text-ink-muted',
+          'Esta fila no tiene un boletín asociado almacenado.',
         );
+        item.append(ddSinBoletin);
       }
       if (registro.fecha_ingesta) {
-        item.append(
-          elemento(
-            'p',
-            'mt-1 font-mono text-[11px]',
-            `Ingesta registrada: ${registro.fecha_ingesta}`,
-          ),
+        const dtIngesta = elemento(
+          'dt',
+          'mt-2 font-semibold text-ink',
+          'Fecha de ingesta',
         );
+        const ddIngesta = elemento(
+          'dd',
+          'mt-0.5 cifra text-[11px]',
+          `Ingesta registrada: ${registro.fecha_ingesta}`,
+        );
+        item.append(dtIngesta, ddIngesta);
       }
       lista.append(item);
     }
@@ -207,22 +250,36 @@
     const idRevision = ++revision;
     if (!filtros.departamento) {
       contenedor.replaceChildren();
+      if (vacioContenedor) vacioContenedor.hidden = false;
       estado.textContent =
-        'Seleccione un departamento en los filtros, el mapa o una gráfica.';
+        'Selecciona un departamento para revisar una observación.';
       return;
     }
+    if (vacioContenedor) vacioContenedor.hidden = true;
     estado.textContent = 'Cargando perfil y procedencia…';
     if (!esAnioAnalisisDengue(filtros.anio)) {
-      contenedor.replaceChildren();
+      renderSinDato(contenedor, notaAnioSoloClima(filtros.anio));
       estado.textContent = notaAnioSoloClima(filtros.anio);
+      contenedor.setAttribute('aria-busy', 'false');
       return;
     }
+
+    contenedor.setAttribute('aria-busy', 'true');
+    renderEsqueletoRegistro(contenedor);
     try {
       const [dataset, procedencia] = await Promise.all([
         obtenerDatasetAnalitico(filtros.anio),
         obtenerProcedenciaAnalitica(filtros),
       ]);
       if (idRevision !== revision) return;
+      if (esNoDisponible(dataset)) {
+        renderSinDato(contenedor, motivoNoDisponible(dataset));
+        return;
+      }
+      if (esNoDisponible(procedencia)) {
+        renderSinDato(contenedor, motivoNoDisponible(procedencia));
+        return;
+      }
       const departamento = dataset.departamentos.find(
         (fila) => fila.codigo === filtros.departamento,
       );
@@ -261,13 +318,18 @@
         tarjeta('Fuente y extracción', fuente.valor, fuente.detalle),
       );
       contenedor.replaceChildren(cuadricula, detalleProcedencia(procedencia));
-      estado.textContent = `${departamento.nombre} · ${filtros.anio} · SE${String(filtros.semana).padStart(2, '0')} · serie ${filtros.serie}.`;
+      estado.innerHTML = `<span><strong class="font-medium text-ink">${departamento.nombre}</strong> · año <span class="cifra">${filtros.anio}</span> · semana <span class="cifra font-semibold text-accent">SE${String(filtros.semana).padStart(2, '0')}</span> · serie ${filtros.serie}.</span>`;
     } catch {
       if (idRevision !== revision) return;
-      contenedor.replaceChildren();
-      estado.textContent = 'No fue posible cargar el perfil de calidad.';
+      renderErrorFuente(contenedor, () => void renderizar(filtrosActuales));
+      estado.textContent = 'No se pudo cargar el perfil de calidad.';
+    } finally {
+      contenedor.setAttribute('aria-busy', 'false');
     }
   }
 
-  suscribirFiltrosAnalisis((filtros) => void renderizar(filtros));
+  suscribirFiltrosAnalisis((filtros) => {
+    filtrosActuales = filtros;
+    void renderizar(filtros);
+  });
 </script>
