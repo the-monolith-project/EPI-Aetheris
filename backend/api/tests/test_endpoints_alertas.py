@@ -28,6 +28,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 from api.alertas import (  # noqa: E402
     AVISO_HONESTIDAD_ALERTAS,
+    construir_feed_atom,
     consultar_alertas_publicas,
     listar_alertas_activas,
 )
@@ -596,3 +597,59 @@ class AlertasApiTest(unittest.TestCase):
             )
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json()["departamentos"], ["SV-US"])
+
+
+    def test_feed_atom_incluye_las_activas_y_es_xml_valido(self):
+        import xml.etree.ElementTree as ET
+
+        titulo = self._titulo_fixture("feed")
+        ident = self._insertar(titulo=titulo)
+        r = self.client.get("/api/alertas/feed.xml")
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.headers["content-type"].startswith("application/atom+xml"))
+        raiz = ET.fromstring(r.text)
+        ns = {"a": "http://www.w3.org/2005/Atom"}
+        ids = [e.findtext("a:id", namespaces=ns) for e in raiz.findall("a:entry", ns)]
+        self.assertIn(f"tag:epi-aetheris.dev,2026:alerta-{ident}", ids)
+
+
+class FeedAtomTest(unittest.TestCase):
+    ALERTA = {
+        "id": 7,
+        "tipo": "dengue",
+        "nivel": "vigilancia",
+        "titulo": "Alza en <San Salvador> & Soyapango",
+        "contexto": 'Contexto con "comillas" y &',
+        "indicaciones": "x",
+        "autor": "Equipo",
+        "vigente_desde": "2026-05-04",
+        "departamentos": ["SV-SS", "SV-CU"],
+    }
+
+    def test_escapa_el_texto_y_arma_el_enlace_a_la_tarjeta(self):
+        import xml.etree.ElementTree as ET
+
+        xml = construir_feed_atom(
+            [self.ALERTA], "2026-05-05", "https://sitio.test/", "https://api.test/f"
+        )
+        raiz = ET.fromstring(xml)
+        ns = {"a": "http://www.w3.org/2005/Atom"}
+        entrada = raiz.find("a:entry", ns)
+        self.assertEqual(
+            entrada.findtext("a:title", namespaces=ns),
+            "Alza en <San Salvador> & Soyapango",
+        )
+        enlace = entrada.find("a:link", ns).get("href")
+        self.assertEqual(enlace, "https://sitio.test/alertas?tipo=dengue#alerta-7")
+        self.assertEqual(raiz.findtext("a:updated", namespaces=ns), "2026-05-05T00:00:00Z")
+
+    def test_alerta_sin_departamentos_es_nacional(self):
+        alerta = {**self.ALERTA, "departamentos": None}
+        xml = construir_feed_atom([alerta], None, "https://s.test", "https://a.test")
+        self.assertIn('term="nacional"', xml)
+
+    def test_sin_alertas_es_un_feed_vacio_valido(self):
+        import xml.etree.ElementTree as ET
+
+        raiz = ET.fromstring(construir_feed_atom([], None, "https://s.test", "https://a.test"))
+        self.assertEqual(len(raiz.findall("{http://www.w3.org/2005/Atom}entry")), 0)

@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import secrets
 from datetime import date
+from xml.sax.saxutils import escape
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -380,6 +381,60 @@ def consultar_alertas_publicas(
             departamento=departamento,
         ),
     }
+
+
+def _texto_xml(valor: object) -> str:
+    return escape(str(valor), {'"': "&quot;"})
+
+
+def construir_feed_atom(
+    alertas: list[dict],
+    ultima_revision: str | None,
+    sitio: str,
+    api_url: str,
+) -> str:
+    """Feed Atom de las alertas activas sin etiqueta (ADR 0013, 0022).
+
+    Sin dependencias: XML armado a mano y escapado. Cada entrada enlaza a la
+    tarjeta de la alerta en el sitio. El alcance territorial va como categoría
+    para que un lector pueda filtrar; nacional si no hay departamentos.
+    """
+    sitio = sitio.rstrip("/")
+    actualizado = f"{ultima_revision or '1970-01-01'}T00:00:00Z"
+    partes = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="es">',
+        "<title>EPI-Aetheris: alertas de campo vigentes</title>",
+        f'<link rel="self" type="application/atom+xml" href="{_texto_xml(api_url)}"/>',
+        f'<link rel="alternate" type="text/html" href="{_texto_xml(sitio)}/alertas"/>',
+        f"<id>tag:epi-aetheris.dev,2026:alertas</id>",
+        f"<updated>{actualizado}</updated>",
+        f"<subtitle>{_texto_xml(AVISO_HONESTIDAD_ALERTAS)}</subtitle>",
+    ]
+    for alerta in alertas:
+        enlace = f"{sitio}/alertas?tipo={alerta['tipo']}#alerta-{alerta['id']}"
+        desde = f"{alerta['vigente_desde']}T00:00:00Z"
+        departamentos = alerta.get("departamentos") or []
+        alcance = ", ".join(departamentos) if departamentos else "nacional"
+        resumen = alerta.get("contexto") or alerta.get("indicaciones") or ""
+        partes.extend(
+            [
+                "<entry>",
+                f"<title>{_texto_xml(alerta['titulo'])}</title>",
+                f'<link rel="alternate" type="text/html" href="{_texto_xml(enlace)}"/>',
+                f"<id>tag:epi-aetheris.dev,2026:alerta-{alerta['id']}</id>",
+                f"<updated>{desde}</updated>",
+                f"<published>{desde}</published>",
+                f'<category term="{_texto_xml(alerta["tipo"])}"/>',
+                f'<category term="{_texto_xml(alerta["nivel"])}" label="nivel"/>',
+                f'<category term="{_texto_xml(alcance)}" label="alcance"/>',
+                f"<summary>{_texto_xml(resumen)}</summary>",
+                f"<author><name>{_texto_xml(alerta['autor'])}</name></author>",
+                "</entry>",
+            ]
+        )
+    partes.append("</feed>")
+    return "\n".join(partes)
 
 
 def _leer_por_id(conn, ident: int) -> dict | None:

@@ -73,6 +73,7 @@ from .alertas import (
     AlertaParche,
     comprobar_token_escritura,
     consultar_alertas_publicas,
+    construir_feed_atom,
     crear_alerta,
     parchear_alerta,
 )
@@ -1434,6 +1435,29 @@ def alertas_publicas(
 
     _cache_control(response, CACHE_TTL_ALERTAS)
     return cuerpo
+
+
+@app.get("/api/alertas/feed.xml")
+def alertas_feed(request: Request):
+    """Feed Atom con las alertas activas sin etiqueta (mismo criterio que el GET público)."""
+    try:
+        with _conexion() as conn:
+            cuerpo = consultar_alertas_publicas(conn)
+    except Exception as exc:
+        _alertas_http_error(exc)
+
+    sitio = os.environ.get("SITIO_PUBLICO", "https://epi-aetheris.dev")
+    xml = construir_feed_atom(
+        cuerpo["alertas"],
+        cuerpo["ultima_revision"],
+        sitio=sitio,
+        api_url=str(request.url),
+    )
+    return Response(
+        content=xml,
+        media_type="application/atom+xml",
+        headers={"Cache-Control": f"public, max-age={CACHE_TTL_ALERTAS}"},
+    )
 
 
 @app.post("/api/alertas", status_code=201)
