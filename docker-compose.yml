@@ -57,7 +57,10 @@ services:
       context: ./web
       dockerfile: Dockerfile
     container_name: aetheris_web
-    restart: unless-stopped
+    # Bajo demanda: `docker compose --profile web up -d web`. Por defecto el
+    # front se levanta desde el checkout con `pnpm dev`, para que el 4321 no
+    # lo ocupe una imagen con dependencias antiguas.
+    profiles: ["web"]
     ports:
       - "4321:4321"
     volumes:
@@ -83,9 +86,10 @@ services:
     network_mode: host
     environment:
       PLAYWRIGHT_BASE_URL: http://localhost:4321
+    # Necesita un servidor en 4321: `pnpm dev` en web/ o el perfil `web`
+    # (`docker compose --profile web --profile test up e2e web`).
     depends_on:
       - backend
-      - web
 
 volumes:
   pgdata:
