@@ -211,7 +211,9 @@ Vocabulario de cómo se levanta, se despliega y se mantiene el proyecto: contene
 
 **Qué es.** Dos series de tags con propósitos distintos, ambas en el remoto.
 
-**En el proyecto.** **Releases** `v0.1.0` a `v0.5.0` (la última, del 2026-09-13, «accesibilidad, observatorio respiratorio y nowcast»), publicadas como GitHub Releases; un release se corta promoviendo `dev` a `main` por PR, nunca con push directo. **Tags de hito narrativo** `hito/00-esqueleto` a `hito/08-clasificador-retirado`: nueve tags anotados, pusheados el 2026-09-09 sobre commits históricos ya existentes para recorrer la evolución del proyecto en la Expo Técnica. **No son releases y no se mueven.** El `CHANGELOG.md` de STC es el registro de decisiones, no de versiones.
+**En el proyecto.** **Releases** `v0.1.0` (2026-08-22), `v0.2.0` (2026-08-25), `v0.3.0` (2026-08-29), `v0.4.0` (2026-09-02), `v0.5.0` (2026-09-13, «accesibilidad, observatorio respiratorio y nowcast») y `v1.0.0` (2026-09-28, «tablero de MINSAL y series nacionales hasta 2026»), publicadas como GitHub Releases; un release se corta promoviendo `dev` a `main` por PR, nunca con push directo. Las fechas son las de los commits que apuntan las etiquetas. **Tags de hito narrativo** `hito/00-esqueleto` a `hito/08-clasificador-retirado`: nueve tags anotados, pusheados el 2026-09-09 sobre commits históricos ya existentes para recorrer la evolución del proyecto en la Expo Técnica. **No son releases y no se mueven.** El `CHANGELOG.md` de STC es el registro de decisiones, no de versiones.
+
+**Ojo.** El `version` de `web/package.json` (y el de `aetheris-nitor`) sigue en `0.5.0`, aunque el último release es `v1.0.0`; el número del paquete no acompaña a los tags.
 
 ### Archivos de tarea locales (`*.local.md`)
 
