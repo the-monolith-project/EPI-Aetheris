@@ -31,8 +31,9 @@ docker compose up -d
 ```
 
 - API: http://localhost:8000
-- Web: http://localhost:4321
 - DB: localhost:5432
+
+El frontend no arranca con `docker compose up`. Se levanta desde `web/` con `pnpm install && pnpm dev` (http://localhost:4321). Para usar el contenedor: `docker compose --profile web up -d web`.
 
 La base queda poblada con datos reales desde el primer arranque (volcado versionado de casos/clima/boletines, `db/seed/`, ~4,4 MB — ver `docs/adr/0010-versionar-volcado-de-datos-reales.md`), sin depender de red ni de re-parsear los boletines.
 
