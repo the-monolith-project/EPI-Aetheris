@@ -42,6 +42,14 @@ test('devuelve las secciones con ids únicos y sin tildes', () => {
   assert.match(html, /<h2 id="que-es">Qué es<\/h2>/);
 });
 
+test('los títulos del índice no reconstruyen etiquetas ni decodifican dos veces', () => {
+  const { secciones } = agruparEnAcordeones(
+    '<h2><scr<b>x</b>ipt>Uno</h2><p>a</p><h2>A &amp;lt; B</h2><p>b</p>',
+  );
+  assert.ok(!secciones[0]?.titulo.includes('<'));
+  assert.equal(secciones[1]?.titulo, 'A &lt; B');
+});
+
 test('abiertos controla cuántos acordeones arrancan desplegados', () => {
   const entrada = '<h2>A</h2><p>1</p><h2>B</h2><p>2</p><h2>C</h2><p>3</p>';
   assert.equal(

@@ -37,14 +37,26 @@ export interface SeccionDocumento {
   titulo: string;
 }
 
+/**
+ * Texto de un fragmento HTML, para los títulos del índice. Las etiquetas se
+ * quitan repitiendo hasta que no quede ninguna (una sola pasada deja
+ * `<scr<b>ipt>` convertido en `<script>`), y `&amp;` se decodifica al final
+ * para no decodificar dos veces. El resultado se usa siempre como texto, nunca
+ * como HTML.
+ */
 function textoPlano(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, '')
-    .replace(/&amp;/g, '&')
+  let texto = html;
+  let anterior: string;
+  do {
+    anterior = texto;
+    texto = texto.replace(/<[^<>]*>/g, '');
+  } while (texto !== anterior);
+  return texto
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;|&#x27;/g, "'")
+    .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')
     .trim();
 }
