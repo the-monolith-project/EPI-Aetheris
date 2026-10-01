@@ -35,7 +35,7 @@ for (const entrada of entradas) {
 >
   <main
     id="contenido-principal"
-    class="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
+    class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
   >
     <header class="mb-10 max-w-3xl">
       <h1
@@ -50,7 +50,7 @@ for (const entrada of entradas) {
       </p>
     </header>
 
-    <div class="flex flex-col gap-10">
+    <div class="grid grid-cols-1 gap-10 lg:grid-cols-3 lg:items-start lg:gap-8">
       {
         grupos.map((grupo) => (
           <section>
@@ -58,7 +58,7 @@ for (const entrada of entradas) {
               <Icono nombre="book-2" class="h-5 w-5 text-accent" />
               {grupo.categoria}
             </h2>
-            <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               {grupo.items.map((item) => (
                 <a
                   href={`/biblioteca/${item.id}`}
