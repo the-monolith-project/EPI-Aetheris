@@ -9,7 +9,7 @@ import { RAMPA_CASOS } from '../../lib/colores';
   titulo="Calendario epidémico nacional"
   descripcion="Vista semanal de los casos nacionales: OpenDengue hasta 2024 y casos sospechosos del tablero de MINSAL desde 2025. El año 2020 se conserva en la serie nacional, aunque no se utiliza en las referencias departamentales."
 >
-  <div class="mt-4 overflow-x-auto scroll-shadow-x">
+  <div class="mt-4 overflow-x-auto scroll-shadow-x" tabindex="0">
     <div
       id="calendario-epidemico"
       class="min-h-[300px] min-w-[760px]"
@@ -61,7 +61,6 @@ import { RAMPA_CASOS } from '../../lib/colores';
 </PanelWorkspace>
 
 <script>
-  let Plot: typeof import('@observablehq/plot') | null = null;
   import {
     esNoDisponible,
     motivoNoDisponible,
@@ -73,11 +72,13 @@ import { RAMPA_CASOS } from '../../lib/colores';
   import {
     actualizarFiltrosAnalisis,
     obtenerFiltrosAnalisis,
+    soloCambiaSemana,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { colorCasos, gradienteCss, RAMPA_CASOS } from '../../lib/colores';
-  import { ESTILO_PLOT, marcoPlot } from '../../lib/plot-tema';
-  import { vincularMarcasPlot } from '../../lib/plot-interacciones';
+  import { moverSeleccionMatriz, montarMatriz } from '../../lib/echarts-matriz';
+  import type { ConfigMatriz } from '../../lib/echarts-matriz';
+  import type { GraficoMontado } from '../../lib/echarts-montaje';
   import { TablaAlternativa } from '../../lib/tabla-alternativa';
   import { ANIOS_ANALISIS_DENGUE } from '../../lib/tipos-analisis';
   import type {
@@ -97,7 +98,11 @@ import { RAMPA_CASOS } from '../../lib/colores';
   if (leyenda) leyenda.style.background = gradienteCss(RAMPA_CASOS);
 
   let revision = 0;
+  let grafico: GraficoMontado | null = null;
   let filtrosActuales = obtenerFiltrosAnalisis();
+  let filtrosPintados: FiltrosAnalisis | null = null;
+  /** Reaplica la semana activa sobre la matriz vigente, con transición. */
+  let moverSemana: ((filtros: FiltrosAnalisis) => void) | null = null;
   let datosTabla: CeldaCalendario[] = [];
 
   const detailsTabla = document.getElementById(
@@ -134,7 +139,16 @@ import { RAMPA_CASOS } from '../../lib/colores';
 
   async function renderizar(filtros: FiltrosAnalisis) {
     if (!contenedor) return;
+    if (grafico && moverSemana && soloCambiaSemana(filtrosPintados, filtros)) {
+      filtrosPintados = filtros;
+      moverSemana(filtros);
+      return;
+    }
+    filtrosPintados = filtros;
+    moverSemana = null;
     const idRevision = ++revision;
+    grafico?.destruir();
+    grafico = null;
     if (resumen) resumen.textContent = 'Cargando serie nacional…';
 
     contenedor.setAttribute('aria-busy', 'true');
@@ -165,56 +179,39 @@ import { RAMPA_CASOS } from '../../lib/colores';
         .map((celda) => celda.conteo)
         .filter((conteo): conteo is number => conteo !== null);
       const maximo = Math.max(...observados, 0);
-      const seleccion = celdas.filter(
-        (celda) =>
-          celda.anio === filtros.anio && celda.semana === filtros.semana,
-      );
+      const seleccionDe = (f: FiltrosAnalisis) =>
+        celdas.filter(
+          (celda) => celda.anio === f.anio && celda.semana === f.semana,
+        );
 
       datosTabla = celdas;
       tablaAlternativa?.marcarCaducada();
 
-      const grafica = Plot!.plot({
-        width: Math.max(contenedor.clientWidth, 760),
-        height: 310,
-        marginLeft: 58,
-        marginBottom: 48,
-        x: {
-          domain: Array.from({ length: 53 }, (_, indice) => indice + 1),
-          label: 'Semana epidemiológica',
-          tickFormat: (valor) => `SE${String(valor).padStart(2, '0')}`,
-          ticks: 10,
-        },
-        y: { domain: anios, label: 'Año', tickFormat: String },
-        style: ESTILO_PLOT,
-        marks: [
-          Plot.cell(celdas, {
-            className: 'epi-calendario-celdas',
-            x: 'semana',
-            y: 'anio',
-            fill: (celda: CeldaCalendario) => colorCasos(celda.conteo, maximo),
-            inset: 0.5,
-            title: (celda: CeldaCalendario) =>
-              `${celda.anio} · SE${String(celda.semana).padStart(2, '0')}\n${celda.conteo === null ? 'Sin dato registrado' : `${celda.conteo} casos nacionales`}`,
-          }),
-          Plot.cell(seleccion, {
-            x: 'semana',
-            y: 'anio',
-            fill: 'none',
-            stroke: 'var(--color-seleccion)',
-            strokeWidth: 2,
-            inset: 0.5,
-            pointerEvents: 'none',
-          }),
-          marcoPlot(Plot!),
-        ],
-      });
-      vincularMarcasPlot(
-        grafica,
-        '.epi-calendario-celdas rect',
-        celdas,
-        (celda) =>
-          `${celda.anio}, SE${String(celda.semana).padStart(2, '0')}, ${celda.conteo === null ? 'sin dato nacional' : `${celda.conteo} casos nacionales`}`,
-        (celda) => {
+      const textoCelda = (celda: CeldaCalendario) =>
+        `${celda.anio} · SE${String(celda.semana).padStart(2, '0')}\n${celda.conteo === null ? 'Sin dato registrado' : `${celda.conteo} casos nacionales`}`;
+      contenedor.style.height = '310px';
+      const configMatriz = (f: FiltrosAnalisis): ConfigMatriz => {
+        const seleccion = seleccionDe(f);
+        return {
+          semanas: Array.from({ length: 53 }, (_, indice) => indice + 1),
+          filas: anios.map(String),
+          celdas: celdas.map((celda) => ({
+            semana: celda.semana,
+            fila: String(celda.anio),
+            color: colorCasos(celda.conteo, maximo),
+            activa: seleccion.includes(celda),
+          })),
+          izquierda: 58,
+          etiquetasX: 10,
+          texto: (indice) => textoCelda(celdas[indice]),
+        };
+      };
+      const montado = await montarMatriz(
+        contenedor,
+        () => configMatriz(filtrosActuales),
+        'Casos nacionales por año y semana epidemiológica',
+        (indice) => {
+          const celda = celdas[indice];
           if (
             ANIOS_ANALISIS_DENGUE.includes(celda.anio as AnioAnalisisDengue)
           ) {
@@ -227,14 +224,24 @@ import { RAMPA_CASOS } from '../../lib/colores';
           }
         },
       );
-      contenedor.replaceChildren(grafica);
+      if (idRevision !== revision) {
+        montado.destruir();
+        return;
+      }
+      grafico = montado;
 
-      const activa = seleccion[0];
-      if (resumen) {
+      const pintarResumen = (f: FiltrosAnalisis) => {
+        const activa = seleccionDe(f)[0];
+        if (!resumen) return;
         resumen.innerHTML = activa
           ? `<span>Año <span class="cifra">${activa.anio}</span> · semana <span class="cifra font-semibold text-accent">SE${String(activa.semana).padStart(2, '0')}</span> · <span class="cifra">${activa.conteo === null ? 'sin dato nacional' : `${activa.conteo} casos nacionales`}</span>.</span>`
           : `<span><span class="cifra">${anios.length}</span> años disponibles en la serie nacional.</span>`;
-      }
+      };
+      pintarResumen(filtros);
+      moverSemana = (f) => {
+        moverSeleccionMatriz(montado, configMatriz(f));
+        pintarResumen(f);
+      };
     } catch {
       if (idRevision !== revision) return;
       renderErrorFuente(contenedor, () => void renderizar(filtrosActuales));
@@ -249,25 +256,10 @@ import { RAMPA_CASOS } from '../../lib/colores';
   async function activar() {
     if (activado || !contenedor) return;
     activado = true;
-    Plot = await import('@observablehq/plot');
     suscribirFiltrosAnalisis((filtros) => {
       filtrosActuales = filtros;
       void renderizar(filtros);
     });
-
-    let ultimoAncho = 0;
-    let timerResize: ReturnType<typeof setTimeout> | null = null;
-    new ResizeObserver((entradas) => {
-      const entrada = entradas[0];
-      if (!entrada) return;
-      const nuevoAncho = Math.round(entrada.contentRect.width);
-      if (nuevoAncho === ultimoAncho) return;
-      ultimoAncho = nuevoAncho;
-      if (timerResize) clearTimeout(timerResize);
-      timerResize = setTimeout(() => {
-        void renderizar(filtrosActuales);
-      }, 150);
-    }).observe(contenedor);
   }
 
   const panel = contenedor?.closest('[data-panel-workspace]') ?? contenedor;

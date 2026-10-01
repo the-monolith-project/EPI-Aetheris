@@ -40,7 +40,9 @@ test('el canal endémico dibuja las bandas y su tabla', async ({ page }) => {
   );
   await page.locator('#analisis-abrir-filtros').click();
   await page.locator('#analisis-vista').selectOption('temporal');
-  await page.locator('#analisis-cerrar-filtros').click();
+  // En escritorio los filtros no son un cajón y el botón no se muestra.
+  const cerrar = page.locator('#analisis-cerrar-filtros');
+  if (await cerrar.isVisible()) await cerrar.click();
   const panel = page.locator('[data-panel-workspace="canal"]');
   await expect(panel).toBeVisible();
   await expect(panel.locator('[data-canal-grafica] svg').first()).toBeVisible();
@@ -68,7 +70,9 @@ test('sin datos en la fuente muestra el estado sin dato', async ({ page }) => {
   await page.goto('/dengue?year=2022&dept=SV-SS&serie=probable');
   await page.locator('#analisis-abrir-filtros').click();
   await page.locator('#analisis-vista').selectOption('temporal');
-  await page.locator('#analisis-cerrar-filtros').click();
+  // En escritorio los filtros no son un cajón y el botón no se muestra.
+  const cerrar = page.locator('#analisis-cerrar-filtros');
+  if (await cerrar.isVisible()) await cerrar.click();
   const panel = page.locator('[data-panel-workspace="canal"]');
   await expect(panel.locator('[data-canal-grafica]')).toContainText(
     'no generada',

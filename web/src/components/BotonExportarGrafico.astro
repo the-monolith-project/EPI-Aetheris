@@ -1,5 +1,5 @@
 ---
-// Botones "Descargar SVG" y "Descargar PNG" para el primer gráfico de Plot
+// Botones "Descargar SVG" y "Descargar PNG" para el primer gráfico
 // de la sección (article o section) que los contiene. Ver exportar-grafico.ts.
 interface Props {
   titulo: string;
@@ -31,23 +31,7 @@ const estiloBoton =
 </div>
 
 <script>
-  import { obtenerFiltrosAnalisis } from '../lib/analisis-state';
-  import {
-    encontrarGraficoPlot,
-    exportarPng,
-    exportarSvg,
-  } from '../lib/exportar-grafico';
-
-  function textoFiltrosAnalisis(): string {
-    const f = obtenerFiltrosAnalisis();
-    const partes = [
-      f.departamento ?? 'todos los departamentos',
-      String(f.anio),
-      f.serie,
-      `SE${f.semanaDesde}–SE${f.semanaHasta}`,
-    ];
-    return partes.join(' · ');
-  }
+  import { exportarImagen, type FormatoImagen } from '../lib/exportar-acciones';
 
   document.addEventListener('click', async (evento) => {
     const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>(
@@ -56,30 +40,15 @@ const estiloBoton =
     const caja = boton?.closest<HTMLElement>('[data-exportar-grafico]');
     if (!boton || !caja) return;
     const estado = caja.querySelector<HTMLElement>('[data-exportar-estado]');
-    const seccion = caja.closest('section, article');
-    const svg = seccion ? encontrarGraficoPlot(seccion) : null;
-    if (!svg) {
-      if (estado) estado.textContent = 'El gráfico todavía no está disponible.';
-      return;
-    }
-    const filtros =
-      caja.dataset.exportarFiltros === 'analisis'
-        ? textoFiltrosAnalisis()
-        : caja.dataset.exportarFiltros;
-    const opciones = {
-      titulo: caja.dataset.exportarTitulo ?? 'Gráfico',
-      fuente: caja.dataset.exportarFuente ?? 'EPI-Aetheris',
-      filtros,
-    };
-    try {
-      if (boton.dataset.exportarFormato === 'png') {
-        await exportarPng(svg, opciones);
-      } else {
-        exportarSvg(svg, opciones);
-      }
-      if (estado) estado.textContent = 'Imagen descargada.';
-    } catch {
-      if (estado) estado.textContent = 'No se pudo generar la imagen.';
-    }
+    const mensaje = await exportarImagen(
+      caja.closest('section, article'),
+      {
+        titulo: caja.dataset.exportarTitulo ?? 'Gráfico',
+        fuente: caja.dataset.exportarFuente ?? 'EPI-Aetheris',
+        filtros: caja.dataset.exportarFiltros,
+      },
+      boton.dataset.exportarFormato as FormatoImagen,
+    );
+    if (estado) estado.textContent = mensaje;
   });
 </script>

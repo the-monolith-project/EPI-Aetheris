@@ -7,15 +7,16 @@
 // su `fuente`). No es clasificación de riesgo: el
 // corte de percentil sigue abierto (docs/contexto/02-decisiones-abiertas.md,
 // punto A).
-import BotonExportarGrafico from './BotonExportarGrafico.astro';
-import BotonIncrustar from './BotonIncrustar.astro';
 import CargadorCurva from './CargadorCurva.astro';
+import MenuExportar from './MenuExportar.astro';
 ---
 
 <section
   class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
 >
-  <div class="flex items-start justify-between gap-3">
+  <div
+    class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+  >
     <div class="flex items-start gap-3">
       <span
         class="mt-1 h-6 w-1 shrink-0 rounded-full bg-accent"
@@ -31,25 +32,16 @@ import CargadorCurva from './CargadorCurva.astro';
         </p>
       </div>
     </div>
-    <button
-      type="button"
-      id="curva-descargar-csv"
-      disabled
-      title="Cargando datos para descargar…"
-      class="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 font-sans text-xs font-medium text-ink transition-colors hover:border-accent/40 hover:bg-secondary/30 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      Descargar CSV
-    </button>
-  </div>
-  <div class="mt-3 flex flex-wrap items-center gap-2">
-    <BotonExportarGrafico
+    <MenuExportar
+      class="shrink-0"
+      csv="curva-descargar-csv"
       titulo="Curva epidémica nacional de dengue"
       fuente="OpenDengue hasta 2024; tablero de MINSAL desde 2025"
-    />
-    <BotonIncrustar
-      ruta="/incrustar/curva-nacional"
-      titulo="Curva epidémica nacional de dengue en El Salvador"
-      alto={520}
+      incrustar={{
+        ruta: '/incrustar/curva-nacional',
+        titulo: 'Curva epidémica nacional de dengue en El Salvador',
+        alto: 520,
+      }}
     />
   </div>
   <div class="mt-4 flex items-center gap-2 font-sans text-xs text-ink-muted">

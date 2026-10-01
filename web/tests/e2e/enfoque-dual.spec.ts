@@ -292,69 +292,40 @@ test('/alertas abre sin conexión desde el cache del service worker', async ({
   await context.unroute('**/api/alertas*');
 });
 
-test('el footer reestructurado expone las cinco secciones y el aviso de sensibilidad', async ({
+test('el pie expone las cuatro columnas y el aviso de sensibilidad', async ({
   page,
 }) => {
   await page.goto('/');
-  const navFooter = page.locator('nav[aria-label="Pie de página"]');
-  // El nav usa `class="contents"` (no genera caja propia); se comprueba que
-  // está en el DOM y luego se afirma sobre sus enlaces, que sí resuelven.
-  await expect(navFooter).toBeAttached();
+  const footer = page.locator('footer');
+  const enlace = (columna: string, nombre: string) =>
+    footer
+      .getByRole('navigation', { name: columna })
+      .getByRole('link', { name: nombre, exact: true });
 
-  // Tramo 2: El proyecto
-  await expect(navFooter.getByRole('link', { name: 'Qué es' })).toHaveAttribute(
+  await expect(enlace('EPI-Aetheris', 'Acerca de')).toHaveAttribute(
     'href',
-    '/biblioteca/01-que-es',
+    '/acerca-de',
+  );
+  await expect(enlace('Herramientas', 'Predicción de dengue')).toHaveAttribute(
+    'href',
+    '/prediccion',
+  );
+  await expect(enlace('Herramientas', 'Alertas')).toHaveAttribute(
+    'href',
+    '/alertas',
+  );
+  await expect(enlace('Datos y método', 'Fuentes de datos')).toHaveAttribute(
+    'href',
+    '/biblioteca/04-fuentes-de-datos',
   );
   await expect(
-    navFooter.getByRole('link', { name: 'Acerca de' }),
-  ).toHaveAttribute('href', '/acerca-de');
-  await expect(
-    navFooter.getByRole('link', { name: 'Aviso de sensibilidad' }),
+    enlace('Datos y método', 'Aviso de sensibilidad'),
   ).toHaveAttribute('href', '/biblioteca/05-sensibilidad-y-honestidad');
-  await expect(
-    navFooter.getByRole('link', { name: 'Arquitectura y reproducibilidad' }),
-  ).toHaveAttribute('href', '/biblioteca/06-arquitectura-y-reproducibilidad');
-  await expect(
-    navFooter.getByRole('link', { name: 'Código en GitHub' }),
-  ).toHaveAttribute(
+  await expect(enlace('Externo', 'GitHub')).toHaveAttribute(
     'href',
     'https://github.com/the-monolith-project/EPI-Aetheris',
   );
 
-  // Tramo 3: Datos y método
-  await expect(
-    navFooter.getByRole('link', { name: 'Fuentes de datos' }),
-  ).toHaveAttribute('href', '/biblioteca/04-fuentes-de-datos');
-  await expect(
-    navFooter.getByRole('link', { name: 'Módulos M1–M3' }),
-  ).toHaveAttribute('href', '/biblioteca/03-funciones');
-  await expect(
-    navFooter.getByRole('link', { name: 'Licencias de datos' }),
-  ).toHaveAttribute('href', 'https://open-meteo.com/en/license');
-
-  // Tramo 4: Vigilancia
-  await expect(
-    navFooter.getByRole('link', { name: 'Alertas de campo' }),
-  ).toHaveAttribute('href', '/alertas');
-  await expect(
-    navFooter.getByRole('link', { name: 'Análisis por departamento' }),
-  ).toHaveAttribute('href', '/analisis');
-  await expect(
-    navFooter.getByRole('link', { name: 'Sugerencias (GitHub Issues)' }),
-  ).toHaveAttribute('href', '/sugerencias');
-
-  // Tramo 5: Legal y contacto. Tiene su propia cobertura en legal.spec.ts;
-  // aquí basta con fijar que el tramo existe dentro del nav del pie.
-  await expect(
-    navFooter.getByRole('link', { name: 'Privacidad' }),
-  ).toHaveAttribute('href', '/legal/privacidad');
-  await expect(
-    navFooter.getByRole('link', { name: 'Aviso legal' }),
-  ).toHaveAttribute('href', '/legal/aviso-legal');
-
-  // Tira inferior de deslinde
-  const footer = page.locator('footer');
   await expect(footer).toContainText(
     'Proyecto académico · El Salvador · 2026.',
   );

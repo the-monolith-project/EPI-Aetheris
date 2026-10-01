@@ -1,4 +1,4 @@
-// Exportar gráficos de Observable Plot como SVG o PNG (F6.3).
+// Exportar gráficos de ECharts (renderer SVG) como SVG o PNG (F6.3).
 // Un SVG descargado pierde las variables CSS de la página (`var(--…)`), así
 // que se resuelven con getComputedStyle sobre el original antes de guardar.
 // El mapa Leaflet queda fuera: los tiles no permiten CORS y el lienzo se
@@ -198,11 +198,9 @@ export async function exportarPng(
   }
 }
 
-/** Primer gráfico dentro de un contenedor: SVG de Plot o SVG propio con role="img". */
-export function encontrarGraficoPlot(
-  contenedor: ParentNode,
-): SVGSVGElement | null {
+/** Primer gráfico dentro de un contenedor: SVG de ECharts o SVG propio con role="img". */
+export function encontrarGrafico(contenedor: ParentNode): SVGSVGElement | null {
   return contenedor.querySelector<SVGSVGElement>(
-    'svg[class*="plot"], svg[role="img"]:not([aria-hidden="true"])',
+    'svg[role="img"]:not([aria-hidden="true"])',
   );
 }

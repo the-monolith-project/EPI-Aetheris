@@ -1,0 +1,87 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PanelNowcastDengue from '../components/nowcast/PanelNowcastDengue.astro';
+import ContrasteNowcastDengue from '../components/nowcast/ContrasteNowcastDengue.astro';
+import MetricasModelo from '../components/MetricasModelo.astro';
+import { RUTA_SENSIBILIDAD } from '../lib/enlaces';
+---
+
+<Layout
+  title="EPI-Aetheris — Predicción de dengue a corto plazo"
+  descripcion="Predicción estadística del conteo nacional de dengue para las próximas 1 a 8 semanas, con intervalo de incertidumbre y contraste con lo observado."
+>
+  {
+    /* Modo presentación (?demo, ?demo=lento): el mismo gatillo que tenía la
+     pestaña de /dengue. El panel lee ?demo por su cuenta; aquí solo se
+     despeja la página. */
+  }
+  <script is:inline>
+    try {
+      if (new URLSearchParams(location.search).has('demo')) {
+        document.documentElement.classList.add('demo-presentacion');
+      }
+    } catch {
+      // Entornos sin URLSearchParams: la página queda en su forma normal.
+    }
+  </script>
+  <main
+    id="contenido-principal"
+    data-pagina-prediccion
+    class="mx-auto max-w-[1100px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
+  >
+    <h1 class="font-display text-2xl font-semibold text-ink sm:text-3xl">
+      Predicción de dengue a corto plazo
+    </h1>
+    <p
+      class="mt-3 max-w-[70ch] font-sans text-sm leading-relaxed text-ink-muted"
+    >
+      Conteo nacional de casos para las próximas 1 a 8 semanas. Para explorar
+      los casos por departamento está el <a
+        href="/dengue"
+        class="font-medium text-accent underline underline-offset-2"
+        >análisis de dengue</a
+      >. El método y sus límites están en la <a
+        href={`${RUTA_SENSIBILIDAD}#predicción-de-casos-a-corto-plazo`}
+        class="font-medium text-accent underline underline-offset-2"
+        >Biblioteca</a
+      >.
+    </p>
+
+    <div class="mt-6" data-bloque-prediccion>
+      <PanelNowcastDengue variante="completo" />
+    </div>
+    <div class="mt-6" data-bloque-contraste>
+      <ContrasteNowcastDengue />
+    </div>
+    <div class="mt-6" data-bloque-clasificador>
+      <MetricasModelo />
+    </div>
+  </main>
+</Layout>
+
+<style is:global>
+  /* Modo presentación: solo el panel de predicción, centrado. Sin la clase en
+     <html> la página queda idéntica. */
+  html.demo-presentacion body > header,
+  html.demo-presentacion body > footer {
+    display: none !important;
+  }
+  html.demo-presentacion body > main {
+    max-width: none !important;
+    padding: 1.5rem 3rem 2rem !important;
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  html.demo-presentacion body > main > h1,
+  html.demo-presentacion body > main > p,
+  html.demo-presentacion [data-bloque-contraste],
+  html.demo-presentacion [data-bloque-clasificador] {
+    display: none !important;
+  }
+  html.demo-presentacion [data-bloque-prediccion] {
+    margin-top: 0 !important;
+    width: 100%;
+  }
+</style>

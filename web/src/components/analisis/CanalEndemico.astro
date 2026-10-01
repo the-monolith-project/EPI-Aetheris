@@ -32,7 +32,7 @@ const { departamento, anio } = Astro.props;
 
   <div
     data-canal-grafica
-    class="mt-4 min-h-[240px]"
+    class="mt-4 min-h-[340px]"
     role="region"
     aria-label="Canal endémico semanal: casos observados frente a los cortes P50 y P75 del departamento"
     aria-busy="true"
@@ -88,11 +88,19 @@ const { departamento, anio } = Astro.props;
   import { obtenerSeriePresion } from '../../lib/analisis-api';
   import {
     obtenerFiltrosAnalisis,
+    soloCambiaSemana,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { categoriaCanal, construirCanal } from '../../lib/canal-endemico';
   import type { PuntoCanal } from '../../lib/canal-endemico';
-  import { ESTILO_PLOT, ejeSemana, marcoPlot } from '../../lib/plot-tema';
+  import { montarGrafico } from '../../lib/echarts-montaje';
+  import type { GraficoMontado } from '../../lib/echarts-montaje';
+  import {
+    crearOpcionBase,
+    ejeSemana,
+    etiquetaSemana,
+    tooltipPorSemana,
+  } from '../../lib/echarts-tema';
   import { TablaAlternativa } from '../../lib/tabla-alternativa';
   import {
     esAnioAnalisisDengue,
@@ -100,15 +108,11 @@ const { departamento, anio } = Astro.props;
   } from '../../lib/tipos-analisis';
   import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
 
-  type PlotNs = typeof import('@observablehq/plot');
-  let Plot: PlotNs | null = null;
-
   // Tres tonos de una misma rampa secuencial: ordenan magnitudes respecto de
   // la historia propia y no representan niveles de alarma.
   const COLOR_BAJA = '#c6dbef';
   const COLOR_MEDIA = '#6baed6';
   const COLOR_ALTA = '#2171b5';
-  const COLOR_OBSERVADO = 'var(--color-accent)';
 
   function montar(raiz: HTMLElement): void {
     const fijo = raiz.dataset.departamentoFijo || null;
@@ -127,7 +131,9 @@ const { departamento, anio } = Astro.props;
     if (!grafica || !resumen || !vacio) return;
 
     let revision = 0;
+    let grafico: GraficoMontado | null = null;
     let filtrosActuales = obtenerFiltrosAnalisis();
+    let filtrosPintados: FiltrosAnalisis | null = null;
     let filasTabla: PuntoCanal[] = [];
 
     const tabla =
@@ -175,7 +181,16 @@ const { departamento, anio } = Astro.props;
     async function renderizar(filtros: FiltrosAnalisis): Promise<void> {
       const departamento = fijo ?? filtros.departamento;
       const anio = fijo && anioFijo ? anioFijo : filtros.anio;
+      // El canal no depende de la semana seleccionada: al moverla no hay
+      // nada que repintar (antes se destruía y recreaba la gráfica).
+      if (grafico && soloCambiaSemana(filtrosPintados, filtros)) {
+        filtrosPintados = filtros;
+        return;
+      }
+      filtrosPintados = filtros;
       const idRevision = ++revision;
+      grafico?.destruir();
+      grafico = null;
 
       if (!departamento) {
         grafica!.hidden = true;
@@ -201,11 +216,7 @@ const { departamento, anio } = Astro.props;
         return;
       }
 
-      if (!Plot) Plot = await import('@observablehq/plot');
-      if (idRevision !== revision) return;
-      const P = Plot;
-
-      let respuesta;
+      let respuesta: Awaited<ReturnType<typeof obtenerSeriePresion>>;
       try {
         respuesta = await obtenerSeriePresion(departamento, anio);
       } catch {
@@ -254,64 +265,103 @@ const { departamento, anio } = Astro.props;
         return;
       }
 
-      const ancho = Math.max(grafica!.clientWidth || 0, 320);
       const maximo = Math.max(
         1,
         ...conBase.map((p) => p.p75 as number),
         ...conCasos.map((p) => p.observado as number),
       );
-      const figura = P.plot({
-        width: ancho,
-        height: 240,
-        marginLeft: 52,
-        marginBottom: 40,
-        x: ejeSemana(desde, hasta),
-        y: {
-          label: 'Casos por semana',
-          grid: true,
-          domain: [0, maximo * 1.05],
-        },
-        style: ESTILO_PLOT,
-        marks: [
-          P.areaY(conBase, { x: 'semana', y1: 0, y2: 'p50', fill: COLOR_BAJA }),
-          P.areaY(conBase, {
-            x: 'semana',
-            y1: 'p50',
-            y2: 'p75',
-            fill: COLOR_MEDIA,
-          }),
-          P.areaY(conBase, {
-            x: 'semana',
-            y1: 'p75',
-            y2: maximo * 1.05,
-            fill: COLOR_ALTA,
-            fillOpacity: 0.35,
-          }),
-          P.line(conCasos, {
-            x: 'semana',
-            y: 'observado',
-            stroke: COLOR_OBSERVADO,
-            strokeWidth: 2.5,
-          }),
-          P.dot(conCasos, {
-            x: 'semana',
-            y: 'observado',
-            fill: COLOR_OBSERVADO,
-            r: 2.5,
-            title: (p: PuntoCanal) =>
-              `SE${String(p.semana).padStart(2, '0')} · ${p.observado} casos · P50 ${
-                p.p50 !== null ? p.p50.toFixed(1) : '—'
-              } · P75 ${p.p75 !== null ? p.p75.toFixed(1) : '—'}`,
-          }),
-          marcoPlot(P),
-        ],
+      const techo = maximo * 1.05;
+      const porSemana = new Map(canal.map((p) => [p.semana, p]));
+      const textoPunto = (p: PuntoCanal): string =>
+        `${etiquetaSemana(p.semana)} · ${p.observado ?? '—'} casos · P50 ${
+          p.p50 !== null ? p.p50.toFixed(1) : '—'
+        } · P75 ${p.p75 !== null ? p.p75.toFixed(1) : '—'}`;
+      // Las tres bandas se apilan: cada serie aporta el tramo entre cortes.
+      const banda = (
+        nombre: string,
+        color: string,
+        opacidad: number,
+        y: number[],
+      ) => ({
+        name: nombre,
+        type: 'line' as const,
+        stack: 'canal',
+        silent: true,
+        symbol: 'none',
+        lineStyle: { width: 0 },
+        itemStyle: { color, opacity: opacidad },
+        areaStyle: { color, opacity: opacidad },
+        data: conBase.map((p, i) => [p.semana, y[i]]),
       });
-      // Plot etiqueta cada marca con su nombre ("area", "frame");
-      // axe lo rechaza en elementos SVG sin rol. La tabla es la alternativa textual.
-      figura
-        .querySelectorAll('svg [aria-label]')
-        .forEach((g) => g.removeAttribute('aria-label'));
-      grafica!.replaceChildren(figura);
+
+      const montado = await montarGrafico(
+        grafica!,
+        (tokens) => ({
+          ...crearOpcionBase(tokens, {
+            grid: {
+              bottom: 96,
+              show: true,
+              borderColor: tokens.borde,
+            },
+            legend: {
+              data: [
+                'Baja (hasta P50)',
+                'Media (P50 a P75)',
+                'Alta (sobre P75)',
+                'Casos observados',
+              ],
+            },
+            tooltip: {
+              formatter: tooltipPorSemana(porSemana, textoPunto),
+            },
+          }),
+          xAxis: ejeSemana(tokens, desde, hasta),
+          yAxis: {
+            type: 'value',
+            min: 0,
+            max: techo,
+            name: 'Casos por semana',
+            nameTextStyle: { color: tokens.tintaSuave, align: 'left' },
+            axisLabel: { color: tokens.tintaSuave },
+            splitLine: { lineStyle: { color: tokens.borde } },
+          },
+          series: [
+            banda(
+              'Baja (hasta P50)',
+              COLOR_BAJA,
+              1,
+              conBase.map((p) => p.p50 as number),
+            ),
+            banda(
+              'Media (P50 a P75)',
+              COLOR_MEDIA,
+              1,
+              conBase.map((p) => (p.p75 as number) - (p.p50 as number)),
+            ),
+            banda(
+              'Alta (sobre P75)',
+              COLOR_ALTA,
+              0.35,
+              conBase.map((p) => techo - (p.p75 as number)),
+            ),
+            {
+              name: 'Casos observados',
+              type: 'line',
+              symbolSize: 5,
+              itemStyle: { color: tokens.acento },
+              lineStyle: { width: 2.5, color: tokens.acento },
+              z: 5,
+              data: conCasos.map((p) => [p.semana, p.observado]),
+            },
+          ],
+        }),
+        'Canal endémico semanal: casos observados frente a los cortes P50 y P75 del departamento',
+      );
+      if (idRevision !== revision) {
+        montado.destruir();
+        return;
+      }
+      grafico = montado;
 
       const nombre = respuesta.departamento_nombre ?? departamento;
       resumen!.innerHTML = `<strong class="font-medium text-ink">${nombre}</strong> · año <span class="cifra">${anio}</span> · serie ${serie}. Bandas: hasta P50 baja, entre P50 y P75 media, por encima de P75 alta.`;
@@ -326,16 +376,6 @@ const { departamento, anio } = Astro.props;
     } else {
       void renderizar(filtrosActuales);
     }
-
-    let ultimoAncho = 0;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    new ResizeObserver((entradas) => {
-      const nuevo = Math.round(entradas[0]?.contentRect.width ?? 0);
-      if (nuevo === ultimoAncho) return;
-      ultimoAncho = nuevo;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => void renderizar(filtrosActuales), 150);
-    }).observe(grafica);
   }
 
   document

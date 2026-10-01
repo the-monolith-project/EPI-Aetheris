@@ -24,13 +24,14 @@
  *    /alertas/nueva lo guarda en localStorage solo con la casilla marcada.
  *  - 5.2 predicción: components/nowcast/PanelNowcastDengue.astro (1 a 8
  *    semanas desde la última semana observada, no desde hoy).
- *  - 5.4 clasificador retirado: components/MetricasModelo.astro.
+ *  - 5.4 clasificador retirado: components/MetricasModelo.astro (en /prediccion).
  *  - Sección 6: LICENSE (GPL-3.0) en este repo y en el monorepo; licencias
  *    de datos según docs/biblioteca/04-fuentes-de-datos.md.
  * La predicción es un modelo estadístico, no IA: por eso el descargo habla de
  * "cálculo estadístico" y no de "inteligencia artificial".
  */
 import DocumentoTexto from '../../components/DocumentoTexto.astro';
+import { navegacionLegal } from '../../lib/navegacion-documentos';
 import { RUTA_SENSIBILIDAD } from '../../lib/enlaces';
 
 const HISTORIAL_TERMINOS =
@@ -38,6 +39,7 @@ const HISTORIAL_TERMINOS =
 ---
 
 <DocumentoTexto
+  navegacion={navegacionLegal('/legal/terminos')}
   seccion="Documento legal"
   titulo="Términos de uso"
   descripcion="Condiciones para usar el sitio, la API y los datos de EPI-Aetheris, y qué garantiza y qué no garantiza el proyecto."
@@ -174,7 +176,7 @@ const HISTORIAL_TERMINOS =
       señala esos límites cuando los conoce.
     </li>
     <li>
-      <strong>La predicción es un cálculo estadístico.</strong> La página de dengue
+      <strong>La predicción es un cálculo estadístico.</strong> La página de predicción
       estima los casos nacionales de las próximas 1 a 8 semanas, con un intervalo
       de incertidumbre. Parte de la última semana con datos, que puede ser de hace
       varios meses; no describe la situación de hoy. Puede equivocarse, y el valor
@@ -198,7 +200,7 @@ const HISTORIAL_TERMINOS =
     <a href={RUTA_SENSIBILIDAD}>aviso de sensibilidad</a>.
   </p>
 
-  <h2>6. Propiedad intelectual y licencias</h2>
+  <h2 id="licencias">6. Propiedad intelectual y licencias</h2>
   <ol class="clausulas" style="--c: '6'">
     <li>
       <strong>El código</strong> del sitio y de la API se publica con licencia GPL-3.0.

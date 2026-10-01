@@ -13,7 +13,7 @@ import PanelWorkspace from './PanelWorkspace.astro';
     descripcionLectores="Las celdas azules indican la presencia de una observación en la semana; las celdas grises indican ausencia de dato."
   />
 
-  <div class="mt-4 overflow-x-auto scroll-shadow-x">
+  <div class="mt-4 overflow-x-auto scroll-shadow-x" tabindex="0">
     <div
       id="disponibilidad-datos"
       class="min-h-[390px] min-w-[900px]"
@@ -58,7 +58,6 @@ import PanelWorkspace from './PanelWorkspace.astro';
 </PanelWorkspace>
 
 <script>
-  let Plot: typeof import('@observablehq/plot') | null = null;
   import {
     esNoDisponible,
     motivoNoDisponible,
@@ -73,8 +72,8 @@ import PanelWorkspace from './PanelWorkspace.astro';
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { COLOR_DATO_DISPONIBLE, COLOR_SIN_DATO } from '../../lib/colores';
-  import { ESTILO_PLOT, marcoPlot } from '../../lib/plot-tema';
-  import { vincularMarcasPlot } from '../../lib/plot-interacciones';
+  import { montarMatriz } from '../../lib/echarts-matriz';
+  import type { GraficoMontado } from '../../lib/echarts-montaje';
   import { TablaAlternativa } from '../../lib/tabla-alternativa';
   import {
     esAnioAnalisisDengue,
@@ -92,6 +91,7 @@ import PanelWorkspace from './PanelWorkspace.astro';
   const contenedor = document.getElementById('disponibilidad-datos');
   const resumen = document.getElementById('disponibilidad-datos-resumen');
   let revision = 0;
+  let grafico: GraficoMontado | null = null;
   let filtrosActuales = obtenerFiltrosAnalisis();
   let datosTabla: CeldaDisponibilidad[] = [];
 
@@ -138,6 +138,8 @@ import PanelWorkspace from './PanelWorkspace.astro';
   async function renderizar(filtros: FiltrosAnalisis) {
     if (!contenedor) return;
     const idRevision = ++revision;
+    grafico?.destruir();
+    grafico = null;
     if (resumen) resumen.textContent = 'Cargando cobertura semanal…';
 
     if (!esAnioAnalisisDengue(filtros.anio)) {
@@ -180,59 +182,40 @@ import PanelWorkspace from './PanelWorkspace.astro';
       datosTabla = celdas;
       tablaAlternativa?.marcarCaducada();
 
-      const grafica = Plot!.plot({
-        width: Math.max(contenedor.clientWidth, 900),
-        height: 400,
-        marginLeft: 115,
-        marginBottom: 48,
-        x: {
-          domain: [filtros.semanaDesde, filtros.semanaHasta],
-          label: 'Semana epidemiológica',
-          tickFormat: (valor) => `SE${String(valor).padStart(2, '0')}`,
-          ticks: 12,
-        },
-        y: {
-          domain: dataset.departamentos.map(
+      contenedor.style.height = '400px';
+      const montado = await montarMatriz(
+        contenedor,
+        () => ({
+          semanas: Array.from(
+            { length: filtros.semanaHasta - filtros.semanaDesde + 1 },
+            (_, indice) => filtros.semanaDesde + indice,
+          ),
+          filas: dataset.departamentos.map(
             (departamento) => departamento.nombre,
           ),
-          label: null,
-        },
-        style: ESTILO_PLOT,
-        marks: [
-          Plot.cell(celdas, {
-            className: 'epi-disponibilidad-celdas',
-            x: 'semana',
-            y: 'departamento',
-            fill: (celda: CeldaDisponibilidad) =>
-              celda.casos === null ? COLOR_SIN_DATO : COLOR_DATO_DISPONIBLE,
-            inset: 0.75,
-            title: (celda: CeldaDisponibilidad) =>
-              etiqueta(celda, filtros.serie),
-          }),
-          Plot.cell(seleccion, {
-            x: 'semana',
-            y: 'departamento',
-            fill: 'none',
-            stroke: 'var(--color-seleccion)',
-            strokeWidth: 2,
-            inset: 0.5,
-            pointerEvents: 'none',
-          }),
-          marcoPlot(Plot!),
-        ],
-      });
-      vincularMarcasPlot(
-        grafica,
-        '.epi-disponibilidad-celdas rect',
-        celdas,
-        (celda) => etiqueta(celda, filtros.serie),
-        (celda) =>
-          actualizarFiltrosAnalisis({
-            departamento: celda.codigo,
+          celdas: celdas.map((celda) => ({
             semana: celda.semana,
+            fila: celda.departamento,
+            color:
+              celda.casos === null ? COLOR_SIN_DATO : COLOR_DATO_DISPONIBLE,
+            activa: seleccion.includes(celda),
+          })),
+          izquierda: 115,
+          etiquetasX: 12,
+          texto: (indice) => etiqueta(celdas[indice], filtros.serie),
+        }),
+        'Disponibilidad de observaciones por departamento y semana',
+        (indice) =>
+          actualizarFiltrosAnalisis({
+            departamento: celdas[indice].codigo,
+            semana: celdas[indice].semana,
           }),
       );
-      contenedor.replaceChildren(grafica);
+      if (idRevision !== revision) {
+        montado.destruir();
+        return;
+      }
+      grafico = montado;
 
       if (resumen) {
         const disponibles = celdas.filter(
@@ -254,25 +237,10 @@ import PanelWorkspace from './PanelWorkspace.astro';
   async function activar() {
     if (activado || !contenedor) return;
     activado = true;
-    Plot = await import('@observablehq/plot');
     suscribirFiltrosAnalisis((filtros) => {
       filtrosActuales = filtros;
       void renderizar(filtros);
     });
-
-    let ultimoAncho = 0;
-    let timerResize: ReturnType<typeof setTimeout> | null = null;
-    new ResizeObserver((entradas) => {
-      const entrada = entradas[0];
-      if (!entrada) return;
-      const nuevoAncho = Math.round(entrada.contentRect.width);
-      if (nuevoAncho === ultimoAncho) return;
-      ultimoAncho = nuevoAncho;
-      if (timerResize) clearTimeout(timerResize);
-      timerResize = setTimeout(() => {
-        void renderizar(filtrosActuales);
-      }, 150);
-    }).observe(contenedor);
   }
 
   const panel = contenedor?.closest('[data-panel-workspace]') ?? contenedor;
