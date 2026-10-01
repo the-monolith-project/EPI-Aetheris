@@ -239,6 +239,14 @@ const aniosHistorico = `${Math.min(...ANIOS_ANALISIS_DENGUE)} a ${Math.max(...AN
       : 'contents';
   }
 
+  // Solo las opciones realmente visibles: en móvil las de escritorio están
+  // ocultas y las de exportar solo existen si el panel tiene gráfico.
+  function itemsVisiblesMenu(menu: HTMLElement): HTMLElement[] {
+    return Array.from(
+      menu.querySelectorAll<HTMLElement>('[role^="menuitem"]'),
+    ).filter((item) => !item.hidden && item.offsetParent !== null);
+  }
+
   function cerrarMenus(devolverFoco = false): void {
     document
       .querySelectorAll<HTMLElement>('[data-menu-panel]')
@@ -281,9 +289,9 @@ const aniosHistorico = `${Math.min(...ANIOS_ANALISIS_DENGUE)} a ${Math.max(...AN
     menu.hidden = true;
     menu.className =
       'absolute right-0 top-full z-30 mt-1 w-44 rounded-lg border border-border bg-surface p-2 shadow-lg';
-    menu.innerHTML = `<p data-solo-escritorio class="px-2 py-1 font-sans text-xs font-semibold text-ink-muted">Tamaño</p><div class="grid gap-1"><button type="button" role="menuitem" data-solo-escritorio data-accion-panel="tamano" data-valor="pequeno" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Pequeño</button><button type="button" role="menuitem" data-solo-escritorio data-accion-panel="tamano" data-valor="mediano" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Mediano</button><button type="button" role="menuitem" data-solo-escritorio data-accion-panel="tamano" data-valor="grande" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Grande</button><button type="button" role="menuitem" data-solo-escritorio data-accion-panel="foco" class="mt-1 rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Abrir en foco</button><button type="button" role="menuitem" data-accion-panel="ocultar" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Ocultar panel</button><button type="button" role="menuitem" data-accion-panel="exportar-svg" hidden class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Descargar SVG</button><button type="button" role="menuitem" data-accion-panel="exportar-png" hidden class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Descargar PNG</button></div>`;
+    menu.innerHTML = `<p data-solo-escritorio class="px-2 py-1 font-sans text-xs font-semibold text-ink-muted">Tamaño</p><div class="grid gap-1" role="group" aria-label="Tamaño"><button type="button" role="menuitemradio" aria-checked="false" data-solo-escritorio data-accion-panel="tamano" data-valor="pequeno" class="flex w-full items-center justify-between rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30"><span>Pequeño</span><span class="marca-activa hidden text-accent" aria-hidden="true">✓</span></button><button type="button" role="menuitemradio" aria-checked="false" data-solo-escritorio data-accion-panel="tamano" data-valor="mediano" class="flex w-full items-center justify-between rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30"><span>Mediano</span><span class="marca-activa hidden text-accent" aria-hidden="true">✓</span></button><button type="button" role="menuitemradio" aria-checked="false" data-solo-escritorio data-accion-panel="tamano" data-valor="grande" class="flex w-full items-center justify-between rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30"><span>Grande</span><span class="marca-activa hidden text-accent" aria-hidden="true">✓</span></button><button type="button" role="menuitem" data-solo-escritorio data-accion-panel="foco" class="mt-1 rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Abrir en foco</button><button type="button" role="menuitem" data-accion-panel="ocultar" class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Ocultar panel</button><button type="button" role="menuitem" data-accion-panel="exportar-svg" hidden class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Descargar SVG</button><button type="button" role="menuitem" data-accion-panel="exportar-png" hidden class="rounded px-2 py-1 text-left font-sans text-xs hover:bg-secondary/30">Descargar PNG</button></div>`;
     boton.addEventListener('click', () => {
-      const abierto = menu.hidden;
+      const abrir = menu.hidden;
       cerrarMenus();
       // El mapa (Leaflet) no se exporta; solo los paneles con un gráfico SVG.
       const hayGrafico = encontrarGrafico(panel) !== null;
@@ -292,9 +300,25 @@ const aniosHistorico = `${Math.min(...ANIOS_ANALISIS_DENGUE)} a ${Math.max(...AN
         .forEach((item) => {
           item.hidden = !hayGrafico;
         });
-      menu.hidden = !abierto;
-      boton.setAttribute('aria-expanded', String(abierto));
+      menu.hidden = !abrir;
+      boton.setAttribute('aria-expanded', String(abrir));
+      if (abrir) itemsVisiblesMenu(menu)[0]?.focus();
     });
+
+    menu.addEventListener('keydown', (evento) => {
+      if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
+        evento.preventDefault();
+        const items = itemsVisiblesMenu(menu);
+        const actual = items.indexOf(document.activeElement as HTMLElement);
+        if (actual === -1) return;
+        const siguiente =
+          evento.key === 'ArrowDown'
+            ? (actual + 1) % items.length
+            : (actual - 1 + items.length) % items.length;
+        items[siguiente]?.focus();
+      }
+    });
+
     menu.addEventListener('click', (evento) => {
       const objetivo = (
         evento.target as HTMLElement
@@ -336,7 +360,7 @@ const aniosHistorico = `${Math.min(...ANIOS_ANALISIS_DENGUE)} a ${Math.max(...AN
           ),
         });
       }
-      cerrarMenus();
+      cerrarMenus(true);
     });
 
     const contenedorBoton = document.createElement('div');
@@ -479,9 +503,27 @@ const aniosHistorico = `${Math.min(...ANIOS_ANALISIS_DENGUE)} a ${Math.max(...AN
         '[data-accion-panel="foco"]',
       );
       if (botonFoco) {
-        botonFoco.textContent =
+        const spanTexto = botonFoco.querySelector('span');
+        const texto =
           layout.panelEnFoco === id ? 'Salir de foco' : 'Abrir en foco';
+        if (spanTexto) {
+          spanTexto.textContent = texto;
+        } else {
+          botonFoco.textContent = texto;
+        }
       }
+
+      // Actualizar estado activo de las opciones de tamaño en el menú
+      const tamanoActual = layout.tamanos[id];
+      const itemsTamano = panel.querySelectorAll<HTMLButtonElement>(
+        '[data-accion-panel="tamano"]',
+      );
+      itemsTamano.forEach((item) => {
+        const esActivo = item.dataset.valor === tamanoActual;
+        item.setAttribute('aria-checked', String(esActivo));
+        const marca = item.querySelector<HTMLElement>('.marca-activa');
+        if (marca) marca.classList.toggle('hidden', !esActivo);
+      });
     });
     primerPaseLayout = false;
     layoutActual = layout;

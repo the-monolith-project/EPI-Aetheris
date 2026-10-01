@@ -106,6 +106,15 @@ const CANALES = [
             <span class="mt-1 inline-flex items-center gap-1.5 [overflow-wrap:anywhere] font-sans text-sm font-medium text-accent">
               <Icono nombre={canal.icono} class="h-4 w-4" />
               {canal.cta}
+              {canal.externo && (
+                <>
+                  <Icono
+                    nombre="external-link"
+                    class="h-3.5 w-3.5 text-ink-muted shrink-0"
+                  />
+                  <span class="sr-only"> (abre en una nueva pestaña)</span>
+                </>
+              )}
             </span>
           </a>
         ))

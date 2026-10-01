@@ -72,6 +72,18 @@ const id = `ayuda-${clave}-${Math.random().toString(36).slice(2, 8)}`;
   .ayuda-termino-boton:hover > span {
     border-color: var(--color-accent);
   }
+  .ayuda-termino-boton:focus-visible {
+    outline: none;
+  }
+  /* El anillo global (global.css) se dibuja sobre el círculo y no sobre la
+     caja del botón; conserva el mismo contorno y halo oscuro para que cumpla
+     el contraste sobre cualquier fondo. */
+  .ayuda-termino-boton:focus-visible > span {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(1, 30, 30, 0.55);
+    border-color: var(--color-accent);
+  }
   .ayuda-termino-popover {
     max-width: min(20rem, calc(100vw - 2rem));
     margin: auto;
