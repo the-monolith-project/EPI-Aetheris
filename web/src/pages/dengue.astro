@@ -1,19 +1,13 @@
 ---
-import NavSecciones from '../components/NavSecciones.astro';
 import Layout from '../layouts/Layout.astro';
 import CurvaEpidemicaNacional from '../components/CurvaEpidemicaNacional.astro';
-import MetricasModelo from '../components/MetricasModelo.astro';
-import ResumenNacional from '../components/ResumenNacional.astro';
-import UltimaSemanaDengue from '../components/UltimaSemanaDengue.astro';
-import AuditoriaDatos from '../components/AuditoriaDatos.astro';
 import PanelAnalisis from '../components/analisis/PanelAnalisis.astro';
-import PanelNowcastDengue from '../components/nowcast/PanelNowcastDengue.astro';
-import ContrasteNowcastDengue from '../components/nowcast/ContrasteNowcastDengue.astro';
-
-const TABS = [
-  { id: 'vigilancia', etiqueta: 'Vigilancia' },
-  { id: 'prediccion', etiqueta: 'Predicción a corto plazo' },
-];
+import UltimaSemanaDengue from '../components/UltimaSemanaDengue.astro';
+import {
+  RUTA_FUENTES,
+  RUTA_PREDICCION,
+  RUTA_SENSIBILIDAD,
+} from '../lib/enlaces';
 ---
 
 <Layout mapa title="EPI-Aetheris — Dengue">
@@ -38,12 +32,31 @@ const TABS = [
     <h1 class="font-display text-2xl font-semibold text-ink sm:text-3xl">
       Vigilancia del dengue por departamento
     </h1>
-    <p class="mb-6 mt-3 font-sans text-sm">
+    <p
+      class="mb-6 mt-3 flex flex-wrap gap-x-5 gap-y-1 font-sans text-sm"
+      data-enlaces-dengue
+    >
+      <a
+        href={RUTA_PREDICCION}
+        data-enlace-prediccion
+        class="font-medium text-accent underline underline-offset-2"
+        >Predicción a corto plazo →</a
+      >
       <a
         href="/alertas?tipo=dengue"
         data-enlace-alertas="dengue"
         class="font-medium text-accent underline underline-offset-2"
         >¿Alerta activa? →</a
+      >
+      <a
+        href={RUTA_FUENTES}
+        class="font-medium text-accent underline underline-offset-2"
+        >Fuentes de los datos</a
+      >
+      <a
+        href={RUTA_SENSIBILIDAD}
+        class="font-medium text-accent underline underline-offset-2"
+        >Cómo leer estas cifras</a
       >
     </p>
 
@@ -51,94 +64,11 @@ const TABS = [
       <UltimaSemanaDengue />
     </div>
 
-    <div
-      role="tablist"
-      aria-label="Vistas de dengue"
-      class="flex flex-wrap gap-1 border-b border-border"
-      data-tabs
-    >
-      {
-        TABS.map((t, i) => (
-          <button
-            type="button"
-            role="tab"
-            id={`tab-${t.id}`}
-            aria-controls={`panel-${t.id}`}
-            aria-selected={i === 0 ? 'true' : 'false'}
-            tabindex={i === 0 ? '0' : '-1'}
-            data-tab={t.id}
-            class="-mb-px rounded-t-lg border-b-2 px-3 py-2 font-sans text-sm font-medium transition-colors aria-selected:border-accent aria-selected:text-ink border-transparent text-ink-muted hover:text-ink"
-          >
-            {t.etiqueta}
-          </button>
-        ))
-      }
+    <PanelAnalisis />
+
+    <div id="curva" class="mt-8 scroll-mt-24">
+      <CurvaEpidemicaNacional />
     </div>
-
-    <section
-      id="panel-vigilancia"
-      role="tabpanel"
-      aria-labelledby="tab-vigilancia"
-      tabindex="0"
-      class="mt-6"
-    >
-      <NavSecciones
-        etiqueta="Secciones de la vigilancia de dengue"
-        enlaces={[
-          { href: '#resumen', etiqueta: 'Resumen' },
-          { href: '#prediccion-corto-plazo', etiqueta: 'Predicción' },
-          { href: '#contexto', etiqueta: 'Contexto' },
-          { href: '#curva', etiqueta: 'Curva nacional' },
-          { href: '#historico', etiqueta: 'Histórico' },
-        ]}
-      />
-
-      <div id="resumen" class="scroll-mt-24">
-        <PanelAnalisis />
-      </div>
-
-      <div id="prediccion-corto-plazo" class="mt-8 scroll-mt-24">
-        <PanelNowcastDengue variante="compacto" />
-      </div>
-
-      <section
-        id="contexto"
-        aria-labelledby="contexto-panel-titulo"
-        class="mt-8 scroll-mt-24"
-      >
-        <h2
-          id="contexto-panel-titulo"
-          class="font-display text-xl font-semibold text-ink"
-        >
-          Contexto y cobertura
-        </h2>
-        <div class="mt-4 flex flex-col gap-4">
-          <ResumenNacional />
-          <AuditoriaDatos />
-        </div>
-      </section>
-
-      <div id="curva" class="mt-8 scroll-mt-24">
-        <CurvaEpidemicaNacional />
-      </div>
-      <div id="historico" class="mt-6 scroll-mt-24">
-        <MetricasModelo />
-      </div>
-    </section>
-
-    <section
-      id="panel-prediccion"
-      role="tabpanel"
-      aria-labelledby="tab-prediccion"
-      tabindex="0"
-      class="mt-6"
-      hidden
-    >
-      <PanelNowcastDengue variante="completo" />
-      <div class="mt-6">
-        <ContrasteNowcastDengue />
-      </div>
-    </section>
   </main>
 </Layout>
 
@@ -155,80 +85,23 @@ const TABS = [
     actualizarFiltrosAnalisis({ departamento: recordado });
   }
 
-  const tablist = document.querySelector<HTMLElement>('[data-tabs]');
-  if (tablist) {
-    const tabs = Array.from(
-      tablist.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
-    );
-
-    function activar(id: string, foco = false) {
-      for (const t of tabs) {
-        const sel = t.dataset.tab === id;
-        t.setAttribute('aria-selected', sel ? 'true' : 'false');
-        t.tabIndex = sel ? 0 : -1;
-        const panel = document.getElementById(`panel-${t.dataset.tab}`);
-        if (panel) panel.hidden = !sel;
-        if (sel && foco) t.focus();
-      }
-      if (history.replaceState) {
-        const url = new URL(location.href);
-        if (id === tabs[0].dataset.tab) url.searchParams.delete('t');
-        else url.searchParams.set('t', id);
-        history.replaceState(null, '', url);
-      }
-    }
-
-    tablist.addEventListener('click', (ev) => {
-      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>(
-        '[role="tab"]',
+  // La predicción vivía en una pestaña de esta página (?t=prediccion). Los
+  // enlaces guardados siguen llegando a su página propia.
+  if (new URLSearchParams(location.search).get('t') === 'prediccion') {
+    const destino = new URL('/prediccion', location.origin);
+    if (new URLSearchParams(location.search).has('demo')) {
+      destino.searchParams.set(
+        'demo',
+        new URLSearchParams(location.search).get('demo') ?? '',
       );
-      if (btn?.dataset.tab) activar(btn.dataset.tab);
-    });
-
-    tablist.addEventListener('keydown', (ev) => {
-      const i = tabs.findIndex(
-        (t) => t.getAttribute('aria-selected') === 'true',
-      );
-      if (i < 0) return;
-      let j: number;
-      if (ev.key === 'ArrowRight') j = (i + 1) % tabs.length;
-      else if (ev.key === 'ArrowLeft') j = (i - 1 + tabs.length) % tabs.length;
-      else return;
-      ev.preventDefault();
-      activar(tabs[j].dataset.tab as string, true);
-    });
-
-    const inicial = new URLSearchParams(location.search).get('t');
-    if (inicial && tabs.some((t) => t.dataset.tab === inicial))
-      activar(inicial);
-  }
-</script>
-
-<script>
-  // ITEM 10: transición de entrada del panel al activar una pestaña. No toca
-  // activar() ni el manejo de ?t=; solo observa cuándo un tabpanel deja de
-  // estar oculto y le aplica una clase de animación (fade + leve subida).
-  const paneles = document.querySelectorAll<HTMLElement>('[role="tabpanel"]');
-  if (paneles.length) {
-    const observador = new MutationObserver((mutaciones) => {
-      for (const m of mutaciones) {
-        const el = m.target as HTMLElement;
-        if (m.attributeName === 'hidden' && !el.hidden) {
-          el.classList.remove('panel-transicion');
-          void el.offsetWidth;
-          el.classList.add('panel-transicion');
-        }
-      }
-    });
-    for (const p of paneles) {
-      observador.observe(p, { attributes: true, attributeFilter: ['hidden'] });
     }
+    location.replace(destino);
   }
 </script>
 
 <style is:global>
-  /* ITEM 1: modo presentación (solo /dengue, solo con ?demo). Sin la clase
-     en <html> la página queda idéntica. */
+  /* Modo presentación (solo /dengue, solo con ?demo). Sin la clase en <html>
+     la página queda idéntica. */
   html.demo-presentacion [data-franja-ultima-semana] {
     display: none;
   }
@@ -240,44 +113,7 @@ const TABS = [
     max-width: none !important;
     padding: 1.5rem 3rem 2rem !important;
   }
-  html.demo-presentacion body > main > p:has(a[data-enlace-alertas]) {
+  html.demo-presentacion body > main > p[data-enlaces-dengue] {
     display: none !important;
-  }
-  html.demo-presentacion [data-tabs],
-  html.demo-presentacion #panel-prediccion > :has([data-contraste-nowcast]) {
-    display: none !important;
-  }
-  html.demo-presentacion #panel-prediccion:not([hidden]) {
-    margin-top: 0 !important;
-    min-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  html.demo-presentacion #panel-prediccion:not([hidden]) > * {
-    width: 100%;
-  }
-  html.demo-presentacion #panel-vigilancia {
-    margin-top: 1rem !important;
-  }
-
-  /* ITEM 10: animación de entrada del tabpanel. */
-  @keyframes panel-entra {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  .panel-transicion {
-    animation: panel-entra 300ms ease-out;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .panel-transicion {
-      animation: none;
-    }
   }
 </style>

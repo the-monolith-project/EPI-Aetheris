@@ -1,16 +1,21 @@
 ---
 /**
- * Envoltorio de las páginas de texto largo escritas a mano: las tres legales,
- * contacto y acerca de. Da el mismo bloque de lectura que la Biblioteca
- * (tarjeta elevada, medida de ~68 caracteres, titular en Fraunces) sin pasar
- * por la colección de contenido: esos documentos son markdown compartido con
- * el monorepo, y el texto legal es específico de este despliegue.
+ * Envoltorio de las páginas de texto largo: las tres legales, acerca de y los
+ * documentos de la Biblioteca (markdown compartido con el monorepo). Da el
+ * mismo bloque de lectura a todas: tarjeta elevada y centrada, titular en
+ * Fraunces y la prosa de `.doc-texto`.
  *
- * Los estilos de prosa van en un único `is:global` acotado a `.doc-texto`,
- * así no se duplican en cada página ni se filtran a /biblioteca, que conserva
- * su propio bloque scoped (`.doc-md`).
+ * Cada `<h2>` del contenido se convierte en un acordeón nativo (`<details>`),
+ * de modo que un documento largo se lee por secciones en lugar de como un
+ * muro de texto; todas arrancan plegadas y se animan al abrir y cerrar. A la
+ * derecha lleva un buscador y el índice del propio documento; a la izquierda,
+ * si se pasa `navegacion`, los enlaces al resto de documentos de su familia.
+ * El `<code>` en línea se sustituye por texto normal (ver
+ * `src/lib/acordeones.ts`).
  */
 import Layout from '../layouts/Layout.astro';
+import { agruparEnAcordeones, sinCodigoEnLinea } from '../lib/acordeones';
+import type { NavegacionDocumento } from '../lib/navegacion-documentos';
 
 interface Props {
   titulo: string;
@@ -20,9 +25,38 @@ interface Props {
   actualizado?: string;
   /** Rótulo pequeño sobre el titular (p. ej. "Documento legal"). */
   seccion?: string;
+  /** Enlace de regreso sobre la tarjeta (p. ej. a la Biblioteca). */
+  volver?: { href: string; etiqueta: string };
+  /** Cuántas secciones arrancan desplegadas, desde la primera (0 por defecto). */
+  abiertos?: number;
+  /** Enlaces a los demás documentos de la misma familia, a la izquierda. */
+  navegacion?: NavegacionDocumento;
 }
 
-const { titulo, descripcion, actualizado, seccion } = Astro.props;
+const {
+  titulo,
+  descripcion,
+  actualizado,
+  seccion,
+  volver,
+  abiertos,
+  navegacion,
+} = Astro.props;
+
+const crudo = sinCodigoEnLinea(await Astro.slots.render('default'));
+const {
+  html: contenido,
+  total: secciones,
+  secciones: indice,
+} = agruparEnAcordeones(crudo, abiertos ?? 0);
+const controles =
+  secciones > 1
+    ? '<p class="acordeones-controles" data-sin-busqueda><button type="button" data-acordeones-alternar>Expandir todo</button></p>'
+    : '';
+const cuerpo = contenido.replace(
+  '<div class="acordeones">',
+  `${controles}<div class="acordeones">`,
+);
 ---
 
 <Layout title={`EPI-Aetheris — ${titulo}`} descripcion={descripcion}>
@@ -30,45 +64,118 @@ const { titulo, descripcion, actualizado, seccion } = Astro.props;
     id="contenido-principal"
     class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
   >
-    <article
-      class="card-elevated max-w-[calc(68ch+4rem)] rounded-2xl border border-border bg-surface p-6 sm:p-8"
-    >
-      <header class="border-b border-border pb-5">
+    <div class="doc-layout" data-con-nav={navegacion ? '' : undefined}>
+      {
+        navegacion && (
+          <nav class="doc-nav" aria-label={navegacion.titulo}>
+            {navegacion.grupos.map((grupo) => (
+              <div class="doc-nav-grupo">
+                {grupo.titulo ? (
+                  <p class="doc-lateral-titulo">{grupo.titulo}</p>
+                ) : (
+                  <p class="doc-lateral-titulo">{navegacion.titulo}</p>
+                )}
+                <ul>
+                  {grupo.enlaces.map((enlace) => (
+                    <li>
+                      <a
+                        href={enlace.href}
+                        aria-current={enlace.actual ? 'page' : undefined}
+                      >
+                        {enlace.etiqueta}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </nav>
+        )
+      }
+
+      <div class="doc-centro">
         {
-          seccion && (
-            <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">
-              {seccion}
-            </p>
+          volver && (
+            <a
+              href={volver.href}
+              class="mb-4 flex items-center gap-1.5 font-sans text-sm font-medium text-accent hover:underline"
+            >
+              &larr; {volver.etiqueta}
+            </a>
           )
         }
-        <h1
-          class="mt-1 font-display text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-[2rem]"
+        <article
+          class="card-elevated rounded-2xl border border-border bg-surface p-6 sm:p-8"
         >
-          {titulo}
-        </h1>
-        <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
-          {descripcion}
-        </p>
-        {
-          actualizado && (
-            <p class="mt-4 font-mono text-[11px] text-ink-muted">
-              Última actualización: {actualizado}
+          <header class="border-b border-border pb-5">
+            {
+              seccion && (
+                <p class="font-sans text-xs font-semibold uppercase tracking-wider text-accent">
+                  {seccion}
+                </p>
+              )
+            }
+            <h1
+              class="mt-1 font-display text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-[2rem]"
+            >
+              {titulo}
+            </h1>
+            <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+              {descripcion}
             </p>
+            {
+              actualizado && (
+                <p class="mt-4 font-mono text-[11px] text-ink-muted">
+                  Última actualización: {actualizado}
+                </p>
+              )
+            }
+          </header>
+          <div class="doc-texto mt-2 font-sans text-ink" set:html={cuerpo} />
+        </article>
+      </div>
+
+      <aside
+        class="doc-lateral-derecho"
+        aria-label="Buscar y recorrer este documento"
+      >
+        <div role="search" class="doc-buscador">
+          <label for="doc-buscar" class="doc-lateral-titulo">
+            Buscar en este documento
+          </label>
+          <input
+            id="doc-buscar"
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Palabra o frase"
+            data-doc-buscar
+          />
+          <p class="doc-buscador-estado" role="status" data-doc-buscar-estado>
+          </p>
+        </div>
+        {
+          indice.length > 1 && (
+            <details class="doc-indice" open data-doc-indice>
+              <summary class="doc-lateral-titulo">En esta página</summary>
+              <ol>
+                {indice.map((seccion) => (
+                  <li data-seccion={seccion.id}>
+                    <a href={`#${seccion.id}`}>{seccion.titulo}</a>
+                  </li>
+                ))}
+              </ol>
+            </details>
           )
         }
-      </header>
-      <div class="doc-texto mt-2 font-sans text-ink">
-        <slot />
-      </div>
-    </article>
+      </aside>
+    </div>
   </main>
 </Layout>
 
 <style is:global>
-  /* Prosa de las páginas escritas a mano. Mismos valores que el `.doc-md` de
-     la Biblioteca; se mantienen separados a propósito (aquel renderiza
-     markdown de terceros, este HTML propio) y se unificarán si aparece un
-     tercer consumidor. */
+  /* Prosa de las páginas de texto largo. Es la única hoja de lectura: la
+     Biblioteca usa este mismo bloque, así que no hay una copia para markdown. */
   .doc-texto {
     font-size: 1.0625rem;
     line-height: 1.7;
@@ -109,6 +216,11 @@ const { titulo, descripcion, actualizado, seccion } = Astro.props;
   .doc-texto li {
     margin-top: 0.35rem;
   }
+  .doc-texto li > ul,
+  .doc-texto li > ol {
+    margin-top: 0.35rem;
+    margin-bottom: 0;
+  }
   .doc-texto a {
     color: var(--color-accent);
     text-decoration: underline;
@@ -118,13 +230,22 @@ const { titulo, descripcion, actualizado, seccion } = Astro.props;
     font-weight: 600;
     color: var(--color-ink);
   }
-  .doc-texto code {
+  /* Nombres de campo, tablas y funciones citados en el texto: se distinguen
+     por el peso, sin recuadro ni tipografía monoespaciada. */
+  .doc-texto .termino {
+    font-weight: 600;
+    color: var(--color-ink);
+    overflow-wrap: anywhere;
+  }
+  .doc-texto pre {
+    background: var(--color-deep);
+    color: var(--color-deep-ink);
+    border-radius: 12px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
     font-family: var(--font-mono);
     font-size: 0.85em;
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    padding: 0.1em 0.35em;
   }
   .doc-texto table {
     width: 100%;
@@ -149,7 +270,8 @@ const { titulo, descripcion, actualizado, seccion } = Astro.props;
     margin: 2rem 0;
   }
   /* Bloque para los datos pendientes de rellenar y para los avisos cortos. */
-  .doc-texto .nota {
+  .doc-texto .nota,
+  .doc-texto blockquote {
     border-left: 3px solid var(--color-accent);
     background: var(--color-secondary);
     color: var(--color-secondary-ink);
@@ -157,7 +279,318 @@ const { titulo, descripcion, actualizado, seccion } = Astro.props;
     border-radius: 0 8px 8px 0;
     margin: 1.25rem 0;
   }
-  .doc-texto .nota p {
+  .doc-texto .nota p,
+  .doc-texto blockquote p {
     margin: 0.35rem 0;
   }
+
+  /* Rejilla de tres columnas: documentos hermanos | texto | buscador e índice.
+     En pantallas medianas el buscador pasa a la derecha y los enlaces bajan
+     bajo el texto; en móvil van buscador, texto y enlaces. */
+  .doc-layout {
+    display: grid;
+    gap: 1.5rem 2rem;
+    max-width: 52rem;
+    margin-inline: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'buscar' 'centro' 'nav';
+  }
+  .doc-centro {
+    grid-area: centro;
+    min-width: 0;
+  }
+  .doc-nav {
+    grid-area: nav;
+  }
+  .doc-lateral-derecho {
+    grid-area: buscar;
+  }
+  .doc-nav,
+  .doc-lateral-derecho {
+    align-self: start;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+  }
+  .doc-lateral-titulo {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+  .doc-nav-grupo + .doc-nav-grupo {
+    margin-top: 1.25rem;
+  }
+  .doc-nav ul,
+  .doc-indice ol {
+    display: grid;
+    gap: 0.125rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .doc-nav a,
+  .doc-indice a {
+    display: block;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    line-height: 1.35;
+    color: var(--color-ink-muted);
+    text-decoration: none;
+  }
+  .doc-nav a:hover,
+  .doc-indice a:hover {
+    color: var(--color-accent);
+    background: var(--color-secondary);
+  }
+  .doc-nav a[aria-current='page'] {
+    color: var(--color-accent);
+    background: var(--color-secondary);
+    font-weight: 600;
+  }
+  .doc-buscador input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font: inherit;
+  }
+  .doc-buscador input:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  .doc-buscador-estado {
+    min-height: 1.25rem;
+    margin-top: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--color-ink-muted);
+  }
+  .doc-indice {
+    margin-top: 1rem;
+  }
+  .doc-indice > summary {
+    cursor: pointer;
+    margin-bottom: 0.25rem;
+  }
+  @media (min-width: 64rem) {
+    .doc-layout {
+      max-width: none;
+      grid-template-columns: minmax(0, 52rem) 14rem;
+      justify-content: center;
+      grid-template-areas: 'centro buscar';
+    }
+    .doc-layout[data-con-nav] {
+      grid-template-areas: 'centro buscar' 'nav .';
+    }
+    .doc-lateral-derecho {
+      position: sticky;
+      top: 6rem;
+      max-height: calc(100vh - 7rem);
+      overflow-y: auto;
+    }
+  }
+  @media (min-width: 80rem) {
+    .doc-layout[data-con-nav] {
+      grid-template-columns: 12.5rem minmax(0, 52rem) 14rem;
+      grid-template-areas: 'nav centro buscar';
+    }
+    .doc-nav {
+      position: sticky;
+      top: 6rem;
+      max-height: calc(100vh - 7rem);
+      overflow-y: auto;
+    }
+  }
+  @media print {
+    .doc-nav,
+    .doc-lateral-derecho {
+      display: none;
+    }
+    .doc-layout {
+      display: block;
+    }
+  }
+
+  /* Acordeones: una fila por sección, separadas por una línea. El título es
+     el <h2> de siempre dentro del <summary>. */
+  .doc-texto .acordeones {
+    margin-top: 1rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .doc-texto .acordeon {
+    border-top: 1px solid var(--color-border);
+  }
+  .doc-texto .acordeon > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.95rem 0.25rem;
+    cursor: pointer;
+    list-style: none;
+    border-radius: 6px;
+  }
+  .doc-texto .acordeon > summary::-webkit-details-marker {
+    display: none;
+  }
+  .doc-texto .acordeon > summary::after {
+    content: '';
+    flex: none;
+    width: 0.55rem;
+    height: 0.55rem;
+    margin-right: 0.35rem;
+    border-right: 2px solid var(--color-ink-muted);
+    border-bottom: 2px solid var(--color-ink-muted);
+    transform: rotate(45deg) translate(-2px, -2px);
+    transition: transform 150ms ease;
+  }
+  .doc-texto .acordeon[open] > summary::after {
+    transform: rotate(-135deg) translate(-2px, -2px);
+  }
+  .doc-texto .acordeon > summary:hover h2 {
+    color: var(--color-accent);
+  }
+  .doc-texto .acordeon > summary:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .doc-texto .acordeon > summary h2 {
+    margin: 0;
+    font-size: 1.2rem;
+  }
+  .doc-texto .acordeon-cuerpo {
+    /* Sin relleno: la altura de esta capa es la que se anima (ver
+       acordeones-cliente.ts) y debe poder llegar a cero. */
+    overflow: clip;
+  }
+  .doc-texto .acordeon-contenido {
+    padding: 0 0.25rem 1.25rem;
+  }
+  .doc-texto .acordeon-contenido > :first-child {
+    margin-top: 0;
+  }
+  .doc-texto mark {
+    background: color-mix(in srgb, var(--color-accent) 28%, transparent);
+    color: inherit;
+    border-radius: 3px;
+    padding: 0 1px;
+  }
+  .doc-texto .acordeones-controles {
+    margin: 1rem 0 0;
+    text-align: right;
+    font-size: 0.8125rem;
+  }
+  .doc-texto .acordeones-controles button {
+    color: var(--color-accent);
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  /* El ancla de una sección cerrada abre el acordeón (ver el script), así que
+     el encabezado ya no queda tapado por la cabecera fija. */
+  .doc-texto h2[id] {
+    scroll-margin-top: 6rem;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .doc-texto .acordeon > summary::after {
+      transition: none;
+    }
+  }
 </style>
+
+<script>
+  import {
+    alternarAcordeon,
+    iniciarAcordeones,
+  } from '../lib/acordeones-cliente';
+  import { iniciarBusqueda } from '../lib/buscar-documento-cliente';
+
+  const raiz = document.querySelector<HTMLElement>('.doc-texto');
+  const secciones = () =>
+    Array.from(
+      document.querySelectorAll<HTMLDetailsElement>(
+        '.doc-texto details.acordeon',
+      ),
+    );
+  const boton = document.querySelector<HTMLButtonElement>(
+    '[data-acordeones-alternar]',
+  );
+
+  if (raiz) iniciarAcordeones(raiz);
+
+  function pintarBoton() {
+    if (!boton) return;
+    boton.textContent = secciones().every((d) => d.open)
+      ? 'Contraer todo'
+      : 'Expandir todo';
+  }
+
+  boton?.addEventListener('click', () => {
+    const abrir = !secciones().every((d) => d.open);
+    for (const d of secciones()) alternarAcordeon(d, abrir);
+    pintarBoton();
+  });
+  for (const d of secciones()) d.addEventListener('toggle', pintarBoton);
+  pintarBoton();
+
+  // Un enlace con ancla (#licencias, o el índice de la derecha) a una sección
+  // cerrada la abre antes de llevar a ella; sin esto el navegador deja la
+  // vista sobre una fila cerrada. Al cargar se abre sin animar.
+  function abrirAncla(animar: boolean) {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id) return;
+    const destino = document.getElementById(id);
+    const acordeon = destino?.closest('details');
+    if (acordeon && !acordeon.open) {
+      alternarAcordeon(acordeon, true, animar);
+      destino?.scrollIntoView();
+    }
+  }
+  abrirAncla(false);
+  window.addEventListener('hashchange', () => abrirAncla(true));
+
+  // En el índice, pulsar una sección ya activa no dispara `hashchange`: se
+  // gestiona el clic para abrirla y llevar a ella siempre.
+  const indice = document.querySelector<HTMLElement>('[data-doc-indice]');
+  indice?.addEventListener('click', (evento) => {
+    const enlace = (evento.target as HTMLElement).closest('a');
+    if (!enlace) return;
+    const destino = document.getElementById(enlace.hash.slice(1));
+    if (!destino) return;
+    evento.preventDefault();
+    const acordeon = destino.closest('details');
+    if (acordeon) alternarAcordeon(acordeon, true);
+    destino.scrollIntoView();
+    history.replaceState(null, '', enlace.hash);
+  });
+  // El índice solo arranca desplegado cuando hay sitio a la derecha.
+  if (indice && !window.matchMedia('(min-width: 64rem)').matches) {
+    indice.removeAttribute('open');
+  }
+
+  const entrada = document.querySelector<HTMLInputElement>('[data-doc-buscar]');
+  const estado = document.querySelector<HTMLElement>(
+    '[data-doc-buscar-estado]',
+  );
+  if (raiz && entrada && estado) {
+    iniciarBusqueda({ raiz, entrada, estado, indice });
+  }
+
+  // Al imprimir, todo el documento debe salir desplegado.
+  let abiertosAntes: boolean[] = [];
+  window.addEventListener('beforeprint', () => {
+    abiertosAntes = secciones().map((d) => d.open);
+    for (const d of secciones()) alternarAcordeon(d, true, false);
+  });
+  window.addEventListener('afterprint', () => {
+    secciones().forEach((d, i) => {
+      alternarAcordeon(d, abiertosAntes[i] ?? d.open, false);
+    });
+  });
+</script>

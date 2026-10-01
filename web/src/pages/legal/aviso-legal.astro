@@ -14,9 +14,11 @@
  * en silencio: quien busca ese dato tiene que saber por qué no está.
  */
 import DocumentoTexto from '../../components/DocumentoTexto.astro';
+import { navegacionLegal } from '../../lib/navegacion-documentos';
 ---
 
 <DocumentoTexto
+  navegacion={navegacionLegal('/legal/aviso-legal')}
   seccion="Documento legal"
   titulo="Aviso legal"
   descripcion="Quién es responsable de este sitio, qué tipo de proyecto es, dónde está alojado, cómo contactar y qué ley se aplica."

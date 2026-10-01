@@ -13,7 +13,9 @@
  *  - Tipografías: Fonts API de Astro en astro.config.mjs, descargadas en build.
  *  - Formulario de operadores: src/pages/alertas/nueva.astro.
  *  - Almacenamiento local: las dos claves `epi-aetheris:*` (nueva.astro y
- *    src/lib/vista-alertas.ts) y las cachés de public/sw.js.
+ *    src/lib/vista-alertas.ts), `epi:tema` (Layout.astro), `epi:animaciones`
+ *    (src/lib/animaciones.ts), `epi:departamento`
+ *    (src/lib/departamento-recordado.ts) y las cachés de public/sw.js.
  *  - Swagger: FastAPI sirve /docs con los recursos por defecto, que el
  *    navegador descarga de jsDelivr.
  *
@@ -31,9 +33,11 @@
  * lea sola.
  */
 import DocumentoTexto from '../../components/DocumentoTexto.astro';
+import { navegacionLegal } from '../../lib/navegacion-documentos';
 ---
 
 <DocumentoTexto
+  navegacion={navegacionLegal('/legal/privacidad')}
   seccion="Documento legal"
   titulo="Política de privacidad"
   descripcion="Qué datos se tratan al usar EPI-Aetheris, para qué, quién más los recibe y cómo ejercer los derechos que reconoce la ley."
@@ -197,7 +201,7 @@ import DocumentoTexto from '../../components/DocumentoTexto.astro';
     señal «No rastrear» (Do Not Track) no cambia nada.
   </p>
   <p>
-    Sí se guardan tres cosas en el propio navegador. Ninguna se envía al
+    Sí se guardan algunas cosas en el propio navegador. Ninguna se envía al
     proyecto:
   </p>
   <table>
@@ -221,6 +225,22 @@ import DocumentoTexto from '../../components/DocumentoTexto.astro';
         <td>La lista de alertas ya vistas (solo sus números)</td>
         <td>Marcar como «Nueva» una alerta que no se había visto antes.</td>
         <td>Borrar los datos del sitio en el navegador.</td>
+      </tr>
+      <tr>
+        <td>El tema claro u oscuro y el ajuste de animaciones</td>
+        <td>Mantener la apariencia y el movimiento que la persona eligió.</td>
+        <td>Borrar los datos del sitio en el navegador.</td>
+      </tr>
+      <tr>
+        <td>El departamento elegido con «Recordar este departamento»</td>
+        <td>
+          Usarlo como inicial en las alertas, la portada y el análisis de
+          dengue. Solo se guarda si se pulsa ese botón.
+        </td>
+        <td>
+          El mismo botón en la página del departamento, o borrar los datos del
+          sitio en el navegador.
+        </td>
       </tr>
       <tr>
         <td>Copias de las páginas visitadas y de la última lista de alertas</td>

@@ -30,7 +30,7 @@ const src = new URL(ruta, sitio).href;
 </div>
 
 <script>
-  import { codigoIncrustacion } from '../lib/incrustar';
+  import { copiarIncrustacion } from '../lib/exportar-acciones';
 
   document.addEventListener('click', async (evento) => {
     const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>(
@@ -40,17 +40,11 @@ const src = new URL(ruta, sitio).href;
     const estado = boton
       .closest('[data-incrustar]')
       ?.querySelector<HTMLElement>('[data-incrustar-estado]');
-    const codigo = codigoIncrustacion({
+    const mensaje = await copiarIncrustacion({
       src: boton.dataset.src ?? '',
       titulo: boton.dataset.titulo ?? '',
       alto: Number(boton.dataset.alto) || 400,
     });
-    try {
-      await navigator.clipboard.writeText(codigo);
-      if (estado) estado.textContent = 'Código copiado.';
-    } catch {
-      // Sin permiso de portapapeles: se muestra para copiarlo a mano.
-      if (estado) estado.textContent = codigo;
-    }
+    if (estado) estado.textContent = mensaje;
   });
 </script>

@@ -1,7 +1,8 @@
 ---
 import { getCollection, render } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
-import Layout from '../../layouts/Layout.astro';
+import DocumentoTexto from '../../components/DocumentoTexto.astro';
+import { navegacionBiblioteca } from '../../lib/navegacion-documentos';
 
 export async function getStaticPaths() {
   const entradas = await getCollection('biblioteca');
@@ -18,163 +19,17 @@ interface Props {
 const { entrada } = Astro.props;
 const { Content } = await render(entrada);
 const { titulo, descripcion } = entrada.data;
+const navegacion = navegacionBiblioteca(
+  await getCollection('biblioteca'),
+  entrada.id,
+);
 ---
 
-<Layout title={`EPI-Aetheris — ${titulo}`} descripcion={descripcion}>
-  <main
-    id="contenido-principal"
-    class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
-  >
-    <a
-      href="/biblioteca"
-      class="inline-flex items-center gap-1.5 font-sans text-sm font-medium text-accent hover:underline"
-    >
-      &larr; Volver a la biblioteca
-    </a>
-
-    <article
-      class="card-elevated mt-4 max-w-[calc(68ch+4rem)] rounded-2xl border border-border bg-surface p-6 sm:p-8"
-    >
-      <header class="border-b border-border pb-5">
-        <h1
-          class="font-display text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-[2rem]"
-        >
-          {titulo}
-        </h1>
-        <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
-          {descripcion}
-        </p>
-      </header>
-      <div class="doc-md mt-2 font-sans text-ink">
-        <Content />
-      </div>
-    </article>
-  </main>
-</Layout>
-
-<style>
-  /* Estilos de lectura para markdown renderizado -- sin plugin de
-     tipografía (@tailwindcss/typography no está instalado), se define acá
-     lo mínimo para que headings/listas/código/tablas/blockquotes de los
-     docs originales (escritos para lectura en editor, no en HTML) queden
-     legibles con la paleta del proyecto. */
-  .doc-md {
-    font-size: 1.0625rem;
-    line-height: 1.7;
-  }
-  .doc-md :global(h1) {
-    font-family: var(--font-display);
-    font-size: 2rem;
-    font-weight: 600;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
-    color: var(--color-ink);
-    margin-bottom: 1rem;
-  }
-  .doc-md :global(h2) {
-    font-family: var(--font-display);
-    font-size: 1.4rem;
-    font-weight: 600;
-    line-height: 1.25;
-    color: var(--color-ink);
-    margin-top: 2.75rem;
-    margin-bottom: 0.6rem;
-  }
-  .doc-md :global(h3) {
-    font-size: 1.05rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: var(--color-ink);
-    margin-top: 1.75rem;
-    margin-bottom: 0.4rem;
-  }
-  .doc-md :global(p) {
-    margin-top: 0.9rem;
-    margin-bottom: 0.9rem;
-  }
-  .doc-md :global(ul),
-  .doc-md :global(ol) {
-    margin-top: 0.5rem;
-    margin-bottom: 0.75rem;
-    padding-left: 1.25rem;
-  }
-  .doc-md :global(ul) {
-    list-style: disc;
-  }
-  .doc-md :global(ol) {
-    list-style: decimal;
-  }
-  .doc-md :global(li) {
-    margin-top: 0.35rem;
-  }
-  .doc-md :global(li > ul),
-  .doc-md :global(li > ol) {
-    margin-top: 0.35rem;
-    margin-bottom: 0;
-  }
-  .doc-md :global(a) {
-    color: var(--color-accent);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .doc-md :global(strong) {
-    font-weight: 600;
-    color: var(--color-ink);
-  }
-  .doc-md :global(code) {
-    font-family: var(--font-mono);
-    font-size: 0.85em;
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    padding: 0.1em 0.35em;
-    /* Nombres de columna y URL largos no deben ensanchar la página en móvil. */
-    overflow-wrap: anywhere;
-  }
-  .doc-md :global(pre) {
-    background: var(--color-deep);
-    color: var(--color-deep-ink);
-    border-radius: 12px;
-    padding: 1rem;
-    overflow-x: auto;
-    margin: 1rem 0;
-  }
-  .doc-md :global(pre code) {
-    background: none;
-    border: none;
-    padding: 0;
-    color: inherit;
-  }
-  .doc-md :global(blockquote) {
-    border-left: 3px solid var(--color-accent);
-    background: var(--color-secondary);
-    color: var(--color-secondary-ink);
-    padding: 0.75rem 1rem;
-    border-radius: 0 8px 8px 0;
-    margin: 1rem 0;
-  }
-  .doc-md :global(blockquote p) {
-    margin: 0;
-  }
-  .doc-md :global(hr) {
-    border: none;
-    border-top: 1px solid var(--color-border);
-    margin: 1.5rem 0;
-  }
-  .doc-md :global(table) {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1rem 0;
-    font-size: 0.85em;
-  }
-  .doc-md :global(th),
-  .doc-md :global(td) {
-    border: 1px solid var(--color-border);
-    padding: 0.4rem 0.6rem;
-    text-align: left;
-  }
-  .doc-md :global(th) {
-    background: var(--color-bg);
-    font-weight: 600;
-  }
-</style>
+<DocumentoTexto
+  titulo={titulo}
+  descripcion={descripcion}
+  volver={{ href: '/biblioteca', etiqueta: 'Volver a la biblioteca' }}
+  navegacion={navegacion}
+>
+  <Content />
+</DocumentoTexto>

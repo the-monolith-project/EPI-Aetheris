@@ -25,6 +25,9 @@ export function notaAnioSoloClima(anio: number): string {
   );
 }
 
+export type CapaAnalitica =
+  'minsal_volumen' | 'iv' | 'anomalia' | 'presion' | 'confianza';
+
 export interface FiltrosAnalisis {
   anio: number;
   semana: number;
@@ -34,6 +37,7 @@ export interface FiltrosAnalisis {
   departamento: string | null;
   comparar: string[];
   modoMinsal: ModoMinsal;
+  capa: CapaAnalitica;
 }
 
 export interface PresionAnalitica {

@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-// Contraste de la predicción con lo observado (pestaña Predicción de /dengue).
+// Contraste de la predicción con lo observado (página /prediccion).
 // Las dos respuestas de la predicción se simulan con una serie sintética de
 // 2017 a 2019: las 30 primeras semanas no tienen predicción (falta historia),
 // 2019 es temporada de prueba y la última semana es el ancla.
@@ -164,7 +164,7 @@ test('mueve la semana de partida de la predicción y la contrasta con lo observa
   page,
 }) => {
   await simularApi(page);
-  await page.goto('/dengue?t=prediccion');
+  await page.goto('/prediccion');
 
   const seccion = page.locator('[data-contraste-nowcast]');
   const anio = seccion.getByLabel('Año');

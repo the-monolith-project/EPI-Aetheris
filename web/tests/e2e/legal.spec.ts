@@ -41,7 +41,9 @@ test('las tres legales se enlazan entre sí y con contacto', async ({
   page,
 }) => {
   await page.goto('/legal/privacidad');
-  const documento = page.locator('main');
+  // Los enlaces viven dentro de secciones plegadas: se despliega todo antes.
+  await page.getByRole('button', { name: 'Expandir todo' }).click();
+  const documento = page.locator('.doc-texto');
   await expect(
     documento.getByRole('link', { name: 'términos de uso' }),
   ).toHaveAttribute('href', '/legal/terminos');
@@ -55,7 +57,7 @@ test('las tres legales se enlazan entre sí y con contacto', async ({
 
 test('el pie expone la sección legal en cualquier página', async ({ page }) => {
   await page.goto('/');
-  const navFooter = page.locator('nav[aria-label="Pie de página"]');
+  const navFooter = page.locator('footer');
   await expect(
     navFooter.getByRole('link', { name: 'Privacidad' }),
   ).toHaveAttribute('href', '/legal/privacidad');
@@ -74,7 +76,7 @@ test('la política de privacidad nombra las transferencias reales a terceros', a
   page,
 }) => {
   await page.goto('/legal/privacidad');
-  const documento = page.locator('main');
+  const documento = page.locator('.doc-texto');
   // Las teselas de OSM son la única transferencia sustantiva al navegar y la
   // más fácil de omitir al redactar: no hay ningún <script> de terceros que
   // la delate. Si alguien reescribe la política, esto lo frena.
@@ -123,4 +125,147 @@ test('la página de contacto no presenta violaciones automáticas WCAG A o AA', 
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
   expect(resultados.violations).toEqual([]);
+});
+
+test('las páginas de texto largo se leen por secciones desplegables', async ({
+  page,
+}) => {
+  await page.goto('/legal/terminos');
+  const secciones = page.locator('.doc-texto details.acordeon');
+  expect(await secciones.count()).toBeGreaterThan(5);
+  // Todas arrancan plegadas, y el título sigue siendo un h2.
+  await expect(page.locator('.doc-texto details.acordeon[open]')).toHaveCount(
+    0,
+  );
+  await expect(
+    secciones.nth(1).locator('summary').getByRole('heading', { level: 2 }),
+  ).toBeVisible();
+
+  await secciones.nth(1).locator('summary').click();
+  await expect(secciones.nth(1)).toHaveAttribute('open', '');
+
+  const alternar = page.getByRole('button', { name: /Expandir todo/ });
+  await alternar.click();
+  for (const seccion of await secciones.all()) {
+    await expect(seccion).toHaveAttribute('open', '');
+  }
+  await expect(
+    page.getByRole('button', { name: 'Contraer todo' }),
+  ).toBeVisible();
+});
+
+test('un enlace con ancla abre la sección cerrada que lo contiene', async ({
+  page,
+}) => {
+  await page.goto('/legal/terminos#licencias');
+  const seccion = page.locator('details.acordeon:has(#licencias)');
+  await expect(seccion).toHaveAttribute('open', '');
+  await expect(page.locator('#licencias')).toBeInViewport();
+});
+
+test('la documentación no usa la etiqueta code en el texto', async ({
+  page,
+}) => {
+  for (const ruta of [
+    '/biblioteca/01-que-es',
+    '/biblioteca/03-funciones',
+    '/biblioteca/04-fuentes-de-datos',
+    '/legal/privacidad',
+  ]) {
+    await page.goto(ruta);
+    await expect(page.locator('.doc-texto :not(pre) > code')).toHaveCount(0);
+  }
+});
+
+test('los acordeones se pliegan y despliegan con animación', async ({
+  page,
+}) => {
+  await page.goto('/legal/terminos');
+  await page.evaluate(() => {
+    document.documentElement.dataset.animaciones = 'on';
+  });
+  const seccion = page.locator('.doc-texto details.acordeon').first();
+  const cuerpo = seccion.locator('.acordeon-cuerpo');
+  await seccion.locator('summary').click();
+  // Mientras anima, hay una animación de altura en curso sobre el cuerpo.
+  expect(
+    await cuerpo.evaluate((el) => el.getAnimations().length),
+  ).toBeGreaterThan(0);
+  await expect(seccion).toHaveAttribute('open', '');
+  await expect
+    .poll(() => cuerpo.evaluate((el) => el.getAnimations().length))
+    .toBe(0);
+
+  await seccion.locator('summary').click();
+  // Al plegar, `open` se mantiene hasta que acaba la animación.
+  await expect(seccion).toHaveAttribute('open', '');
+  await expect(seccion).not.toHaveAttribute('open', '');
+});
+
+test('con las animaciones apagadas el acordeón cambia al instante', async ({
+  page,
+}) => {
+  await page.goto('/legal/terminos');
+  await page.evaluate(() => {
+    document.documentElement.dataset.animaciones = 'off';
+  });
+  const seccion = page.locator('.doc-texto details.acordeon').first();
+  await seccion.locator('summary').click();
+  await expect(seccion).toHaveAttribute('open', '');
+  await seccion.locator('summary').click();
+  await expect(seccion).not.toHaveAttribute('open', '');
+});
+
+test('el buscador filtra secciones, resalta y restaura', async ({ page }) => {
+  await page.goto('/biblioteca/03-funciones');
+  const secciones = page.locator('.doc-texto details.acordeon');
+  const total = await secciones.count();
+  const entrada = page.getByLabel('Buscar en este documento');
+  await entrada.fill('presion');
+  await expect(page.locator('.doc-texto mark').first()).toBeVisible();
+  expect(
+    await page.locator('.doc-texto details.acordeon:visible').count(),
+  ).toBeLessThan(total);
+  await expect(page.locator('[data-doc-buscar-estado]')).toContainText(
+    'coincidencia',
+  );
+  await entrada.fill('zzzxqw');
+  await expect(page.locator('[data-doc-buscar-estado]')).toHaveText(
+    'Sin resultados.',
+  );
+  await entrada.press('Escape');
+  await expect(entrada).toHaveValue('');
+  await expect(page.locator('.doc-texto mark')).toHaveCount(0);
+  await expect(page.locator('.doc-texto details.acordeon[open]')).toHaveCount(
+    0,
+  );
+  expect(
+    await page.locator('.doc-texto details.acordeon:visible').count(),
+  ).toBe(total);
+});
+
+test('el índice de la página abre y lleva a la sección', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/biblioteca/03-funciones');
+  const enlace = page.locator('[data-doc-indice] a').nth(2);
+  const id = (await enlace.getAttribute('href'))!.slice(1);
+  await enlace.click();
+  await expect(page.locator(`details.acordeon:has(#${id})`)).toHaveAttribute(
+    'open',
+    '',
+  );
+  await expect(page.locator(`#${id}`)).toBeInViewport();
+});
+
+test('la biblioteca enlaza al resto de documentos a la izquierda', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/biblioteca/03-funciones');
+  const nav = page.getByRole('navigation', { name: 'Biblioteca' });
+  await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
+  expect(await nav.getByRole('link').count()).toBeGreaterThan(3);
+  const cajaNav = await nav.boundingBox();
+  const cajaTexto = await page.locator('article').boundingBox();
+  expect(cajaNav!.x + cajaNav!.width).toBeLessThanOrEqual(cajaTexto!.x);
 });

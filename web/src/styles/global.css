@@ -873,15 +873,28 @@ html[data-animar] .workspace-revelacion [data-panel-workspace]:not([hidden]) {
    media query. No usa animation:none para no romper estados finales que
    dependan del keyframe; acorta a ~0ms en su lugar. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  ::before,
-  ::after {
+  html:not([data-animaciones='on']) *,
+  html:not([data-animaciones='on']) ::before,
+  html:not([data-animaciones='on']) ::after {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Interruptor "Animaciones" del pie: el mismo piso, elegido a mano. Con el
+   atributo en "on" la persona pidió animaciones y la regla de arriba no se
+   aplica aunque el sistema pida reducirlas. */
+html[data-animaciones='off'] *,
+html[data-animaciones='off'] ::before,
+html[data-animaciones='off'] ::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* Mapa en tema oscuro: se oscurecen los tiles con un filtro en lugar de sumar

@@ -7,7 +7,7 @@ import PanelWorkspace from './PanelWorkspace.astro';
   titulo="Anomalía climática y presión relativa"
   descripcion="Cada punto es un departamento en la semana activa: anomalía climática en un eje, presión relativa en el otro."
 >
-  <div class="mt-4 overflow-x-auto scroll-shadow-x">
+  <div class="mt-4 overflow-x-auto scroll-shadow-x" tabindex="0">
     <div
       id="scatter-clima-presion"
       class="min-h-[340px] min-w-[720px]"
@@ -48,7 +48,6 @@ import PanelWorkspace from './PanelWorkspace.astro';
 </PanelWorkspace>
 
 <script>
-  let Plot: typeof import('@observablehq/plot') | null = null;
   import {
     esNoDisponible,
     motivoNoDisponible,
@@ -62,8 +61,10 @@ import PanelWorkspace from './PanelWorkspace.astro';
     obtenerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
-  import { vincularMarcasPlot } from '../../lib/plot-interacciones';
-  import { ESTILO_PLOT, marcoPlot } from '../../lib/plot-tema';
+  import { montarGrafico } from '../../lib/echarts-montaje';
+  import type { GraficoMontado } from '../../lib/echarts-montaje';
+  import { crearOpcionBase, ejeValores } from '../../lib/echarts-tema';
+  import { escapeHtml } from '../../utils/security';
   import { TablaAlternativa } from '../../lib/tabla-alternativa';
   import {
     esAnioAnalisisDengue,
@@ -87,6 +88,7 @@ import PanelWorkspace from './PanelWorkspace.astro';
   const contenedor = document.getElementById('scatter-clima-presion');
   const resumen = document.getElementById('scatter-resumen');
   let revision = 0;
+  let grafico: GraficoMontado | null = null;
   let filtrosActuales = obtenerFiltrosAnalisis();
   let datosTabla: PuntoScatter[] = [];
 
@@ -145,6 +147,8 @@ import PanelWorkspace from './PanelWorkspace.astro';
   async function renderizar(filtros: FiltrosAnalisis) {
     if (!contenedor) return;
     const idRevision = ++revision;
+    grafico?.destruir();
+    grafico = null;
     if (resumen)
       resumen.textContent = `Cargando ${filtros.anio}, SE${String(filtros.semana).padStart(2, '0')}…`;
 
@@ -198,59 +202,104 @@ import PanelWorkspace from './PanelWorkspace.astro';
       datosTabla = puntos;
       tablaAlternativa?.marcarCaducada();
 
-      const grafica = Plot!.plot({
-        width: Math.max(contenedor.clientWidth, 720),
-        height: 350,
-        marginLeft: 62,
-        marginBottom: 52,
-        x: { label: 'Anomalía climática (σ)', grid: true, nice: true },
-        y: {
-          label: `Percentil presión (${filtros.serie})`,
-          domain: [0, 100],
-          grid: true,
-        },
-        style: ESTILO_PLOT,
-        marks: [
-          Plot.ruleX([0], { stroke: 'var(--color-border)', strokeWidth: 1.5 }),
-          Plot.dot(puntos, {
-            className: 'epi-scatter-puntos',
-            x: 'anomalia',
-            y: 'percentil',
-            r: 5,
-            fill: '#2171b5',
-            fillOpacity: 0.75,
-            stroke: 'var(--color-surface)',
-            strokeWidth: 1.5,
-            title: (punto: PuntoScatter) => tooltip(punto, filtros),
+      const COLOR_PUNTO = '#2171b5';
+      contenedor.style.height = '350px';
+      const montado = await montarGrafico(
+        contenedor,
+        (t) => ({
+          ...crearOpcionBase(t, {
+            grid: { left: 62, bottom: 56, show: true, borderColor: t.borde },
+            legend: { show: false },
+            tooltip: {
+              trigger: 'item',
+              formatter: (p: { dataIndex: number }) =>
+                escapeHtml(tooltip(puntos[p.dataIndex], filtros)).replaceAll(
+                  '\n',
+                  '<br/>',
+                ),
+            },
           }),
-          Plot.dot(puntoActivo, {
-            x: 'anomalia',
-            y: 'percentil',
-            r: 8,
-            fill: 'none',
-            stroke: 'var(--color-seleccion)',
-            strokeWidth: 2.5,
-            pointerEvents: 'none',
+          xAxis: ejeValores(t, '', {
+            name: 'Anomalía climática (σ)',
+            nameLocation: 'middle',
+            nameGap: 32,
+            nameTextStyle: { color: t.tintaSuave },
+            scale: true,
           }),
-          Plot.text(puntoActivo, {
-            x: 'anomalia',
-            y: 'percentil',
-            text: 'departamento',
-            dy: -13,
-            fill: 'var(--color-ink)',
-            fontSize: 11,
+          yAxis: ejeValores(t, `Percentil presión (${filtros.serie})`, {
+            min: 0,
+            max: 100,
           }),
-          marcoPlot(Plot!),
-        ],
-      });
-      vincularMarcasPlot(
-        grafica,
-        '.epi-scatter-puntos circle',
-        puntos,
-        (punto) => tooltip(punto, filtros).replaceAll('\n', '. '),
-        (punto) => actualizarFiltrosAnalisis({ departamento: punto.codigo }),
+          series: [
+            {
+              type: 'scatter',
+              symbolSize: 10,
+              itemStyle: {
+                color: COLOR_PUNTO,
+                opacity: 0.75,
+                borderColor: t.superficie,
+                borderWidth: 1.5,
+              },
+              data: puntos.map((punto) => [punto.anomalia, punto.percentil]),
+              // Eje de anomalía cero: separa clima por debajo y por encima de lo normal.
+              markLine: {
+                silent: true,
+                symbol: 'none',
+                label: { show: false },
+                lineStyle: { color: t.borde, width: 1.5, type: 'solid' },
+                data: [{ xAxis: 0 }],
+              },
+            },
+            {
+              // Anillo y nombre del departamento activo, por encima del resto.
+              type: 'scatter',
+              silent: true,
+              symbolSize: 17,
+              z: 5,
+              itemStyle: {
+                color: 'transparent',
+                borderColor: t.seleccion,
+                borderWidth: 2.5,
+              },
+              label: {
+                show: true,
+                position: 'top',
+                distance: 6,
+                color: t.tinta,
+                fontSize: 11,
+                formatter: (p: { dataIndex: number }) =>
+                  puntoActivo[p.dataIndex].departamento,
+              },
+              data: puntoActivo.map((punto) => [
+                punto.anomalia,
+                punto.percentil,
+              ]),
+            },
+          ],
+        }),
+        'Anomalía climática y percentil de presión epidemiológica por departamento',
       );
-      contenedor.replaceChildren(grafica);
+      if (idRevision !== revision) {
+        montado.destruir();
+        return;
+      }
+      grafico = montado;
+      // Pulsar un punto fija el departamento (antes, también con teclado).
+      montado.instancia.on('click', (evento: unknown) => {
+        const { componentType, seriesIndex, dataIndex } = evento as {
+          componentType?: string;
+          seriesIndex?: number;
+          dataIndex?: number;
+        };
+        if (
+          componentType !== 'series' ||
+          seriesIndex !== 0 ||
+          dataIndex === undefined
+        ) {
+          return;
+        }
+        actualizarFiltrosAnalisis({ departamento: puntos[dataIndex].codigo });
+      });
 
       const omitidos = datos.departamentos.length - puntos.length;
       const activo = puntoActivo[0];
@@ -273,24 +322,10 @@ import PanelWorkspace from './PanelWorkspace.astro';
   async function activar() {
     if (activado || !contenedor) return;
     activado = true;
-    Plot = await import('@observablehq/plot');
     suscribirFiltrosAnalisis((filtros) => {
       filtrosActuales = filtros;
       void renderizar(filtros);
     });
-    let ultimoAncho = 0;
-    let timerResize: ReturnType<typeof setTimeout> | null = null;
-    new ResizeObserver((entradas) => {
-      const entrada = entradas[0];
-      if (!entrada) return;
-      const nuevoAncho = Math.round(entrada.contentRect.width);
-      if (nuevoAncho === ultimoAncho) return;
-      ultimoAncho = nuevoAncho;
-      if (timerResize) clearTimeout(timerResize);
-      timerResize = setTimeout(() => {
-        void renderizar(filtrosActuales);
-      }, 150);
-    }).observe(contenedor);
   }
 
   const panel = contenedor?.closest('[data-panel-workspace]') ?? contenedor;

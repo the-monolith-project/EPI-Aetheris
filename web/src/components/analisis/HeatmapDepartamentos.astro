@@ -9,7 +9,7 @@ import { RAMPA_PRESION } from '../../lib/colores';
   titulo="Presión por departamento y semana"
   descripcion="Percentil del conteo observado respecto a la historia del mismo departamento. Las celdas grises indican que falta la observación o que no hay historial suficiente para calcular el percentil."
 >
-  <div class="mt-4 overflow-x-auto scroll-shadow-x">
+  <div class="mt-4 overflow-x-auto scroll-shadow-x" tabindex="0">
     <div
       id="heatmap-departamentos"
       class="min-h-[420px] min-w-[760px]"
@@ -62,11 +62,6 @@ import { RAMPA_PRESION } from '../../lib/colores';
 </PanelWorkspace>
 
 <script>
-  // Plot entra por import dinamico, como en el resto de paneles: cuando
-  // un solo componente lo importa de forma estatica, Vite lo arrastra al
-  // grafo inicial y anula los await import de los demas -- 391 KB de Plot
-  // y d3 quedaban en la carga critica de /dengue.
-  let Plot: typeof import('@observablehq/plot') | null = null;
   import {
     esNoDisponible,
     motivoNoDisponible,
@@ -78,11 +73,13 @@ import { RAMPA_PRESION } from '../../lib/colores';
   import {
     actualizarFiltrosAnalisis,
     obtenerFiltrosAnalisis,
+    soloCambiaSemana,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
   import { colorPresion, gradienteCss, RAMPA_PRESION } from '../../lib/colores';
-  import { ESTILO_PLOT, MARGENES, marcoPlot } from '../../lib/plot-tema';
-  import { vincularMarcasPlot } from '../../lib/plot-interacciones';
+  import { moverSeleccionMatriz, montarMatriz } from '../../lib/echarts-matriz';
+  import type { ConfigMatriz } from '../../lib/echarts-matriz';
+  import type { GraficoMontado } from '../../lib/echarts-montaje';
   import { TablaAlternativa } from '../../lib/tabla-alternativa';
   import {
     esAnioAnalisisDengue,
@@ -106,7 +103,11 @@ import { RAMPA_PRESION } from '../../lib/colores';
   if (leyenda) leyenda.style.background = gradienteCss(RAMPA_PRESION);
 
   let revision = 0;
+  let grafico: GraficoMontado | null = null;
   let filtrosActuales = obtenerFiltrosAnalisis();
+  let filtrosPintados: FiltrosAnalisis | null = null;
+  /** Reaplica la semana activa sobre la matriz vigente, con transición. */
+  let moverSemana: ((filtros: FiltrosAnalisis) => void) | null = null;
   let datosTabla: any[] = [];
 
   const detailsTabla = document.getElementById(
@@ -163,7 +164,16 @@ import { RAMPA_PRESION } from '../../lib/colores';
 
   async function renderizar(filtros: FiltrosAnalisis) {
     if (!contenedor) return;
+    if (grafico && moverSemana && soloCambiaSemana(filtrosPintados, filtros)) {
+      filtrosPintados = filtros;
+      moverSemana(filtros);
+      return;
+    }
+    filtrosPintados = filtros;
+    moverSemana = null;
     const idRevision = ++revision;
+    grafico?.destruir();
+    grafico = null;
     if (resumen)
       resumen.textContent = `Cargando ${filtros.anio}, serie ${filtros.serie}…`;
 
@@ -206,11 +216,31 @@ import { RAMPA_PRESION } from '../../lib/colores';
               };
             }),
       );
-      const seleccion = celdas.filter(
-        (celda) =>
-          celda.semana === filtros.semana &&
-          (!filtros.departamento || celda.codigo === filtros.departamento),
-      );
+      const seleccionDe = (f: FiltrosAnalisis) =>
+        celdas.filter(
+          (celda) =>
+            celda.semana === f.semana &&
+            (!f.departamento || celda.codigo === f.departamento),
+        );
+      const configMatriz = (f: FiltrosAnalisis): ConfigMatriz => {
+        const seleccion = seleccionDe(f);
+        return {
+          semanas: Array.from(
+            { length: f.semanaHasta - f.semanaDesde + 1 },
+            (_, indice) => f.semanaDesde + indice,
+          ),
+          filas: datos.departamentos.map((departamento) => departamento.nombre),
+          celdas: celdas.map((celda) => ({
+            semana: celda.semana,
+            fila: celda.departamento,
+            color: colorPresion(celda.percentil),
+            activa: seleccion.includes(celda),
+          })),
+          izquierda: 110,
+          etiquetasX: 10,
+          texto: (indice) => textoCelda(celdas[indice], f),
+        };
+      };
 
       datosTabla = celdas.map((c) => ({
         ...c,
@@ -218,63 +248,25 @@ import { RAMPA_PRESION } from '../../lib/colores';
       }));
       tablaAlternativa?.marcarCaducada();
 
-      Plot ??= await import('@observablehq/plot');
-      const grafica = Plot!.plot({
-        width: Math.max(contenedor.clientWidth, 760),
-        height: 430,
-        marginLeft: MARGENES.matriz.marginLeft,
-        marginBottom: MARGENES.matriz.marginBottom,
-        x: {
-          domain: Array.from(
-            { length: filtros.semanaHasta - filtros.semanaDesde + 1 },
-            (_, indice) => filtros.semanaDesde + indice,
-          ),
-          label: 'Semana epidemiológica',
-          tickFormat: (valor) => `SE${String(valor).padStart(2, '0')}`,
-          ticks: 10,
-        },
-        y: {
-          domain: datos.departamentos.map(
-            (departamento) => departamento.nombre,
-          ),
-          label: null,
-        },
-        style: ESTILO_PLOT,
-        marks: [
-          Plot.cell(celdas, {
-            className: 'epi-heatmap-celdas',
-            x: 'semana',
-            y: 'departamento',
-            fill: (celda: CeldaHeatmap) => colorPresion(celda.percentil),
-            inset: 0.5,
-            title: (celda: CeldaHeatmap) => textoCelda(celda, filtros),
-          }),
-          Plot.cell(seleccion, {
-            x: 'semana',
-            y: 'departamento',
-            fill: 'none',
-            stroke: 'var(--color-seleccion)',
-            strokeWidth: 2,
-            inset: 0.5,
-            pointerEvents: 'none',
-          }),
-          marcoPlot(Plot!),
-        ],
-      });
-      vincularMarcasPlot(
-        grafica,
-        '.epi-heatmap-celdas rect',
-        celdas,
-        (celda) => textoCelda(celda, filtros).replaceAll('\n', '. '),
-        (celda) =>
+      contenedor.style.height = '430px';
+      const montado = await montarMatriz(
+        contenedor,
+        () => configMatriz(filtrosActuales),
+        'Presión epidemiológica relativa por departamento y semana',
+        (indice) =>
           actualizarFiltrosAnalisis({
-            departamento: celda.codigo,
-            semana: celda.semana,
+            departamento: celdas[indice].codigo,
+            semana: celdas[indice].semana,
           }),
       );
-      contenedor.replaceChildren(grafica);
+      if (idRevision !== revision) {
+        montado.destruir();
+        return;
+      }
+      grafico = montado;
 
-      if (resumen) {
+      const pintarResumen = (filtros: FiltrosAnalisis) => {
+        if (!resumen) return;
         const celdaActiva = filtros.departamento
           ? celdas.find(
               (celda) =>
@@ -299,7 +291,12 @@ import { RAMPA_PRESION } from '../../lib/colores';
             <span><span class="cifra">${datos.departamentos.length}</span> departamentos en el rango <span class="cifra">SE${String(filtros.semanaDesde).padStart(2, '0')}–SE${String(filtros.semanaHasta).padStart(2, '0')}</span> del año <span class="cifra">${filtros.anio}</span> (serie ${filtros.serie}).</span>
           `;
         }
-      }
+      };
+      pintarResumen(filtros);
+      moverSemana = (f) => {
+        moverSeleccionMatriz(montado, configMatriz(f));
+        pintarResumen(f);
+      };
     } catch {
       if (idRevision !== revision) return;
       renderErrorFuente(contenedor, () => void renderizar(filtrosActuales));
@@ -315,20 +312,4 @@ import { RAMPA_PRESION } from '../../lib/colores';
     filtrosActuales = filtros;
     void renderizar(filtros);
   });
-
-  let ultimoAncho = 0;
-  let timerResize: ReturnType<typeof setTimeout> | null = null;
-  if (contenedor) {
-    new ResizeObserver((entradas) => {
-      const entrada = entradas[0];
-      if (!entrada) return;
-      const nuevoAncho = Math.round(entrada.contentRect.width);
-      if (nuevoAncho === ultimoAncho) return;
-      ultimoAncho = nuevoAncho;
-      if (timerResize) clearTimeout(timerResize);
-      timerResize = setTimeout(() => {
-        void renderizar(filtrosActuales);
-      }, 150);
-    }).observe(contenedor);
-  }
 </script>

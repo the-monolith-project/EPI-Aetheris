@@ -9,13 +9,14 @@
  * nada, asi que sin script o con reduced-motion la pagina se ve completa.
  */
 
-const REDUCIR = '(prefers-reduced-motion: reduce)';
+import { animacionesActivas } from './animaciones';
 
+/** Respeta el interruptor del pie (data-animaciones) y, sin él, prefers-reduced-motion. */
 function permiteMovimiento(): boolean {
   return (
     typeof window !== 'undefined' &&
     'IntersectionObserver' in window &&
-    !window.matchMedia(REDUCIR).matches
+    animacionesActivas()
   );
 }
 

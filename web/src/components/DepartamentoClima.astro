@@ -17,7 +17,7 @@ const { codigo, nombre } = Astro.props;
 >
   <div
     data-clima-grafica
-    class="mt-4 min-h-[220px]"
+    class="mt-4 min-h-[260px]"
     role="region"
     aria-label={`Idoneidad biofísica semanal de ${nombre} contra su banda histórica`}
     aria-busy="true"
@@ -41,7 +41,14 @@ const { codigo, nombre } = Astro.props;
     renderSinDato,
   } from './estado-async';
   import { obtenerSerieIdoneidad } from '../lib/analisis-api';
-  import { ESTILO_PLOT, ejeSemana, marcoPlot } from '../lib/plot-tema';
+  import { montarGrafico } from '../lib/echarts-montaje';
+  import {
+    crearOpcionBase,
+    ejeSemana,
+    ejeValores,
+    etiquetaSemana,
+    tooltipPorSemana,
+  } from '../lib/echarts-tema';
   import { aniosClimaPresentacion } from '../lib/tipos-analisis';
   import type { SerieTemporalIdoneidad } from '../lib/tipos-analisis';
 
@@ -83,43 +90,69 @@ const { codigo, nombre } = Astro.props;
       return;
     }
 
-    const Plot = await import('@observablehq/plot');
     const semanas = serie.semanas;
     const conIv = semanas.filter((s) => s.iv_real !== null);
     const banda = semanas.filter(
       (s) => s.p25_baseline !== null && s.p75_baseline !== null,
     );
-    const figura = Plot.plot({
-      width: Math.max(grafica.clientWidth || 0, 320),
-      height: 220,
-      marginLeft: 52,
-      marginBottom: 40,
-      x: ejeSemana(1, 53),
-      y: { label: 'Iv (0–1)', grid: true, zero: true },
-      style: ESTILO_PLOT,
-      marks: [
-        Plot.areaY(banda, {
-          x: 'semana_epi',
-          y1: 'p25_baseline',
-          y2: 'p75_baseline',
-          fill: 'var(--color-secondary)',
-          fillOpacity: 0.5,
+    const porSemana = new Map(semanas.map((s) => [s.semana_epi, s]));
+    await montarGrafico(
+      grafica,
+      (t) => ({
+        ...crearOpcionBase(t, {
+          grid: { bottom: 84 },
+          legend: { data: ['Iv observado', 'Banda histórica P25 a P75'] },
+          tooltip: {
+            formatter: tooltipPorSemana(
+              porSemana,
+              (s) =>
+                `${etiquetaSemana(s.semana_epi)} · Iv ${s.iv_real ?? '—'} · banda P25–P75: ${
+                  s.p25_baseline ?? '—'
+                } a ${s.p75_baseline ?? '—'}`,
+            ),
+          },
         }),
-        Plot.line(conIv, {
-          x: 'semana_epi',
-          y: 'iv_real',
-          stroke: 'var(--color-accent)',
-          strokeWidth: 2.5,
-        }),
-        marcoPlot(Plot),
-      ],
-    });
-    // Los grupos de Plot llevan aria-label con el nombre de la marca; axe los
-    // rechaza sin rol. El resumen de texto es la alternativa.
-    figura
-      .querySelectorAll('svg [aria-label]')
-      .forEach((n) => n.removeAttribute('aria-label'));
-    grafica.replaceChildren(figura);
+        xAxis: ejeSemana(t, 1, 53),
+        yAxis: ejeValores(t, 'Iv (0–1)', { min: 0 }),
+        series: [
+          {
+            // Base invisible de la banda; la serie siguiente aporta el tramo
+            // entre P25 y P75.
+            name: 'Base de la banda',
+            type: 'line',
+            stack: 'banda',
+            silent: true,
+            symbol: 'none',
+            lineStyle: { width: 0 },
+            data: banda.map((s) => [s.semana_epi, s.p25_baseline]),
+          },
+          {
+            name: 'Banda histórica P25 a P75',
+            type: 'line',
+            stack: 'banda',
+            silent: true,
+            symbol: 'none',
+            lineStyle: { width: 0 },
+            itemStyle: { color: t.secundario, opacity: 0.5 },
+            areaStyle: { color: t.secundario, opacity: 0.5 },
+            data: banda.map((s) => [
+              s.semana_epi,
+              (s.p75_baseline as number) - (s.p25_baseline as number),
+            ]),
+          },
+          {
+            name: 'Iv observado',
+            type: 'line',
+            symbolSize: 5,
+            itemStyle: { color: t.acento },
+            lineStyle: { width: 2.5, color: t.acento },
+            z: 5,
+            data: conIv.map((s) => [s.semana_epi, s.iv_real]),
+          },
+        ],
+      }),
+      `Idoneidad biofísica semanal de ${raiz.dataset.departamentoNombre ?? codigo} contra su banda histórica`,
+    );
 
     const ultima = conIv[conIv.length - 1];
     const sigma =

@@ -27,13 +27,13 @@ import PanelWorkspace from './PanelWorkspace.astro';
   <div id="serie-departamento-grafica" class="mt-4 flex flex-col gap-5" hidden>
     <div
       id="serie-presion"
-      class="min-h-[220px]"
+      class="min-h-[260px]"
       role="region"
       aria-label="Percentil de presión epidemiológica relativa por semana para el departamento activo"
       aria-busy="true"
     >
       <div
-        class="flex h-full min-h-[220px] w-full flex-col justify-around gap-4 p-4"
+        class="flex h-full min-h-[260px] w-full flex-col justify-around gap-4 p-4"
         aria-hidden="true"
       >
         <div class="skeleton h-5 w-full rounded"></div>
@@ -43,13 +43,13 @@ import PanelWorkspace from './PanelWorkspace.astro';
     </div>
     <div
       id="serie-idoneidad"
-      class="min-h-[220px]"
+      class="min-h-[260px]"
       role="region"
       aria-label="Idoneidad biofísica por semana contra la banda histórica del departamento activo"
       aria-busy="true"
     >
       <div
-        class="flex h-full min-h-[220px] w-full flex-col justify-around gap-4 p-4"
+        class="flex h-full min-h-[260px] w-full flex-col justify-around gap-4 p-4"
         aria-hidden="true"
       >
         <div class="skeleton h-5 w-full rounded"></div>
@@ -59,13 +59,13 @@ import PanelWorkspace from './PanelWorkspace.astro';
     </div>
     <div
       id="serie-anomalia"
-      class="min-h-[200px]"
+      class="min-h-[240px]"
       role="region"
       aria-label="Anomalía climática continua por semana para el departamento activo"
       aria-busy="true"
     >
       <div
-        class="flex h-full min-h-[200px] w-full flex-col justify-around gap-4 p-4"
+        class="flex h-full min-h-[240px] w-full flex-col justify-around gap-4 p-4"
         aria-hidden="true"
       >
         <div class="skeleton h-5 w-full rounded"></div>
@@ -116,9 +116,21 @@ import PanelWorkspace from './PanelWorkspace.astro';
   } from '../../lib/analisis-api';
   import {
     obtenerFiltrosAnalisis,
+    soloCambiaSemana,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
-  import { ESTILO_PLOT, ejeSemana, marcoPlot } from '../../lib/plot-tema';
+  import type { OpcionEcharts } from '../../lib/echarts-base';
+  import { montarGrafico } from '../../lib/echarts-montaje';
+  import type { GraficoMontado } from '../../lib/echarts-montaje';
+  import {
+    crearOpcionBase,
+    ejeSemana,
+    ejeValores,
+    etiquetaSemana,
+    marcaSemana,
+    tooltipPorSemana,
+  } from '../../lib/echarts-tema';
+  import type { TokensGrafico } from '../../lib/echarts-tema';
   import { TablaAlternativa } from '../../lib/tabla-alternativa';
   import {
     esAnioAnalisisDengue,
@@ -130,10 +142,9 @@ import PanelWorkspace from './PanelWorkspace.astro';
     SemanaSeriePresion,
   } from '../../lib/tipos-analisis';
 
-  const COLOR_ACENTO = 'var(--color-accent)';
   const COLOR_CONFIRMADO = '#2171b5';
   const COLOR_CONTEXTO = '#9ca3af';
-  const COLOR_BANDA = 'var(--color-secondary)';
+  const COLOR_ANOMALIA = '#e65100';
 
   const marco = document.getElementById('serie-departamento-grafica');
   const vacioContenedor =
@@ -146,9 +157,21 @@ import PanelWorkspace from './PanelWorkspace.astro';
 
   let revision = 0;
   let filtrosActuales = obtenerFiltrosAnalisis();
-  type PlotNs = typeof import('@observablehq/plot');
-  type Grafica = ReturnType<PlotNs['plot']>;
-  let Plot: PlotNs | null = null;
+  /** Filtros con los que se pintaron las gráficas vigentes. */
+  let filtrosPintados: FiltrosAnalisis | null = null;
+  /** Falso mientras una carga completa sigue en curso. */
+  let listo = false;
+  /** Lo que necesita montarGrafico: se vuelve a evaluar al cambiar el tema. */
+  interface EspecificacionGrafica {
+    construir: (tokens: TokensGrafico) => OpcionEcharts;
+    descripcion: string;
+  }
+  /** `regenerar` reconstruye la opción con otra semana sin volver a pedir datos. */
+  interface GraficoVigente {
+    montado: GraficoMontado;
+    regenerar: (filtros: FiltrosAnalisis) => EspecificacionGrafica | null;
+  }
+  let graficos: GraficoVigente[] = [];
   let datosTabla: any[] = [];
 
   const detailsTabla = document.getElementById(
@@ -212,21 +235,27 @@ import PanelWorkspace from './PanelWorkspace.astro';
     return valores.some((v) => v !== null && !Number.isNaN(v));
   }
 
-  function marcadorSemana(P: PlotNs, filtros: FiltrosAnalisis) {
-    return P.ruleX([filtros.semana], {
-      stroke: 'var(--color-seleccion)',
-      strokeWidth: 2,
-      strokeOpacity: 0.6,
-      strokeDasharray: '3,3',
-    });
+  /** Series que comparten rejilla, eje de semanas y marca de la semana activa. */
+  function opcionSerie(
+    t: TokensGrafico,
+    filtros: FiltrosAnalisis,
+    nombreY: string,
+    ejeY: Record<string, unknown>,
+    extra: Parameters<typeof crearOpcionBase>[1],
+  ): OpcionEcharts {
+    return {
+      ...crearOpcionBase(t, extra),
+      xAxis: ejeSemana(t, filtros.semanaDesde, filtros.semanaHasta),
+      yAxis: ejeValores(t, nombreY, ejeY),
+    };
   }
 
+  const par = (semana: number, valor: number | null) => [semana, valor];
+
   function graficaPresion(
-    P: PlotNs,
     semanas: SemanaSeriePresion[],
     filtros: FiltrosAnalisis,
-    ancho: number,
-  ) {
+  ): EspecificacionGrafica | null {
     const datos = semanas
       .filter((s) => enRango(s.semana_epi, filtros))
       .map((s) => ({
@@ -242,164 +271,236 @@ import PanelWorkspace from './PanelWorkspace.astro';
     ) {
       return null;
     }
-    return P.plot({
-      width: ancho,
-      height: 210,
-      marginLeft: 52,
-      marginBottom: 40,
-      x: ejeSemana(filtros.semanaDesde, filtros.semanaHasta),
-      y: {
-        label: 'Percentil frente a su historia (0–100)',
-        domain: [0, 100],
-        grid: true,
-      },
-      style: ESTILO_PLOT,
-      marks: [
-        P.ruleY([50, 75], {
-          stroke: COLOR_CONTEXTO,
-          strokeOpacity: 0.5,
-          strokeDasharray: '2,3',
-        }),
-        P.line(datos, {
-          x: 'semana_epi',
-          y: 'probable',
-          stroke: COLOR_ACENTO,
-          strokeWidth: 2.5,
-        }),
-        P.line(datos, {
-          x: 'semana_epi',
-          y: 'confirmado',
-          stroke: COLOR_CONFIRMADO,
-          strokeWidth: 2,
-        }),
-        P.dot(
-          datos.filter((s) => s.probable !== null),
+    const porSemana = new Map(datos.map((s) => [s.semana_epi, s]));
+    return {
+      descripcion:
+        'Percentil de presión epidemiológica relativa por semana para el departamento activo',
+      construir: (t) => ({
+        ...opcionSerie(
+          t,
+          filtros,
+          'Percentil frente a su historia (0–100)',
+          { min: 0, max: 100 },
           {
-            x: 'semana_epi',
-            y: 'probable',
-            fill: COLOR_ACENTO,
-            r: 2.5,
-            title: (s: (typeof datos)[number]) =>
-              `SE${String(s.semana_epi).padStart(2, '0')} · probable p${
-                s.probable ?? '—'
-              } · confirmado p${s.confirmado ?? '—'}`,
+            grid: { bottom: 84 },
+            legend: { data: ['Probable', 'Confirmado'] },
+            tooltip: {
+              formatter: tooltipPorSemana(
+                porSemana,
+                (s) =>
+                  `${etiquetaSemana(s.semana_epi)} · probable p${
+                    s.probable ?? '—'
+                  } · confirmado p${s.confirmado ?? '—'}`,
+              ),
+            },
           },
         ),
-        marcadorSemana(P, filtros),
-        marcoPlot(Plot!),
-      ],
-    });
+        series: [
+          {
+            id: 'probable',
+            name: 'Probable',
+            type: 'line',
+            symbolSize: 5,
+            itemStyle: { color: t.acento },
+            lineStyle: { width: 2.5, color: t.acento },
+            z: 5,
+            data: datos.map((s) => par(s.semana_epi, s.probable)),
+            markLine: {
+              ...marcaSemana(t, filtros.semana),
+              data: [
+                { xAxis: filtros.semana },
+                ...[50, 75].map((y) => ({
+                  yAxis: y,
+                  lineStyle: {
+                    type: 'dotted',
+                    width: 1,
+                    color: COLOR_CONTEXTO,
+                    opacity: 0.7,
+                  },
+                })),
+              ],
+            },
+          },
+          {
+            // Trazo discontinuo: la serie confirmada se distingue sin depender
+            // solo del color.
+            id: 'confirmado',
+            name: 'Confirmado',
+            type: 'line',
+            symbol: 'none',
+            itemStyle: { color: COLOR_CONFIRMADO },
+            lineStyle: { width: 2, type: 'dashed', color: COLOR_CONFIRMADO },
+            data: datos.map((s) => par(s.semana_epi, s.confirmado)),
+          },
+        ],
+      }),
+    };
   }
 
   function graficaIdoneidad(
-    P: PlotNs,
     semanas: SemanaSerieIdoneidad[],
     filtros: FiltrosAnalisis,
-    ancho: number,
-  ) {
+  ): EspecificacionGrafica | null {
     const datos = semanas.filter((s) => enRango(s.semana_epi, filtros));
     if (!hayValores(datos.map((s) => s.iv_real))) return null;
     const banda = datos.filter(
       (s) => s.p25_baseline !== null && s.p75_baseline !== null,
     );
-    return P.plot({
-      width: ancho,
-      height: 210,
-      marginLeft: 52,
-      marginBottom: 40,
-      x: ejeSemana(filtros.semanaDesde, filtros.semanaHasta),
-      y: { label: 'Iv (0–1)', grid: true, zero: true },
-      style: ESTILO_PLOT,
-      marks: [
-        P.areaY(banda, {
-          x: 'semana_epi',
-          y1: 'p25_baseline',
-          y2: 'p75_baseline',
-          fill: COLOR_BANDA,
-          fillOpacity: 0.5,
-        }),
-        P.line(datos, {
-          x: 'semana_epi',
-          y: 'iv_real',
-          stroke: COLOR_ACENTO,
-          strokeWidth: 2.5,
-        }),
-        P.dot(
-          datos.filter((s) => s.iv_real !== null),
+    const porSemana = new Map(datos.map((s) => [s.semana_epi, s]));
+    return {
+      descripcion:
+        'Idoneidad biofísica por semana contra la banda histórica del departamento activo',
+      construir: (t) => ({
+        ...opcionSerie(
+          t,
+          filtros,
+          'Iv (0–1)',
+          { min: 0 },
           {
-            x: 'semana_epi',
-            y: 'iv_real',
-            fill: COLOR_ACENTO,
-            r: 2.5,
-            title: (s: SemanaSerieIdoneidad) =>
-              `SE${String(s.semana_epi).padStart(2, '0')} · Iv ${
-                s.iv_real ?? '—'
-              } · banda P25–P75: ${s.p25_baseline ?? '—'} a ${
-                s.p75_baseline ?? '—'
-              }`,
+            grid: { bottom: 84 },
+            legend: { data: ['Iv observado', 'Banda histórica P25 a P75'] },
+            tooltip: {
+              formatter: tooltipPorSemana(
+                porSemana,
+                (s) =>
+                  `${etiquetaSemana(s.semana_epi)} · Iv ${
+                    s.iv_real ?? '—'
+                  } · banda P25–P75: ${s.p25_baseline ?? '—'} a ${
+                    s.p75_baseline ?? '—'
+                  }`,
+              ),
+            },
           },
         ),
-        marcadorSemana(P, filtros),
-        marcoPlot(Plot!),
-      ],
-    });
+        series: [
+          {
+            // Base invisible de la banda: la serie siguiente aporta el tramo
+            // entre P25 y P75.
+            id: 'base-banda',
+            name: 'Base de la banda',
+            type: 'line',
+            stack: 'banda',
+            silent: true,
+            symbol: 'none',
+            lineStyle: { width: 0 },
+            data: banda.map((s) => par(s.semana_epi, s.p25_baseline)),
+          },
+          {
+            id: 'banda',
+            name: 'Banda histórica P25 a P75',
+            type: 'line',
+            stack: 'banda',
+            silent: true,
+            symbol: 'none',
+            lineStyle: { width: 0 },
+            itemStyle: { color: t.secundario, opacity: 0.5 },
+            areaStyle: { color: t.secundario, opacity: 0.5 },
+            data: banda.map((s) =>
+              par(
+                s.semana_epi,
+                (s.p75_baseline as number) - (s.p25_baseline as number),
+              ),
+            ),
+          },
+          {
+            id: 'iv',
+            name: 'Iv observado',
+            type: 'line',
+            symbolSize: 5,
+            itemStyle: { color: t.acento },
+            lineStyle: { width: 2.5, color: t.acento },
+            z: 5,
+            data: datos.map((s) => par(s.semana_epi, s.iv_real)),
+            markLine: marcaSemana(t, filtros.semana),
+          },
+        ],
+      }),
+    };
   }
 
   function graficaAnomalia(
-    P: PlotNs,
     semanas: SemanaSerieIdoneidad[],
     filtros: FiltrosAnalisis,
-    ancho: number,
-  ) {
+  ): EspecificacionGrafica | null {
     const datos = semanas.filter((s) => enRango(s.semana_epi, filtros));
     if (!hayValores(datos.map((s) => s.anomaly_sigma))) return null;
-    return P.plot({
-      width: ancho,
-      height: 190,
-      marginLeft: 52,
-      marginBottom: 40,
-      x: ejeSemana(filtros.semanaDesde, filtros.semanaHasta),
-      y: { label: 'Anomalía (σ)', grid: true },
-      style: ESTILO_PLOT,
-      marks: [
-        P.ruleY([0], { stroke: COLOR_CONTEXTO, strokeOpacity: 0.6 }),
-        P.line(datos, {
-          x: 'semana_epi',
-          y: 'anomaly_sigma',
-          stroke: '#e65100',
-          strokeWidth: 2,
-        }),
-        P.dot(
-          datos.filter((s) => s.anomaly_sigma !== null),
+    const porSemana = new Map(datos.map((s) => [s.semana_epi, s]));
+    return {
+      descripcion:
+        'Anomalía climática continua por semana para el departamento activo',
+      construir: (t) => ({
+        ...opcionSerie(
+          t,
+          filtros,
+          'Anomalía (σ)',
+          {},
           {
-            x: 'semana_epi',
-            y: 'anomaly_sigma',
-            fill: '#e65100',
-            r: 2.5,
-            title: (s: SemanaSerieIdoneidad) =>
-              `SE${String(s.semana_epi).padStart(2, '0')} · anomalía ${
-                s.anomaly_sigma !== null
-                  ? `${s.anomaly_sigma.toFixed(2)} σ`
-                  : 'sin dato'
-              }`,
+            legend: { show: false },
+            tooltip: {
+              formatter: tooltipPorSemana(
+                porSemana,
+                (s) =>
+                  `${etiquetaSemana(s.semana_epi)} · anomalía ${
+                    s.anomaly_sigma !== null
+                      ? `${s.anomaly_sigma.toFixed(2)} σ`
+                      : 'sin dato'
+                  }`,
+              ),
+            },
           },
         ),
-        marcadorSemana(P, filtros),
-        marcoPlot(Plot!),
-      ],
-    });
+        series: [
+          {
+            id: 'anomalia',
+            name: 'Anomalía',
+            type: 'line',
+            symbolSize: 5,
+            itemStyle: { color: COLOR_ANOMALIA },
+            lineStyle: { width: 2, color: COLOR_ANOMALIA },
+            z: 5,
+            data: datos.map((s) => par(s.semana_epi, s.anomaly_sigma)),
+            markLine: {
+              ...marcaSemana(t, filtros.semana),
+              data: [
+                { xAxis: filtros.semana },
+                {
+                  yAxis: 0,
+                  lineStyle: {
+                    type: 'solid',
+                    width: 1,
+                    color: COLOR_CONTEXTO,
+                    opacity: 0.6,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    };
   }
 
-  function pintar(
+  async function pintar(
     nodo: HTMLElement | null,
-    grafica: Grafica | null,
+    grafica: EspecificacionGrafica | null,
     esError: boolean,
     mensaje: string,
-  ) {
+    idRevision: number,
+    regenerar?: GraficoVigente['regenerar'],
+  ): Promise<void> {
     if (!nodo) return;
     nodo.setAttribute('aria-busy', 'false');
     if (grafica) {
-      nodo.replaceChildren(grafica);
+      const montado = await montarGrafico(
+        nodo,
+        grafica.construir,
+        grafica.descripcion,
+      );
+      if (idRevision !== revision) {
+        montado.destruir();
+        return;
+      }
+      graficos.push({ montado, regenerar: regenerar ?? (() => grafica) });
       return;
     }
     if (esError) {
@@ -411,7 +512,25 @@ import PanelWorkspace from './PanelWorkspace.astro';
 
   async function renderizar(filtros: FiltrosAnalisis): Promise<void> {
     if (!marco || !resumen) return;
+    // Solo cambió la semana: se mueve la marca con transición, sin recrear
+    // las gráficas ni volver a mostrar el esqueleto de carga.
+    if (
+      listo &&
+      graficos.length > 0 &&
+      soloCambiaSemana(filtrosPintados, filtros)
+    ) {
+      filtrosPintados = filtros;
+      for (const g of graficos) {
+        const nueva = g.regenerar(filtros);
+        if (nueva) g.montado.actualizar(nueva.construir, { suave: true });
+      }
+      return;
+    }
     const idRevision = ++revision;
+    filtrosPintados = filtros;
+    listo = false;
+    graficos.forEach((g) => g.montado.destruir());
+    graficos = [];
 
     if (!filtros.departamento) {
       marco.hidden = true;
@@ -439,17 +558,13 @@ import PanelWorkspace from './PanelWorkspace.astro';
       renderEsqueletoTraza(nodoAnomalia);
     }
 
-    if (!Plot) Plot = await import('@observablehq/plot');
-    if (idRevision !== revision || !Plot) return;
-    const P = Plot;
-
     const [resPresion, resIdoneidad] = await Promise.allSettled([
       obtenerSeriePresion(filtros.departamento, filtros.anio),
       obtenerSerieIdoneidad(filtros.departamento, filtros.anio),
     ]);
     if (idRevision !== revision) return;
 
-    const ancho = Math.max(marco.clientWidth || 0, 320);
+    const pendientes: Promise<void>[] = [];
     const presion =
       resPresion.status === 'fulfilled' && !esNoDisponible(resPresion.value)
         ? resPresion.value
@@ -460,68 +575,108 @@ import PanelWorkspace from './PanelWorkspace.astro';
         : null;
 
     if (resPresion.status === 'rejected') {
-      pintar(
-        nodoPresion,
-        null,
-        true,
-        'No se pudo cargar la presión epidemiológica.',
+      pendientes.push(
+        pintar(
+          nodoPresion,
+          null,
+          true,
+          'No se pudo cargar la presión epidemiológica.',
+          idRevision,
+        ),
       );
     } else if (
       resPresion.status === 'fulfilled' &&
       esNoDisponible(resPresion.value)
     ) {
-      pintar(nodoPresion, null, false, motivoNoDisponible(resPresion.value));
+      pendientes.push(
+        pintar(
+          nodoPresion,
+          null,
+          false,
+          motivoNoDisponible(resPresion.value),
+          idRevision,
+        ),
+      );
     } else {
-      pintar(
-        nodoPresion,
-        presion ? graficaPresion(P, presion.semanas, filtros, ancho) : null,
-        false,
-        'Sin presión epidemiológica para este año (los casos MINSAL se detienen en 2023).',
+      pendientes.push(
+        pintar(
+          nodoPresion,
+          presion ? graficaPresion(presion.semanas, filtros) : null,
+          false,
+          'Sin presión epidemiológica para este año (los casos MINSAL se detienen en 2023).',
+          idRevision,
+          presion ? (f) => graficaPresion(presion.semanas, f) : undefined,
+        ),
       );
     }
 
     if (resIdoneidad.status === 'rejected') {
-      pintar(
-        nodoIdoneidad,
-        null,
-        true,
-        'No se pudo cargar la idoneidad biofísica.',
+      pendientes.push(
+        pintar(
+          nodoIdoneidad,
+          null,
+          true,
+          'No se pudo cargar la idoneidad biofísica.',
+          idRevision,
+        ),
       );
-      pintar(
-        nodoAnomalia,
-        null,
-        true,
-        'No se pudo cargar la anomalía climática.',
+      pendientes.push(
+        pintar(
+          nodoAnomalia,
+          null,
+          true,
+          'No se pudo cargar la anomalía climática.',
+          idRevision,
+        ),
       );
     } else if (
       resIdoneidad.status === 'fulfilled' &&
       esNoDisponible(resIdoneidad.value)
     ) {
-      pintar(
-        nodoIdoneidad,
-        null,
-        false,
-        motivoNoDisponible(resIdoneidad.value),
+      pendientes.push(
+        pintar(
+          nodoIdoneidad,
+          null,
+          false,
+          motivoNoDisponible(resIdoneidad.value),
+          idRevision,
+        ),
       );
-      pintar(nodoAnomalia, null, false, motivoNoDisponible(resIdoneidad.value));
+      pendientes.push(
+        pintar(
+          nodoAnomalia,
+          null,
+          false,
+          motivoNoDisponible(resIdoneidad.value),
+          idRevision,
+        ),
+      );
     } else {
-      pintar(
-        nodoIdoneidad,
-        idoneidad
-          ? graficaIdoneidad(P, idoneidad.semanas, filtros, ancho)
-          : null,
-        false,
-        'Sin idoneidad biofísica para este departamento y año.',
+      pendientes.push(
+        pintar(
+          nodoIdoneidad,
+          idoneidad ? graficaIdoneidad(idoneidad.semanas, filtros) : null,
+          false,
+          'Sin idoneidad biofísica para este departamento y año.',
+          idRevision,
+          idoneidad ? (f) => graficaIdoneidad(idoneidad.semanas, f) : undefined,
+        ),
       );
-      pintar(
-        nodoAnomalia,
-        idoneidad
-          ? graficaAnomalia(P, idoneidad.semanas, filtros, ancho)
-          : null,
-        false,
-        'Sin anomalía climática para este departamento y año.',
+      pendientes.push(
+        pintar(
+          nodoAnomalia,
+          idoneidad ? graficaAnomalia(idoneidad.semanas, filtros) : null,
+          false,
+          'Sin anomalía climática para este departamento y año.',
+          idRevision,
+          idoneidad ? (f) => graficaAnomalia(idoneidad.semanas, f) : undefined,
+        ),
       );
     }
+
+    await Promise.all(pendientes);
+    if (idRevision !== revision) return;
+    listo = true;
 
     // Preparar datos para tabla alternativa
     const filasTabla: any[] = [];
@@ -565,19 +720,4 @@ import PanelWorkspace from './PanelWorkspace.astro';
     filtrosActuales = filtros;
     void renderizar(filtros);
   });
-  let ultimoAncho = 0;
-  let timerResize: ReturnType<typeof setTimeout> | null = null;
-  if (marco) {
-    new ResizeObserver((entradas) => {
-      const entrada = entradas[0];
-      if (!entrada) return;
-      const nuevoAncho = Math.round(entrada.contentRect.width);
-      if (nuevoAncho === ultimoAncho) return;
-      ultimoAncho = nuevoAncho;
-      if (timerResize) clearTimeout(timerResize);
-      timerResize = setTimeout(() => {
-        void renderizar(filtrosActuales);
-      }, 150);
-    }).observe(marco);
-  }
 </script>

@@ -1,6 +1,6 @@
 // Primitivas SVG compartidas por las gráficas de la predicción de dengue
 // (PanelNowcastDengue y ContrasteNowcastDengue): escalas, ejes, bandas y líneas
-// sin dependencia de Plot, para poder animar el abanico elemento a elemento.
+// dibujados a mano, para poder animar el abanico elemento a elemento.
 
 export const SVG_NS = 'http://www.w3.org/2000/svg';
 export const fmtNum = new Intl.NumberFormat('es-SV', {

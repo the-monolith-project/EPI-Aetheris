@@ -56,7 +56,7 @@ const CANALES = [
 >
   <main
     id="contenido-principal"
-    class="mx-auto max-w-[1600px] px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
+    class="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
   >
     <header class="mb-8 max-w-3xl">
       <h1
@@ -103,7 +103,7 @@ const CANALES = [
             <p class="font-sans text-sm leading-relaxed text-ink-muted">
               {canal.descripcion}
             </p>
-            <span class="mt-1 inline-flex items-center gap-1.5 break-all font-sans text-sm font-medium text-accent">
+            <span class="mt-1 inline-flex items-center gap-1.5 [overflow-wrap:anywhere] font-sans text-sm font-medium text-accent">
               <Icono nombre={canal.icono} class="h-4 w-4" />
               {canal.cta}
             </span>

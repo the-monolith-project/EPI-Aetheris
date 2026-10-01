@@ -27,6 +27,7 @@ import PanelWorkspace from './PanelWorkspace.astro';
   <div
     id="comparacion-temporadas-grafica"
     class="mt-4 overflow-x-auto scroll-shadow-x"
+    tabindex="0"
     hidden
   >
     <div
@@ -69,11 +70,6 @@ import PanelWorkspace from './PanelWorkspace.astro';
 </PanelWorkspace>
 
 <script>
-  // Plot entra por import dinamico, como en el resto de paneles: cuando
-  // un solo componente lo importa de forma estatica, Vite lo arrastra al
-  // grafo inicial y anula los await import de los demas -- 391 KB de Plot
-  // y d3 quedaban en la carga critica de /dengue.
-  let Plot: typeof import('@observablehq/plot') | null = null;
   import {
     esNoDisponible,
     motivoNoDisponible,
@@ -87,10 +83,21 @@ import PanelWorkspace from './PanelWorkspace.astro';
     obtenerFiltrosAnalisis,
     suscribirFiltrosAnalisis,
   } from '../../lib/analisis-state';
-  import { vincularMarcasPlot } from '../../lib/plot-interacciones';
-  import { ESTILO_PLOT, MARGENES, marcoPlot } from '../../lib/plot-tema';
+  import { montarGrafico } from '../../lib/echarts-montaje';
+  import type { GraficoMontado } from '../../lib/echarts-montaje';
+  import {
+    crearOpcionBase,
+    ejeSemana,
+    ejeValores,
+    etiquetaSemana,
+    marcaSemana,
+    tooltipSeries,
+  } from '../../lib/echarts-tema';
   import { TablaAlternativa } from '../../lib/tabla-alternativa';
-  import { ANIOS_ANALISIS_DENGUE } from '../../lib/tipos-analisis';
+  import {
+    ANIOS_ANALISIS_DENGUE,
+    esAnioAnalisisDengue,
+  } from '../../lib/tipos-analisis';
   import { colorCualitativo } from '../../lib/colores';
   import type {
     AnioAnalisisDengue,
@@ -113,6 +120,7 @@ import PanelWorkspace from './PanelWorkspace.astro';
   );
   const resumen = document.getElementById('comparacion-resumen');
   let revision = 0;
+  let grafico: GraficoMontado | null = null;
   let filtrosActuales = obtenerFiltrosAnalisis();
   let datosTabla: PuntoTemporada[] = [];
 
@@ -157,6 +165,8 @@ import PanelWorkspace from './PanelWorkspace.astro';
   async function renderizar(filtros: FiltrosAnalisis) {
     if (!contenedor) return;
     const idRevision = ++revision;
+    grafico?.destruir();
+    grafico = null;
     if (!filtros.departamento) {
       contenedor.replaceChildren();
       if (marcoGrafica) marcoGrafica.hidden = true;
@@ -207,87 +217,95 @@ import PanelWorkspace from './PanelWorkspace.astro';
       const seleccionada = puntos.filter(
         (punto) => punto.anio === filtros.anio,
       );
-      const contexto = puntos.filter((punto) => punto.anio !== filtros.anio);
       const puntosObservados = puntos.filter((punto) => punto.casos !== null);
 
       datosTabla = puntosObservados;
       tablaAlternativa?.marcarCaducada();
 
-      Plot ??= await import('@observablehq/plot');
-      const grafica = Plot!.plot({
-        width: Math.max(contenedor.clientWidth, 720),
-        height: 350,
-        marginLeft: MARGENES.traza.marginLeft,
-        marginBottom: MARGENES.traza.marginBottom,
-        x: {
-          domain: [filtros.semanaDesde, filtros.semanaHasta],
-          label: 'Semana epidemiológica',
-          tickFormat: (valor) => `SE${String(valor).padStart(2, '0')}`,
-          ticks: 10,
-        },
-        y: { label: `Casos ${filtros.serie}`, grid: true, zero: true },
-        style: ESTILO_PLOT,
-        marks: [
-          Plot.line(contexto, {
-            x: 'semana',
-            y: 'casos',
-            z: 'anio',
-            stroke: (punto: PuntoTemporada) =>
-              colorCualitativo(
-                (ANIOS_ANALISIS_DENGUE as readonly number[]).indexOf(
-                  punto.anio,
-                ),
-              ),
-            strokeDasharray: '4 3',
-            strokeWidth: 1.25,
-          }),
-          Plot.line(seleccionada, {
-            x: 'semana',
-            y: 'casos',
-            stroke: 'var(--color-accent)',
-            strokeWidth: 2.75,
-          }),
-          Plot.dot(puntosObservados, {
-            className: 'epi-temporadas-puntos',
-            x: 'semana',
-            y: 'casos',
-            fill: (punto: PuntoTemporada) =>
-              punto.anio === filtros.anio
-                ? 'var(--color-accent)'
-                : colorCualitativo(
-                    (ANIOS_ANALISIS_DENGUE as readonly number[]).indexOf(
-                      punto.anio,
-                    ),
-                  ),
-            r: (punto: PuntoTemporada) =>
-              punto.anio === filtros.anio ? 3 : 1.8,
-            title: (punto: PuntoTemporada) =>
-              `${punto.departamento} · ${punto.anio} · SE${String(punto.semana).padStart(2, '0')}\n${punto.casos} casos ${filtros.serie}`,
-          }),
-          Plot.ruleX([filtros.semana], {
-            stroke: 'var(--color-seleccion)',
-            strokeWidth: 2,
-            strokeOpacity: 0.6,
-            strokeDasharray: '3,3',
-          }),
-          marcoPlot(Plot!),
-        ],
-      });
-      vincularMarcasPlot(
-        grafica,
-        '.epi-temporadas-puntos circle',
-        puntosObservados,
-        (punto) =>
-          `${punto.departamento}, ${punto.anio}, SE${String(punto.semana).padStart(2, '0')}, ${punto.casos} casos ${filtros.serie}`,
-        (punto) =>
-          actualizarFiltrosAnalisis({
-            anio: punto.anio as AnioAnalisisDengue,
-            semana: punto.semana,
-          }),
-      );
-      contenedor.replaceChildren(grafica);
+      const nombreDepartamento =
+        puntos[0]?.departamento ?? filtros.departamento;
+      const indiceAnio = (anio: number) =>
+        (ANIOS_ANALISIS_DENGUE as readonly number[]).indexOf(anio);
+      // Una serie por año: los años de contexto van discontinuos y el año
+      // destacado, continuo y por encima. Se conservan las semanas sin dato
+      // (null) para que el tooltip alinee los años por semana.
+      const porAnio = ANIOS_ANALISIS_DENGUE.map((anio) => ({
+        anio,
+        puntos: puntos.filter((punto) => punto.anio === anio),
+      })).filter((grupo) => grupo.puntos.length > 0);
 
-      const departamento = puntos[0]?.departamento ?? filtros.departamento;
+      contenedor.style.height = '380px';
+      const montado = await montarGrafico(
+        contenedor,
+        (t) => ({
+          ...crearOpcionBase(t, {
+            grid: { bottom: 96 },
+            legend: { data: porAnio.map((g) => String(g.anio)) },
+            tooltip: {
+              formatter: tooltipSeries(
+                (semana) => `${nombreDepartamento} · ${etiquetaSemana(semana)}`,
+                `casos ${filtros.serie}`,
+              ),
+            },
+          }),
+          xAxis: ejeSemana(t, filtros.semanaDesde, filtros.semanaHasta),
+          yAxis: ejeValores(t, `Casos ${filtros.serie}`, {
+            min: 0,
+            minInterval: 1,
+          }),
+          series: [
+            ...porAnio.map(({ anio, puntos: filas }) => {
+              const destacado = anio === filtros.anio;
+              const color = destacado
+                ? t.acento
+                : colorCualitativo(indiceAnio(anio));
+              return {
+                name: String(anio),
+                type: 'line' as const,
+                symbolSize: destacado ? 6 : 4,
+                itemStyle: { color },
+                lineStyle: destacado
+                  ? { width: 2.75, color }
+                  : { width: 1.25, type: 'dashed' as const, color },
+                z: destacado ? 5 : 2,
+                data: filas.map((f) => [f.semana, f.casos]),
+              };
+            }),
+            // Serie vacía que solo lleva la marca de la semana activa.
+            {
+              name: 'Semana activa',
+              type: 'line' as const,
+              silent: true,
+              data: [],
+              markLine: marcaSemana(t, filtros.semana),
+            },
+          ],
+        }),
+        'Casos semanales por temporada del departamento activo',
+      );
+      if (idRevision !== revision) {
+        montado.destruir();
+        return;
+      }
+      grafico = montado;
+      // Pulsar un punto fija el año y la semana, como antes con el teclado
+      // sobre cada marca: la alternativa accesible son los filtros y la tabla.
+      montado.instancia.on('click', (evento: unknown) => {
+        const { componentType, seriesName, value } = evento as {
+          componentType?: string;
+          seriesName?: string;
+          value?: unknown;
+        };
+        if (componentType !== 'series' || !Array.isArray(value)) return;
+        const anio = Number(seriesName);
+        if (!esAnioAnalisisDengue(anio) || value[1] === null) return;
+        actualizarFiltrosAnalisis({
+          anio: anio as AnioAnalisisDengue,
+          semana: Number(value[0]),
+        });
+      });
+
+      const departamento = nombreDepartamento;
       const observacionesSeleccionadas = seleccionada.filter(
         (punto) => punto.casos !== null,
       ).length;
@@ -309,19 +327,4 @@ import PanelWorkspace from './PanelWorkspace.astro';
     filtrosActuales = filtros;
     void renderizar(filtros);
   });
-  let ultimoAncho = 0;
-  let timerResize: ReturnType<typeof setTimeout> | null = null;
-  if (contenedor) {
-    new ResizeObserver((entradas) => {
-      const entrada = entradas[0];
-      if (!entrada) return;
-      const nuevoAncho = Math.round(entrada.contentRect.width);
-      if (nuevoAncho === ultimoAncho) return;
-      ultimoAncho = nuevoAncho;
-      if (timerResize) clearTimeout(timerResize);
-      timerResize = setTimeout(() => {
-        void renderizar(filtrosActuales);
-      }, 150);
-    }).observe(contenedor);
-  }
 </script>

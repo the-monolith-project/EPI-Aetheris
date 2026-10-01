@@ -1,0 +1,212 @@
+---
+/**
+ * Pie del sitio: cuatro columnas de enlaces con título (proyecto,
+ * herramientas, datos y método, externo) y el interruptor de animaciones.
+ * Cada columna es un <nav> con aria-labelledby a su título.
+ *
+ * Todo el pie va sobre bg-deep, que es oscuro en ambos temas, así que los
+ * colores salen de los tokens deep-ink y no dependen de data-theme.
+ */
+import { RUTA_PREDICCION } from '../lib/enlaces';
+
+const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+
+interface Enlace {
+  href: string;
+  etiqueta: string;
+  externo?: boolean;
+}
+
+const COLUMNAS: { id: string; titulo: string; enlaces: Enlace[] }[] = [
+  {
+    id: 'pie-proyecto',
+    titulo: 'EPI-Aetheris',
+    enlaces: [
+      { href: '/', etiqueta: 'Inicio' },
+      { href: '/biblioteca', etiqueta: 'Biblioteca' },
+      { href: '/acerca-de', etiqueta: 'Acerca de' },
+      { href: '/contacto', etiqueta: 'Contacto' },
+      { href: '/legal/terminos#licencias', etiqueta: 'Licencia' },
+      { href: '/legal/terminos', etiqueta: 'Términos de uso' },
+      { href: '/legal/privacidad', etiqueta: 'Privacidad' },
+      { href: '/legal/aviso-legal', etiqueta: 'Aviso legal' },
+    ],
+  },
+  {
+    id: 'pie-herramientas',
+    titulo: 'Herramientas',
+    enlaces: [
+      { href: '/dengue', etiqueta: 'Dengue' },
+      { href: RUTA_PREDICCION, etiqueta: 'Predicción de dengue' },
+      { href: '/respiratorio', etiqueta: 'Respiratorio' },
+      { href: '/analisis', etiqueta: 'Análisis' },
+      { href: '/analisis#fichas-titulo', etiqueta: 'Fichas departamentales' },
+      { href: '/alertas', etiqueta: 'Alertas' },
+      { href: '/alertas/archivo', etiqueta: 'Archivo de alertas' },
+    ],
+  },
+  {
+    id: 'pie-datos',
+    titulo: 'Datos y método',
+    enlaces: [
+      { href: '/biblioteca/04-fuentes-de-datos', etiqueta: 'Fuentes de datos' },
+      { href: '/biblioteca/03-funciones', etiqueta: 'Módulos M1–M3' },
+      {
+        href: '/biblioteca/05-sensibilidad-y-honestidad',
+        etiqueta: 'Aviso de sensibilidad',
+      },
+      {
+        href: '/biblioteca/06-arquitectura-y-reproducibilidad',
+        etiqueta: 'Arquitectura y reproducibilidad',
+      },
+      {
+        href: `${API_BASE}/docs`,
+        etiqueta: 'API pública (Swagger)',
+        externo: true,
+      },
+      {
+        href: 'https://boletin.salud.gob.sv',
+        etiqueta: 'MINSAL, tablero de vigilancia',
+        externo: true,
+      },
+      {
+        href: 'https://opendengue.org',
+        etiqueta: 'OpenDengue',
+        externo: true,
+      },
+      {
+        href: 'https://open-meteo.com/en/license',
+        etiqueta: 'Open-Meteo (CC BY 4.0)',
+        externo: true,
+      },
+    ],
+  },
+  {
+    id: 'pie-externo',
+    titulo: 'Externo',
+    enlaces: [
+      {
+        href: 'https://github.com/the-monolith-project/EPI-Aetheris',
+        etiqueta: 'GitHub',
+        externo: true,
+      },
+      { href: '/sugerencias', etiqueta: 'Sugerencias' },
+      { href: '/estado', etiqueta: 'Estado del servicio' },
+    ],
+  },
+];
+---
+
+<footer class="mt-16 bg-deep">
+  <div class="mx-auto max-w-[1600px] px-4 py-12 sm:px-8 sm:py-16 lg:px-12">
+    <div class="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        COLUMNAS.map((columna) => (
+          <nav aria-labelledby={columna.id}>
+            <h2
+              id={columna.id}
+              class="font-sans text-base font-bold text-secondary"
+            >
+              {columna.titulo}
+            </h2>
+            <ul class="mt-4 space-y-1 font-sans text-sm">
+              {columna.enlaces.map((enlace) => (
+                <li>
+                  <a
+                    href={enlace.href}
+                    class="enlace-filete py-1 text-deep-ink transition-colors hover:text-white"
+                    rel={enlace.externo ? 'noopener noreferrer' : undefined}
+                  >
+                    {enlace.etiqueta}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            {columna.id === 'pie-externo' && (
+              <button
+                type="button"
+                role="switch"
+                aria-checked="true"
+                data-interruptor-animaciones
+                class="mt-5 flex min-h-[44px] items-center gap-3 rounded-full py-1 font-sans text-xs text-deep-ink transition-colors hover:text-white"
+              >
+                <span>Animaciones</span>
+                <span
+                  aria-hidden="true"
+                  class="interruptor-pista relative inline-block h-5 w-9 shrink-0 rounded-full border border-white/40"
+                >
+                  <span class="interruptor-bola absolute left-0.5 top-0.5 block h-3.5 w-3.5 rounded-full" />
+                </span>
+              </button>
+            )}
+          </nav>
+        ))
+      }
+    </div>
+
+    <div class="mt-12 border-t border-white/10 pt-6">
+      <p
+        class="max-w-4xl font-sans text-xs leading-relaxed text-deep-ink-muted"
+      >
+        Proyecto académico · El Salvador · 2026. Ayuda de priorización sobre
+        datos públicos agregados de MINSAL, OpenDengue y Open-Meteo, bajo
+        licencia GPL-3.0; no reemplaza los lineamientos del MINSAL ni el
+        criterio clínico. Las capas describen cada departamento contra su propia
+        historia, no asignan un nivel de riesgo automatizado.
+      </p>
+      <p class="mt-3 font-mono text-[11px] text-deep-ink-muted">
+        MINSAL · OpenDengue · Open-Meteo CC BY 4.0 · GPL-3.0 · 2026
+      </p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .interruptor-pista {
+    background-color: transparent;
+    transition: background-color 150ms ease;
+  }
+  .interruptor-bola {
+    background-color: var(--color-deep-ink);
+    transition: transform 150ms ease;
+  }
+  [data-interruptor-animaciones][aria-checked='true'] .interruptor-pista {
+    background-color: var(--color-secondary);
+    border-color: var(--color-secondary);
+  }
+  [data-interruptor-animaciones][aria-checked='true'] .interruptor-bola {
+    background-color: var(--color-deep);
+    transform: translateX(1rem);
+  }
+</style>
+
+<script>
+  // Interruptor "Animaciones". El atributo data-animaciones de <html> ya lo
+  // fijó el script en línea del Layout antes del primer pintado; aquí solo se
+  // sincroniza el control y se guarda la elección (lib/animaciones.ts).
+  import { CLAVE_ANIMACIONES, animacionesActivas } from '../lib/animaciones';
+
+  const interruptor = document.querySelector<HTMLButtonElement>(
+    '[data-interruptor-animaciones]',
+  );
+
+  function pintar(): void {
+    interruptor?.setAttribute('aria-checked', String(animacionesActivas()));
+  }
+
+  interruptor?.addEventListener('click', () => {
+    const siguiente = animacionesActivas() ? 'off' : 'on';
+    document.documentElement.dataset.animaciones = siguiente;
+    if (siguiente === 'off') {
+      // Los bloques que esperaban entrar con scroll quedan visibles ya.
+      delete document.documentElement.dataset.animar;
+    }
+    try {
+      localStorage.setItem(CLAVE_ANIMACIONES, siguiente);
+    } catch {
+      // Sin almacenamiento el cambio vale solo para esta visita.
+    }
+    pintar();
+  });
+  pintar();
+</script>

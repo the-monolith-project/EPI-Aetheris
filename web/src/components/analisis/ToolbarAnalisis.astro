@@ -1,5 +1,6 @@
 ---
 import { DESCRIPCIONES_PRESETS } from '../../lib/analisis-layout-state';
+import { aniosClimaPresentacion } from '../../lib/tipos-analisis';
 import BarraActividad from '../BarraActividad.astro';
 ---
 
@@ -18,11 +19,11 @@ import BarraActividad from '../BarraActividad.astro';
       etiqueta="Actualizando datos del análisis…"
     />
     <div
-      class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+      class="flex flex-col gap-2.5 2xl:flex-row 2xl:items-center 2xl:justify-between 2xl:gap-4"
     >
       <div
         id="toolbar-analisis-resumen"
-        class="min-w-0 font-sans text-xs leading-relaxed text-ink-muted"
+        class="min-w-0 flex-1 font-sans text-xs leading-relaxed text-ink-muted"
         aria-live="polite"
       >
         Cargando estado del análisis…
@@ -31,10 +32,64 @@ import BarraActividad from '../BarraActividad.astro';
       <div class="flex items-start gap-2 sm:shrink-0 sm:items-center">
         <div
           id="toolbar-analisis-controles"
-          class="flex flex-1 flex-wrap items-center gap-2"
+          class="flex flex-1 flex-wrap items-center gap-2 data-[contraido]:sm:hidden data-[contraido]:[&>:not(#analisis-abrir-filtros)]:hidden"
         >
+          <!-- Selector directo de Año -->
           <label
-            class="flex items-center gap-2 font-sans text-xs font-semibold text-ink"
+            class="flex items-center gap-1.5 font-sans text-xs font-semibold text-ink"
+          >
+            Año
+            <select
+              id="toolbar-analisis-anio"
+              class="min-h-[44px] rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-normal text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              aria-label="Año de análisis epidemiológico"
+            >
+              {
+                aniosClimaPresentacion().map((anio) => (
+                  <option value={anio} selected={anio === 2023}>
+                    {anio}
+                  </option>
+                ))
+              }
+            </select>
+          </label>
+
+          <!-- Selector directo de Serie -->
+          <label
+            class="flex items-center gap-1.5 font-sans text-xs font-semibold text-ink"
+          >
+            Serie
+            <select
+              id="toolbar-analisis-serie"
+              class="min-h-[44px] rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-normal text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              aria-label="Tipo de serie epidemiológica"
+            >
+              <option value="probable" selected>Probable</option>
+              <option value="confirmado">Confirmado</option>
+            </select>
+          </label>
+
+          <!-- Selector directo de Capa Analítica -->
+          <label
+            class="flex items-center gap-1.5 font-sans text-xs font-semibold text-ink"
+          >
+            Capa
+            <select
+              id="toolbar-analisis-capa"
+              class="min-h-[44px] rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-normal text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              aria-label="Capa analítica activa"
+            >
+              <option value="minsal_volumen" selected>Casos MINSAL</option>
+              <option value="iv">M1: Idoneidad (Iv)</option>
+              <option value="anomalia">M2: Anomalía clima</option>
+              <option value="presion">M3: Presión relativa</option>
+              <option value="confianza">Integridad datos</option>
+            </select>
+          </label>
+
+          <!-- Selector de Preset de Vista -->
+          <label
+            class="flex items-center gap-1.5 font-sans text-xs font-semibold text-ink"
           >
             Vista
             <select
@@ -48,10 +103,13 @@ import BarraActividad from '../BarraActividad.astro';
               <option value="calidad">Calidad de datos</option>
             </select>
           </label>
+
           <slot name="selector-paneles" />
+
+          <!-- Zoom temporal -->
           <div
             data-solo-escritorio
-            class="flex items-center gap-1 rounded-lg border border-border bg-bg px-1 py-1"
+            class="hidden sm:flex items-center gap-1 rounded-lg border border-border bg-bg px-1 py-1"
           >
             <span class="px-1 font-sans text-xs font-semibold text-ink-muted"
               >Zoom</span
@@ -76,6 +134,8 @@ import BarraActividad from '../BarraActividad.astro';
               title="Aumentar zoom">+</button
             >
           </div>
+
+          <!-- Filtros avanzados modal -->
           <button
             id="analisis-abrir-filtros"
             type="button"
@@ -86,6 +146,8 @@ import BarraActividad from '../BarraActividad.astro';
           >
             Filtros
           </button>
+
+          <!-- Restablecer vista -->
           <button
             id="analisis-restablecer-vista"
             type="button"
@@ -94,6 +156,7 @@ import BarraActividad from '../BarraActividad.astro';
             Restablecer vista
           </button>
         </div>
+
         <button
           id="toolbar-analisis-contraer"
           type="button"
@@ -122,7 +185,7 @@ import BarraActividad from '../BarraActividad.astro';
     </div>
 
     <div id="toolbar-analisis-detalle">
-      <!-- I8: Descripción del preset activo -->
+      <!-- Descripción del preset activo -->
       <p
         id="toolbar-vista-descripcion"
         class="mt-1.5 font-sans text-[11px] leading-tight text-ink-muted"
@@ -130,53 +193,202 @@ import BarraActividad from '../BarraActividad.astro';
         {DESCRIPCIONES_PRESETS.general}
       </p>
 
-      <!-- I6: Cinta de semanas epidemiológicas permanente -->
+      <!-- Cinta de semanas y Reproductor multimedia epidemiológico -->
       <div
-        class="cinta-semanas relative mt-2.5 select-none border-t border-border/80 pt-2"
+        class="cinta-semanas relative mt-2.5 select-none border-t border-border/80 pt-2.5"
       >
-        <div class="relative h-6 w-full">
-          <!-- Curva nacional del año como área tenue por detrás -->
-          <svg
-            id="analisis-cinta-curva"
-            class="pointer-events-none absolute inset-0 h-full w-full opacity-35"
-            preserveAspectRatio="none"
-            viewBox="0 0 53 100"
-            aria-hidden="true"
-          >
-            <path id="analisis-cinta-curva-path" fill="var(--color-border)" d=""
-            ></path>
-          </svg>
-
-          <!-- Banda del rango de comparación en color-secondary -->
+        <div class="flex flex-col gap-2.5 lg:flex-row lg:items-center">
+          <!-- Controles del reproductor -->
           <div
-            id="analisis-cinta-rango"
-            class="pointer-events-none absolute inset-y-0.5 rounded bg-secondary/70 transition-all duration-100"
-            style="left: 0%; width: 100%;"
+            class="flex shrink-0 items-center gap-1.5"
+            role="group"
+            aria-label="Controles de reproducción temporal"
           >
+            <!-- Paso atrás -->
+            <button
+              id="analisis-reproductor-prev"
+              type="button"
+              class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-bg text-ink transition-colors hover:border-accent/50 hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              aria-label="Semana anterior (Flecha Izquierda)"
+              title="Semana anterior (←)"
+            >
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.5"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 19l-7-7 7-7"></path>
+              </svg>
+            </button>
+
+            <!-- Play / Pausa -->
+            <button
+              id="analisis-reproductor-play"
+              type="button"
+              class="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg border border-accent bg-accent px-3.5 py-1.5 font-sans text-xs font-semibold text-accent-ink shadow-sm transition-all hover:opacity-90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              aria-label="Reproducir evolución temporal (Espacio)"
+              aria-pressed="false"
+              title="Reproducir / Pausar (Espacio)"
+            >
+              <svg
+                id="analisis-icono-play"
+                class="h-4 w-4 fill-current text-accent-ink"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d="M8 5v14l11-7z"></path>
+              </svg>
+              <svg
+                id="analisis-icono-pausa"
+                class="h-4 w-4 fill-current text-accent-ink hidden"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>
+              </svg>
+              <span
+                id="analisis-texto-play"
+                class="hidden text-accent-ink sm:inline">Play</span
+              >
+            </button>
+
+            <!-- Paso adelante -->
+            <button
+              id="analisis-reproductor-next"
+              type="button"
+              class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-bg text-ink transition-colors hover:border-accent/50 hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              aria-label="Semana siguiente (Flecha Derecha)"
+              title="Semana siguiente (→)"
+            >
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.5"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 5l7 7-7 7"></path>
+              </svg>
+            </button>
+
+            <!-- Selector de velocidad -->
+            <button
+              id="analisis-reproductor-velocidad"
+              type="button"
+              class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-bg px-2.5 py-1.5 font-mono text-xs font-semibold text-ink-muted transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              aria-label="Velocidad: 1x"
+              aria-pressed="false"
+              title="Cambiar velocidad (1x / 2x)"
+            >
+              1x
+            </button>
+
+            <!-- Badge de semana activa -->
+            <span
+              id="analisis-reproductor-badge"
+              class="inline-flex min-h-[44px] items-center rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 font-mono text-xs font-bold text-accent"
+              aria-hidden="true"
+            >
+              SE01
+            </span>
           </div>
 
-          <!-- Control deslizante de semana -->
-          <input
-            id="analisis-cinta-semana"
-            type="range"
-            min="1"
-            max="53"
-            value="1"
-            aria-label="Semana epidemiológica activa"
-            aria-valuetext="Semana epidemiológica 1"
-            class="relative z-10 h-full w-full cursor-pointer bg-transparent accent-[var(--color-accent)]"
-          />
-        </div>
+          <!-- Pista temporal -->
+          <div class="relative flex-1">
+            <!-- Tooltip flotante en tiempo real -->
+            <div
+              id="analisis-cinta-tooltip"
+              class="pointer-events-none absolute -top-8 z-30 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-0.5 font-mono text-[11px] font-medium text-bg shadow-md transition-opacity duration-150"
+              style="left: 0%;"
+              aria-hidden="true"
+            >
+              SE01
+            </div>
 
-        <!-- Marcas de referencia en mono -->
-        <div
-          class="mt-0.5 flex items-center justify-between px-0.5 font-mono text-[10px] text-ink-muted"
-        >
-          <span>SE01</span>
-          <span>SE13</span>
-          <span>SE26</span>
-          <span>SE39</span>
-          <span>SE53</span>
+            <div class="relative h-6 w-full">
+              <!-- Curva nacional del año como área tenue por detrás -->
+              <svg
+                id="analisis-cinta-curva"
+                class="pointer-events-none absolute inset-0 h-full w-full opacity-35"
+                preserveAspectRatio="none"
+                viewBox="0 0 53 100"
+                aria-hidden="true"
+              >
+                <path
+                  id="analisis-cinta-curva-path"
+                  fill="var(--color-border)"
+                  d=""></path>
+              </svg>
+
+              <!-- Resaltado de zona de alerta epidemiológica (estacionalidad y brotes) -->
+              <div
+                id="analisis-cinta-alerta-zona"
+                class="pointer-events-none absolute inset-y-1 rounded bg-amber-500/20 border-x border-amber-500/40 hidden"
+                title="Zona de estacionalidad alta / alerta epidemiológica"
+              >
+              </div>
+
+              <!-- Banda del rango de comparación en color-secondary -->
+              <div
+                id="analisis-cinta-rango"
+                class="pointer-events-none absolute inset-y-0.5 rounded bg-secondary/70 transition-all duration-100"
+                style="left: 0%; width: 100%;"
+              >
+              </div>
+
+              <!-- Marcador visual del pico anual -->
+              <div
+                id="analisis-cinta-pico"
+                class="pointer-events-none absolute -top-1 bottom-0 z-20 hidden -translate-x-1/2 flex-col items-center"
+                style="left: 50%;"
+                title="Pico anual de casos"
+                aria-hidden="true"
+              >
+                <span
+                  class="inline-block h-2 w-2 rotate-45 bg-rose-500 shadow-sm ring-1 ring-white"
+                ></span>
+                <span class="h-full w-px bg-rose-500/60"></span>
+              </div>
+
+              <!-- Control deslizante de semana -->
+              <input
+                id="analisis-cinta-semana"
+                type="range"
+                min="1"
+                max="53"
+                value="1"
+                aria-label="Semana epidemiológica activa"
+                aria-valuetext="Semana epidemiológica 1"
+                class="relative z-10 h-full w-full cursor-pointer bg-transparent accent-[var(--color-accent)]"
+              />
+            </div>
+
+            <!-- Marcas de referencia en mono -->
+            <div
+              class="mt-0.5 flex items-center justify-between px-0.5 font-mono text-[10px] text-ink-muted"
+            >
+              <span>SE01</span>
+              <span>SE13</span>
+              <span
+                id="analisis-cinta-pico-etiqueta"
+                class="hidden font-bold text-rose-700 dark:text-rose-300"
+                >Pico anual</span
+              >
+              <span>SE26</span>
+              <span>SE39</span>
+              <span>SE53</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -202,11 +414,27 @@ import BarraActividad from '../BarraActividad.astro';
     EstadoLayoutAnalisis,
     VistaAnalisis,
   } from '../../lib/analisis-layout-state';
-  import type { FiltrosAnalisis } from '../../lib/tipos-analisis';
+  import {
+    esAnioAnalisisDengue,
+    type AnioAnalisisDengue,
+    type CapaAnalitica,
+    type FiltrosAnalisis,
+    type SerieEpidemiologica,
+  } from '../../lib/tipos-analisis';
 
   const selectorVista = document.getElementById(
     'analisis-vista',
   ) as HTMLSelectElement | null;
+  const selectorAnio = document.getElementById(
+    'toolbar-analisis-anio',
+  ) as HTMLSelectElement | null;
+  const selectorSerie = document.getElementById(
+    'toolbar-analisis-serie',
+  ) as HTMLSelectElement | null;
+  const selectorCapa = document.getElementById(
+    'toolbar-analisis-capa',
+  ) as HTMLSelectElement | null;
+
   const resumen = document.getElementById('toolbar-analisis-resumen');
   const descripcionVista = document.getElementById('toolbar-vista-descripcion');
   const botonRestablecer = document.getElementById(
@@ -239,36 +467,66 @@ import BarraActividad from '../BarraActividad.astro';
   const cintaCurvaPath = document.querySelector<SVGPathElement>(
     '#analisis-cinta-curva-path',
   );
+  const cintaTooltip = document.getElementById('analisis-cinta-tooltip');
+  const cintaPico = document.getElementById('analisis-cinta-pico');
+  const cintaPicoEtiqueta = document.getElementById(
+    'analisis-cinta-pico-etiqueta',
+  );
+  const cintaAlertaZona = document.getElementById('analisis-cinta-alerta-zona');
+
+  // Controles de reproducción temporal
+  const botonPlay = document.getElementById('analisis-reproductor-play');
+  const iconoPlay = document.getElementById('analisis-icono-play');
+  const iconoPausa = document.getElementById('analisis-icono-pausa');
+  const textoPlay = document.getElementById('analisis-texto-play');
+  const botonPrev = document.getElementById('analisis-reproductor-prev');
+  const botonNext = document.getElementById('analisis-reproductor-next');
+  const botonVelocidad = document.getElementById(
+    'analisis-reproductor-velocidad',
+  );
+  const badgeSemana = document.getElementById('analisis-reproductor-badge');
 
   let filtrosActuales: FiltrosAnalisis | null = null;
   let layoutActual: EstadoLayoutAnalisis | null = null;
   let timerThrottleCinta: ReturnType<typeof setTimeout> | null = null;
+
+  // Cache analítico de la serie nacional agregada: null indica semana sin observación
+  const sumasPorSemanaCache: (number | null)[] = new Array(53).fill(null);
+  let semanaPicoCalculada = 0;
+  let maxCasosCalculado = 0;
+  let cacheCurvaClave: string | null = null;
+  let cargaCurvaActual = 0;
 
   function etiquetaSemana(semana: number): string {
     return `SE${String(semana).padStart(2, '0')}`;
   }
 
   function actualizarResumen(semanaManual?: number): void {
+    // Durante la reproducción continua no saturamos lectores de pantalla;
+    // se anuncia el resumen completo al pausar o terminar.
+    if (reproduciendo) return;
     if (!resumen || !filtrosActuales || !layoutActual) return;
     const semana = semanaManual ?? filtrosActuales.semana;
     const deptoObj = filtrosActuales.departamento
       ? DEPARTAMENTOS_POR_CODIGO[filtrosActuales.departamento]
       : null;
-    // Frase, no cadena de datos unidos por puntos medios: el resumen es la
-    // linea que dice donde estas parado, y se lee igual con los ojos que en voz
-    // alta (el contenedor es aria-live, asi que lo que se ve es lo que se
-    // anuncia -- por eso ya no hace falta una copia sr-only aparte). Los
-    // valores medidos van en mono via .cifra; las palabras, en Inter.
     const donde = deptoObj ? deptoObj.nombre : 'los 14 departamentos';
     const serie =
       filtrosActuales.serie === 'confirmado' ? 'confirmado' : 'probable';
     const semanaTexto = etiquetaSemana(semana);
     const rangoTexto = `${etiquetaSemana(filtrosActuales.semanaDesde)}–${etiquetaSemana(filtrosActuales.semanaHasta)}`;
 
-    // La vista no entra en la frase: la linea de abajo
-    // (#toolbar-vista-descripcion) ya dice cual esta activa y que muestra.
+    const capaEtiquetas: Record<CapaAnalitica, string> = {
+      minsal_volumen: 'Casos MINSAL',
+      iv: 'M1 Idoneidad',
+      anomalia: 'M2 Clima',
+      presion: 'M3 Presión',
+      confianza: 'Integridad',
+    };
+    const capaTexto = capaEtiquetas[filtrosActuales.capa] ?? 'Casos MINSAL';
+
     resumen.innerHTML =
-      `Dengue ${serie} en <span class="font-medium text-ink">${donde}</span>, ` +
+      `<span class="font-semibold text-accent">[${capaTexto}]</span> Dengue ${serie} en <span class="font-medium text-ink">${donde}</span>, ` +
       `semana <span class="cifra font-semibold text-accent">${semanaTexto}</span> ` +
       `de <span class="cifra text-ink">${filtrosActuales.anio}</span>, ` +
       `comparada con <span class="cifra text-ink">${rangoTexto}</span>.`;
@@ -282,52 +540,325 @@ import BarraActividad from '../BarraActividad.astro';
     cintaRango.style.width = `${ancho}%`;
   }
 
-  let anioCurvaCargado: number | null = null;
-  async function cargarCurvaNacionalCinta(anio: number): Promise<void> {
-    if (anio === anioCurvaCargado || !cintaCurvaPath) return;
-    anioCurvaCargado = anio;
+  function actualizarTooltipCinta(semana: number): void {
+    if (!cintaTooltip) return;
+    const datoSemana = sumasPorSemanaCache[semana - 1];
+    const esPico = semana === semanaPicoCalculada && semanaPicoCalculada > 0;
+    const serieNom =
+      filtrosActuales?.serie === 'confirmado' ? 'conf.' : 'prob.';
+
+    let textoCasos: string;
+    if (typeof datoSemana === 'number') {
+      textoCasos = `${datoSemana.toLocaleString()} casos ${serieNom}`;
+    } else {
+      textoCasos = 'Sin dato';
+    }
+
+    const texto = `${etiquetaSemana(semana)} · ${textoCasos}${esPico ? ' (Pico anual)' : ''}`;
+
+    cintaTooltip.textContent = texto;
+    const pct = ((semana - 1) / 52) * 100;
+    cintaTooltip.style.left = `${pct}%`;
+  }
+
+  function limpiarCurvaCinta(): void {
+    sumasPorSemanaCache.fill(null);
+    semanaPicoCalculada = 0;
+    maxCasosCalculado = 0;
+    cacheCurvaClave = null;
+    cintaCurvaPath?.setAttribute('d', '');
+    if (cintaPico) {
+      cintaPico.classList.add('hidden');
+      cintaPico.classList.remove('flex');
+    }
+    if (cintaPicoEtiqueta) cintaPicoEtiqueta.classList.add('hidden');
+    if (cintaAlertaZona) cintaAlertaZona.classList.add('hidden');
+  }
+
+  async function cargarCurvaNacionalCinta(
+    anio: number,
+    serie: SerieEpidemiologica,
+  ): Promise<void> {
+    const clave = `${anio}-${serie}`;
+    if (clave === cacheCurvaClave || !cintaCurvaPath) return;
+
+    // Años sin vigilancia departamental de dengue (p. ej. 2020 o >= 2024 que solo tienen clima)
+    if (!esAnioAnalisisDengue(anio)) {
+      limpiarCurvaCinta();
+      cacheCurvaClave = clave;
+      return;
+    }
+
+    const idCarga = ++cargaCurvaActual;
     try {
-      const datos = await obtenerDatasetAnalitico(anio as any);
+      const datos = await obtenerDatasetAnalitico(anio as AnioAnalisisDengue);
+      if (idCarga !== cargaCurvaActual) return;
+
       if (
         !datos ||
         !datos.departamentos ||
         !Array.isArray(datos.departamentos)
       ) {
-        cintaCurvaPath.setAttribute('d', '');
+        limpiarCurvaCinta();
         return;
       }
-      const sumasPorSemana = new Array(53).fill(0);
+
+      sumasPorSemanaCache.fill(null);
+      const conteoConDatoPorSemana = new Array(53).fill(0);
+      const sumasTemp = new Array(53).fill(0);
+
       for (const d of datos.departamentos) {
         for (const s of d.semanas) {
-          const valor = s.presion_probable?.casos_observados ?? 0;
           if (s.semana_epi >= 1 && s.semana_epi <= 53) {
-            sumasPorSemana[s.semana_epi - 1] += valor;
+            const idx = s.semana_epi - 1;
+            const metrica =
+              serie === 'confirmado'
+                ? s.presion_confirmado?.casos_observados
+                : s.presion_probable?.casos_observados;
+            if (typeof metrica === 'number') {
+              sumasTemp[idx] += metrica;
+              conteoConDatoPorSemana[idx]++;
+            }
           }
         }
       }
-      const maximo = Math.max(...sumasPorSemana, 1);
-      const puntos = sumasPorSemana.map((suma, idx) => {
+
+      for (let i = 0; i < 53; i++) {
+        sumasPorSemanaCache[i] =
+          conteoConDatoPorSemana[i] > 0 ? sumasTemp[i] : null;
+      }
+
+      const valoresValidos = sumasPorSemanaCache.filter(
+        (v): v is number => typeof v === 'number',
+      );
+      maxCasosCalculado =
+        valoresValidos.length > 0 ? Math.max(...valoresValidos, 1) : 1;
+
+      // Calcular semana pico solo sobre semanas con observación
+      let maxIdx = -1;
+      let maxVal = -1;
+      for (let i = 0; i < 53; i++) {
+        const val = sumasPorSemanaCache[i];
+        if (typeof val === 'number' && val > maxVal) {
+          maxVal = val;
+          maxIdx = i;
+        }
+      }
+      semanaPicoCalculada = maxIdx >= 0 ? maxIdx + 1 : 0;
+
+      const puntos = sumasPorSemanaCache.map((suma, idx) => {
         const x = idx;
-        const y = 100 - (suma / maximo) * 90;
+        const val = suma ?? 0;
+        const y = 100 - (val / maxCasosCalculado) * 90;
         return `${x},${y.toFixed(1)}`;
       });
       cintaCurvaPath.setAttribute(
         'd',
         `M 0,100 L ${puntos.join(' L ')} L 52,100 Z`,
       );
+
+      // Posicionar marcador del pico anual
+      if (cintaPico && semanaPicoCalculada > 0 && maxVal > 0) {
+        const picoPct = ((semanaPicoCalculada - 1) / 52) * 100;
+        cintaPico.style.left = `${picoPct}%`;
+        cintaPico.title = `Pico anual: ${etiquetaSemana(semanaPicoCalculada)} con ${maxVal.toLocaleString()} casos ${serie === 'confirmado' ? 'confirmados' : 'probables'}`;
+        cintaPico.classList.remove('hidden');
+        cintaPico.classList.add('flex');
+        if (cintaPicoEtiqueta) {
+          cintaPicoEtiqueta.textContent = `Pico: ${etiquetaSemana(semanaPicoCalculada)}`;
+          cintaPicoEtiqueta.classList.remove('hidden');
+        }
+      } else {
+        if (cintaPico) {
+          cintaPico.classList.add('hidden');
+          cintaPico.classList.remove('flex');
+        }
+        if (cintaPicoEtiqueta) cintaPicoEtiqueta.classList.add('hidden');
+      }
+
+      // Delimitar zona de estacionalidad epidémica (históricamente SE22–SE40 en El Salvador)
+      if (cintaAlertaZona) {
+        const alertaDesde = 22;
+        const alertaHasta = 40;
+        const zonaIzq = ((alertaDesde - 1) / 52) * 100;
+        const zonaAncho = ((alertaHasta - alertaDesde) / 52) * 100;
+        cintaAlertaZona.style.left = `${zonaIzq}%`;
+        cintaAlertaZona.style.width = `${zonaAncho}%`;
+        cintaAlertaZona.classList.remove('hidden');
+      }
+
+      cacheCurvaClave = clave;
     } catch {
-      cintaCurvaPath.setAttribute('d', '');
+      if (idCarga !== cargaCurvaActual) return;
+      limpiarCurvaCinta();
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Reproductor temporal dinámico (Play / Pausa / Paso a paso)
+  // -------------------------------------------------------------------------
+  let reproduciendo = false;
+  let intervaloReproduccion: ReturnType<typeof setInterval> | null = null;
+  let velocidadReproduccion: 1 | 2 = 1;
+
+  function actualizarEstadoVisualPlay(): void {
+    if (!botonPlay) return;
+    botonPlay.setAttribute('aria-pressed', String(reproduciendo));
+    if (reproduciendo) {
+      iconoPlay?.classList.add('hidden');
+      iconoPausa?.classList.remove('hidden');
+      if (textoPlay) textoPlay.textContent = 'Pausa';
+      botonPlay.setAttribute(
+        'aria-label',
+        'Pausar evolución temporal (Espacio)',
+      );
+      botonPlay.title = 'Pausar (Espacio)';
+    } else {
+      iconoPlay?.classList.remove('hidden');
+      iconoPausa?.classList.add('hidden');
+      if (textoPlay) textoPlay.textContent = 'Play';
+      botonPlay.setAttribute(
+        'aria-label',
+        'Reproducir evolución temporal (Espacio)',
+      );
+      botonPlay.title = 'Reproducir (Espacio)';
+    }
+  }
+
+  function pausarReproduccion(): void {
+    if (intervaloReproduccion) {
+      clearInterval(intervaloReproduccion);
+      intervaloReproduccion = null;
+    }
+    reproduciendo = false;
+    actualizarEstadoVisualPlay();
+    cintaTooltip?.classList.add('hidden');
+    actualizarResumen();
+  }
+
+  function obtenerUltimaSemanaConDato(): number {
+    for (let sem = 53; sem >= 1; sem--) {
+      if (typeof sumasPorSemanaCache[sem - 1] === 'number') {
+        return sem;
+      }
+    }
+    return 52;
+  }
+
+  function avanzarSemana(): void {
+    if (!cintaSemana) return;
+    const actual = Number(cintaSemana.value) || 1;
+    const maxSem = obtenerUltimaSemanaConDato();
+    const siguiente = actual >= maxSem ? 1 : actual + 1;
+    aplicarCambioSemana(siguiente);
+  }
+
+  function retrocederSemana(): void {
+    if (!cintaSemana) return;
+    const actual = Number(cintaSemana.value) || 1;
+    const maxSem = obtenerUltimaSemanaConDato();
+    const siguiente = actual <= 1 ? maxSem : actual - 1;
+    aplicarCambioSemana(siguiente);
+  }
+
+  function obtenerIntervaloReproduccion(): number {
+    const prefiereReduccion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefiereReduccion) {
+      return 1500;
+    }
+    return velocidadReproduccion === 1 ? 500 : 250;
+  }
+
+  function iniciarReproduccion(): void {
+    if (reproduciendo) return;
+    reproduciendo = true;
+    actualizarEstadoVisualPlay();
+    cintaTooltip?.classList.remove('hidden');
+
+    const ms = obtenerIntervaloReproduccion();
+    intervaloReproduccion = setInterval(() => {
+      avanzarSemana();
+    }, ms);
+  }
+
+  function alternarReproduccion(): void {
+    if (reproduciendo) {
+      pausarReproduccion();
+    } else {
+      const maxSem = obtenerUltimaSemanaConDato();
+      if (cintaSemana && Number(cintaSemana.value) >= maxSem) {
+        aplicarCambioSemana(1);
+      }
+      iniciarReproduccion();
+    }
+  }
+
+  function aplicarCambioSemana(sem: number): void {
+    if (!cintaSemana) return;
+    cintaSemana.value = String(sem);
+    cintaSemana.setAttribute('aria-valuetext', `Semana epidemiológica ${sem}`);
+    if (badgeSemana) badgeSemana.textContent = etiquetaSemana(sem);
+    actualizarResumen(sem);
+    actualizarTooltipCinta(sem);
+
+    if (timerThrottleCinta) clearTimeout(timerThrottleCinta);
+    timerThrottleCinta = setTimeout(() => {
+      actualizarFiltrosAnalisis({ semana: sem }, { diferirUrl: reproduciendo });
+    }, 80);
+  }
+
+  botonPlay?.addEventListener('click', alternarReproduccion);
+  botonPrev?.addEventListener('click', () => {
+    pausarReproduccion();
+    retrocederSemana();
+  });
+  botonNext?.addEventListener('click', () => {
+    pausarReproduccion();
+    avanzarSemana();
+  });
+  botonVelocidad?.addEventListener('click', () => {
+    velocidadReproduccion = velocidadReproduccion === 1 ? 2 : 1;
+    if (botonVelocidad) {
+      botonVelocidad.textContent = `${velocidadReproduccion}x`;
+      botonVelocidad.setAttribute(
+        'aria-label',
+        `Velocidad: ${velocidadReproduccion}x`,
+      );
+      botonVelocidad.setAttribute(
+        'aria-pressed',
+        String(velocidadReproduccion === 2),
+      );
+    }
+    if (reproduciendo) {
+      pausarReproduccion();
+      iniciarReproduccion();
+    }
+  });
+
+  // Atajo de teclado: Espacio en la cinta temporal para alternar reproducción.
+  // No interceptamos flechas ni Home/End: el input range las gestiona de forma
+  // nativa y dispara el evento 'input'. Tampoco capturamos eventos sobre botones.
+  cintaSemana?.addEventListener('keydown', (ke: KeyboardEvent) => {
+    if (ke.key === ' ' || ke.code === 'Space') {
+      ke.preventDefault();
+      alternarReproduccion();
+    }
+  });
+
   if (cintaSemana) {
     cintaSemana.addEventListener('input', () => {
+      pausarReproduccion();
       const sem = Number(cintaSemana.value);
       cintaSemana.setAttribute(
         'aria-valuetext',
         `Semana epidemiológica ${sem}`,
       );
+      if (badgeSemana) badgeSemana.textContent = etiquetaSemana(sem);
       actualizarResumen(sem);
+      actualizarTooltipCinta(sem);
+      cintaTooltip?.classList.remove('hidden');
 
       if (timerThrottleCinta) clearTimeout(timerThrottleCinta);
       timerThrottleCinta = setTimeout(() => {
@@ -342,16 +873,51 @@ import BarraActividad from '../BarraActividad.astro';
         'aria-valuetext',
         `Semana epidemiológica ${sem}`,
       );
+      if (badgeSemana) badgeSemana.textContent = etiquetaSemana(sem);
       actualizarFiltrosAnalisis({ semana: sem });
     });
+
+    cintaSemana.addEventListener('mouseenter', () => {
+      const sem = Number(cintaSemana.value) || 1;
+      actualizarTooltipCinta(sem);
+      cintaTooltip?.classList.remove('hidden');
+    });
+
+    cintaSemana.addEventListener('mouseleave', () => {
+      if (!reproduciendo) {
+        cintaTooltip?.classList.add('hidden');
+      }
+    });
   }
+
+  // -------------------------------------------------------------------------
+  // Selectores directos de variables analíticas
+  // -------------------------------------------------------------------------
+  selectorAnio?.addEventListener('change', () => {
+    pausarReproduccion();
+    const nuevoAnio = Number(selectorAnio.value);
+    actualizarFiltrosAnalisis({ anio: nuevoAnio });
+  });
+
+  selectorSerie?.addEventListener('change', () => {
+    const nuevaSerie = selectorSerie.value as SerieEpidemiologica;
+    actualizarFiltrosAnalisis({ serie: nuevaSerie });
+  });
+
+  selectorCapa?.addEventListener('change', () => {
+    const nuevaCapa = selectorCapa.value as CapaAnalitica;
+    actualizarFiltrosAnalisis({ capa: nuevaCapa });
+  });
 
   selectorVista?.addEventListener('change', () => {
     aplicarVistaAnalisis(selectorVista.value as VistaAnalisis);
   });
+
   botonRestablecer?.addEventListener('click', () => {
+    pausarReproduccion();
     restablecerLayoutAnalisis();
   });
+
   function elementosEnfocables(contenedor: HTMLElement): HTMLElement[] {
     return Array.from(
       contenedor.querySelectorAll<HTMLElement>(
@@ -359,6 +925,7 @@ import BarraActividad from '../BarraActividad.astro';
       ),
     ).filter((el) => el.offsetParent !== null);
   }
+
   function trampaFoco(evento: KeyboardEvent): void {
     if (evento.key !== 'Tab' || !dialogoFiltros) return;
     const enfocables = elementosEnfocables(dialogoFiltros);
@@ -381,6 +948,7 @@ import BarraActividad from '../BarraActividad.astro';
       primero.focus();
     }
   }
+
   function cerrarFiltros(devolverFoco = false): void {
     if (!popoverFiltros || !botonAbrirFiltros) return;
     popoverFiltros.hidden = true;
@@ -389,13 +957,19 @@ import BarraActividad from '../BarraActividad.astro';
     document.removeEventListener('keydown', trampaFoco, true);
     if (devolverFoco) botonAbrirFiltros.focus();
   }
+
   botonAbrirFiltros?.addEventListener('click', () => {
     if (!popoverFiltros) return;
     if (popoverFiltros.hidden) {
       // Los paneles abren los filtros desde su estado vacío con .click() sobre
       // este botón, también con la barra contraída: se expande antes para que
       // el botón sea visible y el foco pueda volver a él al cerrar.
-      if (botonContraer?.getAttribute('aria-expanded') === 'false') {
+      // Solo si el botón quedó oculto (escritorio contraído); en móvil sigue
+      // visible y expandir taparía el mapa sin necesidad.
+      if (
+        botonContraer?.getAttribute('aria-expanded') === 'false' &&
+        botonAbrirFiltros.offsetParent === null
+      ) {
         fijarToolbarExpandida(true);
       }
       popoverFiltros.hidden = false;
@@ -410,6 +984,7 @@ import BarraActividad from '../BarraActividad.astro';
       cerrarFiltros();
     }
   });
+
   botonCerrarFiltros?.addEventListener('click', () => cerrarFiltros(true));
   fondoFiltros?.addEventListener('click', () => cerrarFiltros(true));
   document.addEventListener('keydown', (evento) => {
@@ -417,6 +992,7 @@ import BarraActividad from '../BarraActividad.astro';
       cerrarFiltros(true);
     }
   });
+
   document.addEventListener('click', (evento) => {
     if (
       popoverFiltros?.hidden !== false ||
@@ -427,6 +1003,7 @@ import BarraActividad from '../BarraActividad.astro';
     }
     cerrarFiltros();
   });
+
   // Contraer deja solo la frase de resumen: la barra es pegajosa y en
   // pantallas bajas (o en movil) la cinta y los controles tapan buena parte
   // de los paneles mientras se recorre el workspace. aria-expanded, el texto
@@ -439,10 +1016,17 @@ import BarraActividad from '../BarraActividad.astro';
     'toolbar-analisis-controles',
   );
   const detalleToolbar = document.getElementById('toolbar-analisis-detalle');
+
   function fijarToolbarExpandida(expandida: boolean): void {
     if (!botonContraer) return;
-    if (!expandida && popoverFiltros?.hidden === false) cerrarFiltros();
-    if (controlesToolbar) controlesToolbar.hidden = !expandida;
+    if (!expandida) {
+      pausarReproduccion();
+      if (popoverFiltros?.hidden === false) cerrarFiltros();
+    }
+    // Contraído no se oculta el contenedor entero: en móvil (< sm) el botón
+    // "Filtros" sigue a la vista, en la misma fila que el botón de expandir,
+    // sin sumar altura. En escritorio el atributo oculta todo el bloque.
+    controlesToolbar?.toggleAttribute('data-contraido', !expandida);
     if (detalleToolbar) detalleToolbar.hidden = !expandida;
     botonContraer.setAttribute('aria-expanded', String(expandida));
     const texto = expandida
@@ -454,11 +1038,17 @@ import BarraActividad from '../BarraActividad.astro';
       : 'Expandir controles';
     iconoContraer?.classList.toggle('rotate-180', expandida);
   }
+
   botonContraer?.addEventListener('click', () => {
     fijarToolbarExpandida(
       botonContraer.getAttribute('aria-expanded') !== 'true',
     );
   });
+
+  // En pantallas estrechas (< sm), arrancar con el toolbar contraído para no tapar la pantalla
+  if (typeof window !== 'undefined' && window.innerWidth < 640) {
+    fijarToolbarExpandida(false);
+  }
 
   function cambiarZoom(direccion: -1 | 1): void {
     const niveles = [100, 150, 200] as const;
@@ -469,11 +1059,25 @@ import BarraActividad from '../BarraActividad.astro';
     );
     actualizarLayoutAnalisis({ zoomTemporal: niveles[indice] });
   }
+
   zoomMenos?.addEventListener('click', () => cambiarZoom(-1));
   zoomMas?.addEventListener('click', () => cambiarZoom(1));
 
   suscribirFiltrosAnalisis((filtros) => {
+    const cambioAnioOSerie =
+      !filtrosActuales ||
+      filtrosActuales.anio !== filtros.anio ||
+      filtrosActuales.serie !== filtros.serie;
     filtrosActuales = filtros;
+    if (selectorAnio && Number(selectorAnio.value) !== filtros.anio) {
+      selectorAnio.value = String(filtros.anio);
+    }
+    if (selectorSerie && selectorSerie.value !== filtros.serie) {
+      selectorSerie.value = filtros.serie;
+    }
+    if (selectorCapa && selectorCapa.value !== filtros.capa) {
+      selectorCapa.value = filtros.capa;
+    }
     if (cintaSemana && Number(cintaSemana.value) !== filtros.semana) {
       cintaSemana.value = String(filtros.semana);
       cintaSemana.setAttribute(
@@ -481,10 +1085,17 @@ import BarraActividad from '../BarraActividad.astro';
         `Semana epidemiológica ${filtros.semana}`,
       );
     }
+    if (badgeSemana) {
+      badgeSemana.textContent = etiquetaSemana(filtros.semana);
+    }
     actualizarRangoCinta(filtros.semanaDesde, filtros.semanaHasta);
-    void cargarCurvaNacionalCinta(filtros.anio);
+    if (cambioAnioOSerie) {
+      void cargarCurvaNacionalCinta(filtros.anio, filtros.serie);
+    }
     actualizarResumen();
+    actualizarTooltipCinta(filtros.semana);
   });
+
   suscribirLayoutAnalisis((layout) => {
     layoutActual = layout;
     if (selectorVista) selectorVista.value = layout.vista;

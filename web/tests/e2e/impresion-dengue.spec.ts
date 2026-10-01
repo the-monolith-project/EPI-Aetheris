@@ -10,7 +10,6 @@ test('al imprimir /dengue se ocultan los controles y aparece la cabecera con los
   await expect(cabecera).toBeVisible();
   await expect(cabecera).toContainText('año 2022');
   await expect(cabecera).toContainText('serie confirmado');
-  await expect(page.locator('[data-tabs]')).toBeHidden();
   await expect(page.locator('#toolbar-analisis-contenedor')).toBeHidden();
   await expect(page.locator('body > header')).toBeHidden();
   await expect(page.locator('body > footer')).toBeHidden();

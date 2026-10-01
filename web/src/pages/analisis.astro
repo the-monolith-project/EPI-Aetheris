@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import { DEPARTAMENTOS } from '../lib/departamentos';
 import Icono from '../components/Icono.astro';
+import { RUTA_PREDICCION } from '../lib/enlaces';
 
 // Índice de las herramientas descriptivas (ADR 0014). Existe para que la
 // puerta de entrada del sitio pueda ser el panorama sin que las dos vistas
@@ -15,7 +16,15 @@ const HERRAMIENTAS = [
     icono: 'bug',
     estado: 'Cuatro capas activas',
     texto:
-      'Mapa departamental con idoneidad biofísica (M1), anomalía climática frente a la propia historia del departamento (M2) y presión epidemiológica relativa como percentil (M3) y nowcast de la semana en curso (M4). Incluye el archivo del clasificador piloto.',
+      'Mapa departamental con idoneidad biofísica (M1), anomalía climática frente a la propia historia del departamento (M2) y presión epidemiológica relativa como percentil (M3) e integridad de la vigilancia (M4). Series, canal endémico, comparaciones, calendario, dispersión con el clima y disponibilidad de datos.',
+  },
+  {
+    href: RUTA_PREDICCION,
+    titulo: 'Predicción de dengue',
+    icono: 'bug',
+    estado: 'Corto plazo',
+    texto:
+      'Conteo nacional de casos para las próximas 1 a 8 semanas, con intervalo de incertidumbre, contraste con lo observado y el archivo del clasificador piloto.',
   },
   {
     href: '/respiratorio',
@@ -47,7 +56,7 @@ const COMO_LEER = [
       <p
         class="mt-5 font-sans text-base leading-relaxed text-ink-muted sm:text-lg"
       >
-        Las dos vistas descriptivas del sistema. Para lo que está vigente y las
+        Las vistas descriptivas del sistema. Para lo que está vigente y las
         indicaciones para la unidad, <a
           href="/alertas"
           class="font-medium text-accent"
