@@ -114,3 +114,20 @@ contra la persistencia suavizada.
 Script `backend/ingestion/experimento_nowcast_recorte.py`, solo lectura sobre Postgres, 4
 procesos de un hilo y `nice`. Salida en `backend/ingestion/data/interim/nowcast/recorte_*.json`
 y copia versionada en `docs/agentes/mejora-predictor/resultados-nuevos/`.
+
+## Enmiendas
+
+### 2026-10-02, antes de la primera corrida completa
+
+1. **Orígenes sin predicción en el recorte de 2019.** Con 2014 y 2015 excluidos, la historia
+   disponible al empezar 2019 tiene 156 pares (tres años menos los rezagos iniciales), por
+   debajo del mínimo de 160 que exige el método publicado para ajustar y calibrar. Los primeros
+   orígenes de 2019 no tienen predicción hasta que entran pares con objetivo en 2019; el número
+   de orígenes sin predicción se reporta por horizonte y las cifras de 2019 recortado se
+   comparan con la historia completa sobre los orígenes que sí tienen predicción. No se baja el
+   mínimo para no cambiar el método.
+2. **Referencias con la historia recortada.** Se implementan en
+   `experimento_nowcast_comun.referencia`, que con solo 2020 excluido reproduce las del
+   experimento de mejora (probado en `tests/test_experimento_nowcast_comun.py`).
+3. **Saturación.** Las 8 semanas de mayor conteo se toman entre las que tienen predicción en
+   cada corrida; el cociente es mediana predicha / observado promediado sobre ellas.
