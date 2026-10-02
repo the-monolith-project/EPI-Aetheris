@@ -172,3 +172,146 @@ las fases ni los criterios.
    R0 reproducen con diferencia 0 la validación, y en 2025-2026 el script reporta la diferencia
    máxima frente a `mejora_confirmacion.json` y `tendencia_verificacion.json` sin detenerse.
    Todas las capas de la fase B se comparan sobre la misma corrida.
+
+## Resultados (ejecución 2026-10-02)
+
+Corrida única de `experimento_nowcast_rangos.py` sobre la base de esta rama. Salida completa en
+`docs/agentes/mejora-predictor/resultados-nuevos/rangos.json` (flotantes redondeados a 3
+decimales). Capas elegibles: R1, R2, R3 (calibración), S1 y C1 (corto plazo); sensibilidades:
+R3 con γ 0,01 y 0,10, S1 con (K, β) = (4; 1), (13; 1) y (8; 0,5), C1 con K = 13 y 52. Se
+reportan todas; solo las elegibles deciden.
+
+### Controles
+
+- Garantía anti-fuga verificada a h = 4 en la validación (13 orígenes) y en el tablero (14),
+  con control negativo.
+- M0 con R0 reproduce las 2.044 predicciones de `mejora_validacion.json` con diferencia 0; C
+  con R0 reproduce las 416 predicciones de 2024 de `tendencia_verificacion.json` con
+  diferencia 0. En 2025-2026 difieren desde 2025-01-05 (enmienda 6: sin ONI de 2025-2026 en la
+  semilla); diferencia máxima por cuantil 161 (M0) y 86 (C).
+- R2 no dejó ningún origen sin predicción (el mínimo de 224 pares se cumple en todos).
+
+### Fase A, validación 2019 y 2021-2024, contra la persistencia limpia
+
+Capas elegibles (WIS; skill contra R0; skill contra la referencia; cobertura 50 %; cobertura
+95 %; fracción bajo la mediana; n = 259 a 252):
+
+| h | R0 (publicada) | R1 asimétrica | R2 104 pares | R3 adaptativa | S1 sesgo reciente |
+|---|---|---|---|---|---|
+| 1 | 35,6; 0,00; −0,01; 0,57; 0,92; 0,46 | 35,7; −0,00; −0,01; 0,55; 0,86; 0,46 | 36,3; −0,02; −0,03; 0,51; 0,92; 0,51 | 37,5; −0,05; −0,07; 0,71; 0,92; 0,46 | 40,6; −0,14; −0,15; 0,49; 0,90; 0,45 |
+| 2 | 37,9; 0,00; +0,06; 0,60; 0,92; 0,45 | 38,7; −0,02; +0,04; 0,55; 0,82; 0,45 | 38,2; −0,01; +0,05; 0,56; 0,90; 0,48 | 39,4; −0,04; +0,02; 0,67; 0,90; 0,45 | 43,9; −0,16; −0,09; 0,50; 0,92; 0,45 |
+| 3 | 46,4; 0,00; +0,05; 0,56; 0,90; 0,46 | 49,6; −0,07; −0,02; 0,53; 0,81; 0,46 | 47,9; −0,03; +0,02; 0,54; 0,89; 0,49 | 52,3; −0,13; −0,07; 0,68; 0,91; 0,46 | 60,4; −0,30; −0,24; 0,48; 0,91; 0,47 |
+| 4 | 56,6; 0,00; +0,04; 0,55; 0,88; 0,47 | 58,3; −0,03; +0,01; 0,54; 0,77; 0,47 | 54,9; +0,03; +0,07; 0,54; 0,91; 0,48 | 63,7; −0,13; −0,09; 0,64; 0,89; 0,47 | 81,4; −0,44; −0,39; 0,48; 0,90; 0,46 |
+| 5 | 61,4; 0,00; +0,09; 0,56; 0,90; 0,47 | 61,3; +0,00; +0,09; 0,56; 0,78; 0,47 | 60,0; +0,02; +0,11; 0,56; 0,93; 0,47 | 66,4; −0,08; +0,02; 0,64; 0,90; 0,47 | 100,4; −0,64; −0,48; 0,45; 0,91; 0,48 |
+| 6 | 67,9; 0,00; +0,11; 0,54; 0,90; 0,47 | 69,5; −0,02; +0,09; 0,49; 0,78; 0,47 | 68,3; −0,01; +0,11; 0,56; 0,91; 0,47 | 74,5; −0,10; +0,03; 0,67; 0,92; 0,47 | 122,3; −0,80; −0,60; 0,47; 0,92; 0,48 |
+| 7 | 73,5; 0,00; +0,14; 0,56; 0,89; 0,42 | 75,6; −0,03; +0,12; 0,51; 0,80; 0,42 | 75,7; −0,03; +0,12; 0,56; 0,91; 0,41 | 82,8; −0,13; +0,03; 0,66; 0,90; 0,42 | 131,4; −0,79; −0,54; 0,49; 0,91; 0,47 |
+| 8 | 78,8; 0,00; +0,17; 0,57; 0,88; 0,43 | 79,0; −0,00; +0,17; 0,50; 0,79; 0,43 | 80,9; −0,03; +0,15; 0,56; 0,91; 0,43 | 86,6; −0,10; +0,09; 0,65; 0,89; 0,43 | 130,2; −0,65; −0,37; 0,48; 0,89; 0,46 |
+
+Cobertura del 95 % por año en los horizontes decisivos:
+
+| capa | 2019 h4 | 2021 h4 | 2022 h4 | 2023 h4 | 2024 h4 | 2019 h8 | 2021 h8 | 2022 h8 | 2023 h8 | 2024 h8 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| R0 | 0,85 | 0,94 | 0,71 | 0,90 | 1,00 | 0,88 | 0,98 | 0,73 | 0,83 | 1,00 |
+| R1 | 0,83 | 0,75 | 0,52 | 0,85 | 0,88 | 0,87 | 0,77 | 0,56 | 0,87 | 0,88 |
+| R2 | 0,85 | 0,98 | 0,83 | 0,90 | 1,00 | 0,85 | 1,00 | 0,83 | 0,87 | 1,00 |
+| R3 | 0,85 | 0,94 | 0,75 | 0,90 | 1,00 | 0,87 | 0,98 | 0,77 | 0,83 | 1,00 |
+
+Sensibilidades (WIS; skill contra R0; cobertura 50 %; cobertura 95 %) a h = 4 y h = 8:
+
+| capa | h = 4 | h = 8 |
+|---|---|---|
+| R3 γ = 0,01 | 61,8; −0,09; 0,62; 0,89 | 83,1; −0,06; 0,63; 0,88 |
+| R3 γ = 0,10 | 63,7; −0,13; 0,63; 0,88 | 85,6; −0,09; 0,63; 0,86 |
+| S1 K = 4, β = 1 | 79,5; −0,40; 0,47; 0,88 | 134,9; −0,71; 0,52; 0,91 |
+| S1 K = 13, β = 1 | 79,7; −0,41; 0,48; 0,89 | 121,3; −0,54; 0,44; 0,91 |
+| S1 K = 8, β = 0,5 | 60,3; −0,07; 0,54; 0,90 | 87,1; −0,10; 0,54; 0,91 |
+
+Veredicto de la pregunta A en la fase A:
+
+- R1 no pasa: la cobertura del 95 % cae a 0,77 y 0,79. Con 52 pares, el nivel `1 − α/2` por
+  lado winsorizado al p90 produce factores menores que el simétrico; los intervalos se
+  estrechan en vez de ensancharse.
+- R2 pasa las tres condiciones a h = 4 y a h = 8: cobertura del 95 % 0,91 y 0,91, del 50 %
+  0,54 y 0,56, WIS 54,9 (3 % menor que R0) y 80,9 (3 % mayor, dentro del 5 %). Es la capa
+  elegida. Su efecto se concentra en 2022, el año que R0 cubre peor (0,71 y 0,73 pasan a 0,83).
+- R3 no pasa: cuesta entre 8 % y 13 % de WIS en los horizontes decisivos y no lleva la
+  cobertura del 95 % a la banda; sube la del 50 % a 0,64 y 0,65, por encima del nominal. Con
+  γ = 0,01 y 0,10 pasa lo mismo.
+
+Veredicto de la pregunta B en la fase A: S1 no pasa. Corregir la mediana con el sesgo de los
+últimos 8 pares conocidos empeora el WIS en todos los horizontes (−0,14 a h = 1, −0,44 a
+h = 4, −0,65 a h = 8). Los residuos de M0 a un horizonte dado en pares consecutivos están
+correlacionados por la superposición de ventanas, pero el sesgo reciente no se mantiene las
+h semanas siguientes; β = 0,5 reduce el daño sin convertirlo en ganancia.
+
+### Fase B, tablero 2025-S1 a 2026-S37, contra la persistencia suavizada
+
+Capas sobre C (WIS; skill contra C con R0; skill contra la referencia con 2025 y 2026 entre
+paréntesis; cobertura 50 %; cobertura 95 % con 2025 y 2026 entre paréntesis; fracción bajo la
+mediana; n = 80 u 81). Se añaden M0 solo (R0) y T solo como contexto.
+
+| h | C con R0 | C con R2 (elegida) | C con R3 | R4: C calibrada | C con S1 | C con C1 | M0 solo | T solo |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 6,0; 0,00; −0,05 (−0,10, −0,00); 0,55; 0,94 (0,92, 0,96); 0,64 | 6,0; −0,01; −0,06 (−0,04, −0,07); 0,60; 0,95 (0,96, 0,93); 0,62 | 6,3; −0,05; −0,10 (−0,13, −0,07); 0,65; 0,94 (0,92, 0,96); 0,64 | 6,0; −0,01; −0,06 (−0,11, −0,02); 0,41; 0,80 (0,79, 0,82); 0,64 | 6,2; −0,04; −0,09 (−0,08, −0,10); 0,61; 0,94 (0,94, 0,93); 0,49 | 4,8; +0,19; +0,15 (+0,14, +0,17); 0,50; 0,90 (0,89, 0,93); 0,35 | 10,1; −0,69; −0,77; 0,46; 0,82; 0,68 | 4,7; +0,21; +0,17 (+0,17, +0,17); 0,44; 0,86 (0,89, 0,82); 0,36 |
+| 2 | 11,2; 0,00; +0,09 (+0,02, +0,14); 0,49; 0,90 (0,90, 0,90); 0,62 | 11,4; −0,01; +0,08 (+0,04, +0,10); 0,51; 0,91 (0,96, 0,83); 0,62 | 11,5; −0,03; +0,06 (−0,01, +0,11); 0,62; 0,90 (0,90, 0,90); 0,62 | 11,5; −0,03; +0,06 (−0,03, +0,13); 0,37; 0,80 (0,79, 0,83); 0,62 | 12,0; −0,07; +0,03 (−0,03, +0,06); 0,49; 0,93 (0,94, 0,90); 0,52 | 10,3; +0,08; +0,17 (+0,18, +0,15); 0,52; 0,90 (0,92, 0,86); 0,44 | 16,1; −0,44; −0,31; 0,32; 0,74; 0,70 | 10,4; +0,07; +0,16 (+0,21, +0,12); 0,49; 0,85 (0,92, 0,72); 0,37 |
+| 3 | 15,9; 0,00; +0,12 (+0,08, +0,14); 0,43; 0,89 (0,92, 0,83); 0,59 | 16,0; −0,01; +0,11 (+0,09, +0,12); 0,47; 0,91 (0,96, 0,83); 0,59 | 15,9; −0,00; +0,11 (+0,08, +0,13); 0,53; 0,90 (0,94, 0,83); 0,59 | 16,5; −0,04; +0,08 (−0,00, +0,13); 0,33; 0,77 (0,75, 0,79); 0,59 | 18,6; −0,17; −0,04 (−0,00, −0,06); 0,41; 0,86 (0,92, 0,76); 0,53 | 16,0; −0,01; +0,11 (+0,18, +0,06); 0,46; 0,88 (0,94, 0,76); 0,42 | 21,5; −0,35; −0,20; 0,22; 0,73; 0,74 | 15,5; +0,02; +0,14 (+0,20, +0,09); 0,44; 0,84 (0,94, 0,66); 0,37 |
+| 4 | 19,3; 0,00; +0,14 (+0,13, +0,14); 0,40; 0,91 (0,98, 0,79); 0,60 | 19,7; −0,02; +0,12 (+0,12, +0,12); 0,40; 0,91 (1,00, 0,76); 0,60 | 19,7; −0,02; +0,12 (+0,08, +0,14); 0,52; 0,91 (0,98, 0,79); 0,60 | 20,1; −0,04; +0,10 (+0,07, +0,12); 0,33; 0,69 (0,65, 0,76); 0,60 | 25,6; −0,33; −0,14 (−0,00, −0,24); 0,32; 0,84 (0,96, 0,62); 0,54 | 20,3; −0,05; +0,09 (+0,19, +0,02); 0,47; 0,86 (0,98, 0,66); 0,47 | 25,4; −0,32; −0,14; 0,30; 0,73; 0,72 | 19,5; −0,01; +0,13 (+0,19, +0,08); 0,46; 0,85 (0,98, 0,62); 0,44 |
+| 5 | 21,9; 0,00; +0,15 (+0,15, +0,16); 0,42; 0,89 (0,98, 0,72); 0,59 | 23,0; −0,05; +0,11 (+0,13, +0,10); 0,35; 0,90 (1,00, 0,72); 0,62 | 21,4; +0,02; +0,17 (+0,17, +0,18); 0,47; 0,91 (1,00, 0,76); 0,59 | 23,3; −0,06; +0,10 (+0,04, +0,15); 0,33; 0,65 (0,64, 0,69); 0,59 | 30,8; −0,41; −0,19 (−0,01, −0,34); 0,27; 0,83 (0,98, 0,55); 0,58 | 23,9; −0,09; +0,08 (+0,19, −0,01); 0,41; 0,86 (1,00, 0,62); 0,53 | 27,9; −0,28; −0,08; 0,27; 0,69; 0,69 | 22,8; −0,04; +0,12 (+0,17, +0,08); 0,47; 0,90 (1,00, 0,72); 0,46 |
+| 6 | 24,2; 0,00; +0,16 (+0,20, +0,12); 0,40; 0,91 (0,98, 0,79); 0,60 | 25,2; −0,04; +0,12 (+0,17, +0,09); 0,36; 0,88 (0,98, 0,69); 0,62 | 23,6; +0,03; +0,18 (+0,22, +0,15); 0,42; 0,94 (0,98, 0,86); 0,60 | 25,6; −0,06; +0,11 (+0,11, +0,11); 0,37; 0,64 (0,65, 0,62); 0,60 | 36,5; −0,50; −0,27 (+0,02, −0,51); 0,28; 0,77 (0,94, 0,45); 0,51 | 27,7; −0,14; +0,04 (+0,15, −0,06); 0,32; 0,83 (0,98, 0,55); 0,59 | 28,9; −0,19; −0,00; 0,27; 0,69; 0,65 | 26,0; −0,07; +0,10 (+0,14, +0,06); 0,44; 0,90 (1,00, 0,72); 0,49 |
+| 7 | 26,9; 0,00; +0,15 (+0,22, +0,09); 0,40; 0,91 (0,96, 0,83); 0,57 | 28,5; −0,06; +0,10 (+0,15, +0,05); 0,36; 0,90 (0,96, 0,79); 0,62 | 26,4; +0,02; +0,17 (+0,22, +0,12); 0,43; 0,93 (0,98, 0,83); 0,57 | 27,9; −0,04; +0,12 (+0,17, +0,07); 0,32; 0,69 (0,69, 0,69); 0,57 | 42,6; −0,58; −0,34 (−0,01, −0,66); 0,21; 0,69 (0,90, 0,31); 0,48 | 29,9; −0,11; +0,06 (+0,15, −0,03); 0,30; 0,77 (0,85, 0,62); 0,63 | 30,7; −0,14; +0,03; 0,30; 0,72; 0,67 | 29,3; −0,09; +0,08 (+0,13, +0,03); 0,46; 0,86 (0,98, 0,66); 0,49 |
+| 8 | 28,6; 0,00; +0,16 (+0,23, +0,09); 0,35; 0,89 (0,94, 0,79); 0,56 | 30,5; −0,07; +0,10 (+0,17, +0,03); 0,37; 0,85 (0,92, 0,72); 0,60 | 28,1; +0,02; +0,17 (+0,22, +0,12); 0,46; 0,96 (1,00, 0,90); 0,56 | 30,1; −0,05; +0,12 (+0,17, +0,06); 0,31; 0,65 (0,64, 0,69); 0,56 | 47,2; −0,65; −0,39 (−0,01, −0,78); 0,25; 0,74 (0,92, 0,41); 0,47 | 31,1; −0,09; +0,09 (+0,16, +0,01); 0,17; 0,78 (0,79, 0,76); 0,68 | 31,2; −0,09; +0,08; 0,22; 0,72; 0,67 | 32,1; −0,12; +0,06 (+0,10, +0,01); 0,51; 0,88 (1,00, 0,66); 0,47 |
+
+WIS de la persistencia suavizada por horizonte: 5,7; 12,3; 17,9; 22,4; 25,9; 28,8; 31,7;
+34,0. C con R1 y las sensibilidades están en el JSON; lo relevante de ellas: C con C1 y K = 52
+da +0,21, +0,09, +0,03, −0,01 y −0,01 contra C con R0 a h = 1, 2, 3, 4 y 8 (cobertura del 95 %
+0,90, 0,89, 0,90, 0,91 y 0,84), y C con S1 y β = 0,5 queda entre −0,28 y +0,03.
+
+Peso de M0 que elige C1 (fracción de orígenes de 2025-2026): a h = 1, 0 en el 58 % y 0,25 en
+el 42 %; a h = 4, 0 en el 28 %, 0,25 en el 59 % y 0,5 en el 11 %; a h = 8, 0,5 en el 25 %,
+0,75 en el 30 % y 1 en el 46 %. El desempeño reciente pide menos M0 a corto plazo y más a
+largo, en línea con lo que M0 y T hacen por separado.
+
+Veredictos de la fase B:
+
+- C con R2 (la capa elegida en la fase A) no cumple: la cobertura del 95 % en 2026 queda en
+  0,76 a h = 4 y 0,72 a h = 8 (R0: 0,79 y 0,79), y a h = 8 el WIS sube 7 %. Más pares de
+  calibración no corrigen 2026, porque los fallos de 2026 no son de ancho sino de posición:
+  las semanas 1 a 3 (salto de cambio de año) y 19 a 22 caen fuera por el lado en que el
+  modelo no apunta.
+- R4 (calibrar la mezcla C) no cumple: la cobertura del 95 % baja a 0,69 y 0,65. Los errores
+  de C en los 52 pares de calibración de 2025 son pequeños (serie suavizada, año tranquilo) y
+  el factor conformal estrecha los intervalos justo antes de 2026.
+- C con C1 no cumple: gana a 1 y 2 semanas (WIS 4,8 contra 6,0 y 10,3 contra 11,2), empata a
+  3 y empeora a 4 (−0,05) y a 8 (−0,09, con cobertura 0,78). Con K = 52 el peso cambia más
+  despacio y el resultado se acerca a cumplir (ver arriba), pero es una sensibilidad y no un
+  candidato.
+- C con S1 (informativo, no pasó la fase A): empeora en todos los horizontes salvo h = 2.
+
+### Veredicto
+
+- Pregunta A: en la validación de OpenDengue, calibrar con 104 pares en vez de 52 (R2) lleva
+  la cobertura del 95 % de 0,88 a 0,91 en los dos horizontes decisivos, con la del 50 % en
+  0,54 a 0,56, y no cuesta WIS a h = 4 (lo baja 3 %) ni más del 3 % a h = 8. En la serie del
+  tablero no corrige la cobertura de 2026, que es el caso que motivó la pregunta. Resultado:
+  positivo para el tramo de OpenDengue (candidato a reemplazar N_CAL = 52 por 104 en la base
+  de M0, con su propia firma), negativo para C en 2025-2026. Las capas asimétrica, adaptativa
+  y sobre la mezcla no pasan.
+- Pregunta B: negativa. La corrección del sesgo reciente empeora en las dos series. El peso
+  por desempeño reciente mejora a 1 y 2 semanas y empeora a 4 y 8 en el tablero; con una
+  ventana larga (52) deja de empeorar pero sigue sin ganar a 3 semanas. A 1 semana, T sola
+  (WIS 4,7) y C con C1 (4,8) son mejores que C (6,0) y que la persistencia suavizada (5,7),
+  lo que indica que el peso 0,5 de M0 es alto para h = 1 y 2 en esta serie; decidir un peso
+  por horizonte requiere otra firma y semanas posteriores a ella.
+
+### Limitaciones
+
+- 2025 y 2026 sirvieron para elegir C; cualquier capa sobre C evaluada ahí es, como mínimo,
+  parcialmente dentro de muestra. La cobertura de 2026 se mide sobre 29 semanas objetivo.
+- Las capas R3, S1 y C1 dependen de pares recientes; en la validación de OpenDengue las
+  cadenas solo contienen pares con objetivo en los años de validación, de modo que al inicio
+  de 2021 esas capas parten sin historia reciente (enmienda 1).
+- Las cifras de 2025-2026 se calcularon sin ONI de 2025-2026 en la base (enmienda 6) y no
+  coinciden exactamente con las del artefacto servido.
+- 4 capas de calibración, 2 de corto plazo y 7 sensibilidades sobre los mismos años: el
+  resultado positivo de R2 en la validación se obtuvo con 3 candidatos; su confirmación
+  requiere semanas no vistas.
