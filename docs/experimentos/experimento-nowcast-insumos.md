@@ -113,3 +113,20 @@ Script `backend/ingestion/experimento_nowcast_insumos.py`, solo lectura sobre Po
 semillas fijas, 4 procesos de un hilo cada uno y `nice`. Salida en
 `backend/ingestion/data/interim/nowcast/insumos_*.json` y copia versionada en
 `docs/agentes/mejora-predictor/resultados-nuevos/`.
+
+## Enmiendas
+
+### 2026-10-02, antes de la primera corrida: control de reproducción en el tramo del tablero
+
+La base semilla de esta rama no contiene valores de ONI para 2025 ni 2026 (`modelo-actual.md`,
+sección 3.5), y el entorno de esta rama no alcanza al servidor de NOAA para cargarlos. El
+código arrastra el último valor de 2024. En una prueba del script con 12 orígenes, I0
+reproduce con diferencia 0 los cuantiles de la validación (objetivos hasta 2024) y difiere en
+hasta 1,8 casos por cuantil (sobre medianas de unos 100 casos) en los orígenes desde 2025-02,
+donde entran pares con objetivo en 2025. La diferencia es compatible con un ONI distinto en
+2025 y no se puede cerrar desde aquí.
+
+El control queda así: en la validación la diferencia debe ser 0 (sin cambio); en el tramo del
+tablero el script reporta el número de predicciones comparadas, la diferencia máxima por
+cuantil y la diferencia máxima relativa de la mediana, sin detenerse. Las comparaciones entre
+variantes dentro del tablero no se ven afectadas, porque todas usan los mismos datos.

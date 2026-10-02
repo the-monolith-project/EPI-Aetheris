@@ -167,3 +167,8 @@ las fases ni los criterios.
 5. **Orígenes sin predicción.** Los orígenes que R2 deja sin predicción por el mínimo de 224
    pares se excluyen de la comparación de todas las capas en ese horizonte, para que todas se
    midan sobre los mismos orígenes; el número excluido se reporta.
+6. **Control de reproducción en la fase B.** Por la misma razón que en la enmienda del
+   experimento de insumos (sin ONI de 2025-2026 en la semilla de esta rama), M0 con R0 y C con
+   R0 reproducen con diferencia 0 la validación, y en 2025-2026 el script reporta la diferencia
+   máxima frente a `mejora_confirmacion.json` y `tendencia_verificacion.json` sin detenerse.
+   Todas las capas de la fase B se comparan sobre la misma corrida.
