@@ -268,6 +268,11 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
     </script>
 
     <script>
+      import { iniciarTerminos } from '../lib/terminos-cliente';
+      iniciarTerminos();
+    </script>
+
+    <script>
       // Registro del service worker (ADR 0014). Solo en producción: en dev el
       // cache del shell tapa los cambios en caliente de Astro.
       const apiBase = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';

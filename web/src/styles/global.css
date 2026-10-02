@@ -907,3 +907,69 @@ html[data-animaciones='off'] ::after {
 :root[data-theme='dark'] .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
 }
+
+/* Términos del glosario dentro del texto (src/lib/terminos.ts). El color solo
+   no basta para distinguirlos, así que llevan además subrayado punteado. */
+.termino-glosario-boton {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--color-termino);
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.termino-glosario-boton:hover,
+.termino-glosario-boton[aria-expanded='true'] {
+  text-decoration-style: solid;
+}
+.termino-glosario-nota {
+  inset: auto;
+  margin: 0;
+  width: max-content;
+  max-width: min(20rem, calc(100vw - 1rem));
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: left;
+  font-weight: 400;
+}
+.termino-glosario-nota:popover-open {
+  display: block;
+}
+.termino-glosario-titulo {
+  display: block;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.termino-glosario-definicion {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--color-ink-muted);
+}
+.termino-glosario-enlace {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+@media print {
+  .termino-glosario-nota {
+    display: none !important;
+  }
+  .termino-glosario-boton {
+    color: inherit;
+    text-decoration: none;
+  }
+}

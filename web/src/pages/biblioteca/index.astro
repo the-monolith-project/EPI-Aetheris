@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import Icono from '../../components/Icono.astro';
 import type { CollectionEntry } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
+import { FICHAS, rutaFicha } from '../../fichas/registro';
 
 const entradas = (await getCollection('biblioteca')).sort(
   (a: CollectionEntry<'biblioteca'>, b: CollectionEntry<'biblioteca'>) =>
@@ -77,5 +78,38 @@ for (const entrada of entradas) {
         ))
       }
     </div>
+
+    <section class="mt-12 max-w-5xl" aria-labelledby="fichas-titulo">
+      <h2
+        id="fichas-titulo"
+        class="flex items-center gap-2.5 font-display text-lg font-semibold tracking-tight text-ink"
+      >
+        <Icono nombre="book-2" class="h-5 w-5 text-accent" />
+        Fichas enriquecidas
+      </h2>
+      <p
+        class="mt-2 max-w-3xl font-sans text-sm leading-relaxed text-ink-muted"
+      >
+        Explicaciones visuales, paso a paso, que complementan a los documentos
+        de arriba. Los documentos siguen siendo la referencia formal.
+      </p>
+      <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          FICHAS.map((ficha) => (
+            <a
+              href={rutaFicha(ficha.slug)}
+              class="card-elevated flex flex-col gap-2 rounded-2xl border border-border bg-surface p-5"
+            >
+              <h3 class="font-sans text-base font-semibold leading-snug text-ink">
+                {ficha.titulo}
+              </h3>
+              <p class="font-sans text-sm leading-relaxed text-ink-muted">
+                {ficha.subtitulo}
+              </p>
+            </a>
+          ))
+        }
+      </div>
+    </section>
   </main>
 </Layout>

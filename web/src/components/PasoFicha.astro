@@ -1,0 +1,20 @@
+---
+/**
+ * Un paso del hilo de una ficha enriquecida (FichaEnriquecida.astro): número,
+ * título, texto explicativo y, aparte, la parte visual.
+ */
+interface Props {
+  id: string;
+  numero: number;
+  titulo: string;
+}
+
+const { id, numero, titulo } = Astro.props;
+---
+
+<section class="paso" id={id} data-paso aria-labelledby={`${id}-titulo`}>
+  <span class="paso-nodo" aria-hidden="true">{numero}</span>
+  <h2 class="paso-titulo" id={`${id}-titulo`}>{titulo}</h2>
+  <div class="paso-texto"><slot /></div>
+  <div class="paso-visual"><slot name="visual" /></div>
+</section>

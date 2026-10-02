@@ -1,0 +1,113 @@
+---
+/**
+ * El país en contorno con un solo departamento relleno según su Iv, en la
+ * escala fija de 0 a 1. Solo se colorea uno: el cálculo de la ficha es para un
+ * departamento y no hay nada que recalcular en el resto. Los trazados se
+ * proyectan al construir la página (src/lib/geo-svg.ts); el laboratorio solo
+ * cambia cuál está relleno y con qué color.
+ */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { colorIv, gradienteCss, RAMPA_IV } from '../lib/colores';
+import { obtenerDepartamento } from '../lib/departamentos';
+import { proyectarDepartamentos, type GeoDepartamentos } from '../lib/geo-svg';
+import { formatearNumero } from '../lib/idoneidad';
+
+interface Props {
+  codigo: string;
+  /** Iv a pintar; `null` deja el departamento sin relleno. */
+  iv: number | null;
+  /** Identificador del bloque, para que el laboratorio lo encuentre. */
+  id?: string;
+}
+
+const { codigo, iv, id } = Astro.props;
+
+// No usar new URL('../../public/...', import.meta.url): en dev resuelve
+// contra el módulo y no contra la raíz del proyecto.
+const geo = JSON.parse(
+  readFileSync(join(process.cwd(), 'public/geo/slv-adm1.geojson'), 'utf8'),
+) as GeoDepartamentos;
+const mapa = proyectarDepartamentos(geo, 340);
+const nombre = obtenerDepartamento(codigo)?.nombre ?? codigo;
+const etiqueta =
+  iv === null
+    ? `Mapa de El Salvador con ${nombre} sin valor`
+    : `Mapa de El Salvador con ${nombre} pintado según un Iv de ${formatearNumero(iv, 2)}`;
+---
+
+<figure class="mapa-iv" id={id} data-mapa-iv>
+  <svg
+    viewBox={`0 0 ${mapa.ancho} ${mapa.alto}`}
+    role="img"
+    aria-label={etiqueta}
+    class="mapa-iv-svg"
+    data-mapa-iv-svg
+  >
+    {
+      mapa.departamentos.map((d) => (
+        <path
+          d={d.d}
+          data-codigo={d.codigo}
+          class:list={['mapa-iv-depto', { seleccionado: d.codigo === codigo }]}
+          style={
+            d.codigo === codigo && iv !== null
+              ? `--relleno:${colorIv(iv)}`
+              : undefined
+          }
+        />
+      ))
+    }
+  </svg>
+  <figcaption class="mapa-iv-leyenda">
+    <span class="mapa-iv-rampa" style={`background:${gradienteCss(RAMPA_IV)}`}
+    ></span>
+    <span class="mapa-iv-escala"
+      ><span>0</span><span>Iv</span><span>1</span></span
+    >
+  </figcaption>
+</figure>
+
+<style is:global>
+  .mapa-iv {
+    margin: 0;
+  }
+  .mapa-iv-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .mapa-iv-depto {
+    fill: var(--color-surface);
+    stroke: var(--color-ink-muted);
+    stroke-width: 0.8;
+    stroke-linejoin: round;
+    opacity: 0.55;
+    transition:
+      fill 0.7s ease,
+      opacity 0.3s;
+  }
+  .mapa-iv-depto.seleccionado {
+    fill: var(--relleno, var(--color-border));
+    stroke: var(--color-ink);
+    stroke-width: 1.6;
+    opacity: 1;
+  }
+  .mapa-iv-leyenda {
+    margin-top: 0.5rem;
+  }
+  .mapa-iv-rampa {
+    display: block;
+    height: 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 9999px;
+  }
+  .mapa-iv-escala {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-ink-muted);
+  }
+</style>

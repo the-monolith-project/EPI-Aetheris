@@ -1,5 +1,6 @@
 ---
 import PanelWorkspace from './analisis/PanelWorkspace.astro';
+import { rutaFicha } from '../fichas/registro';
 
 interface Props {
   codigo: string;
@@ -15,6 +16,13 @@ const { codigo, nombre } = Astro.props;
   data-departamento-clima={codigo}
   data-departamento-nombre={nombre}
 >
+  <p class="mt-3 font-sans text-xs text-ink-muted">
+    <a
+      href={rutaFicha('m1-idoneidad-biofisica')}
+      class="font-semibold text-accent underline underline-offset-2"
+      >Cómo se calcula la idoneidad biofísica</a
+    >, paso a paso y con un laboratorio.
+  </p>
   <div
     data-clima-grafica
     class="mt-4 min-h-[260px]"

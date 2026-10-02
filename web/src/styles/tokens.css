@@ -15,6 +15,8 @@
 
   /* "primario" hace de acento operativo (botones activos, enlaces, header). */
   --color-accent: #183e39;
+  /* Términos del glosario dentro del texto (src/lib/terminos.ts). */
+  --color-termino: #5b3fa8;
   --color-accent-ink: #ffffff;
 
   /* Cabecera del sitio: el acento oscuro de siempre, fijo en ambos temas
@@ -87,6 +89,7 @@
     --color-ink-muted: #a5b3ae;
     --color-border: #2a3531;
     --color-accent: #8fd6c9;
+    --color-termino: #c3b5f7;
     --color-accent-ink: #04120f;
     --color-header: #0b2a26;
     --color-live-ink: #2b0d08;
@@ -106,6 +109,7 @@
   --color-ink-muted: #a5b3ae;
   --color-border: #2a3531;
   --color-accent: #8fd6c9;
+  --color-termino: #c3b5f7;
   --color-accent-ink: #04120f;
   --color-header: #0b2a26;
   --color-live-ink: #2b0d08;

@@ -34,6 +34,17 @@ export function colorCasos(conteo: number | null, maximo: number): string {
   return escalaCasos(Math.min(1, Math.max(0, conteo / maximo))).hex();
 }
 
+// Rampa de la capa de idoneidad biofísica (Iv) del mapa y de la ficha de M1.
+export const RAMPA_IV = ['#e0d6f7', '#bfa6ef', '#9a75e0', '#6f42c1', '#4a1a8a'];
+
+const escalaIv = chroma.scale(RAMPA_IV).mode('lab').domain([0, 1]);
+
+/** Color de un Iv sobre la escala fija de 0 a 1. */
+export function colorIv(iv: number | null): string {
+  if (iv === null) return COLOR_SIN_DATO;
+  return escalaIv(Math.min(1, Math.max(0, iv))).hex();
+}
+
 export function gradienteCss(rampa: string[]): string {
   return `linear-gradient(90deg, ${rampa.join(', ')})`;
 }
