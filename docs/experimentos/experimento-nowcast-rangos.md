@@ -145,3 +145,25 @@ procesos de un hilo y `nice`. La cadena de M0 guarda, por origen, los cuantiles 
 y las predicciones del conjunto de calibración, de modo que todas las capas se calculan sobre
 la misma corrida. Salida en `backend/ingestion/data/interim/nowcast/rangos_*.json` y copia
 versionada en `docs/agentes/mejora-predictor/resultados-nuevos/`.
+
+## Enmiendas
+
+### 2026-10-02, antes de la primera corrida
+
+Decisiones de implementación que el protocolo no fijaba. Ninguna cambia las capas elegibles,
+las fases ni los criterios.
+
+1. **Ventana de recencia de S1 y C1.** Las cadenas de validación solo contienen pares con
+   objetivo en los años de validación, de modo que para los primeros orígenes de 2021 los
+   "últimos pares conocidos" serían de 2019. Para que la corrección sea reciente de verdad, S1
+   y C1 solo consideran pares cuyo objetivo cae dentro de las 52 semanas anteriores a la fecha
+   del origen, y dentro de ellos toman los últimos `K`. Con menos de 4 pares (S1) u 8 pares (C1)
+   no se corrige y el peso queda en 0,5.
+2. **Empates en C1.** Si varios pesos dan el mismo WIS medio, se elige el más cercano a 0,5.
+3. **Mediana en S1.** El sesgo se mide con la mediana calibrada por R0, que coincide con la del
+   modelo sin calibrar porque CQR-r no mueve la mediana.
+4. **R3 durante 2020.** No hay pares con objetivo en 2020 en la cadena; el nivel adaptado se
+   conserva sin actualizar entre el último par de 2019 y el primero de 2021.
+5. **Orígenes sin predicción.** Los orígenes que R2 deja sin predicción por el mínimo de 224
+   pares se excluyen de la comparación de todas las capas en ese horizonte, para que todas se
+   midan sobre los mismos orígenes; el número excluido se reporta.
