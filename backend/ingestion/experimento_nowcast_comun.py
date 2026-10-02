@@ -465,3 +465,27 @@ def referencia(nombre: str, serie: Serie, o: int, h: int, excluir: frozenset[int
     p_o = _pool_ref(serie, int(serie.anio[o]), int(serie.semana[o]), excluir, anios_excluidos, anio_min)
     ajuste = np.log1p(np.median(p_t)) - np.log1p(np.median(p_o)) if len(p_o) >= 3 and len(p_t) >= 3 else 0.0
     return np.clip(np.expm1(serie.z[o] + ajuste + np.quantile(d - np.median(d), CUANTILES)), 0, None)
+
+
+# --- copia versionada ---------------------------------------------------------
+
+
+def redondear(obj, decimales: int = 3):
+    """Redondea los flotantes de una estructura anidada (para la copia
+    versionada de los resultados; la salida local conserva la precision)."""
+    if isinstance(obj, float):
+        return round(obj, decimales)
+    if isinstance(obj, dict):
+        return {k: redondear(v, decimales) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [redondear(v, decimales) for v in obj]
+    return obj
+
+
+def copia_versionada(origen, destino) -> None:
+    import json
+    from pathlib import Path
+    datos = json.loads(Path(origen).read_text(encoding="utf-8"))
+    Path(destino).parent.mkdir(parents=True, exist_ok=True)
+    Path(destino).write_text(json.dumps(redondear(datos), ensure_ascii=False, separators=(",", ":")) + "\n",
+                             encoding="utf-8")

@@ -130,3 +130,155 @@ El control queda así: en la validación la diferencia debe ser 0 (sin cambio); 
 tablero el script reporta el número de predicciones comparadas, la diferencia máxima por
 cuantil y la diferencia máxima relativa de la mediana, sin detenerse. Las comparaciones entre
 variantes dentro del tablero no se ven afectadas, porque todas usan los mismos datos.
+
+## Resultados (ejecución 2026-10-02)
+
+Corrida única de `experimento_nowcast_insumos.py` sobre la base de esta rama (Postgres 16
+local, semillas `seed_datos_reales.sql` y `seed_tablero_minsal.sql`). Salida completa en
+`docs/agentes/mejora-predictor/resultados-nuevos/insumos.json` (flotantes redondeados a 3
+decimales; la copia local en `backend/ingestion/data/interim/nowcast/insumos.json` conserva la
+precisión). Seis variantes, ninguna añadida después de ver resultados.
+
+### Controles
+
+- Garantía anti-fuga verificada en 13 orígenes a h = 4, con el control negativo rompiendo como
+  se espera.
+- I0 reproduce las 2.044 predicciones de M0 de `mejora_validacion.json` (2019, 2021-2024,
+  h = 1 a 8) con diferencia máxima 0,000.
+- En el tramo del tablero, I0 difiere de `mejora_confirmacion.json` desde el origen 2025-01-05
+  (647 predicciones comparadas; diferencia máxima por cuantil 161 casos en un cuantil extremo
+  a h = 7; diferencia relativa de la mediana: media entre 0,6 % y 1,4 % según el horizonte,
+  máxima 9,2 %). Es lo previsto en la enmienda: la semilla no trae ONI de 2025-2026.
+- Mutación de I3 a h = 4 (etiquetas permutadas): el WIS pasa de 57,4 a 144,6.
+
+### Validación (2019, 2021-2024): efecto de cada insumo
+
+Skill agrupado de cada variante contra I0 (`1 − WIS_variante / WIS_I0`; positivo = la variante
+es mejor que M0) y, entre paréntesis, años en que la variante mejora / empeora a I0:
+
+| h | I1 sin ONI | I2 sin clima | I3 sin clima ni ONI | I4 sin año | I5 ceros repartidos |
+|---|---|---|---|---|---|
+| 1 | +0,02 (5/0) | −0,01 (2/3) | −0,01 (3/2) | +0,01 (4/1) | +0,02 (1/4) |
+| 2 | −0,00 (3/2) | −0,03 (3/2) | −0,07 (4/1) | −0,03 (2/3) | −0,01 (1/4) |
+| 3 | +0,01 (3/2) | −0,04 (3/2) | −0,05 (3/2) | +0,01 (2/3) | −0,03 (1/4) |
+| 4 | +0,02 (3/2) | −0,02 (3/2) | −0,01 (3/2) | −0,02 (1/4) | −0,01 (1/4) |
+| 5 | +0,03 (3/2) | −0,03 (3/2) | −0,03 (3/2) | −0,04 (2/3) | −0,03 (1/4) |
+| 6 | +0,05 (5/0) | +0,00 (3/2) | +0,03 (3/2) | −0,08 (2/3) | −0,05 (0/5) |
+| 7 | +0,03 (5/0) | −0,02 (2/3) | −0,03 (3/2) | −0,05 (1/4) | −0,04 (2/3) |
+| 8 | +0,03 (5/0) | −0,04 (3/2) | −0,05 (3/2) | −0,04 (1/4) | −0,03 (1/4) |
+
+Veredicto con el criterio fijado (|s| ≥ 0,03 a h = 4 y a h = 8 con 4 de 5 años en el mismo
+sentido): ningún insumo alcanza el umbral. Los cuatro quedan como sin efecto medible.
+
+Lo que las cifras muestran por debajo del umbral:
+
+- Quitar el ONI (I1) nunca empeora de forma agrupada y mejora en 5 de 5 años a h = 1, 6, 7 y
+  8; a h = 4 la mejora es de 0,017, por debajo del umbral. El ONI, con el arrastre mensual
+  que usa M0, no aporta en esta serie.
+- Quitar el clima (I2) empeora entre 0,02 y 0,04 en seis de los ocho horizontes, pero el
+  efecto no es uniforme por año: a h = 4, sin clima el skill de 2022 pasa de −0,15 a −0,47 y
+  el de 2024 de +0,03 a +0,26. El clima ayuda en el año de brote medio (2022) y estorba en el
+  año de serie suavizada (2024). Con 3 años mejor y 2 peor, no es un aporte sostenido.
+- Quitar el año (I4) empeora a 5 a 8 semanas (−0,04 a −0,08) y no cambia a 1 a 4. El año de
+  la semana objetivo actúa como marca de régimen para los horizontes largos.
+
+Métricas completas contra la persistencia limpia (WIS; skill medio por año con años ganados;
+cobertura 50 %; cobertura 95 %; fracción bajo la mediana):
+
+| h | I0 | I1 | I2 | I3 | I4 | I5 |
+|---|---|---|---|---|---|---|
+| 1 | 35,6; −0,04 (2/5); 0,58; 0,92; 0,46 | 34,9; −0,02 (3/5); 0,54; 0,93; 0,47 | 36,1; −0,05 (3/5); 0,58; 0,93; 0,44 | 35,9; −0,05 (3/5); 0,56; 0,92; 0,47 | 35,3; −0,02 (3/5); 0,58; 0,92; 0,48 | 35,1; −0,05 (2/5); 0,56; 0,92; 0,49 |
+| 2 | 37,9; +0,06 (3/5); 0,60; 0,91; 0,45 | 38,1; +0,05 (3/5); 0,55; 0,92; 0,49 | 39,2; +0,04 (3/5); 0,58; 0,91; 0,43 | 40,7; +0,00 (3/5); 0,56; 0,92; 0,48 | 39,1; +0,04 (2/5); 0,59; 0,90; 0,48 | 38,3; +0,04 (3/5); 0,57; 0,93; 0,47 |
+| 3 | 46,4; +0,05 (3/5); 0,56; 0,90; 0,46 | 45,8; +0,06 (3/5); 0,53; 0,93; 0,47 | 48,3; +0,02 (3/5); 0,53; 0,91; 0,49 | 48,5; +0,03 (3/5); 0,53; 0,91; 0,50 | 46,1; +0,05 (3/5); 0,58; 0,91; 0,48 | 47,9; −0,00 (3/5); 0,58; 0,92; 0,46 |
+| 4 | 56,6; +0,05 (4/5); 0,55; 0,88; 0,47 | 55,7; +0,06 (4/5); 0,55; 0,90; 0,49 | 58,0; +0,03 (3/5); 0,55; 0,89; 0,48 | 57,4; +0,03 (3/5); 0,51; 0,89; 0,50 | 57,5; +0,03 (3/5); 0,55; 0,89; 0,53 | 57,3; +0,00 (3/5); 0,55; 0,90; 0,45 |
+| 5 | 61,4; +0,12 (4/5); 0,56; 0,90; 0,47 | 59,8; +0,13 (4/5); 0,56; 0,92; 0,49 | 63,0; +0,08 (3/5); 0,57; 0,89; 0,49 | 63,5; +0,07 (3/5); 0,52; 0,93; 0,51 | 63,9; +0,09 (3/5); 0,57; 0,91; 0,53 | 63,6; +0,06 (4/5); 0,59; 0,91; 0,42 |
+| 6 | 67,9; +0,13 (4/5); 0,54; 0,90; 0,47 | 64,4; +0,17 (4/5); 0,54; 0,92; 0,51 | 67,8; +0,10 (4/5); 0,55; 0,87; 0,48 | 66,1; +0,12 (4/5); 0,53; 0,94; 0,50 | 73,3; +0,08 (3/5); 0,56; 0,88; 0,51 | 71,3; +0,07 (4/5); 0,58; 0,92; 0,43 |
+| 7 | 73,5; +0,16 (4/5); 0,57; 0,89; 0,42 | 71,2; +0,19 (5/5); 0,56; 0,91; 0,47 | 75,0; +0,12 (4/5); 0,56; 0,87; 0,49 | 75,8; +0,10 (3/5); 0,51; 0,91; 0,49 | 77,2; +0,13 (3/5); 0,57; 0,89; 0,49 | 76,6; +0,07 (3/5); 0,55; 0,91; 0,42 |
+| 8 | 78,8; +0,18 (4/5); 0,57; 0,88; 0,43 | 76,3; +0,21 (5/5); 0,53; 0,90; 0,48 | 82,2; +0,14 (4/5); 0,61; 0,88; 0,46 | 82,4; +0,13 (3/5); 0,52; 0,89; 0,49 | 82,0; +0,16 (4/5); 0,62; 0,89; 0,47 | 81,5; +0,12 (3/5); 0,58; 0,90; 0,43 |
+
+WIS de la persistencia limpia por horizonte: 35,2; 40,3; 48,7; 58,8; 67,7; 76,4; 85,5; 95,3
+(n = 259 a 252 orígenes). Contra la referencia publicada todas las variantes ganan en 4 o 5 de
+5 años en todos los horizontes (skill medio entre +0,23 y +0,39); esas tablas están en el JSON.
+
+Skill por año contra la limpia en los horizontes decisivos:
+
+| h = 4 | 2019 | 2021 | 2022 | 2023 | 2024 | medio |
+|---|---|---|---|---|---|---|
+| I0 | +0,06 | +0,04 | −0,15 | +0,26 | +0,03 | +0,05 |
+| I1 | +0,09 | +0,02 | −0,16 | +0,28 | +0,04 | +0,06 |
+| I2 | +0,10 | −0,03 | −0,47 | +0,29 | +0,26 | +0,03 |
+| I3 | +0,13 | −0,05 | −0,49 | +0,31 | +0,25 | +0,03 |
+| I4 | +0,05 | −0,03 | −0,18 | +0,25 | +0,06 | +0,03 |
+| I5 | +0,10 | −0,01 | −0,23 | +0,14 | +0,01 | +0,00 |
+
+| h = 8 | 2019 | 2021 | 2022 | 2023 | 2024 | medio |
+|---|---|---|---|---|---|---|
+| I0 | +0,22 | +0,09 | −0,02 | +0,15 | +0,47 | +0,18 |
+| I1 | +0,23 | +0,13 | +0,04 | +0,16 | +0,50 | +0,21 |
+| I2 | +0,24 | +0,01 | −0,25 | +0,15 | +0,54 | +0,14 |
+| I3 | +0,27 | −0,04 | −0,34 | +0,20 | +0,55 | +0,13 |
+| I4 | +0,20 | +0,12 | −0,11 | +0,11 | +0,46 | +0,16 |
+| I5 | +0,22 | +0,14 | −0,04 | −0,02 | +0,30 | +0,12 |
+
+### Validación: I5 (ceros repartidos) como candidato
+
+I5 no pasa. A h = 4 y a h = 8 su WIS agrupado supera al de I0 (57,3 contra 56,6 y 81,5 contra
+78,8), gana en 3 de 5 años contra la limpia y su skill medio es +0,00 y +0,12. La cobertura
+queda en banda (0,90 al 95 % en los dos horizontes). Repartir los ceros entre las dos semanas
+como insumo no acerca la predicción al dato publicado, que sigue teniendo el cero y el doble.
+
+### Serie del tablero (2025-S1 a 2026-S37; se reporta, no decide)
+
+M0 con cada insumo contra la persistencia suavizada (WIS; skill agrupado con 2025 y 2026
+entre paréntesis; cobertura 50 %; cobertura 95 %; fracción bajo la mediana; n = 80 u 81):
+
+| h | I0 | I1 | I2 | I3 | I4 | I5 |
+|---|---|---|---|---|---|---|
+| 1 | 10,1; −0,77 (−0,94, −0,61); 0,46; 0,82; 0,68 | 10,1; −0,77 (−0,87, −0,66); 0,34; 0,80; 0,70 | 10,3; −0,81 (−0,99, −0,63); 0,38; 0,85; 0,68 | 10,1; −0,77 (−0,91, −0,63); 0,45; 0,85; 0,66 | 9,9; −0,74 (−0,90, −0,60); 0,42; 0,85; 0,68 | 9,3; −0,64 (−0,83, −0,46); 0,39; 0,81; 0,65 |
+| 4 | 25,4; −0,14 (−0,33, −0,00); 0,30; 0,73; 0,72 | 25,4; −0,14 (−0,33, −0,00); 0,28; 0,75; 0,73 | 24,6; −0,10 (−0,26, +0,01); 0,28; 0,79; 0,67 | 25,4; −0,14 (−0,30, −0,02); 0,28; 0,78; 0,65 | 25,1; −0,12 (−0,31, +0,01); 0,33; 0,74; 0,70 | 23,9; −0,07 (−0,18, +0,01); 0,31; 0,68; 0,70 |
+| 8 | 31,2; +0,08 (+0,11, +0,05); 0,22; 0,72; 0,67 | 31,4; +0,08 (+0,12, +0,03); 0,25; 0,75; 0,68 | 32,1; +0,06 (+0,09, +0,01); 0,16; 0,73; 0,68 | 32,6; +0,04 (+0,08, +0,00); 0,17; 0,77; 0,68 | 30,9; +0,09 (+0,11, +0,07); 0,26; 0,67; 0,65 | 29,6; +0,13 (+0,20, +0,06); 0,21; 0,77; 0,65 |
+
+Con la serie del tablero M0 pierde contra la persistencia a 1 a 5 semanas con cualquier
+insumo; ninguna ablación cambia ese cuadro. Mezcla C (peso 0,5 con la tendencia amortiguada)
+construida con cada variante, misma referencia:
+
+| h | I0 | I1 | I2 | I3 | I4 | I5 |
+|---|---|---|---|---|---|---|
+| 1 | 6,0; −0,05 (−0,10, −0,00); 0,55; 0,94; 0,64 | 5,9; −0,04 (−0,07, −0,00); 0,54; 0,95; 0,65 | 6,0; −0,06 (−0,10, −0,02); 0,55; 0,94; 0,57 | 5,9; −0,04 (−0,08, −0,01); 0,55; 0,94; 0,60 | 5,9; −0,04 (−0,08, +0,00); 0,55; 0,95; 0,65 | 5,7; +0,00 (−0,07, +0,08); 0,56; 0,94; 0,64 |
+| 2 | 11,2; +0,09 (+0,02, +0,14); 0,49; 0,90; 0,62 | 11,3; +0,08 (+0,01, +0,13); 0,47; 0,90; 0,62 | 11,3; +0,08 (+0,03, +0,12); 0,49; 0,90; 0,57 | 11,2; +0,09 (+0,05, +0,12); 0,53; 0,90; 0,58 | 11,2; +0,09 (+0,02, +0,14); 0,51; 0,90; 0,62 | 10,6; +0,14 (+0,11, +0,16); 0,53; 0,90; 0,59 |
+| 3 | 15,9; +0,12 (+0,08, +0,14); 0,43; 0,89; 0,59 | 15,9; +0,11 (+0,09, +0,13); 0,49; 0,89; 0,59 | 15,7; +0,12 (+0,12, +0,13); 0,46; 0,89; 0,56 | 15,9; +0,11 (+0,11, +0,11); 0,49; 0,89; 0,57 | 15,8; +0,12 (+0,08, +0,15); 0,48; 0,89; 0,60 | 15,4; +0,14 (+0,14, +0,15); 0,48; 0,86; 0,54 |
+| 4 | 19,3; +0,14 (+0,13, +0,14); 0,40; 0,91; 0,60 | 19,3; +0,14 (+0,13, +0,15); 0,43; 0,91; 0,58 | 19,1; +0,14 (+0,17, +0,13); 0,41; 0,89; 0,53 | 19,4; +0,13 (+0,15, +0,12); 0,44; 0,90; 0,57 | 19,1; +0,15 (+0,14, +0,15); 0,43; 0,88; 0,59 | 18,6; +0,17 (+0,19, +0,15); 0,41; 0,88; 0,57 |
+| 5 | 21,9; +0,15 (+0,15, +0,16); 0,42; 0,89; 0,59 | 22,1; +0,15 (+0,15, +0,15); 0,41; 0,90; 0,60 | 22,3; +0,14 (+0,16, +0,12); 0,43; 0,88; 0,56 | 22,4; +0,13 (+0,17, +0,11); 0,46; 0,86; 0,58 | 22,0; +0,15 (+0,15, +0,15); 0,40; 0,91; 0,59 | 20,9; +0,19 (+0,22, +0,17); 0,44; 0,86; 0,56 |
+| 6 | 24,2; +0,16 (+0,20, +0,13); 0,40; 0,91; 0,60 | 24,3; +0,16 (+0,20, +0,12); 0,40; 0,91; 0,60 | 24,7; +0,14 (+0,19, +0,10); 0,41; 0,90; 0,60 | 24,9; +0,14 (+0,19, +0,09); 0,43; 0,90; 0,60 | 24,0; +0,17 (+0,20, +0,14); 0,38; 0,90; 0,60 | 23,2; +0,19 (+0,25, +0,15); 0,43; 0,94; 0,57 |
+| 7 | 26,9; +0,15 (+0,22, +0,08); 0,40; 0,91; 0,57 | 26,6; +0,16 (+0,23, +0,10); 0,40; 0,91; 0,57 | 27,3; +0,14 (+0,22, +0,06); 0,40; 0,91; 0,58 | 27,5; +0,13 (+0,22, +0,05); 0,43; 0,91; 0,59 | 26,4; +0,17 (+0,24, +0,10); 0,40; 0,91; 0,56 | 25,9; +0,18 (+0,26, +0,11); 0,38; 0,91; 0,56 |
+| 8 | 28,6; +0,16 (+0,23, +0,09); 0,35; 0,89; 0,56 | 28,8; +0,15 (+0,23, +0,08); 0,37; 0,89; 0,56 | 28,8; +0,15 (+0,24, +0,07); 0,41; 0,94; 0,62 | 29,0; +0,15 (+0,23, +0,06); 0,40; 0,93; 0,62 | 28,3; +0,17 (+0,24, +0,10); 0,33; 0,91; 0,56 | 27,7; +0,19 (+0,27, +0,10); 0,40; 0,94; 0,57 |
+
+WIS de la persistencia suavizada por horizonte: 5,7; 12,3; 17,9; 22,4; 25,9; 28,8; 31,7;
+34,0. Skill de C con cada variante contra C con I0: entre −0,03 y +0,02 para I1 a I4 en todos
+los horizontes; I5 entre +0,03 y +0,05 en los ocho. En este tramo C con I5 cumpliría las tres
+condiciones del tablero a h = 4 y h = 8, pero no decide porque I5 no pasó la validación, y
+2025-2026 sirvieron para elegir C.
+
+Estas cifras de 2025-2026 se calcularon sin ONI de 2025-2026 en la base (enmienda) y no
+coinciden exactamente con el artefacto servido (`nowcast_dengue.json`: skill 0,134 a h = 4 con
+cobertura 0,39 y 0,91; aquí C con I0 da 0,14, 0,40 y 0,91).
+
+### Veredicto
+
+- Clima, ONI, año y tratamiento de los ceros: sin efecto medible con el umbral fijado. El sitio
+  puede seguir diciendo que el modelo usa clima y ONI como insumo; no puede decir que mejoran
+  la predicción. Retirar el ONI no empeoraría nada medible (es la variante con mejor cifra en
+  todos los horizontes salvo h = 2) y simplificaría la carga de datos; retirar el clima costaría
+  entre 0,02 y 0,04 de WIS agrupado a 2 a 8 semanas, concentrado en 2022. Ninguna de las dos
+  cosas se decide aquí.
+- I5 (ceros repartidos): resultado negativo en la validación.
+
+### Limitaciones
+
+- Una sola serie y cinco temporadas de validación: diferencias de 0,02 a 0,03 en skill
+  agrupado quedan dentro de lo que un año mueve (2022 solo decide el signo de I2).
+- La ablación quita variables sin reajustar hiperparámetros; un modelo sin clima podría
+  beneficiarse de otra configuración, pero eso sería un barrido sobre los años de validación
+  que el protocolo excluye.
+- El ONI entra con arrastre mensual y, en 2025-2026, con el valor de diciembre de 2024 en toda
+  la ventana; la ablación mide ese insumo tal como M0 lo usa, no el valor del ENSO en general.

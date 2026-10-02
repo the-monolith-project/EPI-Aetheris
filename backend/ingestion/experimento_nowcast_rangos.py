@@ -22,7 +22,6 @@ Uso:
 from __future__ import annotations
 
 import json
-import shutil
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -424,8 +423,7 @@ def main() -> None:
     if LIMITE_ORIGENES:
         print(f"-> {out}")
         return
-    DIR_VERSIONADO.mkdir(parents=True, exist_ok=True)
-    shutil.copy(out, DIR_VERSIONADO / "rangos.json")
+    com.copia_versionada(out, DIR_VERSIONADO / "rangos.json")  # flotantes redondeados a 3 decimales
     print(f"-> {out} y {DIR_VERSIONADO / 'rangos.json'}")
 
 
