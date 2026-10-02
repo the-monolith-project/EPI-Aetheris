@@ -11,6 +11,8 @@ Cada función del sistema tiene un contrato visible: qué mide, qué la alimenta
 
 Responde qué tan favorable es el clima de un departamento-semana para *Aedes aegypti*, en una escala continua 0–1.
 
+Para seguir el cálculo con ejemplos y un laboratorio, ver la [ficha enriquecida de M1](/biblioteca/fichas/m1-idoneidad-biofisica).
+
 **Datos.** Open-Meteo: `temp_media` y `humedad_relativa_media` de ERA5-Land; `precipitation_sum` de ERA5. Semanas con alguna de las tres variables ausente se omiten; no se imputa.
 
 **Fórmulas** (mismas constantes que el experimento de lead time del 18 de agosto de 2026):
