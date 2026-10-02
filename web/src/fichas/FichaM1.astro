@@ -1,0 +1,411 @@
+---
+/**
+ * Contenido de la ficha enriquecida de M1 (idoneidad biofísica). Seis pasos,
+ * de la fuente de los datos al laboratorio. Los valores del ejemplo son
+ * ilustrativos: sirven para seguir el cálculo, no son una semana medida.
+ */
+import LaboratorioIv from '../components/LaboratorioIv.astro';
+import MapaDepartamentoIv from '../components/MapaDepartamentoIv.astro';
+import PasoFicha from '../components/PasoFicha.astro';
+import Termino from '../components/Termino.astro';
+import {
+  CURVAS_IV,
+  ORDEN_FACTORES,
+  curvaIv,
+  textoEntrada,
+} from '../lib/curvas-iv-config';
+import { colorIv } from '../lib/colores';
+import { desgloseIv, formatearNumero } from '../lib/idoneidad';
+
+const f2 = (n: number) => formatearNumero(n, 2);
+
+// Una semana de ejemplo: siete días de temperatura y humedad, y la lluvia de
+// la semana anterior más la de la actual.
+const temperaturas = [26, 27, 28, 27, 26, 28, 27];
+const humedades = [60, 64, 70, 66, 62, 68, 65];
+const lluviaAnterior = 10;
+const lluviaDias = [2, 0, 14, 6, 0, 3, 5];
+const dias = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+const suma = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+const media = (xs: number[]) => suma(xs) / xs.length;
+const lluviaSemana = suma(lluviaDias);
+
+// Las entradas del ejemplo salen de los datos diarios de arriba.
+const entradas = {
+  temperatura: media(temperaturas),
+  humedad: media(humedades),
+  lluvia: lluviaAnterior + lluviaSemana,
+};
+const d = desgloseIv(entradas);
+const factores = { ft: d.fT, fr: d.fR, fh: d.fH };
+const color = colorIv(d.iv);
+const maxLluvia = Math.max(...lluviaDias);
+---
+
+<PasoFicha id="fuente" numero={1} titulo="De dónde sale el dato">
+  <p>
+    El <Termino clave="iv">Iv</Termino> no usa casos. Usa tres variables del clima
+    de cada departamento, que se descargan de Open-Meteo, un servicio que reúne datos
+    de reanálisis climático.
+  </p>
+  <p>
+    La temperatura y la humedad relativa vienen de ERA5-Land. La lluvia viene de
+    ERA5. Se piden los valores diarios del punto central de cada uno de los 14
+    departamentos y llegan con unos cinco días de retraso.
+  </p>
+  <div slot="visual" class="ficha-rejilla">
+    <div class="ficha-tarjeta">
+      <strong>Temperatura</strong>
+      <span>ERA5-Land · media diaria</span>
+    </div>
+    <div class="ficha-tarjeta">
+      <strong>Humedad relativa</strong>
+      <span>ERA5-Land · media diaria</span>
+    </div>
+    <div class="ficha-tarjeta">
+      <strong>Lluvia</strong>
+      <span>ERA5 · suma diaria</span>
+    </div>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="semana" numero={2} titulo="Del día a la semana epidemiológica">
+  <p>
+    El sistema trabaja por <Termino clave="semana-epidemiologica"
+      >semana epidemiológica</Termino
+    >. Los valores diarios se resumen así: la temperatura y la humedad, con el
+    promedio de los siete días; la lluvia, con la suma.
+  </p>
+  <p>
+    La función de lluvia no mira una sola semana sino dos: la actual y la
+    anterior. No cruza de un año a otro. Si falta alguna de las tres variables,
+    esa semana se omite en lugar de rellenarse.
+  </p>
+  <div slot="visual" class="ficha-semana">
+    <p class="ficha-nota">
+      Semana de ejemplo, con valores inventados para seguir el cálculo.
+    </p>
+    <div class="ficha-semana-rejilla">
+      <figure class="ficha-serie">
+        <figcaption>Temperatura diaria (°C)</figcaption>
+        <ul class="ficha-barras" aria-label="Temperatura de cada día">
+          {
+            temperaturas.map((t, i) => (
+              <li style={`--alto:${((t - 20) / 12) * 100}%`}>
+                <span class="ficha-barra-valor">{t}</span>
+                <span class="ficha-barra" />
+                <span class="ficha-barra-dia">{dias[i]}</span>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="ficha-resumen">
+          Promedio: <strong>{textoEntrada('ft', entradas.temperatura)}</strong>
+        </p>
+      </figure>
+      <figure class="ficha-serie">
+        <figcaption>Humedad relativa diaria (%)</figcaption>
+        <ul class="ficha-barras" aria-label="Humedad de cada día">
+          {
+            humedades.map((h, i) => (
+              <li style={`--alto:${h}%`}>
+                <span class="ficha-barra-valor">{h}</span>
+                <span class="ficha-barra" />
+                <span class="ficha-barra-dia">{dias[i]}</span>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="ficha-resumen">
+          Promedio: <strong>{textoEntrada('fh', entradas.humedad)}</strong>
+        </p>
+      </figure>
+      <figure class="ficha-serie">
+        <figcaption>Lluvia diaria de la semana (mm)</figcaption>
+        <ul class="ficha-barras" aria-label="Lluvia de cada día">
+          {
+            lluviaDias.map((r, i) => (
+              <li style={`--alto:${(r / maxLluvia) * 100}%`}>
+                <span class="ficha-barra-valor">{r}</span>
+                <span class="ficha-barra" />
+                <span class="ficha-barra-dia">{dias[i]}</span>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="ficha-resumen">
+          Suma: <strong>{lluviaSemana} mm</strong>. Con los {lluviaAnterior} mm de
+          la semana anterior: <strong
+            >{textoEntrada('fr', entradas.lluvia)}</strong
+          >
+        </p>
+      </figure>
+    </div>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="funciones" numero={3} titulo="Cada variable pasa por su función">
+  <p>
+    Cada resumen semanal entra a una función que lo traduce a un número entre 0
+    y 1: cuánto favorece esa variable al mosquito. Las curvas muestran la
+    función completa y el punto marca el valor de la semana de ejemplo.
+  </p>
+  <p>
+    Dos de las formas vienen de la literatura sobre <em>Aedes aegypti</em>. La
+    de humedad, en cambio, es una rampa simple propuesta por el equipo, porque
+    las fuentes de partida piden penalizar la humedad baja sin dar una fórmula.
+  </p>
+  <div slot="visual" class="ficha-curvas">
+    {
+      ORDEN_FACTORES.map((clave) => {
+        const c = CURVAS_IV[clave];
+        const valor = entradas[c.entrada];
+        return (
+          <figure class="ficha-curva">
+            <figcaption>
+              <strong>
+                {c.nombre} · {c.titulo}
+              </strong>
+              <span>{c.resumen}</span>
+            </figcaption>
+            <div
+              role="img"
+              aria-label={`Curva de ${c.nombre}. Con ${textoEntrada(clave, valor)} vale ${f2(factores[clave])}.`}
+              set:html={curvaIv(clave, valor)}
+            />
+            <p class="ficha-formula">{c.formula}</p>
+            <p class="ficha-resultado">
+              {textoEntrada(clave, valor)} → {c.nombre} ={' '}
+              <strong>{f2(factores[clave])}</strong>
+            </p>
+          </figure>
+        );
+      })
+    }
+  </div>
+</PasoFicha>
+
+<PasoFicha id="combinacion" numero={4} titulo="Las tres salidas se combinan">
+  <p>
+    Las tres salidas se multiplican. La temperatura y la humedad actúan como
+    puertas: si cualquiera vale cero, el Iv es cero. La lluvia pesa menos,
+    porque un clima seco no elimina el riesgo del todo: aporta entre 0,3 y 1 del
+    resultado.
+  </p>
+  <div slot="visual" class="ficha-combina">
+    <p class="ficha-formula ficha-formula-grande">
+      Iv = fT × (0,3 + 0,7 · fR) × fH
+    </p>
+    <p
+      class="ficha-cuenta"
+      aria-label={`Iv igual a ${f2(d.fT)} por ${f2(d.factorLluvia)} por ${f2(d.fH)}, que da ${f2(d.iv)}`}
+    >
+      <span><b>{f2(d.fT)}</b><small>fT</small></span>
+      <span aria-hidden="true">×</span>
+      <span
+        ><b>{f2(d.factorLluvia)}</b><small>0,3 + 0,7 · {f2(d.fR)}</small></span
+      >
+      <span aria-hidden="true">×</span>
+      <span><b>{f2(d.fH)}</b><small>fH</small></span>
+      <span aria-hidden="true">=</span>
+      <span class="ficha-cuenta-iv"><b>{f2(d.iv)}</b><small>Iv</small></span>
+    </p>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="color" numero={5} titulo="Del número al color">
+  <p>
+    El Iv de cada departamento se pinta con una rampa de violetas: más oscuro,
+    mayor idoneidad. En esta ficha la escala va fija de 0 a 1, para que el mismo
+    número siempre tenga el mismo color. El mapa del tablero, en cambio, reparte
+    los colores por cuantiles de la semana que se mira.
+  </p>
+  <div slot="visual" class="ficha-color">
+    <div class="ficha-color-mapa">
+      <MapaDepartamentoIv codigo="SV-SS" iv={d.iv} />
+    </div>
+    <p class="ficha-resultado">
+      <span
+        class="ficha-muestra"
+        style={`background:${color}`}
+        aria-hidden="true"></span>
+      Iv {f2(d.iv)} → este color en San Salvador.
+    </p>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="laboratorio" numero={6} titulo="Pruébalo">
+  <p>
+    Elige un departamento y mueve la temperatura, la lluvia y la humedad. Es una
+    simulación de la fórmula con los valores que pongas, no una medición. Junto
+    a ella aparece el último Iv que midió el sistema en ese departamento.
+  </p>
+  <p>
+    M1 describe el clima. No clasifica el riesgo de brote ni anticipa una
+    temporada.
+  </p>
+  <div slot="visual">
+    <LaboratorioIv />
+  </div>
+</PasoFicha>
+
+<style is:global>
+  .ficha-rejilla {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  }
+  .ficha-tarjeta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-bg);
+    font-family: var(--font-sans);
+  }
+  .ficha-tarjeta strong {
+    font-size: 0.95rem;
+    color: var(--color-ink);
+  }
+  .ficha-tarjeta span {
+    font-size: 0.8rem;
+    color: var(--color-ink-muted);
+  }
+  .ficha-nota {
+    margin-bottom: 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    color: var(--color-ink-muted);
+  }
+  .ficha-semana-rejilla,
+  .ficha-curvas {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  }
+  .ficha-serie,
+  .ficha-curva {
+    margin: 0;
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-bg);
+    font-family: var(--font-sans);
+  }
+  .ficha-serie figcaption,
+  .ficha-curva figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--color-ink-muted);
+  }
+  .ficha-serie figcaption {
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .ficha-curva figcaption strong {
+    font-size: 0.95rem;
+    color: var(--color-ink);
+  }
+  .ficha-barras {
+    display: flex;
+    gap: 0.35rem;
+    align-items: flex-end;
+    height: 7.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ficha-barras li {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.15rem;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--color-ink-muted);
+  }
+  .ficha-barra {
+    display: block;
+    width: 100%;
+    height: calc(var(--alto) * 0.7);
+    min-height: 2px;
+    border-radius: 3px 3px 0 0;
+    background: var(--color-termino);
+    opacity: 0.8;
+  }
+  .ficha-resumen,
+  .ficha-resultado {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--color-ink);
+  }
+  .ficha-formula {
+    margin-top: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--color-ink-muted);
+    overflow-wrap: anywhere;
+  }
+  .ficha-formula-grande {
+    font-size: clamp(0.95rem, 2.4vw, 1.25rem);
+    color: var(--color-ink);
+  }
+  .ficha-cuenta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 0.9rem;
+    align-items: center;
+    margin-top: 1rem;
+    font-family: var(--font-mono);
+  }
+  .ficha-cuenta span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .ficha-cuenta b {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .ficha-cuenta small {
+    font-size: 0.7rem;
+    color: var(--color-ink-muted);
+  }
+  .ficha-cuenta-iv {
+    padding: 0.4rem 0.9rem;
+    border: 2px solid var(--color-termino);
+    border-radius: 0.75rem;
+  }
+  .ficha-color {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem 2rem;
+    align-items: center;
+  }
+  .ficha-color-mapa {
+    flex: 0 1 18rem;
+    min-width: 12rem;
+  }
+  .ficha-muestra {
+    display: inline-block;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-right: 0.4rem;
+    vertical-align: -0.2em;
+    border: 1px solid var(--color-ink-muted);
+    border-radius: 0.25rem;
+  }
+</style>

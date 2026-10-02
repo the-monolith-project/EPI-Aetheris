@@ -1,0 +1,17 @@
+---
+/**
+ * Término del glosario dentro de un texto: va en color distinto, abre una
+ * descripción breve y enlaza a la Biblioteca. Ver src/lib/terminos.ts.
+ */
+import { entradaGlosario } from '../lib/glosario';
+import { marcadoTermino } from '../lib/terminos';
+
+interface Props {
+  clave: string;
+}
+
+const { clave } = Astro.props;
+const texto = await Astro.slots.render('default');
+---
+
+<Fragment set:html={marcadoTermino(entradaGlosario, clave, texto)} />

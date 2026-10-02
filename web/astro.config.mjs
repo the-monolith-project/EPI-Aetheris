@@ -22,6 +22,8 @@ export default defineConfig({
   // En build estático Astro genera una página de redirección por cada entrada.
   redirects: {
     '/panel': '/dengue',
+    // No hay índice de fichas: el listado vive en la Biblioteca.
+    '/biblioteca/fichas': '/biblioteca',
   },
   // Fonts API de Astro (estable desde v6): auto-hospeda los ficheros en
   // build y genera fallbacks con métricas ajustadas (size-adjust vía
@@ -78,6 +80,7 @@ export default defineConfig({
       filter: (pagina) =>
         !pagina.includes('/alertas/nueva') &&
         !pagina.includes('/panel') &&
+        !pagina.endsWith('/biblioteca/fichas/') &&
         !pagina.includes('/demos') &&
         !pagina.includes('/incrustar'),
     }),

@@ -1,0 +1,367 @@
+---
+/**
+ * Plantilla de las fichas enriquecidas de la Biblioteca: una explicación
+ * visual de un concepto del sistema que complementa al documento con
+ * acordeones (que sigue siendo la versión de referencia). Cabecera con título,
+ * subtítulo y etiquetas; debajo, la descripción y un hilo vertical que va de
+ * la fuente de los datos a cómo se aplican en el sistema. Cada paso es un
+ * <PasoFicha>.
+ *
+ * El hilo se llena con el scroll y los pasos aparecen al llegar a ellos, solo
+ * si las animaciones están activas (interruptor del pie y prefers-reduced-
+ * motion). Sin script o con animaciones apagadas la ficha se lee completa.
+ */
+import Layout from '../layouts/Layout.astro';
+
+interface Props {
+  titulo: string;
+  subtitulo: string;
+  etiquetas: string[];
+  descripcion: string;
+  /** Documento con acordeones al que esta ficha complementa. */
+  documentacion: { href: string; etiqueta: string };
+}
+
+const { titulo, subtitulo, etiquetas, descripcion, documentacion } =
+  Astro.props;
+---
+
+<Layout title={`EPI-Aetheris — ${titulo}`} descripcion={descripcion}>
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10"
+  >
+    <a
+      href="/biblioteca"
+      class="mb-5 inline-flex min-h-[44px] items-center gap-2 font-sans text-sm font-semibold text-accent underline-offset-4 hover:underline"
+    >
+      <span aria-hidden="true">←</span> Volver a la biblioteca
+    </a>
+
+    <article class="ficha" data-ficha>
+      <header class="ficha-cabecera">
+        <div class="ficha-cabecera-texto">
+          <h1 class="ficha-titulo">{titulo}</h1>
+          <p class="ficha-subtitulo">{subtitulo}</p>
+        </div>
+        <ul class="ficha-etiquetas" aria-label="Etiquetas">
+          {etiquetas.map((etiqueta) => <li>{etiqueta}</li>)}
+        </ul>
+      </header>
+
+      <div class="ficha-cuerpo">
+        <p class="ficha-descripcion">{descripcion}</p>
+
+        <div class="ficha-hilo" data-ficha-hilo>
+          <div class="ficha-hilo-linea" aria-hidden="true">
+            <div class="ficha-hilo-relleno"></div>
+          </div>
+          <slot />
+        </div>
+
+        <aside class="ficha-pie" aria-label="Documentación relacionada">
+          <p>
+            Esta ficha explica el cálculo con ejemplos. La descripción formal,
+            con todas las constantes y los límites, está en el documento del
+            módulo.
+          </p>
+          <a href={documentacion.href}>{documentacion.etiqueta}</a>
+        </aside>
+      </div>
+    </article>
+  </main>
+</Layout>
+
+<script>
+  import { animacionesActivas } from '../lib/animaciones';
+
+  const ficha = document.querySelector<HTMLElement>('[data-ficha]');
+  const hilo = ficha?.querySelector<HTMLElement>('[data-ficha-hilo]');
+
+  if (ficha && hilo) {
+    const pasos = Array.from(hilo.querySelectorAll<HTMLElement>('[data-paso]'));
+    const anima = 'IntersectionObserver' in window && animacionesActivas();
+
+    // Sin animaciones el hilo queda completo y todos los pasos visibles.
+    hilo.style.setProperty('--progreso', '1');
+
+    if (anima) {
+      ficha.setAttribute('data-anima', '');
+
+      const observador = new IntersectionObserver(
+        (entradas) => {
+          for (const entrada of entradas) {
+            if (entrada.isIntersecting) {
+              entrada.target.classList.add('visto');
+              observador.unobserve(entrada.target);
+            }
+          }
+        },
+        { rootMargin: '0px 0px -12% 0px', threshold: 0.12 },
+      );
+      pasos.forEach((paso) => observador.observe(paso));
+
+      let pendiente = false;
+      const actualizar = () => {
+        pendiente = false;
+        const caja = hilo.getBoundingClientRect();
+        const referencia = window.innerHeight * 0.55;
+        const avance = (referencia - caja.top) / caja.height;
+        hilo.style.setProperty(
+          '--progreso',
+          String(Math.min(1, Math.max(0, avance))),
+        );
+        for (const paso of pasos) {
+          const nodo = paso.getBoundingClientRect();
+          paso.classList.toggle('alcanzado', nodo.top < referencia);
+        }
+      };
+      const alScroll = () => {
+        if (pendiente) return;
+        pendiente = true;
+        requestAnimationFrame(actualizar);
+      };
+      window.addEventListener('scroll', alScroll, { passive: true });
+      window.addEventListener('resize', alScroll);
+      actualizar();
+    }
+  }
+</script>
+
+<style is:global>
+  .ficha {
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    background: var(--color-surface);
+    overflow: clip;
+  }
+  .ficha-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1.75rem 1.5rem;
+    color: var(--color-deep-ink);
+    background-color: var(--color-deep);
+    /* Trama de líneas finas: separa la cabecera del cuerpo sin imagen. */
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgb(221 219 255 / 0.07) 0 2px,
+      transparent 2px 7px
+    );
+  }
+  .ficha-cabecera-texto {
+    flex: 1 1 22rem;
+    min-width: 0;
+  }
+  .ficha-titulo {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 4vw, 2.25rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+  .ficha-subtitulo {
+    margin-top: 0.5rem;
+    max-width: 38rem;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--color-deep-ink-muted);
+  }
+  .ficha-etiquetas {
+    display: flex;
+    flex: 0 1 18rem;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: flex-start;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .ficha-etiquetas li {
+    padding: 0.2rem 0.65rem;
+    border: 1px solid rgb(221 219 255 / 0.45);
+    border-radius: 9999px;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-deep-ink);
+  }
+  .ficha-cuerpo {
+    padding: 1.75rem 1.5rem 2rem;
+  }
+  .ficha-descripcion {
+    max-width: 44rem;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--color-ink);
+  }
+
+  /* Hilo vertical: de la fuente a la aplicación. */
+  .ficha-hilo {
+    --progreso: 1;
+    position: relative;
+    margin-top: 2rem;
+  }
+  .ficha-hilo-linea {
+    position: absolute;
+    top: 1.2rem;
+    bottom: 0;
+    left: 1.1rem;
+    width: 2px;
+    background: var(--color-border);
+  }
+  .ficha-hilo-relleno {
+    width: 100%;
+    height: calc(var(--progreso) * 100%);
+    background: var(--color-termino);
+    transition: height 0.12s linear;
+  }
+  .paso {
+    position: relative;
+    padding: 0 0 2.75rem 3.25rem;
+  }
+  .paso:last-child {
+    padding-bottom: 1rem;
+  }
+  .paso-nodo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 2px solid var(--color-border);
+    border-radius: 9999px;
+    background: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-ink-muted);
+    transition:
+      background-color 0.3s,
+      border-color 0.3s,
+      color 0.3s;
+  }
+  .paso.alcanzado .paso-nodo,
+  .ficha:not([data-anima]) .paso-nodo {
+    border-color: var(--color-termino);
+    background: var(--color-termino);
+    color: var(--color-surface);
+  }
+  .paso-titulo {
+    padding-top: 0.2rem;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-ink);
+  }
+  .paso-texto {
+    margin-top: 0.6rem;
+    max-width: 44rem;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--color-ink);
+  }
+  .paso-texto p + p {
+    margin-top: 0.75rem;
+  }
+  .paso-visual {
+    margin-top: 1.25rem;
+  }
+  .ficha[data-anima] .paso {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 0.5s ease,
+      transform 0.5s ease;
+  }
+  .ficha[data-anima] .paso.visto {
+    opacity: 1;
+    transform: none;
+  }
+  .ficha-pie {
+    margin-top: 2rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-bg);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--color-ink-muted);
+  }
+  .ficha-pie a {
+    display: inline-block;
+    margin-top: 0.4rem;
+    font-weight: 600;
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Curvas (src/lib/curvas-iv.ts). */
+  .cv-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .cv-guia {
+    stroke: var(--color-border);
+    stroke-width: 1;
+  }
+  .cv-texto {
+    fill: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 9px;
+  }
+  .cv-eje-x {
+    font-size: 9.5px;
+  }
+  .cv-relleno {
+    fill: var(--color-termino);
+    opacity: 0.12;
+  }
+  .cv-curva {
+    fill: none;
+    stroke: var(--color-termino);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+  }
+  .cv-marca-eje {
+    stroke: var(--color-ink-muted);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+    opacity: 0.6;
+  }
+  .cv-posicion {
+    stroke: var(--color-ink);
+    stroke-width: 1.2;
+    stroke-dasharray: 2 3;
+  }
+  .cv-punto {
+    fill: var(--color-surface);
+    stroke: var(--color-ink);
+    stroke-width: 2.5;
+  }
+
+  @media print {
+    .ficha[data-anima] .paso {
+      opacity: 1;
+      transform: none;
+    }
+    .ficha-cabecera {
+      color: var(--color-ink);
+      background: none;
+    }
+    .ficha-subtitulo {
+      color: var(--color-ink-muted);
+    }
+  }
+</style>

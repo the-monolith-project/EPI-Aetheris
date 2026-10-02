@@ -1,0 +1,470 @@
+---
+/**
+ * Laboratorio de la ficha de idoneidad: la persona elige un departamento y mueve
+ * temperatura, lluvia y humedad para ver cómo cambian las tres funciones, el Iv
+ * y el color del departamento. «Calcular paso a paso» recorre el método en
+ * orden. Es una simulación de la fórmula con valores elegidos, no un dato
+ * observado; el Iv que mide el sistema para ese departamento se consulta a la
+ * API y se muestra al lado. El comportamiento está en
+ * src/lib/laboratorio-iv-cliente.ts.
+ */
+import { DEPARTAMENTOS } from '../lib/departamentos';
+import {
+  CURVAS_IV,
+  ORDEN_FACTORES,
+  curvaIv,
+  textoEntrada,
+} from '../lib/curvas-iv-config';
+import { colorIv } from '../lib/colores';
+import {
+  EJEMPLO_IV,
+  PRESETS_IV,
+  desgloseIv,
+  formatearNumero,
+} from '../lib/idoneidad';
+import MapaDepartamentoIv from './MapaDepartamentoIv.astro';
+
+const CODIGO_INICIAL = 'SV-SS';
+const d = desgloseIv(EJEMPLO_IV);
+const factores = { ft: d.fT, fr: d.fR, fh: d.fH };
+---
+
+<div class="lab" data-laboratorio data-codigo-inicial={CODIGO_INICIAL}>
+  <noscript>
+    <p class="lab-aviso">
+      El laboratorio necesita JavaScript. Los pasos anteriores explican el mismo
+      cálculo con un ejemplo.
+    </p>
+  </noscript>
+
+  <div class="lab-rejilla">
+    <fieldset class="lab-controles" data-lab-controles>
+      <legend class="lab-leyenda">Condiciones de la semana</legend>
+
+      <label class="lab-campo">
+        <span>Departamento</span>
+        <select data-lab-depto>
+          {
+            DEPARTAMENTOS.map((dep) => (
+              <option
+                value={dep.codigo}
+                selected={dep.codigo === CODIGO_INICIAL}
+              >
+                {dep.nombre}
+              </option>
+            ))
+          }
+        </select>
+      </label>
+
+      {
+        ORDEN_FACTORES.map((clave) => {
+          const c = CURVAS_IV[clave];
+          const id = `lab-${clave}`;
+          const valor = EJEMPLO_IV[c.entrada];
+          return (
+            <div class="lab-deslizador">
+              <div class="lab-deslizador-cabecera">
+                <label for={id}>{c.etiquetaEntrada}</label>
+                <output for={id} data-lab-salida={clave}>
+                  {textoEntrada(clave, valor)}
+                </output>
+              </div>
+              <input
+                id={id}
+                type="range"
+                min={c.desde}
+                max={c.hasta}
+                step={c.paso}
+                value={valor}
+                data-lab-entrada={clave}
+                aria-valuetext={textoEntrada(clave, valor)}
+              />
+            </div>
+          );
+        })
+      }
+
+      <div class="lab-presets" role="group" aria-label="Condiciones de partida">
+        <span class="lab-presets-titulo">Probar con</span>
+        {
+          PRESETS_IV.map((p) => (
+            <button type="button" data-lab-preset={p.clave}>
+              {p.etiqueta}
+            </button>
+          ))
+        }
+      </div>
+
+      <button type="button" class="lab-calcular" data-lab-calcular>
+        Calcular paso a paso
+      </button>
+      <p class="lab-aviso">
+        Simulación de la fórmula con los valores que elijas. Los de partida son
+        un ejemplo, no una medición.
+      </p>
+    </fieldset>
+
+    <div class="lab-salida">
+      <div class="lab-paneles">
+        {
+          ORDEN_FACTORES.map((clave) => {
+            const c = CURVAS_IV[clave];
+            return (
+              <figure class="lab-panel" data-lab-panel={clave}>
+                <figcaption>
+                  <span class="lab-panel-nombre">
+                    {c.nombre} · {c.titulo}
+                  </span>
+                  <span class="lab-panel-valor" data-lab-valor={clave}>
+                    {c.nombre} = {formatearNumero(factores[clave], 2)}
+                  </span>
+                </figcaption>
+                <div
+                  class="lab-curva"
+                  data-lab-curva={clave}
+                  set:html={curvaIv(clave, EJEMPLO_IV[c.entrada])}
+                />
+              </figure>
+            );
+          })
+        }
+      </div>
+
+      <div class="lab-combina" data-lab-combina>
+        <p class="lab-formula">
+          <span class="lab-termino" data-lab-t="ft">
+            fT <b data-lab-v="ft">{formatearNumero(d.fT, 2)}</b>
+          </span>
+          <span aria-hidden="true">×</span>
+          <span class="lab-termino" data-lab-t="fr">
+            (0,3 + 0,7 · fR <b data-lab-v="fr">{formatearNumero(d.fR, 2)}</b>)
+          </span>
+          <span aria-hidden="true">×</span>
+          <span class="lab-termino" data-lab-t="fh">
+            fH <b data-lab-v="fh">{formatearNumero(d.fH, 2)}</b>
+          </span>
+          <span aria-hidden="true">=</span>
+          <strong class="lab-iv" data-lab-iv
+            >Iv {formatearNumero(d.iv, 2)}</strong
+          >
+        </p>
+      </div>
+
+      <div class="lab-resultado" data-lab-resultado>
+        <MapaDepartamentoIv codigo={CODIGO_INICIAL} iv={d.iv} id="lab-mapa" />
+        <div class="lab-lecturas">
+          <p class="lab-lectura">
+            <span class="lab-lectura-etiqueta">Iv de la simulación</span>
+            <span class="lab-lectura-cifra" data-lab-cifra>
+              {formatearNumero(d.iv, 2)}
+            </span>
+            <span class="lab-barra" aria-hidden="true">
+              <span
+                class="lab-barra-relleno"
+                data-lab-barra
+                style={`width:${Math.round(d.iv * 100)}%;background:${colorIv(d.iv)}`}
+              ></span>
+            </span>
+          </p>
+          <div class="lab-real" data-lab-real>
+            <p class="lab-cargando">
+              Consultando la serie de Iv del departamento…
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="sr-only" role="status" aria-live="polite" data-lab-estado></p>
+</div>
+
+<script>
+  import { iniciarLaboratorio } from '../lib/laboratorio-iv-cliente';
+
+  document
+    .querySelectorAll<HTMLElement>('[data-laboratorio]')
+    .forEach(iniciarLaboratorio);
+</script>
+
+<style is:global>
+  .lab {
+    border: 1px solid var(--color-border);
+    border-radius: 0.875rem;
+    background: var(--color-bg);
+    padding: 1rem;
+  }
+  .lab-rejilla {
+    display: grid;
+    gap: 1.25rem;
+  }
+  @media (min-width: 64rem) {
+    .lab-rejilla {
+      grid-template-columns: 17rem minmax(0, 1fr);
+      align-items: start;
+    }
+    .lab-controles {
+      position: sticky;
+      top: 5.5rem;
+    }
+  }
+  .lab-controles {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .lab-leyenda {
+    padding: 0;
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .lab-campo,
+  .lab-deslizador {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    color: var(--color-ink);
+  }
+  .lab-campo select {
+    min-height: 44px;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font: inherit;
+  }
+  .lab-deslizador-cabecera {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .lab-deslizador output {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--color-termino);
+  }
+  .lab-deslizador input[type='range'] {
+    width: 100%;
+    min-height: 44px;
+    accent-color: var(--color-termino);
+  }
+  .lab-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+  }
+  .lab-presets-titulo {
+    flex-basis: 100%;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    color: var(--color-ink-muted);
+  }
+  .lab-presets button {
+    min-height: 44px;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--color-border);
+    border-radius: 9999px;
+    background: var(--color-surface);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-ink);
+    cursor: pointer;
+  }
+  .lab-presets button:hover {
+    border-color: var(--color-termino);
+    color: var(--color-termino);
+  }
+  .lab-calcular {
+    min-height: 48px;
+    padding: 0.6rem 1rem;
+    border: 0;
+    border-radius: 0.6rem;
+    background: var(--color-termino);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-surface);
+    cursor: pointer;
+  }
+  .lab-calcular:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+  .lab-aviso {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--color-ink-muted);
+  }
+  .lab-salida {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .lab-paneles {
+    display: grid;
+    gap: 0.75rem;
+  }
+  @media (min-width: 40rem) {
+    .lab-paneles {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .lab-panel {
+    margin: 0;
+    padding: 0.6rem 0.6rem 0.2rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.7rem;
+    background: var(--color-surface);
+    transition:
+      opacity 0.35s,
+      box-shadow 0.35s,
+      border-color 0.35s;
+  }
+  .lab-panel figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    font-family: var(--font-sans);
+  }
+  .lab-panel-nombre {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .lab-panel-valor {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--color-termino);
+  }
+  .lab-combina,
+  .lab-resultado {
+    padding: 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.7rem;
+    background: var(--color-surface);
+    transition:
+      opacity 0.35s,
+      box-shadow 0.35s,
+      border-color 0.35s;
+  }
+  .lab-formula {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.6rem;
+    align-items: baseline;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    color: var(--color-ink);
+  }
+  .lab-termino {
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.35rem;
+    transition: background-color 0.3s;
+  }
+  .lab-termino b {
+    color: var(--color-termino);
+  }
+  .lab-iv {
+    font-size: 1.05rem;
+    color: var(--color-termino);
+  }
+  .lab-resultado {
+    display: grid;
+    gap: 1rem;
+    align-items: center;
+  }
+  @media (min-width: 40rem) {
+    .lab-resultado {
+      grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+    }
+  }
+  .lab-lecturas {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    font-family: var(--font-sans);
+  }
+  .lab-lectura {
+    display: grid;
+    gap: 0.25rem;
+  }
+  .lab-lectura-etiqueta {
+    font-size: 0.8rem;
+    color: var(--color-ink-muted);
+  }
+  .lab-lectura-cifra {
+    font-family: var(--font-display);
+    font-size: 2.25rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--color-ink);
+  }
+  .lab-barra {
+    display: block;
+    height: 10px;
+    border-radius: 9999px;
+    background: var(--color-border);
+    overflow: hidden;
+  }
+  .lab-barra-relleno {
+    display: block;
+    height: 100%;
+    border-radius: 9999px;
+    transition:
+      width 0.5s ease,
+      background-color 0.5s ease;
+  }
+  .lab-real {
+    padding: 0.7rem 0.8rem;
+    border: 1px dashed var(--color-border);
+    border-radius: 0.6rem;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--color-ink);
+  }
+  .lab-real small {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.75rem;
+    color: var(--color-ink-muted);
+  }
+  .lab-cargando {
+    color: var(--color-ink-muted);
+    animation: lab-pulso 1.2s ease-in-out infinite;
+  }
+  @keyframes lab-pulso {
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  /* Recorrido paso a paso: lo que aún no se alcanzó queda atenuado y el paso
+     en curso se destaca. */
+  .lab-espera {
+    opacity: 0.3;
+  }
+  .lab-activo {
+    border-color: var(--color-termino);
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--color-termino) 28%, transparent);
+  }
+  .lab-termino.lab-activo {
+    background: color-mix(in srgb, var(--color-termino) 20%, transparent);
+    box-shadow: none;
+  }
+</style>

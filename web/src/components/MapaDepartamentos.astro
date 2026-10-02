@@ -2,6 +2,7 @@
 import AyudaTermino from './AyudaTermino.astro';
 import Icono from './Icono.astro';
 import PanelWorkspace from './analisis/PanelWorkspace.astro';
+import { rutaFicha } from '../fichas/registro';
 // Mapa departamental -- selector de capas descriptivas (módulos M1–M3,
 // docs/contexto). Leaflet necesita el DOM del navegador (no hay forma de
 // renderizarlo en el servidor), así que todo el trabajo con L.* vive en el
@@ -183,8 +184,11 @@ import PanelWorkspace from './analisis/PanelWorkspace.astro';
 
       <div class="mt-4">
         <p class="font-sans text-xs font-semibold text-ink-muted">
-          Idoneidad biofísica (Iv). Banda histórica P25-P75 frente al año
-          seleccionado
+          <a
+            href={rutaFicha('m1-idoneidad-biofisica')}
+            class="text-accent underline underline-offset-2"
+            >Idoneidad biofísica (Iv)</a
+          >. Banda histórica P25-P75 frente al año seleccionado
         </p>
         <div id="mapa-detalle-curva" class="mt-2 h-24 w-full">
           <div class="skeleton h-full w-full" aria-hidden="true"></div>
@@ -268,6 +272,8 @@ import PanelWorkspace from './analisis/PanelWorkspace.astro';
     type CapaAnalitica,
     type SerieEpidemiologica,
   } from '../lib/tipos-analisis';
+  import { RAMPA_IV } from '../lib/colores';
+  import { rutaFicha } from '../fichas/registro';
   import { renderErrorFuente } from './estado-async';
   import { escapeHtml } from '../utils/security';
 
@@ -289,6 +295,8 @@ import PanelWorkspace from './analisis/PanelWorkspace.astro';
     disponible: boolean; // false => botón deshabilitado, "próximamente"
     aviso: string;
     tituloLeyenda: string;
+    /** Si la capa tiene ficha enriquecida, el título de la leyenda la enlaza. */
+    enlaceLeyenda?: string;
     rampa: string[];
     sinDatoColor: string;
     // Carga los valores por código de departamento. undefined = sin dato
@@ -302,6 +310,7 @@ import PanelWorkspace from './analisis/PanelWorkspace.astro';
 
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const SIN_DATO = '#e4e4e7';
+  const RUTA_FICHA_M1 = rutaFicha('m1-idoneidad-biofisica');
 
   // El shapeName del geojson (geoBoundaries) es inconsistente: 12 de los 14
   // departamentos traen el prefijo "Departamento de ..." pero La Libertad y
@@ -358,7 +367,11 @@ import PanelWorkspace from './analisis/PanelWorkspace.astro';
     const items = capa.rampa.map((color, i) => item(color, rangos[i])).join('');
     contenedor.innerHTML = `
       <div class="flex flex-wrap items-center gap-1.5 font-sans text-xs text-ink-muted">
-        <span class="mr-1 font-medium text-ink">${escapeHtml(capa.tituloLeyenda)}:</span>
+        <span class="mr-1 font-medium text-ink">${
+          capa.enlaceLeyenda
+            ? `<a href="${escapeHtml(capa.enlaceLeyenda)}" class="text-accent underline underline-offset-2">${escapeHtml(capa.tituloLeyenda)}</a>`
+            : escapeHtml(capa.tituloLeyenda)
+        }:</span>
         ${items}
         ${item(capa.sinDatoColor, 'sin dato')}
       </div>
@@ -544,8 +557,6 @@ import PanelWorkspace from './analisis/PanelWorkspace.astro';
     return cacheEspacial;
   }
 
-  const RAMPA_IV = ['#e0d6f7', '#bfa6ef', '#9a75e0', '#6f42c1', '#4a1a8a'];
-
   const capaIv: DefinicionCapa = {
     id: 'iv',
     etiqueta: 'Idoneidad biofísica (Iv)',
@@ -553,6 +564,7 @@ import PanelWorkspace from './analisis/PanelWorkspace.astro';
     aviso:
       'Resume qué tan favorables son las condiciones ambientales para el vector, de 0 a 1. Es condición biofísica (clima), no incidencia ni riesgo; los casos MINSAL y la presión epidemiológica no llegan más allá de 2023.',
     tituloLeyenda: 'Idoneidad biofísica (Iv, 0-1)',
+    enlaceLeyenda: RUTA_FICHA_M1,
     rampa: RAMPA_IV,
     sinDatoColor: SIN_DATO,
     async cargarValores() {

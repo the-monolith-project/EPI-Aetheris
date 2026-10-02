@@ -1,0 +1,34 @@
+---
+import FichaEnriquecida from '../../../components/FichaEnriquecida.astro';
+import FichaM1 from '../../../fichas/FichaM1.astro';
+import { FICHAS } from '../../../fichas/registro';
+
+export function getStaticPaths() {
+  return FICHAS.map((ficha) => ({
+    params: { slug: ficha.slug },
+    props: ficha,
+  }));
+}
+
+// Contenido de cada ficha por slug.
+const CONTENIDO = { 'm1-idoneidad-biofisica': FichaM1 } as const;
+
+const ficha = Astro.props;
+const Contenido = CONTENIDO[ficha.slug as keyof typeof CONTENIDO];
+if (!Contenido) {
+  // Una ficha en el registro sin su componente no debe publicarse a medias.
+  throw new Error(
+    `La ficha "${ficha.slug}" está en src/fichas/registro.ts pero no en CONTENIDO de ${Astro.url.pathname}.`,
+  );
+}
+---
+
+<FichaEnriquecida
+  titulo={ficha.titulo}
+  subtitulo={ficha.subtitulo}
+  etiquetas={ficha.etiquetas}
+  descripcion={ficha.descripcion}
+  documentacion={ficha.documentacion}
+>
+  <Contenido />
+</FichaEnriquecida>

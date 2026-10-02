@@ -15,6 +15,8 @@
  */
 import Layout from '../layouts/Layout.astro';
 import { agruparEnAcordeones, sinCodigoEnLinea } from '../lib/acordeones';
+import { entradaGlosario } from '../lib/glosario';
+import { convertirTerminos } from '../lib/terminos';
 import type { NavegacionDocumento } from '../lib/navegacion-documentos';
 
 interface Props {
@@ -43,7 +45,10 @@ const {
   navegacion,
 } = Astro.props;
 
-const crudo = sinCodigoEnLinea(await Astro.slots.render('default'));
+const crudo = convertirTerminos(
+  sinCodigoEnLinea(await Astro.slots.render('default')),
+  entradaGlosario,
+);
 const {
   html: contenido,
   total: secciones,
