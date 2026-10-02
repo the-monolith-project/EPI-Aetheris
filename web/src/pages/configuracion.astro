@@ -1,0 +1,705 @@
+---
+/**
+ * Configuración: preferencias de la persona y atajos de teclado, guardados
+ * en este navegador (localStorage, lib/preferencias.ts). Nada viaja al
+ * servidor y no hay cuenta: la página solo lee y escribe lo que ya usan la
+ * cabecera (tema), el pie (animaciones), la ficha departamental
+ * (departamento recordado) y el listener global de atajos (lib/atajos.ts).
+ *
+ * El HTML sale con los valores por defecto; el script marca lo guardado al
+ * cargar, así que sin JavaScript la página se lee pero no se edita.
+ */
+import Layout from '../layouts/Layout.astro';
+import Icono from '../components/Icono.astro';
+import { ATAJOS, type GrupoAtajo } from '../lib/atajos';
+import { DEPARTAMENTOS } from '../lib/departamentos';
+
+interface Opcion {
+  valor: string;
+  etiqueta: string;
+  detalle: string;
+}
+
+const TEMAS: Opcion[] = [
+  {
+    valor: 'sistema',
+    etiqueta: 'Sistema',
+    detalle: 'Sigue el ajuste del dispositivo.',
+  },
+  { valor: 'light', etiqueta: 'Claro', detalle: 'Fondo claro siempre.' },
+  { valor: 'dark', etiqueta: 'Oscuro', detalle: 'Fondo oscuro siempre.' },
+];
+
+const TEXTOS: Opcion[] = [
+  { valor: 'normal', etiqueta: 'Normal', detalle: 'Tamaño de referencia.' },
+  {
+    valor: 'grande',
+    etiqueta: 'Grande',
+    detalle:
+      'Los textos del sitio un 12 % más grandes. Las etiquetas de gráficos y mapas no cambian.',
+  },
+];
+
+const ANIMACIONES: Opcion[] = [
+  {
+    valor: 'sistema',
+    etiqueta: 'Sistema',
+    detalle: 'Se apagan si el dispositivo pide reducir el movimiento.',
+  },
+  {
+    valor: 'on',
+    etiqueta: 'Activadas',
+    detalle: 'Entradas, cifras y transiciones.',
+  },
+  {
+    valor: 'off',
+    etiqueta: 'Desactivadas',
+    detalle: 'Todo aparece en su estado final.',
+  },
+];
+
+const GRUPOS: { grupo: GrupoAtajo; titulo: string }[] = [
+  { grupo: 'navegar', titulo: 'Navegar' },
+  { grupo: 'preferencias', titulo: 'Preferencias' },
+  { grupo: 'ayuda', titulo: 'Ayuda' },
+];
+---
+
+<Layout
+  title="EPI-Aetheris — Configuración"
+  descripcion="Preferencias de apariencia, movimiento y atajos de teclado de EPI-Aetheris, guardadas en tu navegador."
+  noindex
+>
+  <main
+    id="contenido-principal"
+    class="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10 lg:px-12"
+  >
+    <header class="mb-8 max-w-3xl">
+      <h1
+        class="font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]"
+      >
+        Configuración
+      </h1>
+      <p class="mt-3 font-sans text-sm leading-relaxed text-ink-muted">
+        Apariencia, movimiento, departamento recordado y atajos de teclado. Las
+        preferencias se guardan en este navegador: no hay cuenta ni se envían al
+        servidor, y se pierden al borrar los datos del sitio.
+      </p>
+      <p
+        role="status"
+        aria-live="polite"
+        data-estado
+        class="mt-3 min-h-[1.5rem] font-sans text-sm font-medium text-accent"
+      >
+      </p>
+    </header>
+
+    <form data-configuracion class="space-y-6" novalidate>
+      <!-- Apariencia -->
+      <section
+        class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+        aria-labelledby="conf-apariencia"
+      >
+        <h2
+          id="conf-apariencia"
+          class="flex items-center gap-2 font-sans text-base font-semibold text-ink"
+        >
+          <Icono nombre="palette" class="h-5 w-5 text-accent" />
+          Apariencia
+        </h2>
+
+        <fieldset class="mt-4">
+          <legend class="font-sans text-sm font-medium text-ink">Tema</legend>
+          <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {
+              TEMAS.map((o, i) => (
+                <label class="opcion-radio">
+                  <input
+                    type="radio"
+                    name="tema"
+                    value={o.valor}
+                    checked={i === 0}
+                    class="sr-only"
+                  />
+                  <span class="opcion-radio-cuerpo">
+                    <span class="font-sans text-sm font-medium text-ink">
+                      {o.etiqueta}
+                    </span>
+                    <span class="font-sans text-xs text-ink-muted">
+                      {o.detalle}
+                    </span>
+                  </span>
+                </label>
+              ))
+            }
+          </div>
+        </fieldset>
+
+        <fieldset class="mt-5">
+          <legend class="font-sans text-sm font-medium text-ink">
+            Tamaño de texto
+          </legend>
+          <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {
+              TEXTOS.map((o, i) => (
+                <label class="opcion-radio">
+                  <input
+                    type="radio"
+                    name="texto"
+                    value={o.valor}
+                    checked={i === 0}
+                    class="sr-only"
+                  />
+                  <span class="opcion-radio-cuerpo">
+                    <span class="font-sans text-sm font-medium text-ink">
+                      {o.etiqueta}
+                    </span>
+                    <span class="font-sans text-xs text-ink-muted">
+                      {o.detalle}
+                    </span>
+                  </span>
+                </label>
+              ))
+            }
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- Movimiento -->
+      <section
+        class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+        aria-labelledby="conf-movimiento"
+      >
+        <h2
+          id="conf-movimiento"
+          class="flex items-center gap-2 font-sans text-base font-semibold text-ink"
+        >
+          <Icono nombre="wave-sine" class="h-5 w-5 text-accent" />
+          Movimiento
+        </h2>
+        <fieldset class="mt-4">
+          <legend class="font-sans text-sm font-medium text-ink">
+            Animaciones
+          </legend>
+          <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {
+              ANIMACIONES.map((o, i) => (
+                <label class="opcion-radio">
+                  <input
+                    type="radio"
+                    name="animaciones"
+                    value={o.valor}
+                    checked={i === 0}
+                    class="sr-only"
+                  />
+                  <span class="opcion-radio-cuerpo">
+                    <span class="font-sans text-sm font-medium text-ink">
+                      {o.etiqueta}
+                    </span>
+                    <span class="font-sans text-xs text-ink-muted">
+                      {o.detalle}
+                    </span>
+                  </span>
+                </label>
+              ))
+            }
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- Departamento -->
+      <section
+        class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+        aria-labelledby="conf-departamento"
+      >
+        <h2
+          id="conf-departamento"
+          class="flex items-center gap-2 font-sans text-base font-semibold text-ink"
+        >
+          <Icono nombre="map-pin" class="h-5 w-5 text-accent" />
+          Departamento recordado
+        </h2>
+        <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
+          Las vistas de alertas y de dengue arrancan en este departamento.
+          También se fija desde la ficha de cada departamento.
+        </p>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <label class="font-sans text-sm text-ink" for="conf-departamento-sel">
+            Departamento
+          </label>
+          <select
+            id="conf-departamento-sel"
+            name="departamento"
+            class="min-h-[44px] rounded-lg border border-border bg-bg px-3 font-sans text-sm text-ink"
+          >
+            <option value="">Ninguno</option>
+            {
+              DEPARTAMENTOS.map((d) => (
+                <option value={d.codigo}>{d.nombre}</option>
+              ))
+            }
+          </select>
+        </div>
+      </section>
+
+      <!-- Atajos -->
+      <section
+        class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+        aria-labelledby="conf-atajos"
+      >
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2
+              id="conf-atajos"
+              class="flex items-center gap-2 font-sans text-base font-semibold text-ink"
+            >
+              <Icono nombre="keyboard" class="h-5 w-5 text-accent" />
+              Atajos de teclado
+            </h2>
+            <p
+              class="mt-2 max-w-2xl font-sans text-sm leading-relaxed text-ink-muted"
+            >
+              Funcionan en cualquier página mientras el foco no esté en un campo
+              de texto. Cada atajo necesita Ctrl, Alt o Cmd/Win (o una tecla
+              F1–F12); las combinaciones que el navegador reserva, como Ctrl+T,
+              no se pueden usar.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked="true"
+            data-atajos-activos
+            class="flex min-h-[44px] items-center gap-3 rounded-full border border-border px-3 font-sans text-sm text-ink transition-colors hover:border-accent/50"
+          >
+            <span>Atajos activados</span>
+            <span
+              aria-hidden="true"
+              class="conf-pista relative inline-block h-5 w-9 shrink-0 rounded-full border border-border"
+            >
+              <span
+                class="conf-bola absolute left-0.5 top-0.5 block h-3.5 w-3.5 rounded-full"
+              ></span>
+            </span>
+          </button>
+        </div>
+
+        {
+          GRUPOS.map(({ grupo, titulo }) => (
+            <div class="mt-5">
+              <h3 class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                {titulo}
+              </h3>
+              <ul class="mt-2 divide-y divide-border">
+                {ATAJOS.filter((a) => a.grupo === grupo).map((a) => (
+                  <li
+                    class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2"
+                    data-atajo-fila={a.accion}
+                  >
+                    <span class="font-sans text-sm text-ink">{a.etiqueta}</span>
+                    <span class="flex items-center gap-2">
+                      <kbd
+                        class="tecla"
+                        data-atajo-combo={a.accion}
+                        aria-live="polite"
+                      >
+                        {a.porDefecto}
+                      </kbd>
+                      <button
+                        type="button"
+                        data-atajo-cambiar={a.accion}
+                        aria-label={`Cambiar atajo: ${a.etiqueta}`}
+                        class="min-h-[36px] rounded-full border border-border px-3 font-sans text-xs font-medium text-ink transition-colors hover:border-accent/50 hover:text-accent"
+                      >
+                        Cambiar
+                      </button>
+                      <button
+                        type="button"
+                        data-atajo-quitar={a.accion}
+                        aria-label={`Quitar atajo: ${a.etiqueta}`}
+                        class="min-h-[36px] rounded-full px-3 font-sans text-xs font-medium text-ink-muted transition-colors hover:text-ink"
+                      >
+                        Quitar
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+
+        <div class="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            data-atajos-restablecer
+            class="boton-secundario inline-flex min-h-[44px] items-center gap-2 rounded-full border border-border px-4 font-sans text-sm font-medium text-ink"
+          >
+            <Icono nombre="refresh" class="h-4 w-4" />
+            Restablecer atajos por defecto
+          </button>
+          <p class="font-sans text-xs text-ink-muted">
+            Pulsa el atajo de ayuda para ver la lista desde cualquier página.
+          </p>
+        </div>
+      </section>
+
+      <!-- Datos guardados -->
+      <section
+        class="card-elevated rounded-2xl border border-border bg-surface p-5 sm:p-6"
+        aria-labelledby="conf-datos"
+      >
+        <h2
+          id="conf-datos"
+          class="flex items-center gap-2 font-sans text-base font-semibold text-ink"
+        >
+          <Icono nombre="trash" class="h-5 w-5 text-accent" />
+          Datos guardados en este navegador
+        </h2>
+        <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
+          Borra el tema, el tamaño de texto, las animaciones, el departamento
+          recordado y los atajos. Todo vuelve a los valores del sistema.
+        </p>
+        <button
+          type="button"
+          data-preferencias-borrar
+          class="boton-secundario mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-full border border-border px-4 font-sans text-sm font-medium text-ink"
+        >
+          Borrar todas las preferencias
+        </button>
+      </section>
+    </form>
+  </main>
+</Layout>
+
+<style>
+  .opcion-radio {
+    display: block;
+    cursor: pointer;
+  }
+  .opcion-radio-cuerpo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-height: 44px;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    transition:
+      border-color 150ms ease,
+      background-color 150ms ease;
+  }
+  .opcion-radio:hover .opcion-radio-cuerpo {
+    border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
+  }
+  .opcion-radio input:checked + .opcion-radio-cuerpo {
+    border-color: var(--color-accent);
+    background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    box-shadow: inset 0 0 0 1px var(--color-accent);
+  }
+  .opcion-radio input:focus-visible + .opcion-radio-cuerpo {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(1, 30, 30, 0.55);
+  }
+  .conf-pista {
+    background-color: transparent;
+    transition: background-color 150ms ease;
+  }
+  .conf-bola {
+    background-color: var(--color-ink-muted);
+    transition: transform 150ms ease;
+  }
+  [data-atajos-activos][aria-checked='true'] .conf-pista {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+  [data-atajos-activos][aria-checked='true'] .conf-bola {
+    background-color: var(--color-accent-ink);
+    transform: translateX(1rem);
+  }
+  [data-atajo-fila][data-capturando] .tecla {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+</style>
+
+<script>
+  import {
+    ATAJOS_POR_ACCION,
+    accionConCombo,
+    comboDePulsacion,
+    combosPorDefecto,
+    esPlataformaMac,
+    etiquetaCombo,
+    formatearCombo,
+    validarCombo,
+    type AccionAtajo,
+  } from '../lib/atajos';
+  import {
+    guardarDepartamentoRecordado,
+    leerDepartamentoRecordado,
+  } from '../lib/departamento-recordado';
+  import {
+    EVENTO_PREFERENCIAS,
+    aplicarAnimaciones,
+    aplicarTema,
+    aplicarTexto,
+    borrarPreferencias,
+    guardarAtajos,
+    leerAtajos,
+    leerPreferenciaAnimaciones,
+    leerTema,
+    leerTexto,
+    type PreferenciaAnimaciones,
+    type Tema,
+    type Texto,
+  } from '../lib/preferencias';
+
+  const form = document.querySelector<HTMLFormElement>('[data-configuracion]');
+  const estado = document.querySelector<HTMLElement>('[data-estado]');
+  const esMac = esPlataformaMac(navigator);
+  const SIN_ALMACENAMIENTO =
+    'El navegador no permite guardar: el cambio vale solo para esta visita.';
+
+  function anunciar(texto: string): void {
+    if (estado) estado.textContent = texto;
+  }
+
+  function marcar(nombre: string, valor: string): void {
+    const radio = form?.querySelector<HTMLInputElement>(
+      `input[name="${nombre}"][value="${valor}"]`,
+    );
+    if (radio) radio.checked = true;
+  }
+
+  // ---- Preferencias simples ----------------------------------------------
+
+  function pintarPreferencias(): void {
+    marcar('tema', leerTema());
+    marcar('texto', leerTexto());
+    marcar('animaciones', leerPreferenciaAnimaciones());
+    const sel = form?.querySelector<HTMLSelectElement>(
+      'select[name="departamento"]',
+    );
+    if (sel) sel.value = leerDepartamentoRecordado() ?? '';
+  }
+
+  form?.addEventListener('change', (evento) => {
+    const control = evento.target as HTMLInputElement | HTMLSelectElement;
+    let ok = true;
+    if (control.name === 'tema') {
+      ok = aplicarTema(control.value as Tema);
+      anunciar('Tema guardado.');
+    } else if (control.name === 'texto') {
+      ok = aplicarTexto(control.value as Texto);
+      anunciar('Tamaño de texto guardado.');
+    } else if (control.name === 'animaciones') {
+      ok = aplicarAnimaciones(control.value as PreferenciaAnimaciones);
+      anunciar('Preferencia de animaciones guardada.');
+    } else if (control.name === 'departamento') {
+      ok = guardarDepartamentoRecordado(control.value || null);
+      anunciar(
+        control.value
+          ? 'Departamento recordado.'
+          : 'Ya no se recuerda ningún departamento.',
+      );
+      window.dispatchEvent(new CustomEvent(EVENTO_PREFERENCIAS));
+    }
+    if (!ok) anunciar(SIN_ALMACENAMIENTO);
+  });
+
+  // ---- Atajos ------------------------------------------------------------
+
+  const interruptorAtajos = document.querySelector<HTMLButtonElement>(
+    '[data-atajos-activos]',
+  );
+  let capturando: AccionAtajo | null = null;
+
+  function pintarAtajos(): void {
+    const { combos, activos } = leerAtajos();
+    interruptorAtajos?.setAttribute('aria-checked', String(activos));
+    document
+      .querySelectorAll<HTMLElement>('[data-atajo-fila]')
+      .forEach((fila) => {
+        const accion = fila.dataset.atajoFila as AccionAtajo;
+        const kbd = fila.querySelector<HTMLElement>('[data-atajo-combo]');
+        const quitar = fila.querySelector<HTMLButtonElement>(
+          '[data-atajo-quitar]',
+        );
+        const combo = combos[accion];
+        if (capturando === accion) {
+          fila.dataset.capturando = '1';
+          if (kbd) kbd.textContent = 'Pulsa una combinación…';
+        } else {
+          delete fila.dataset.capturando;
+          if (kbd) {
+            kbd.textContent = combo ? etiquetaCombo(combo, esMac) : 'Sin atajo';
+            kbd.classList.toggle('tecla-sin', !combo || !activos);
+          }
+        }
+        if (quitar) quitar.disabled = combo === null;
+      });
+  }
+
+  function guardarCombo(accion: AccionAtajo, combo: string | null): void {
+    const config = leerAtajos();
+    config.combos[accion] = combo;
+    const ok = guardarAtajos(config);
+    const etiqueta = ATAJOS_POR_ACCION[accion].etiqueta;
+    anunciar(
+      combo
+        ? `«${etiqueta}» ahora es ${etiquetaCombo(combo, esMac)}.`
+        : `«${etiqueta}» se queda sin atajo.`,
+    );
+    if (!ok) anunciar(SIN_ALMACENAMIENTO);
+  }
+
+  function terminarCaptura(): void {
+    capturando = null;
+    document.removeEventListener('keydown', capturarTecla, true);
+    pintarAtajos();
+  }
+
+  function capturarTecla(evento: KeyboardEvent): void {
+    if (!capturando) return;
+    // Tab sale del campo como siempre: capturarlo dejaría a quien navega con
+    // teclado atrapado en el botón (WCAG 2.1.2).
+    if (
+      evento.key === 'Tab' &&
+      !evento.ctrlKey &&
+      !evento.altKey &&
+      !evento.metaKey
+    ) {
+      anunciar('Cambio cancelado.');
+      terminarCaptura();
+      return;
+    }
+    // Mientras se captura, ninguna otra pulsación llega al listener global de
+    // atajos ni al navegador.
+    evento.preventDefault();
+    evento.stopImmediatePropagation();
+    if (evento.key === 'Escape') {
+      anunciar('Cambio cancelado.');
+      terminarCaptura();
+      return;
+    }
+    const combo = comboDePulsacion(evento);
+    if (!combo) return; // solo modificadores, o una tecla no admitida
+    const texto = formatearCombo(combo);
+    const error = validarCombo(texto);
+    if (error === 'sin-modificador') {
+      anunciar('Necesita Ctrl, Alt o Cmd/Win, o una tecla F1–F12.');
+      return;
+    }
+    if (error === 'reservado') {
+      anunciar(
+        `${etiquetaCombo(texto, esMac)} la reserva el navegador. Prueba otra.`,
+      );
+      return;
+    }
+    if (error) return;
+    const ocupado = accionConCombo(leerAtajos().combos, texto, capturando);
+    if (ocupado) {
+      anunciar(
+        `${etiquetaCombo(texto, esMac)} ya la usa «${ATAJOS_POR_ACCION[ocupado].etiqueta}». Prueba otra o quítala primero.`,
+      );
+      return;
+    }
+    const accion = capturando;
+    terminarCaptura();
+    guardarCombo(accion, texto);
+    document
+      .querySelector<HTMLButtonElement>(`[data-atajo-cambiar="${accion}"]`)
+      ?.focus();
+  }
+
+  document
+    .querySelectorAll<HTMLButtonElement>('[data-atajo-cambiar]')
+    .forEach((boton) => {
+      boton.addEventListener('click', () => {
+        const accion = boton.dataset.atajoCambiar as AccionAtajo;
+        if (capturando === accion) {
+          anunciar('Cambio cancelado.');
+          terminarCaptura();
+          return;
+        }
+        capturando = accion;
+        document.addEventListener('keydown', capturarTecla, true);
+        // Perder el foco (clic fuera, otra pestaña) cancela: si no, la
+        // siguiente combinación se guardaría sin que se viera dónde.
+        boton.addEventListener(
+          'blur',
+          () => {
+            if (capturando !== accion) return;
+            anunciar('Cambio cancelado.');
+            terminarCaptura();
+          },
+          { once: true },
+        );
+        pintarAtajos();
+        anunciar(
+          `Pulsa la nueva combinación para «${ATAJOS_POR_ACCION[accion].etiqueta}». Esc cancela.`,
+        );
+      });
+    });
+
+  document
+    .querySelectorAll<HTMLButtonElement>('[data-atajo-quitar]')
+    .forEach((boton) => {
+      boton.addEventListener('click', () => {
+        if (capturando) terminarCaptura();
+        guardarCombo(boton.dataset.atajoQuitar as AccionAtajo, null);
+      });
+    });
+
+  interruptorAtajos?.addEventListener('click', () => {
+    if (capturando) terminarCaptura();
+    const config = leerAtajos();
+    config.activos = !config.activos;
+    const ok = guardarAtajos(config);
+    anunciar(config.activos ? 'Atajos activados.' : 'Atajos desactivados.');
+    if (!ok) anunciar(SIN_ALMACENAMIENTO);
+  });
+
+  document
+    .querySelector<HTMLButtonElement>('[data-atajos-restablecer]')
+    ?.addEventListener('click', () => {
+      if (capturando) terminarCaptura();
+      const config = leerAtajos();
+      const ok = guardarAtajos({
+        activos: config.activos,
+        combos: combosPorDefecto(),
+      });
+      anunciar('Atajos restablecidos a los valores por defecto.');
+      if (!ok) anunciar(SIN_ALMACENAMIENTO);
+    });
+
+  document
+    .querySelector<HTMLButtonElement>('[data-preferencias-borrar]')
+    ?.addEventListener('click', () => {
+      if (!window.confirm('¿Borrar todas las preferencias de este navegador?'))
+        return;
+      if (capturando) terminarCaptura();
+      const ok = borrarPreferencias();
+      anunciar(
+        ok
+          ? 'Preferencias borradas. Todo sigue al sistema.'
+          : SIN_ALMACENAMIENTO,
+      );
+    });
+
+  // Cambios hechos desde otro control de la misma página (selector de tema
+  // de la cabecera, interruptor del pie, atajo de teclado) o desde otra
+  // pestaña se reflejan aquí.
+  window.addEventListener(EVENTO_PREFERENCIAS, () => {
+    pintarPreferencias();
+    pintarAtajos();
+  });
+  window.addEventListener('storage', () => {
+    pintarPreferencias();
+    pintarAtajos();
+  });
+  pintarPreferencias();
+  pintarAtajos();
+</script>

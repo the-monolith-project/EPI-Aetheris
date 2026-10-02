@@ -81,6 +81,7 @@ export default defineConfig({
         !pagina.includes('/alertas/nueva') &&
         !pagina.includes('/panel') &&
         !pagina.endsWith('/biblioteca/fichas/') &&
+        !pagina.includes('/configuracion') &&
         !pagina.includes('/demos') &&
         !pagina.includes('/incrustar'),
     }),

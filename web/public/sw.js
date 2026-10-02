@@ -21,7 +21,7 @@
  * añadir una cadena de build de PWA por ~90 líneas.
  */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE_SHELL = `epi-shell-${VERSION}`;
 const CACHE_API = `epi-api-${VERSION}`;
 

@@ -26,6 +26,7 @@ const COLUMNAS: { id: string; titulo: string; enlaces: Enlace[] }[] = [
       { href: '/biblioteca', etiqueta: 'Biblioteca' },
       { href: '/acerca-de', etiqueta: 'Acerca de' },
       { href: '/contacto', etiqueta: 'Contacto' },
+      { href: '/configuracion', etiqueta: 'Configuración' },
       { href: '/legal/terminos#licencias', etiqueta: 'Licencia' },
       { href: '/legal/terminos', etiqueta: 'Términos de uso' },
       { href: '/legal/privacidad', etiqueta: 'Privacidad' },
@@ -183,8 +184,13 @@ const COLUMNAS: { id: string; titulo: string; enlaces: Enlace[] }[] = [
 <script>
   // Interruptor "Animaciones". El atributo data-animaciones de <html> ya lo
   // fijó el script en línea del Layout antes del primer pintado; aquí solo se
-  // sincroniza el control y se guarda la elección (lib/animaciones.ts).
-  import { CLAVE_ANIMACIONES, animacionesActivas } from '../lib/animaciones';
+  // sincroniza el control y se guarda la elección (lib/preferencias.ts). Se
+  // repinta también cuando cambia desde el atajo de teclado o /configuracion.
+  import { animacionesActivas } from '../lib/animaciones';
+  import {
+    EVENTO_PREFERENCIAS,
+    alternarAnimaciones,
+  } from '../lib/preferencias';
 
   const interruptor = document.querySelector<HTMLButtonElement>(
     '[data-interruptor-animaciones]',
@@ -195,18 +201,8 @@ const COLUMNAS: { id: string; titulo: string; enlaces: Enlace[] }[] = [
   }
 
   interruptor?.addEventListener('click', () => {
-    const siguiente = animacionesActivas() ? 'off' : 'on';
-    document.documentElement.dataset.animaciones = siguiente;
-    if (siguiente === 'off') {
-      // Los bloques que esperaban entrar con scroll quedan visibles ya.
-      delete document.documentElement.dataset.animar;
-    }
-    try {
-      localStorage.setItem(CLAVE_ANIMACIONES, siguiente);
-    } catch {
-      // Sin almacenamiento el cambio vale solo para esta visita.
-    }
-    pintar();
+    alternarAnimaciones();
   });
+  window.addEventListener(EVENTO_PREFERENCIAS, pintar);
   pintar();
 </script>
