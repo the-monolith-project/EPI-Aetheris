@@ -30,7 +30,7 @@ const src = new URL(ruta, sitio).href;
 </div>
 
 <script>
-  import { copiarIncrustacion } from '../lib/exportar-acciones';
+  import { anunciarEstado, copiarIncrustacion } from '../lib/exportar-acciones';
 
   document.addEventListener('click', async (evento) => {
     const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>(
@@ -45,6 +45,6 @@ const src = new URL(ruta, sitio).href;
       titulo: boton.dataset.titulo ?? '',
       alto: Number(boton.dataset.alto) || 400,
     });
-    if (estado) estado.textContent = mensaje;
+    if (estado) anunciarEstado(estado, mensaje);
   });
 </script>

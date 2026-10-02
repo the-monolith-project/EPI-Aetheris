@@ -27,11 +27,18 @@ const estiloBoton =
   <button type="button" data-exportar-formato="png" class={estiloBoton}>
     Descargar PNG
   </button>
-  <span data-exportar-estado role="status" class="sr-only"></span>
+  <span
+    data-exportar-estado
+    role="status"
+    class="font-sans text-xs text-ink-muted"></span>
 </div>
 
 <script>
-  import { exportarImagen, type FormatoImagen } from '../lib/exportar-acciones';
+  import {
+    anunciarEstado,
+    exportarImagen,
+    type FormatoImagen,
+  } from '../lib/exportar-acciones';
 
   document.addEventListener('click', async (evento) => {
     const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>(
@@ -49,6 +56,6 @@ const estiloBoton =
       },
       boton.dataset.exportarFormato as FormatoImagen,
     );
-    if (estado) estado.textContent = mensaje;
+    if (estado) anunciarEstado(estado, mensaje);
   });
 </script>

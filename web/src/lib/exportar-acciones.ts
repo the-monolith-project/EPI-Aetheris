@@ -7,6 +7,28 @@ import { codigoIncrustacion } from './incrustar';
 
 export type FormatoImagen = 'svg' | 'png';
 
+const temporizadoresEstado = new WeakMap<
+  HTMLElement,
+  ReturnType<typeof setTimeout>
+>();
+
+/**
+ * Escribe `mensaje` en el elemento de estado y lo borra a los 4 s para que no
+ * quede un aviso viejo. El código de incrustación sin portapapeles es largo y
+ * se deja visible para poder copiarlo a mano.
+ */
+export function anunciarEstado(estado: HTMLElement, mensaje: string): void {
+  estado.textContent = mensaje;
+  clearTimeout(temporizadoresEstado.get(estado));
+  if (mensaje.startsWith('<iframe')) return;
+  temporizadoresEstado.set(
+    estado,
+    setTimeout(() => {
+      if (estado.textContent === mensaje) estado.textContent = '';
+    }, 4000),
+  );
+}
+
 export interface OrigenExportacion {
   titulo: string;
   fuente: string;

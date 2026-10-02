@@ -497,16 +497,24 @@ test('amplía paneles en foco y cambia la densidad temporal', async ({
   await temporadas.locator('[data-accion-panel="foco"]').click();
   await expect(temporadas).not.toHaveClass(/xl:col-span-12/);
 
+  // Al cambiar un tamaño se sale de la composición optimizada y cada fila se
+  // completa: temporadas (3) + departamentos (6) reparten las 3 columnas
+  // sobrantes y quedan en 5 + 7.
+  const departamentos = page.locator('[data-panel-workspace="departamentos"]');
   await page.locator('[data-boton-menu-panel="temporadas"]').click();
   await temporadas
     .locator('[data-accion-panel="tamano"][data-valor="pequeno"]')
     .click();
-  await expect(temporadas).toHaveClass(/xl:col-span-3/);
+  await expect(temporadas).toHaveClass(/xl:col-span-5/);
+  await expect(departamentos).toHaveClass(/xl:col-span-7/);
   await page.locator('[data-boton-menu-panel="temporadas"]').click();
   await temporadas
-    .locator('[data-accion-panel="tamano"][data-valor="mediano"]')
+    .locator('[data-accion-panel="tamano"][data-valor="grande"]')
     .click();
-  await expect(temporadas).toHaveClass(/xl:col-span-4/);
+  // Con los tamaños predeterminados vuelve la composición optimizada de la
+  // vista general, donde los paneles no llevan clases de ancho propias.
+  await expect(temporadas).not.toHaveClass(/col-span/);
+  await expect(departamentos).not.toHaveClass(/col-span/);
 });
 
 test('mantiene una sola curva nacional al cambiar su detalle', async ({
