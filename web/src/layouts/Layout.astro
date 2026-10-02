@@ -1,6 +1,8 @@
 ---
 import { Font } from 'astro:assets';
 import PieDePagina from '../components/PieDePagina.astro';
+import AtajosTeclado from '../components/AtajosTeclado.astro';
+import Icono from '../components/Icono.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -136,6 +138,16 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
         document.documentElement.dataset.animaciones = estado;
       })();
     </script>
+    <script is:inline>
+      // Tamaño de texto antes del primer pintado (lib/preferencias.ts).
+      try {
+        if (localStorage.getItem('epi:texto') === 'grande') {
+          document.documentElement.dataset.texto = 'grande';
+        }
+      } catch {
+        // Sin almacenamiento queda el tamaño normal.
+      }
+    </script>
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content={urlCanonica} />
@@ -211,38 +223,57 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
             })
           }
         </nav>
-        <button
-          type="button"
-          data-selector-tema
-          aria-pressed="false"
-          class="flex min-h-[44px] shrink-0 items-center gap-2 self-start rounded-full px-3 font-sans text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white sm:self-auto"
-        >
-          <span data-selector-tema-texto>Tema oscuro</span>
-        </button>
+        <div class="flex shrink-0 items-center gap-1 self-start sm:self-auto">
+          <button
+            type="button"
+            data-selector-tema
+            aria-pressed="false"
+            class="flex min-h-[44px] shrink-0 items-center gap-2 rounded-full px-3 font-sans text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <span data-selector-tema-texto>Tema oscuro</span>
+          </button>
+          <a
+            href="/configuracion"
+            aria-current={ruta.startsWith('/configuracion')
+              ? 'page'
+              : undefined}
+            aria-label="Configuración"
+            title="Configuración (atajos de teclado y preferencias)"
+            class:list={[
+              'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full transition-colors',
+              ruta.startsWith('/configuracion')
+                ? 'bg-white/15 text-white'
+                : 'text-white/70 hover:bg-white/10 hover:text-white',
+            ]}
+          >
+            <Icono nombre="settings" class="h-5 w-5" />
+          </a>
+        </div>
       </div>
     </header>
 
     <slot />
 
     <PieDePagina />
+    <AtajosTeclado />
 
     <script>
-      // Selector de tema: alterna entre claro y oscuro y recuerda la elección.
-      // Sin elección guardada manda el sistema (prefers-color-scheme).
+      // Selector de tema: alterna entre claro y oscuro y recuerda la elección
+      // (lib/preferencias.ts). Sin elección guardada manda el sistema. Se
+      // repinta también cuando el tema cambia desde otro control: el atajo de
+      // teclado o la página /configuracion.
+      import {
+        EVENTO_PREFERENCIAS,
+        alternarTema,
+        temaEfectivo,
+      } from '../lib/preferencias';
+
       const botonTema = document.querySelector<HTMLButtonElement>(
         '[data-selector-tema]',
       );
       const textoTema = document.querySelector<HTMLElement>(
         '[data-selector-tema-texto]',
       );
-
-      function temaEfectivo(): 'dark' | 'light' {
-        const fijo = document.documentElement.getAttribute('data-theme');
-        if (fijo === 'dark' || fijo === 'light') return fijo;
-        return window.matchMedia('(prefers-color-scheme: dark)').matches
-          ? 'dark'
-          : 'light';
-      }
 
       function pintarSelectorTema(): void {
         if (!botonTema || !textoTema) return;
@@ -252,18 +283,12 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
       }
 
       botonTema?.addEventListener('click', () => {
-        const siguiente = temaEfectivo() === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', siguiente);
-        try {
-          localStorage.setItem('epi:tema', siguiente);
-        } catch {
-          // Sin almacenamiento el cambio vale solo para esta visita.
-        }
-        pintarSelectorTema();
+        alternarTema();
       });
       window
         .matchMedia('(prefers-color-scheme: dark)')
         .addEventListener('change', pintarSelectorTema);
+      window.addEventListener(EVENTO_PREFERENCIAS, pintarSelectorTema);
       pintarSelectorTema();
     </script>
 

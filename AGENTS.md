@@ -247,6 +247,22 @@ filtra por CORS las cabeceras propias; el backend nunca emite ese campo. No
 cambies la estrategia a cache-first ni quites el sello. Al desplegar, sube
 `VERSION` en `sw.js`.
 
+**Preferencias y atajos de teclado (`/configuracion`).** Todas las
+preferencias de la persona viven en `localStorage` con prefijo `epi:` y se
+escriben únicamente desde `web/src/lib/preferencias.ts` (tema `epi:tema`,
+animaciones `epi:animaciones`, tamaño de texto `epi:texto`, atajos
+`epi:atajos`, departamento `epi:departamento`); cada cambio emite el evento
+`epi:preferencias` en `window` y el selector de tema de la cabecera, el
+interruptor del pie y `/configuracion` se repintan con él. Los atajos
+(`web/src/lib/atajos.ts`, listener y diálogo de ayuda en
+`components/AtajosTeclado.astro`, incluido por `Layout.astro` y **no** por
+`LayoutIncrustado.astro`) se casan por `KeyboardEvent.code`, exigen Ctrl, Alt
+o Meta (o F1–F12), no se disparan con el foco en un campo editable y se
+guardan como diferencias respecto a los valores por defecto. Añadir una
+acción = añadirla al catálogo `ATAJOS` con un combo libre; no dupliques la
+resolución de tema/animaciones/texto fuera de la librería (los `is:inline`
+de `Layout.astro` la repiten solo para el primer pintado).
+
 Al representar resultados epidemiológicos:
 
 * diferencia claramente datos descriptivos y salidas del modelo;
