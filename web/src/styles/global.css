@@ -76,6 +76,35 @@
   }
 }
 
+/* Tamaño de texto "grande" (/configuracion, lib/preferencias.ts). Subir el
+   tamaño raíz escala todo lo que está en rem, que es casi todo el sitio. Los
+   textos con tamaño fijo en píxeles (etiquetas de gráficos y de mapas) se
+   quedan como están. */
+html[data-texto='grande'] {
+  font-size: 112.5%;
+}
+
+/* Tecla de atajo (diálogo de ayuda y /configuracion). */
+.tecla {
+  display: inline-block;
+  min-width: 2.25rem;
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: 0.375rem;
+  background-color: var(--color-bg);
+  padding: 0.125rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+.tecla-sin {
+  color: var(--color-ink-muted);
+  border-style: dashed;
+}
+
 /* Sombra elevada compartida por las tarjetas del dashboard -- se define una
    sola vez porque Tailwind v4 no tiene un valor equivalente en su escala
    por defecto y el mismo par de sombras se repite en varios componentes. */

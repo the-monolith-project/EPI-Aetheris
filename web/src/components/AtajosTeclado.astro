@@ -1,0 +1,160 @@
+---
+/**
+ * Atajos de teclado globales (ver lib/atajos.ts) y el diálogo de ayuda que
+ * los lista. Lo incluye Layout.astro en todas las páginas con cabecera; el
+ * layout incrustado (iframes) queda fuera a propósito.
+ *
+ * El HTML del diálogo sale con las combinaciones por defecto; el script las
+ * sustituye por las que la persona haya guardado en /configuracion.
+ */
+import { ATAJOS, type GrupoAtajo } from '../lib/atajos';
+
+const GRUPOS: { grupo: GrupoAtajo; titulo: string }[] = [
+  { grupo: 'navegar', titulo: 'Navegar' },
+  { grupo: 'preferencias', titulo: 'Preferencias' },
+  { grupo: 'ayuda', titulo: 'Ayuda' },
+];
+---
+
+<dialog
+  id="atajos-ayuda"
+  aria-labelledby="atajos-ayuda-titulo"
+  class="m-auto w-[min(92vw,34rem)] rounded-2xl border border-border bg-surface p-0 text-ink shadow-[var(--shadow-card-hover)] backdrop:bg-black/50"
+>
+  <form method="dialog" class="flex flex-col gap-5 p-6">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2
+          id="atajos-ayuda-titulo"
+          class="font-sans text-lg font-semibold text-ink"
+        >
+          Atajos de teclado
+        </h2>
+        <p class="mt-1 font-sans text-sm text-ink-muted">
+          Funcionan en cualquier página, salvo mientras escribes en un campo.
+        </p>
+      </div>
+      <button
+        type="submit"
+        class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full font-sans text-sm text-ink-muted transition-colors hover:bg-bg hover:text-ink"
+        aria-label="Cerrar"
+      >
+        ✕
+      </button>
+    </div>
+
+    {
+      GRUPOS.map(({ grupo, titulo }) => (
+        <section>
+          <h3 class="font-sans text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            {titulo}
+          </h3>
+          <dl class="mt-2 divide-y divide-border font-sans text-sm">
+            {ATAJOS.filter((a) => a.grupo === grupo).map((a) => (
+              <div class="flex items-center justify-between gap-4 py-2">
+                <dt class="text-ink">{a.etiqueta}</dt>
+                <dd class="shrink-0">
+                  <kbd class="tecla" data-atajo-combo={a.accion}>
+                    {a.porDefecto}
+                  </kbd>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ))
+    }
+
+    <p class="font-sans text-sm text-ink-muted">
+      Se cambian en{' '}
+      <a href="/configuracion" class="text-accent underline">Configuración</a>.
+    </p>
+  </form>
+</dialog>
+
+<script>
+  import {
+    ATAJOS_POR_ACCION,
+    CLAVE_ATAJOS,
+    accionParaPulsacion,
+    esObjetivoEditable,
+    esPlataformaMac,
+    etiquetaCombo,
+    type AccionAtajo,
+  } from '../lib/atajos';
+  import {
+    EVENTO_PREFERENCIAS,
+    alternarAnimaciones,
+    alternarTema,
+    leerAtajos,
+  } from '../lib/preferencias';
+
+  const dialogo = document.getElementById(
+    'atajos-ayuda',
+  ) as HTMLDialogElement | null;
+  const esMac = esPlataformaMac(navigator);
+
+  /** Repinta las teclas del diálogo con la configuración vigente. */
+  function pintarAyuda(): void {
+    const { combos, activos } = leerAtajos();
+    document
+      .querySelectorAll<HTMLElement>('[data-atajo-combo]')
+      .forEach((kbd) => {
+        const accion = kbd.dataset.atajoCombo as AccionAtajo;
+        const combo = combos[accion];
+        kbd.textContent = combo ? etiquetaCombo(combo, esMac) : 'Sin atajo';
+        kbd.classList.toggle('tecla-sin', !combo || !activos);
+      });
+  }
+
+  function ejecutar(accion: AccionAtajo): void {
+    const definicion = ATAJOS_POR_ACCION[accion];
+    if (definicion.href) {
+      // /dengue/ y /dengue son la misma página: sin esto, recarga.
+      const actual = window.location.pathname.replace(/\/+$/, '') || '/';
+      if (actual !== definicion.href) {
+        window.location.assign(definicion.href);
+      }
+      return;
+    }
+    if (accion === 'tema') alternarTema();
+    else if (accion === 'animaciones') alternarAnimaciones();
+    else if (accion === 'ayuda' && dialogo) {
+      if (dialogo.open) dialogo.close();
+      else {
+        pintarAyuda();
+        dialogo.showModal();
+      }
+    }
+  }
+
+  /**
+   * Otro diálogo abierto (el panel de filtros de /dengue, por ejemplo) se
+   * queda con el teclado: abrir encima la ayuda dejaría el foco atrapado en
+   * el que quedó inerte.
+   */
+  function hayOtroDialogoAbierto(): boolean {
+    if (dialogo?.open) return false;
+    return Array.from(
+      document.querySelectorAll<HTMLElement>('dialog[open], [role="dialog"]'),
+    ).some((el) => el.checkVisibility());
+  }
+
+  document.addEventListener('keydown', (evento) => {
+    if (evento.repeat || evento.isComposing) return;
+    if (esObjetivoEditable(evento.target as HTMLElement | null)) return;
+    if (hayOtroDialogoAbierto()) return;
+    const accion = accionParaPulsacion(leerAtajos(), evento);
+    if (!accion) return;
+    evento.preventDefault();
+    ejecutar(accion);
+  });
+
+  // Si /configuracion cambia los atajos en esta misma pestaña (o los borra),
+  // el diálogo lo refleja la próxima vez que se abra; aquí basta repintar.
+  window.addEventListener(EVENTO_PREFERENCIAS, pintarAyuda);
+  window.addEventListener('storage', (evento) => {
+    if (evento.key === CLAVE_ATAJOS || evento.key === null) pintarAyuda();
+  });
+  pintarAyuda();
+</script>
