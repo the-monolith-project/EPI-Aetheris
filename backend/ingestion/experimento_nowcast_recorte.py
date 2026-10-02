@@ -56,6 +56,25 @@ DIR_VERSIONADO = Path(__file__).resolve().parents[2] / "docs" / "agentes" / "mej
 PREVIOS = Path(__file__).resolve().parents[2] / "docs" / "agentes" / "mejora-predictor" / "resultados-previos" / "nowcast"
 
 
+CACHE = DIR / "cache"
+
+
+def _con_cache(nombre: str, calcular):
+    """Reutiliza el resultado de una tarea ya calculada (mismo codigo, mismos
+    datos). Para rehacer una corrida desde cero, borrar DIR / "cache"."""
+    if LIMITE_ORIGENES:
+        return calcular()
+    ruta = CACHE / f"{nombre}.json"
+    if ruta.exists():
+        return json.loads(ruta.read_text(encoding="utf-8"))
+    r = calcular()
+    CACHE.mkdir(parents=True, exist_ok=True)
+    tmp = ruta.with_suffix(".tmp")
+    tmp.write_text(json.dumps(r, default=str), encoding="utf-8")
+    tmp.replace(ruta)
+    return r
+
+
 def totales_anuales(serie: Serie) -> dict[int, float]:
     return {int(a): float(np.nansum(serie.casos[serie.anio == a])) for a in range(2014, 2025)}
 
@@ -75,6 +94,11 @@ def origenes_recorte(serie: Serie, h: int, anio_prueba: int) -> list[int]:
 
 def _tarea(args: tuple) -> dict:
     serie, fase, modelo, h, anio_prueba, mutar = args
+    return _con_cache(f"recorte_{fase}_{modelo}_h{h}_{anio_prueba}_{'mut' if mutar else 'normal'}",
+                      lambda: _calcular(serie, fase, modelo, h, anio_prueba, mutar))
+
+
+def _calcular(serie: Serie, fase: str, modelo: str, h: int, anio_prueba, mutar: bool) -> dict:
     threadpool_limits(1)
     tab._instalar_parches()
     afect = mej.semanas_afectadas(serie)

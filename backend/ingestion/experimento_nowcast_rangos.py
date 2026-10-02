@@ -66,6 +66,25 @@ DIR_VERSIONADO = Path(__file__).resolve().parents[2] / "docs" / "agentes" / "mej
 PREVIOS = Path(__file__).resolve().parents[2] / "docs" / "agentes" / "mejora-predictor" / "resultados-previos" / "nowcast"
 
 
+CACHE = DIR / "cache"
+
+
+def _con_cache(nombre: str, calcular):
+    """Reutiliza el resultado de una tarea ya calculada (mismo codigo, mismos
+    datos). Para rehacer una corrida desde cero, borrar DIR / "cache"."""
+    if LIMITE_ORIGENES:
+        return calcular()
+    ruta = CACHE / f"{nombre}.json"
+    if ruta.exists():
+        return json.loads(ruta.read_text(encoding="utf-8"))
+    r = calcular()
+    CACHE.mkdir(parents=True, exist_ok=True)
+    tmp = ruta.with_suffix(".tmp")
+    tmp.write_text(json.dumps(r, default=str), encoding="utf-8")
+    tmp.replace(ruta)
+    return r
+
+
 # --- capas secuenciales ------------------------------------------------------
 
 
@@ -148,6 +167,10 @@ def _referencias(serie: Serie, filas: list[dict], h: int, afect: frozenset[int],
 
 def _tarea_a(args: tuple) -> dict:
     serie, h = args
+    return _con_cache(f"rangos_A_h{h}", lambda: _calcular_a(serie, h))
+
+
+def _calcular_a(serie: Serie, h: int) -> dict:
     threadpool_limits(1)
     tab._instalar_parches()
     origenes = mej.origenes_de(serie, h, mej.ANIOS_VALIDACION)[:LIMITE_ORIGENES]
@@ -171,6 +194,10 @@ def _tarea_a(args: tuple) -> dict:
 
 def _tarea_b(args: tuple) -> dict:
     serie, h = args
+    return _con_cache(f"rangos_B_h{h}", lambda: _calcular_b(serie, h))
+
+
+def _calcular_b(serie: Serie, h: int) -> dict:
     threadpool_limits(1)
     tab._instalar_parches()
     calent = ten._origenes_en_fase(serie, h, mej.ANIOS_VALIDACION, (2024,))
