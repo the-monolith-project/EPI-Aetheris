@@ -158,6 +158,28 @@ separar.
   la validación y confirmar fuera acota el exceso de optimismo de la rejilla, pero no lo
   elimina.
 
+## Extensión E1, firmada después de ver la validación y la confirmación de (0,8; 2)
+
+Las partes A y B ya se corrieron. La validación eligió (0,8; 2) para la elección común y para
+los tres tramos, y esa elección está en el borde de la rejilla en v: v = 2 es el valor más
+chico probado, y a φ fijo el puntaje sube al achicar v. Con el óptimo en el borde no se puede
+decir que la rejilla lo contenga. Se añade una sola columna, v = 1 (la pendiente es el último
+cambio semanal), con los mismos seis valores de φ. No se añade nada más a la rejilla.
+
+Esto se fija después de haber visto la validación completa y la confirmación de (0,8; 2) en H1
+y en H2, de modo que la regla es más estricta y H1 y H2 dejan de ser un conjunto virgen para
+cualquier candidata de esta extensión:
+
+- La mejor de las seis nuevas sustituye a (0,8; 2) solo si la supera en al menos 0,005 de
+  puntaje promedio de validación (los ocho horizontes) y en al menos 3 de los 5 años. Si no, E1
+  termina y (0,8; 2) queda como la mejor de la rejilla ampliada.
+- Si la sustituye, se confirma con los criterios (b) y (c) de arriba, y además con la razón de
+  WIS frente a (0,8; 2) menor que 1 en H1 y en H2.
+- Cualquiera que sea el resultado, la adopción de una configuración nueva en el predictor
+  exige la ventana prospectiva nueva de la Fase 4: elegir y confirmar con 2018 a 2026-S37 no
+  alcanza, porque (0,8; 3) se eligió mirando 2024 a 2026-S37 y la rejilla ya se amplió una vez
+  tras ver resultados.
+
 ## Lo que sigue a este experimento
 
 - Si T' pasa la regla, se firma como candidata para una ventana prospectiva nueva (Fase 4), con
