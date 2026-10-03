@@ -6,6 +6,23 @@
 > congelado en 40b6ebb, semanas objetivo desde 2026-S38). Ninguna decisión de este documento usa
 > una semana objetivo posterior a 2026-S37.
 
+## Enmienda del mismo día, antes del barrido
+
+Al correr solo los controles (no el barrido) se vio que `rangos.json` guarda los cuantiles y
+los WIS redondeados a 3 decimales, de modo que "diferencia máxima de cero" no es alcanzable
+con ese archivo. La diferencia máxima observada en T fue 0,0004999, la mitad del paso de
+redondeo, y la historia de k = 7 coincide bit a bit con la del experimento firmado. El control
+pasa a ser:
+
+- T: diferencia máxima menor o igual a 0,0005 (la mitad del paso de redondeo).
+- C: diferencia máxima menor o igual a 0,003. C mezcla el M0 guardado, ya redondeado, con T, y
+  el redondeo del primero se amplifica hasta 5 veces en la mezcla de logaritmos.
+- WIS de la referencia (persistencia suavizada) contra `wis_suavizada` guardado: diferencia
+  menor o igual a 0,0005, un control más de que la referencia es la misma.
+
+Es un cambio del criterio de un control, no del análisis; no se había calculado ninguna métrica
+de selección. La parte C usa como control sin recorte la misma tolerancia de redondeo.
+
 ## Pregunta
 
 La Fase 0 no pudo identificar el filtro con que MINSAL construye la serie del tablero
