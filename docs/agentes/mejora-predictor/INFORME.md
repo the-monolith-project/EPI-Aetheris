@@ -1,4 +1,4 @@
-# Búsqueda de mejoras al predictor de dengue: informe (2026-10-02)
+# Búsqueda de mejoras al predictor de dengue: informe (2026-10-02, actualizado el 2026-10-03)
 
 Rama `feat/mejora-predictor-agente`. Tres experimentos con protocolo escrito y commiteado antes
 de correr, scripts reproducibles y resultados versionados. Cada cifra de este informe sale de
@@ -34,9 +34,11 @@ indicio que merece su propia firma:
    se sirve desde 2025, no corrige el problema que motivó la pregunta: la cobertura del 95 % de
    C en 2026 pasa de 0,79 a 0,76 a 4 semanas y de 0,79 a 0,72 a 8. No se recomienda para C.
 2. **El peso 0,5 de M0 en C es alto a 1 y 2 semanas.** En 2025-2026 la tendencia amortiguada
-   sola tiene WIS 4,7 a 1 semana, contra 6,0 de C y 5,7 de la persistencia suavizada. El peso
+   sola tiene WIS 4,7 a 1 semana, contra 5,9 de C y 5,7 de la persistencia suavizada. El peso
    elegido por desempeño reciente (C1) mejora C a 1 y 2 semanas y la empeora a 4 y 8; no pasa
-   su criterio. Un peso fijo por horizonte es una hipótesis contaminada: 2025-2026 ya sirvieron
+   su criterio. Con una ventana de 52 semanas en vez de 26 (una sensibilidad), mejora C a 1, 2 y
+   3 semanas, queda a menos de 2 % de C a 4 y 8, y solo incumple la cobertura del 95 % a 8
+   semanas (0,84 contra 0,85). Un peso fijo por horizonte es una hipótesis contaminada: 2025-2026 ya sirvieron
    para elegir C. Solo vale con un protocolo firmado antes y semanas objetivo posteriores que no
    se crucen con la prueba prospectiva en curso (desde 2026-S38 hasta 2027-S05).
 
@@ -54,7 +56,7 @@ temporadas y un umbral de ±0,03 la prueba tiene poca potencia para detectar efe
 | Conformal adaptativo (R3) | No pasa: cuesta 8 % a 13 % de WIS | WIS 63,7 contra 56,6 a h = 4 |
 | Calibrar la mezcla C (R4) | No cumple en el tablero | Cobertura del 95 %: 0,69 a h = 4 |
 | Corrección del sesgo reciente (S1) | Empeora en las dos series | Skill contra M0: −0,14 a h = 1, −0,44 a h = 4 |
-| Peso de la mezcla por desempeño reciente (C1) | No cumple: gana a 1-2 semanas, pierde a 4-8 | WIS 4,8 contra 6,0 a h = 1; 31,1 contra 28,6 a h = 8 |
+| Peso de la mezcla por desempeño reciente (C1) | No cumple: gana a 1-2 semanas, pierde a 4-8 | WIS 4,7 contra 5,9 a h = 1; 31,4 contra 28,6 a h = 8 |
 | Regresión cuantílica lineal (L0) como familia que extrapola | No pasa la validación normal; 0 de 5 años ganados a h = 4 | Skill medio por año contra la persistencia limpia −0,37 a h = 4 |
 
 Ideas de la revisión bibliográfica descartadas sin correr, por falta de datos o de condiciones:
@@ -91,15 +93,20 @@ CRPS de un ejercicio estatal) y contextos distintos del de este proyecto.
   fechadas en cada protocolo.
 - Los tres scripts reproducen con diferencia 0 las 2.044 predicciones de M0 de
   `mejora_validacion.json`, y C reproduce las 416 de 2024 de `tendencia_verificacion.json`.
-- En 2025-2026 las predicciones difieren de las publicadas desde el origen 2025-01-05 (mediana
-  hasta 9 % distinta en el peor caso, entre 0,6 % y 1,4 % en promedio). La semilla no trae ONI
-  de 2025-2026 y este entorno no alcanza al servidor de NOAA para cargarlo. Las comparaciones
-  entre variantes dentro de ese tramo usan los mismos datos; las cifras absolutas de 2025-2026
-  no son las del artefacto servido.
-- Qué depende de ese tramo: la propuesta de peso por horizonte en C y todos los veredictos de la
-  serie del tablero. La propuesta de quitar el ONI no: se apoya en la validación 2019 y
-  2021-2024, reproducida sin diferencia. Lo que sí pierde valor es la ablación del ONI en el
-  tablero, porque allí el ONI es una constante arrastrada desde diciembre de 2024.
+- La primera ejecución (2026-10-02) se hizo sin ONI de 2025-2026 y sus predicciones de ese
+  tramo diferían de las publicadas. El 2026-10-03 se añadió `db/seed/seed_oni_2025_2026.sql`
+  (ONI mensual de NOAA de diciembre de 2024 a julio de 2026) y se repitió el tramo del tablero
+  de los experimentos de insumos y de rangos y el análisis de cobertura, con enmiendas
+  fechadas antes de la repetición. Con ese ONI, M0 y C reproducen con diferencia 0 las 647
+  predicciones publicadas de 2025-2026. Ningún veredicto cambió; las cifras de este informe son
+  las de la repetición. El experimento de recorte no usa datos posteriores a 2024 y no se
+  repitió.
+- Los valores del ONI de la semilla no se pudieron contrastar desde este entorno con el archivo
+  de NOAA (el proxy bloquea el servidor). Que las predicciones publicadas se reproduzcan sin
+  diferencia indica que son los mismos valores con que se generaron los artefactos.
+- El bloque `desempeno` de `nowcast_dengue.json` usa 77 semanas objetivo desde 2025-01-26 a 4
+  semanas; los experimentos usan 81 desde 2025-S1. Las predicciones coinciden; las cifras
+  agregadas difieren por la muestra.
 - No se usó ninguna semana objetivo desde 2026-S38. El script de la prueba prospectiva
   congelada (`experimento_nowcast_tendencia.py`) no se modificó. No se tocaron la API, el
   frontend, los artefactos de `backend/api/datos/` ni el esquema.
@@ -113,8 +120,8 @@ lado:
 
 | tramo | lo observado | lo que pasó | lado de los fallos |
 |---|---|---|---|
-| 2026-S1 a S4 | 39 casos en 2025-S52 y 214 en 2026-S1 (×5,5 en una semana) | La predicción seguía la bajada de diciembre: a 4 semanas, mediana 55 y rango del 95 % de 6 a 110 para S1 | Por arriba: la predicción quedó corta |
-| 2026-S19 a S23 | 98 casos en S18 y 56 en S19 (−43 % en una semana) | La predicción esperaba la subida de mayo: a 4 semanas, medianas de 106 a 129 para S20 a S22, observados 53 a 55 | Por abajo: la predicción quedó larga |
+| 2026-S1 a S4 | 39 casos en 2025-S52 y 214 en 2026-S1 (×5,5 en una semana) | La predicción seguía la bajada de diciembre: a 4 semanas, mediana 55 y rango del 95 % de 5 a 110 para S1 | Por arriba: la predicción quedó corta |
+| 2026-S19 a S23 | 98 casos en S18 y 56 en S19 (−43 % en una semana) | La predicción esperaba la subida de mayo: a 4 semanas, medianas de 108 a 131 para S20 a S22, observados 53 a 55 | Por abajo: la predicción quedó larga |
 
 Fuera de esos tramos la cobertura del 95 % de 2026 es 1,00 a 1 a 4 semanas y entre 0,91 y 0,95 a
 5 a 8. Los fallos son de posición ante saltos bruscos, no de ancho, y por eso ninguna capa de
@@ -133,27 +140,26 @@ están, y el protocolo ya reporta como sensibilidad las cifras sin las semanas 5
 
 ## Decisiones para la persona dueña del proyecto
 
-1. Si se carga el ONI de 2025-2026 en la semilla y se repite la fase B de los experimentos. Va
-   primero: el peso por horizonte y los veredictos del tablero dependen de ese tramo.
-2. Si se retira el ONI de M0 como simplificación. No empeora nada medible en la validación,
+1. Si se retira el ONI de M0 como simplificación. No empeora nada medible en la validación,
    pero cambiar el modelo publicado requiere su propia firma.
-3. Si se firma un experimento de peso por horizonte en C (por ejemplo, menos peso de M0 a 1 y
+2. Si se firma un experimento de peso por horizonte en C (por ejemplo, menos peso de M0 a 1 y
    2 semanas), con semanas objetivo posteriores a la firma que no se crucen con la prueba
    prospectiva en curso.
-4. Si se intenta comprobar el origen de los escalones del tablero, por ejemplo con capturas
+3. Si se intenta comprobar el origen de los escalones del tablero, por ejemplo con capturas
    sucesivas de las primeras semanas de 2027 o consultando a MINSAL cómo calcula la serie.
-5. Si la Biblioteca incorpora la cifra de saturación ante brotes sin precedente (12 % y 41 %
+4. Si la Biblioteca incorpora la cifra de saturación ante brotes sin precedente (12 % y 41 %
    de lo observado en el pico) junto a la salvedad que ya tiene.
 
 N_CAL = 104 queda descartado para C: no mejora la cobertura del tablero.
 
 ## Pendiente, en el orden en que lo haría
 
-1. Repetir la fase B de los experimentos con ONI de 2025-2026 cargado, para cerrar la
-   diferencia con el artefacto servido. Los scripts guardan caché por tarea en
-   `backend/ingestion/data/interim/nowcast/cache/`, sin control de cambios en los datos: hay que
-   borrar ahí las tareas del tablero (`*_tablero_*` y `rangos_B_*`) antes de repetir.
-2. Si se firma el peso por horizonte, escribir su protocolo y esperar semanas objetivo
+1. Si se firma el peso por horizonte, escribir su protocolo y esperar semanas objetivo
    posteriores al corte de la prueba prospectiva.
+2. Incorporar `db/seed/seed_oni_2025_2026.sql` a la carga documentada (después de
+   `seed_datos_reales.sql`), para que el tramo del tablero se reproduzca desde un clon limpio.
+   Los scripts guardan caché por tarea en `backend/ingestion/data/interim/nowcast/cache/`, sin
+   control de cambios en los datos: si cambian los datos, hay que borrar ahí las tareas
+   afectadas antes de repetir.
 3. Una comparación con modelos externos, cuando haya predicciones públicas para El Salvador
    sobre el mismo objetivo, horizonte y periodo. No se hizo ninguna aquí.
