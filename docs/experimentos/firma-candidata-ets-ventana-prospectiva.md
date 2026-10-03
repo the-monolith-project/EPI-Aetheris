@@ -1,8 +1,7 @@
 # Firma de la candidata K4 (ETS) para la ventana prospectiva (2026-10-03)
 
-> Protocolo propuesto el 2026-10-03, en la rama `feat/mejora-tablero-theta-ets`. Queda firmado
-> cuando Eduardo lo aprueba y se anota aquí el commit del script. Hasta entonces se puede
-> enmendar. Continúa `firma-candidatas-ventana-prospectiva.md` (K1, K2 y K3, firmadas con el script
+> Protocolo propuesto el 2026-10-03, en la rama `feat/mejora-tablero-theta-ets`. Firmado el
+> 2026-10-03 al aprobarlo Eduardo y anotar el commit del script (sección Firma). Continúa `firma-candidatas-ventana-prospectiva.md` (K1, K2 y K3, firmadas con el script
 > `069eaf9566050e1d001dbeefab52d868cb478c21`), que no se toca, igual que la prueba prospectiva
 > congelada (`experimento-nowcast-tendencia.md`, script `40b6ebb78fe670222966a225438155b83ada876d`),
 > la web, el backend y los artefactos de `backend/api/datos/`.
@@ -110,4 +109,10 @@ en cuenta que son 20 comparaciones.
 
 ## Firma
 
-Commit del script: se anota aquí al aprobar.
+Aprobado por Eduardo el 2026-10-03, sin enmiendas. K4 y el criterio de arriba quedan firmados.
+
+Commit del script: `3086b20af5ceb21b0857c5630a2d6137f4cde512`. Los commits posteriores de la rama
+solo tocan este documento y la salida de la verificación.
+
+Desde esta firma el protocolo no se enmienda. Una candidata nueva se firma en otro documento y, para
+entrar en esta ventana, antes de cargar una captura con 2026-S38 o posterior.
