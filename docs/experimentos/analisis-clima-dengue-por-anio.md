@@ -274,8 +274,15 @@ La correlación positiva de la temperatura desaparece sin 2014 y 2022. La de la 
 - Una variante de M0 con el clima expresado como anomalía respecto de la estación necesitaría su
   propio protocolo. Quien lo escriba ya vio A3, de modo que A3 no cuenta como evidencia independiente
   a su favor, y la ventana prospectiva firmada para K1 a K4 no se modifica.
-- Comparar El Salvador con otros países requiere cargar casos y clima de esos países, que esta base
-  no tiene. Este análisis no permite decir que El Salvador difiera de otros lugares ni lo contrario.
+- Este análisis usa solo El Salvador y no permite decir si difiere de otros países. Esa comparación
+  existe en el experimento multipaís (`experimento-multipais.md`, hoy en el repo STC; última versión en
+  este repo en el commit `ef698c8^`). Con 18 países de las Américas (OpenDengue PAHO, 2014 a 2024),
+  la correlación entre la anomalía anual de casos de El Salvador y la señal regional compartida es de
+  +0,280, la más baja de los 18 (Colombia +0,952, Guatemala +0,908, Honduras +0,868). Un clasificador
+  regional con clima superó a la climatología en 6 de 11 años (8 de 11 con ONI), y el entrenado con
+  los otros países no transfirió a El Salvador. Esa medida es sobre casos, usa un solo punto de clima
+  por país y es de otra tarea (clasificación del canal endémico). No se reprodujo aquí. Mostrarla en el
+  sitio exige recalcularla con un protocolo propio.
 
 ## Límites añadidos tras ver los resultados
 
