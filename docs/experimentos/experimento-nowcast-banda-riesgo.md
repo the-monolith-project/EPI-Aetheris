@@ -82,9 +82,10 @@ piso el límite de riesgo nunca queda por debajo del límite central publicado.
 | L2 | Factor por régimen: f sobre los pares pasados del mismo régimen que la fila. Con menos de 40 pares en ese régimen, L1. |
 
 La ventana es expansiva y no se afina. El mínimo de 40 pares es el entero siguiente a 39, el menor
-n con el que el máximo de los scores da el nivel conforme del 97,5 %. Con menos de 80 pares el
-factor es, en la práctica, el máximo de los scores, y se informa la fracción de filas en que cada
-capa opera con su factor propio y no con el de reserva.
+n con el que el máximo de los scores da el nivel conforme del 97,5 %. Con la convención de
+`method="higher"` (la del código de CQR-r) el factor es el máximo de los scores mientras haya menos
+de 119 pares, y se informa la fracción de filas en que cada capa opera con su factor propio y no con
+el de reserva.
 
 Las filas de evaluación son las que tienen al menos 40 pares pasados (las primeras semanas de 2019
 quedan fuera del puntaje de todas las capas por igual). El nivel 0,99 se calcula con el mismo
@@ -104,6 +105,20 @@ con los cortes de su propio origen, como en A. La tabla usa pares con objetivo h
 modo que los orígenes de las primeras semanas de 2025 con h grande la ven con a lo sumo 8 semanas
 de adelanto; se declara y no se corrige. Se informa además, como descriptivo,
 la misma capa con calibración hacia adelante dentro del bloque B y la tabla aplicada a M0.
+
+## Extensión E1, condicionada
+
+Con menos de 119 pares el factor es el máximo de los scores, y en A los pares por horizonte y
+régimen no pasan de unos 85: es una estimación inestable por construcción. Si en la parte A ni L1
+ni L2 pasan y, en al menos una de las dos, el único criterio incumplido es el ensanchamiento medio
+de a lo sumo 2,0, se corre esta extensión. Las capas L1p y L2p son iguales a L1 y L2 salvo que los
+scores de los 8 horizontes se acumulan en un solo conjunto (por régimen en L2p), con el mismo
+mínimo de 40 pares. Los scores están normalizados por el semiancho de cada modelo y son
+comparables entre horizontes; los pares de un mismo origen y de orígenes vecinos comparten errores,
+y se acepta esa dependencia. Solo estas capas pueden pasar en ese caso, con la misma regla de
+decisión (L2p sobre L1p con el mismo umbral y su propio control de barajado), la misma parte B y
+Holm sobre las tres comparaciones adicionales (L1p y L2p contra L0, y L2p contra L1p). Si la
+condición de arriba no se da, la extensión no se corre.
 
 ## Métricas
 
