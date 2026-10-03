@@ -173,6 +173,21 @@ las fases ni los criterios.
    máxima frente a `mejora_confirmacion.json` y `tendencia_verificacion.json` sin detenerse.
    Todas las capas de la fase B se comparan sobre la misma corrida.
 
+### 2026-10-03, antes de repetir el tramo del tablero: ONI de 2025-2026 cargado
+
+La rama incorpora `db/seed/seed_oni_2025_2026.sql` (commit `564590f`): el ONI mensual de NOAA de
+diciembre de 2024 a julio de 2026, con la regla de `cargar_oni.py` (83 semanas; desde 2026-S31
+el código arrastra el valor de julio). Con esa semilla cargada, M0 reproduce con diferencia 0
+las predicciones de `mejora_confirmacion.json` a h = 1, 4 y 8 (242 predicciones comparadas).
+La diferencia anterior venía solo del ONI faltante.
+
+Se repite el tramo del tablero (2025-S1 a 2026-S37) con el mismo script y los mismos
+candidatos, umbrales y criterios. La validación (objetivos hasta 2024) no cambia, porque no usa
+ONI posterior a 2024, y se reutiliza de la caché por tarea. El control de reproducción del
+tablero vuelve a ser exacto: se espera diferencia 0. Las cifras del tramo del tablero de la
+ejecución del 2026-10-02 quedan en el historial de git; los resultados de esta sección las
+reemplazan.
+
 ## Resultados (ejecución 2026-10-02)
 
 Corrida única de `experimento_nowcast_rangos.py` sobre la base de esta rama. Salida completa en

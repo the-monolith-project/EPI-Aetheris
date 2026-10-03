@@ -46,6 +46,13 @@ eligen mirando estos datos. No se añaden tramos después de ver los resultados.
 Script `backend/ingestion/analisis_nowcast_cobertura_2026.py`, sin base de datos. Salida en
 `docs/agentes/mejora-predictor/resultados-nuevos/cobertura_2026.json`.
 
+## Enmienda (2026-10-03, antes de repetir)
+
+Con el ONI de 2025-2026 cargado (`db/seed/seed_oni_2025_2026.sql`), el análisis se repite sobre
+la nueva salida de `experimento_nowcast_rangos.py`, que reproduce exactamente las predicciones
+publicadas. La primera versión de los resultados queda en el historial de git; la sección de
+resultados se reemplaza.
+
 ## Resultados (2026-10-03)
 
 Salida de `analisis_nowcast_cobertura_2026.py` en
