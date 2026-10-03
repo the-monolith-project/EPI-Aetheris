@@ -54,7 +54,7 @@ const urlCompleta = new URL(rutaCompleta, sitio);
   }
 </style>
 
-<script define:vars={{ origen: sitio.origin }}>
+<script is:inline define:vars={{ origen: sitio.origin }}>
   // Dentro del marco los enlaces relativos apuntan al propio iframe. Se llevan
   // al sitio completo y se abren fuera.
   function reescribir() {

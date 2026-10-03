@@ -1,0 +1,261 @@
+---
+import PanelWorkspace from '../analisis/PanelWorkspace.astro';
+import BotonExportarGrafico from '../BotonExportarGrafico.astro';
+// Ciclo medio de los casos junto al de una variable climática, por país
+// (P4 de GET /api/clima-dengue/multipais). Promedio de los años de análisis
+// para cada semana del año; el desfase es el desplazamiento (0 a 16 semanas)
+// con que el ciclo del clima y el de los casos se parecen más.
+---
+
+<PanelWorkspace
+  tipo="traza"
+  idTitulo="clima-ciclo-titulo"
+  titulo="Ciclo anual de los casos y del clima"
+  descripcion="Promedio de los años de análisis para cada semana del año, en el país y la variable que se elijan. Los casos son el promedio de 4 semanas de cada año, promediado en escala logarítmica entre años."
+  data-panel-clima="ciclo"
+>
+  <div data-estado role="status" aria-busy="true">
+    <div class="skeleton h-72 w-full" aria-hidden="true"></div>
+  </div>
+
+  <div data-contenido hidden>
+    <div class="flex flex-wrap gap-3 font-sans text-sm text-ink">
+      <label class="flex flex-wrap items-center gap-2">
+        País
+        <select
+          data-pais
+          class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+        </select>
+      </label>
+      <label class="flex flex-wrap items-center gap-2">
+        Variable
+        <select
+          data-variable
+          class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+        </select>
+      </label>
+    </div>
+
+    <p
+      data-resumen
+      class="mt-3 max-w-[68ch] font-sans text-sm leading-relaxed text-ink"
+      aria-live="polite"
+    >
+    </p>
+
+    <div class="mt-3 overflow-x-auto scroll-shadow-x" tabindex="0">
+      <div
+        data-grafico
+        class="h-[360px] min-w-[560px]"
+        role="region"
+        aria-label="Ciclo anual medio de los casos de dengue y de una variable climática"
+      >
+      </div>
+    </div>
+
+    <BotonExportarGrafico
+      class="mt-3"
+      titulo="Ciclo anual de los casos de dengue y del clima"
+      fuente="EPI-Aetheris · OpenDengue y Open-Meteo"
+    />
+
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver el ciclo del país elegido en tabla
+      </summary>
+      <div data-tabla-ciclo></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver el desfase de los 18 países en tabla
+      </summary>
+      <div data-tabla-desfase></div>
+      <p class="mt-2 font-sans text-xs text-ink-muted">
+        Cada celda muestra el desfase en semanas y, entre paréntesis, la
+        correlación en ese desfase. Un asterisco indica que el máximo está en el
+        borde del rango explorado (16 semanas).
+      </p>
+    </details>
+  </div>
+</PanelWorkspace>
+
+<script>
+  import { obtenerClimaDengueMultipais } from '../../lib/analisis-api';
+  import {
+    CLAVE_EL_SALVADOR,
+    etiquetaVariable,
+    filasDesfase,
+    formatoNumero,
+    nombrePais,
+    ordenFilasPaises,
+    serieCiclo,
+    textoCiclo,
+    variablesDelPais,
+  } from '../../lib/clima-dengue';
+  import type { SerieCiclo } from '../../lib/clima-dengue';
+  import { opcionCiclo } from '../../lib/clima-dengue-opciones';
+  import { montarGrafico } from '../../lib/echarts-montaje';
+  import { TablaAlternativa } from '../../lib/tabla-alternativa';
+  import type { VariableClimaDengue } from '../../lib/tipos-analisis';
+  import { activarAlEntrar, cargarPanel, llenarSelect } from './cargar-panel';
+
+  const VARIABLE_INICIAL: VariableClimaDengue = 'precipitation_sum';
+
+  function iniciar(panel: HTMLElement): void {
+    void cargarPanel(
+      panel,
+      obtenerClimaDengueMultipais,
+      async (datos, contenido) => {
+        const buscar = <T extends HTMLElement>(selector: string) =>
+          contenido.querySelector<T>(selector)!;
+        const selectPais = buscar<HTMLSelectElement>('[data-pais]');
+        const selectVariable = buscar<HTMLSelectElement>('[data-variable]');
+        const resumen = buscar('[data-resumen]');
+
+        const paises = ordenFilasPaises(
+          Object.keys(datos.P4).filter(
+            (p) => variablesDelPais(datos.P4[p]).length > 0,
+          ),
+        );
+        llenarSelect(
+          selectPais,
+          paises.map((p) => ({ valor: p, texto: nombrePais(p) })),
+          paises.includes(CLAVE_EL_SALVADOR) ? CLAVE_EL_SALVADOR : paises[0],
+        );
+
+        const llenarVariables = () => {
+          const disponibles = variablesDelPais(datos.P4[selectPais.value]);
+          const anterior = selectVariable.value as VariableClimaDengue;
+          llenarSelect(
+            selectVariable,
+            disponibles.map((v) => ({
+              valor: v,
+              texto: etiquetaVariable(v, true),
+            })),
+            disponibles.includes(anterior)
+              ? anterior
+              : disponibles.includes(VARIABLE_INICIAL)
+                ? VARIABLE_INICIAL
+                : disponibles[0],
+          );
+        };
+        llenarVariables();
+
+        const variable = () => selectVariable.value as VariableClimaDengue;
+        const serie = (): SerieCiclo =>
+          serieCiclo(datos.P4[selectPais.value], variable())!;
+
+        const construir = (t: Parameters<typeof opcionCiclo>[0]) => {
+          const s = serie();
+          return opcionCiclo(t, {
+            semanas: s.semanas,
+            casos: s.casos,
+            clima: s.clima,
+            nombreClima: etiquetaVariable(variable(), true),
+            unidadClima: etiquetaVariable(variable(), true),
+          });
+        };
+        const pintarTexto = () => {
+          resumen.textContent = textoCiclo(
+            selectPais.value,
+            variable(),
+            serie(),
+          );
+          tablaCiclo.marcarCaducada();
+        };
+
+        const tablaCiclo = new TablaAlternativa({
+          details: buscar('[data-tabla-ciclo]').closest('details')!,
+          contenedorTabla: buscar('[data-tabla-ciclo]'),
+          caption: 'Ciclo anual medio de los casos y de la variable elegida',
+          columnas: [
+            { clave: 'semana', encabezado: 'Semana del año' },
+            {
+              clave: 'casos',
+              encabezado: 'Casos por semana',
+              alineacion: 'derecha',
+              formato: (v: number) => formatoNumero(v, 1),
+            },
+            {
+              clave: 'clima',
+              encabezado: 'Variable climática',
+              alineacion: 'derecha',
+              formato: (v: number) => formatoNumero(v, 2),
+            },
+          ],
+          obtenerDatos: () => {
+            const s = serie();
+            return s.semanas.map((semana, i) => ({
+              semana,
+              casos: s.casos[i],
+              clima: s.clima[i],
+            }));
+          },
+        });
+        new TablaAlternativa({
+          details: buscar('[data-tabla-desfase]').closest('details')!,
+          contenedorTabla: buscar('[data-tabla-desfase]'),
+          caption:
+            'Desfase de mayor correlación entre el ciclo del clima y el de los casos, por país',
+          columnas: [
+            { clave: 'pais', encabezado: 'País' },
+            {
+              clave: 'r2Casos',
+              encabezado: 'Parte del ciclo en los casos (R²)',
+              alineacion: 'derecha',
+              formato: (v: number) => formatoNumero(v, 2),
+            },
+            {
+              clave: 'lluviaMm',
+              encabezado: 'Lluvia (mm)',
+              alineacion: 'derecha',
+            },
+            {
+              clave: 'lluviaHoras',
+              encabezado: 'Lluvia (horas)',
+              alineacion: 'derecha',
+            },
+            { clave: 'humedad', encabezado: 'Humedad', alineacion: 'derecha' },
+            {
+              clave: 'tempMedia',
+              encabezado: 'Temp. media',
+              alineacion: 'derecha',
+            },
+            {
+              clave: 'puntoRocio',
+              encabezado: 'Punto de rocío',
+              alineacion: 'derecha',
+            },
+          ],
+          obtenerDatos: () => filasDesfase(datos.P4),
+        });
+
+        pintarTexto();
+        const grafico = await montarGrafico(
+          buscar<HTMLElement>('[data-grafico]'),
+          construir,
+          'Ciclo anual medio de los casos de dengue y de una variable climática',
+        );
+        selectPais.addEventListener('change', () => {
+          llenarVariables();
+          pintarTexto();
+          grafico.actualizar(construir);
+        });
+        selectVariable.addEventListener('change', () => {
+          pintarTexto();
+          grafico.actualizar(construir);
+        });
+      },
+    );
+  }
+
+  document
+    .querySelectorAll<HTMLElement>('[data-panel-clima="ciclo"]')
+    .forEach((panel) => activarAlEntrar(panel, () => iniciar(panel)));
+</script>

@@ -121,3 +121,24 @@ export function colorCualitativo(indice: number): string {
     PALETA_CUALITATIVA.length;
   return PALETA_CUALITATIVA[i];
 }
+
+// Correlaciones de Pearson (clima y dengue): la misma rampa divergente que la
+// anomalía climática, sobre una escala fija de −0,8 a +0,8. Azul indica signo
+// negativo y naranja signo positivo; ningún tono significa alarma.
+const escalaCorrelacion = chroma
+  .scale(RAMPA_ANOMALIA)
+  .mode('lab')
+  .domain([-0.8, -0.4, 0, 0.4, 0.8]);
+
+/** Color de una correlación sobre la escala fija de −0,8 a +0,8. */
+export function colorCorrelacion(r: number | null): string {
+  if (r === null) return COLOR_SIN_DATO;
+  return escalaCorrelacion(Math.min(0.8, Math.max(-0.8, r))).hex();
+}
+
+/** Tinta o blanco, el que dé más contraste sobre `fondo`. */
+export function colorTextoSobre(fondo: string): string {
+  return chroma.contrast(fondo, '#040316') >= chroma.contrast(fondo, '#ffffff')
+    ? '#040316'
+    : '#ffffff';
+}

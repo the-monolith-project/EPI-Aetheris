@@ -396,7 +396,7 @@ const etiquetaMinuscula = evento === 'neumonias' ? 'neumonías' : 'IRA';
     if (!contenedor || !resumen || !huecos || !detalle || !tabla) return;
 
     contenedor.setAttribute('aria-busy', 'true');
-    let respuesta;
+    let respuesta: Awaited<ReturnType<typeof obtenerSerieRespiratoriaNacional>>;
     try {
       respuesta = await obtenerSerieRespiratoriaNacional(evento);
     } catch {

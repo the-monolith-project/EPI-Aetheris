@@ -18,6 +18,7 @@ const GRUPOS: { grupo: GrupoAtajo; titulo: string }[] = [
 
 <dialog
   id="atajos-ayuda"
+  closedby="any"
   aria-labelledby="atajos-ayuda-titulo"
   class="m-auto w-[min(92vw,34rem)] rounded-2xl border border-border bg-surface p-0 text-ink shadow-[var(--shadow-card-hover)] backdrop:bg-black/50"
 >
@@ -36,7 +37,7 @@ const GRUPOS: { grupo: GrupoAtajo; titulo: string }[] = [
       </div>
       <button
         type="submit"
-        class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full font-sans text-sm text-ink-muted transition-colors hover:bg-bg hover:text-ink"
+        class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full font-sans text-sm text-ink-muted transition-colors hover:bg-bg hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         aria-label="Cerrar"
       >
         ✕
@@ -93,6 +94,19 @@ const GRUPOS: { grupo: GrupoAtajo; titulo: string }[] = [
     'atajos-ayuda',
   ) as HTMLDialogElement | null;
   const esMac = esPlataformaMac(navigator);
+
+  if (!('closedBy' in HTMLDialogElement.prototype) && dialogo) {
+    dialogo.addEventListener('click', (evento) => {
+      if (evento.target !== dialogo) return;
+      const rect = dialogo.getBoundingClientRect();
+      const dentro =
+        rect.top <= evento.clientY &&
+        evento.clientY <= rect.bottom &&
+        rect.left <= evento.clientX &&
+        evento.clientX <= rect.right;
+      if (!dentro) dialogo.close();
+    });
+  }
 
   /** Repinta las teclas del diálogo con la configuración vigente. */
   function pintarAyuda(): void {

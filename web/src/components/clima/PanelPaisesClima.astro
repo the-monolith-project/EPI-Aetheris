@@ -1,0 +1,351 @@
+---
+import PanelWorkspace from '../analisis/PanelWorkspace.astro';
+import BotonExportarGrafico from '../BotonExportarGrafico.astro';
+// El Salvador entre 18 países de las Américas (P1, P2 y P6 de
+// GET /api/clima-dengue/multipais). Cada país tiene su anomalía anual del
+// total de casos (log1p, estandarizado dentro del país); la señal regional es
+// la media de las 18. Se muestra la correlación de cada país con esa señal,
+// con la medida de 11 años y la de 9 años.
+---
+
+<PanelWorkspace
+  tipo="traza"
+  idTitulo="clima-paises-titulo"
+  titulo="El Salvador entre 18 países de las Américas"
+  descripcion="Correlación entre la evolución anual de los casos de cada país y la de la región (la media de las anomalías anuales de los 18 países), de menor a mayor. Un valor bajo indica que los años altos y bajos del país coinciden poco con los de la región."
+  data-panel-clima="paises"
+>
+  <div data-estado role="status" aria-busy="true">
+    <div class="skeleton h-72 w-full" aria-hidden="true"></div>
+  </div>
+
+  <div data-contenido hidden>
+    <fieldset class="flex flex-wrap items-center gap-x-5 gap-y-2">
+      <legend class="mb-1 font-sans text-sm text-ink">Años analizados</legend>
+      <label class="flex items-center gap-2 font-sans text-sm text-ink">
+        <input
+          type="radio"
+          name="clima-paises-anios"
+          value="11"
+          checked
+          class="h-4 w-4 accent-[var(--color-accent)]"
+        />
+        11 años (2014 a 2024)
+      </label>
+      <label class="flex items-center gap-2 font-sans text-sm text-ink">
+        <input
+          type="radio"
+          name="clima-paises-anios"
+          value="9"
+          class="h-4 w-4 accent-[var(--color-accent)]"
+        />
+        9 años (sin 2020 y 2024)
+      </label>
+    </fieldset>
+
+    <p
+      data-resumen
+      class="mt-3 max-w-[68ch] font-sans text-sm leading-relaxed text-ink"
+      aria-live="polite"
+    >
+    </p>
+    <p
+      data-centroamerica
+      class="mt-2 max-w-[68ch] font-sans text-sm leading-relaxed text-ink"
+    >
+    </p>
+    <p
+      data-estabilidad
+      class="mt-2 max-w-[68ch] font-sans text-sm leading-relaxed text-ink"
+    >
+    </p>
+
+    <div class="mt-3 overflow-x-auto scroll-shadow-x" tabindex="0">
+      <div
+        data-grafico
+        class="min-w-[560px]"
+        style="height: 540px"
+        role="region"
+        aria-label="Correlación de cada uno de los 18 países con la señal regional de casos de dengue, de menor a mayor"
+      >
+      </div>
+    </div>
+    <p
+      class="mt-2 max-w-[68ch] font-sans text-xs leading-relaxed text-ink-muted"
+    >
+      El punto es la correlación y la línea, su intervalo del 95 %. Con 9 años
+      no se calculó intervalo. El Salvador va en verde oscuro, con un punto
+      mayor y su nombre en negrita.
+    </p>
+
+    <BotonExportarGrafico
+      class="mt-3"
+      titulo="El Salvador entre 18 países de las Américas"
+      fuente="EPI-Aetheris · OpenDengue (OPS), 2014 a 2024"
+    />
+
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver las correlaciones de los 18 países en tabla
+      </summary>
+      <div data-tabla-paises></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver la anomalía anual de cada país en tabla
+      </summary>
+      <div data-tabla-anomalia></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver el perfil de cada país en tabla
+      </summary>
+      <div data-tabla-perfil></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver el total anual de casos de cada país en tabla
+      </summary>
+      <div data-tabla-totales></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver la posición de El Salvador en otras medidas en tabla
+      </summary>
+      <div data-tabla-posiciones></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver la estabilidad de El Salvador al quitar un año o un país en tabla
+      </summary>
+      <div data-tabla-estabilidad></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver las corridas multipaís del clasificador retirado en tabla
+      </summary>
+      <div data-tabla-corridas></div>
+      <p class="mt-2 font-sans text-xs text-ink-muted">
+        Las corridas B y C evalúan los 16 países con clima completo juntos, sin
+        separar a El Salvador. La corrida A entrena con los otros países y
+        prueba solo en El Salvador; su archivo guardado contiene la semilla 42
+        de cada año, y el informe de esa corrida registra 11 semillas sin
+        ninguna que supere a la climatología (0 de 55 combinaciones de año y
+        semilla).
+      </p>
+    </details>
+  </div>
+</PanelWorkspace>
+
+<script>
+  import { obtenerClimaDengueMultipais } from '../../lib/analisis-api';
+  import {
+    aniosAnomalia,
+    filasAnomaliaAnual,
+    filasBosque,
+    filasCorridas,
+    filasEstabilidad,
+    filasPerfil,
+    filasPosiciones,
+    filasTablaPaises,
+    filasTotalesAnuales,
+    formatoMiles,
+    formatoNumero,
+    formatoR,
+    posicionElSalvador,
+    resumenCentroamerica,
+    textoEstabilidad,
+    textoPosicion,
+  } from '../../lib/clima-dengue';
+  import { opcionBosque } from '../../lib/clima-dengue-opciones';
+  import { montarGrafico } from '../../lib/echarts-montaje';
+  import { TablaAlternativa } from '../../lib/tabla-alternativa';
+  import type { ColumnaTabla } from '../../lib/tabla-alternativa';
+  import { activarAlEntrar, cargarPanel } from './cargar-panel';
+
+  function iniciar(panel: HTMLElement): void {
+    void cargarPanel(
+      panel,
+      obtenerClimaDengueMultipais,
+      async (datos, contenido) => {
+        const buscar = <T extends HTMLElement>(selector: string) =>
+          contenido.querySelector<T>(selector)!;
+        const { P1, P2, P5, P6 } = datos;
+
+        const nueveAnios = () =>
+          contenido.querySelector<HTMLInputElement>(
+            'input[name="clima-paises-anios"]:checked',
+          )?.value === '9';
+
+        const posicion = posicionElSalvador(P2);
+        if (posicion) {
+          buscar('[data-resumen]').textContent = textoPosicion(posicion);
+        }
+        buscar('[data-centroamerica]').textContent = resumenCentroamerica(P2);
+        buscar('[data-estabilidad]').textContent = textoEstabilidad(P2);
+
+        const construir = (t: Parameters<typeof opcionBosque>[0]) =>
+          opcionBosque(t, filasBosque(P2, nueveAnios()), nueveAnios());
+        const grafico = await montarGrafico(
+          buscar<HTMLElement>('[data-grafico]'),
+          construir,
+          'Correlación de cada uno de los 18 países con la señal regional de casos de dengue, de menor a mayor',
+        );
+        contenido
+          .querySelectorAll<HTMLInputElement>(
+            'input[name="clima-paises-anios"]',
+          )
+          .forEach((radio) =>
+            radio.addEventListener('change', () =>
+              grafico.actualizar(construir),
+            ),
+          );
+
+        const derecha = (
+          clave: string,
+          encabezado: string,
+          formato?: ColumnaTabla['formato'],
+        ): ColumnaTabla => ({
+          clave,
+          encabezado,
+          alineacion: 'derecha',
+          formato,
+        });
+        const decimales = (n: number) => (v: number) => formatoNumero(v, n);
+        const correlacion = (v: number) => formatoR(v, 3);
+        const tablaDe = (
+          selector: string,
+          caption: string,
+          columnas: ColumnaTabla[],
+          obtenerDatos: () => unknown[],
+        ) => {
+          const contenedorTabla = buscar<HTMLElement>(selector);
+          new TablaAlternativa({
+            details: contenedorTabla.closest('details')!,
+            contenedorTabla,
+            caption,
+            columnas,
+            obtenerDatos,
+          });
+        };
+
+        tablaDe(
+          '[data-tabla-paises]',
+          'Correlación de cada país con la señal regional, con 11 y con 9 años',
+          [
+            { clave: 'pais', encabezado: 'País' },
+            derecha('r11', 'r (11 años)', correlacion),
+            derecha('ic11', 'Intervalo del 95 % (11 años)'),
+            derecha('posicion11', 'Posición (11 años)'),
+            derecha('r9', 'r (9 años)', correlacion),
+            derecha('posicion9', 'Posición (9 años)'),
+            derecha('otros11', 'r con los otros 17 (11 años)', correlacion),
+            derecha('otros9', 'r con los otros 17 (9 años)', correlacion),
+          ],
+          () => filasTablaPaises(P2),
+        );
+
+        tablaDe(
+          '[data-tabla-anomalia]',
+          'Anomalía anual del total de casos (log1p estandarizado dentro de cada país) y señal regional',
+          [
+            { clave: 'pais', encabezado: 'País' },
+            ...aniosAnomalia(P2).map((anio) =>
+              derecha(anio, anio, decimales(2)),
+            ),
+          ],
+          () => filasAnomaliaAnual(P2),
+        );
+
+        tablaDe(
+          '[data-tabla-perfil]',
+          'Perfil de cada país: casos semanales, semanas en cero y ciclo anual',
+          [
+            { clave: 'pais', encabezado: 'País' },
+            derecha('casosSemanales', 'Casos por semana (media)', decimales(1)),
+            derecha(
+              'semanasConCero',
+              'Semanas en cero',
+              (v: number) => `${formatoNumero(v * 100, 1)} %`,
+            ),
+            derecha('r2', 'Parte del ciclo anual (R²)', decimales(2)),
+            derecha('semanaMaximo', 'Semana del máximo'),
+            derecha(
+              'desviacion',
+              'Variación entre años del total',
+              decimales(2),
+            ),
+            { clave: 'marcas', encabezado: 'Marcas' },
+          ],
+          () => filasPerfil(P1),
+        );
+
+        const anios = Object.keys(Object.values(P1)[0].total_anual).sort();
+        tablaDe(
+          '[data-tabla-totales]',
+          'Total anual de casos por país, 2014 a 2024',
+          [
+            { clave: 'pais', encabezado: 'País' },
+            ...anios.map((anio) => derecha(anio, anio, formatoMiles)),
+          ],
+          () => filasTotalesAnuales(P1),
+        );
+
+        tablaDe(
+          '[data-tabla-posiciones]',
+          'Posición de El Salvador entre los países en seis medidas',
+          [
+            { clave: 'medida', encabezado: 'Medida' },
+            derecha('valor', 'Valor de El Salvador', correlacion),
+            derecha('posicion', 'Posición de menor a mayor'),
+            derecha('paises', 'Países comparados'),
+          ],
+          () => filasPosiciones(P6),
+        );
+
+        tablaDe(
+          '[data-tabla-estabilidad]',
+          'Correlación de El Salvador con la señal regional al quitar un año o un país',
+          [
+            { clave: 'quitado', encabezado: 'Quitado' },
+            derecha('r', 'r de El Salvador', correlacion),
+          ],
+          () => filasEstabilidad(P2),
+        );
+
+        tablaDe(
+          '[data-tabla-corridas]',
+          'Resultados de las corridas multipaís del clasificador retirado, por año',
+          [
+            { clave: 'corrida', encabezado: 'Corrida' },
+            derecha('anio', 'Año'),
+            derecha('soporte', 'Semanas de nivel alto'),
+            derecha('f1Modelo', 'F1 del modelo', decimales(2)),
+            derecha('recallModelo', 'Recall del modelo', decimales(2)),
+            derecha('f1Climatologia', 'F1 de la climatología', decimales(2)),
+            derecha('semillas', 'Semillas que superan la climatología'),
+          ],
+          () => filasCorridas(P5),
+        );
+      },
+    );
+  }
+
+  document
+    .querySelectorAll<HTMLElement>('[data-panel-clima="paises"]')
+    .forEach((panel) => activarAlEntrar(panel, () => iniciar(panel)));
+</script>

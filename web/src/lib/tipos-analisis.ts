@@ -361,3 +361,223 @@ export interface NowcastDengueRetrospectivo {
     prueba: PruebaNowcast;
   };
 }
+
+// --- Clima y dengue (GET /api/clima-dengue/por-anio y /multipais) -------------
+// Dos artefactos descriptivos precomputados (ADR 0023 del monorepo). Las cifras
+// son correlaciones entre anomalías y diferencias de desempeño del predictor
+// en datos de 2014 a 2024; no atribuyen causa y no alimentan el pronóstico.
+
+export type VariableClimaDengue =
+  | 'temp_media'
+  | 'temp_max'
+  | 'temp_min'
+  | 'precipitation_sum'
+  | 'precipitation_hours'
+  | 'humedad_relativa_media'
+  | 'punto_rocio';
+
+/** Las siete variables de superficie más el índice ONI. */
+export type VariableAsociacion = VariableClimaDengue | 'oni';
+
+export interface CorrelacionIntervalo {
+  r: number;
+  /** Intervalo del 95 % por bootstrap de bloques. */
+  ic95: [number, number];
+}
+
+export interface AporteRasgoClima {
+  /** año de prueba -> skill(todo) menos skill(sin el rasgo); positivo = ayuda. */
+  por_anio: Record<string, number>;
+  anios_a_favor: number;
+  anios: number;
+}
+
+export interface AporteHorizonteClima {
+  skill_I0: Record<string, number>;
+  clima: AporteRasgoClima;
+  oni: AporteRasgoClima;
+  clima_y_oni: AporteRasgoClima;
+  anio: AporteRasgoClima;
+}
+
+export interface ConsistenciaVariable {
+  anios_positivos: number;
+  anios_negativos: number;
+  anios_con_ic_sin_cero: number;
+  r_minimo: number;
+  r_maximo: number;
+  consistente: boolean;
+}
+
+export interface CicloVariable {
+  r2_estacional: number;
+  desfase_mejor_semanas: number;
+  correlacion_en_el_mejor: number;
+  /** true: el máximo está en el borde del rango explorado (16 semanas). */
+  en_el_borde?: boolean;
+  climatologia: number[];
+}
+
+export type AsociacionAnio = { pares: number } & Record<
+  VariableAsociacion,
+  CorrelacionIntervalo
+>;
+
+export type PerfilAnioClima = {
+  casos_totales: number;
+  semana_del_pico: number;
+  valor_del_pico: number;
+  oni_medio: number;
+} & Record<VariableClimaDengue, { media: number; anomalia_media: number }>;
+
+export interface ClimaDengueAnio {
+  disponible: true;
+  aviso: string;
+  parametros: { anios: number[]; horizonte: number };
+  /** horizonte (1 a 8) -> aporte por rasgo */
+  A1: Record<string, AporteHorizonteClima>;
+  A2: {
+    casos_r2_estacional: number;
+    casos_climatologia: number[];
+    por_variable: Record<
+      string,
+      CicloVariable & { correlacion_por_desfase: Record<string, number> }
+    >;
+  };
+  A3: {
+    por_anio: Record<string, AsociacionAnio>;
+    agrupado: { pares: number } & Record<
+      VariableAsociacion,
+      CorrelacionIntervalo
+    >;
+  };
+  A4: {
+    por_anio: Record<string, PerfilAnioClima>;
+    /** Spearman entre el total anual de casos y la anomalía media del año. */
+    spearman_total_vs_anomalia_media: Record<VariableAsociacion, number>;
+    n: number;
+  };
+  A5: Record<VariableAsociacion, ConsistenciaVariable>;
+}
+
+export interface PerfilPaisClima {
+  centroide: [number, number];
+  total_anual: Record<string, number>;
+  casos_semanales_medios: number;
+  fraccion_semanas_cero: number;
+  r2_estacional: number;
+  semana_del_maximo: number;
+  desviacion_log_total_anual: number;
+  cociente_maximo_mediana: number | null;
+  baja_incidencia: boolean;
+  pais_extenso: boolean;
+  variables_climaticas: VariableClimaDengue[];
+}
+
+export interface CorrelacionPaisSenal {
+  r_con_senal: number;
+  ic95: [number, number];
+  r_con_otros: number;
+  r_con_senal_9_anios: number;
+  r_con_otros_9_anios: number;
+  anomalia_anual: Record<string, number>;
+}
+
+export interface AsociacionPaisVariable {
+  agrupado: CorrelacionIntervalo;
+  por_anio: Record<string, CorrelacionIntervalo>;
+  anios_positivos: number;
+  anios_negativos: number;
+  consistente: boolean;
+}
+
+export interface AsociacionPais {
+  anios_evaluables: number[];
+  estimacion: boolean;
+  /** Pares semanales por año evaluable (ausente si no hay estimación). */
+  pares?: Record<string, number>;
+  por_variable: Partial<Record<VariableAsociacion, AsociacionPaisVariable>>;
+}
+
+export interface CicloPais {
+  casos: { r2_estacional: number; climatologia: number[] };
+  variables: Partial<Record<VariableClimaDengue, CicloVariable>>;
+}
+
+export interface PosicionPais {
+  posicion_de_menor_a_mayor: number;
+  paises: number;
+  valor: number;
+}
+
+export interface ClimaDengueMultipais {
+  disponible: true;
+  aviso: string;
+  parametros: { anios_anuales: number[]; anios_semanales: number[] };
+  entradas: {
+    casos: { archivo: string; sha256: string };
+    clima: { archivo: string; sha256: string };
+  };
+  P1: Record<string, PerfilPaisClima>;
+  P2: {
+    correlacion_media_pares: number;
+    primer_componente: number;
+    correlacion_senal_oni: number;
+    correlacion_media_pares_9_anios: number;
+    primer_componente_9_anios: number;
+    senal_regional: Record<string, number>;
+    por_pais: Record<string, CorrelacionPaisSenal>;
+    posicion_r_con_senal: Record<string, number>;
+    posicion_r_con_senal_9_anios: Record<string, number>;
+    estabilidad_el_salvador: {
+      sin_cada_anio: Record<string, number>;
+      sin_cada_pais: Record<string, number>;
+      minimo: number;
+      maximo: number;
+    };
+    centroamerica: Record<string, number>;
+    centroamerica_9_anios: Record<string, number>;
+    sin_baja_incidencia: {
+      excluidos: string[];
+      r_con_senal: Record<string, number>;
+      posicion: Record<string, number>;
+      correlacion_media_pares: number;
+      primer_componente: number;
+    };
+  };
+  P3: Record<string, AsociacionPais>;
+  P4: Record<string, CicloPais>;
+  P5: Record<
+    string,
+    {
+      descripcion: string;
+      disponible: boolean;
+      anios: Record<
+        string,
+        {
+          soporte_alto: number;
+          f1_modelo: number;
+          recall_alto_modelo: number;
+          f1_climatologia: number;
+          recall_alto_climatologia: number;
+          semillas_que_superan: number;
+          semillas: number;
+        }
+      >;
+      anios_con_mayoria_que_supera: number;
+      anios_total: number;
+    }
+  >;
+  P6: Record<string, PosicionPais>;
+  /**
+   * El Salvador con la serie de la base de datos (ceros como faltantes), la
+   * misma construcción del análisis por año, para comparar con P3.
+   */
+  referencia_el_salvador_base_de_datos?: {
+    agrupado: { pares: number } & Record<
+      VariableAsociacion,
+      CorrelacionIntervalo
+    >;
+    consistencia: Record<VariableAsociacion, ConsistenciaVariable>;
+  };
+}
