@@ -103,7 +103,7 @@ en cuenta que son 20 comparaciones.
   cuantiles; una prueba compara esas fórmulas con las del experimento.
 - `--verificar` calcula K4 con las semanas ya vistas (2024 y 2025 a 2026-S37, de `rangos.json`) y
   debe reproducir las razones de WIS de `theta_ets.json` (0,9725 y 0,9975), con diferencia menor
-  que 0,0001. No mira ninguna semana de prueba. Salida en
+  que 0,0001. Las reproduce (0,97251 y 0,99752). No mira ninguna semana de prueba. Salida en
   `docs/agentes/mejora-predictor/resultados-nuevos/candidata_ets_verificacion.json`.
 - `--evaluar` es la evaluación firmada. Salida en
   `backend/ingestion/data/interim/nowcast/candidata_ets_prueba.json`.
