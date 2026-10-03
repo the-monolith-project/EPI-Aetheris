@@ -9,14 +9,15 @@ uno de estos archivos, todos en `docs/agentes/mejora-predictor/resultados-nuevos
 | Insumos de M0 (clima, ONI, año, ceros) | `docs/experimentos/experimento-nowcast-insumos.md` | `backend/ingestion/experimento_nowcast_insumos.py` | `insumos.json` |
 | Calibración de rangos y ajustes de corto plazo | `docs/experimentos/experimento-nowcast-rangos.md` | `backend/ingestion/experimento_nowcast_rangos.py` | `rangos.json` |
 | Brotes sin precedente y una familia lineal | `docs/experimentos/experimento-nowcast-recorte.md` | `backend/ingestion/experimento_nowcast_recorte.py` | `recorte.json` |
+| Dónde fallan los rangos en 2026 (descriptivo, a pedido de la revisión del PR) | `docs/experimentos/analisis-cobertura-2026.md` | `backend/ingestion/analisis_nowcast_cobertura_2026.py` | `cobertura_2026.json` |
 
 Piezas compartidas en `backend/ingestion/experimento_nowcast_comun.py`, con 20 pruebas sin base
 de datos en `backend/ingestion/tests/test_experimento_nowcast_comun.py`.
 
 ## Qué mejora hay
 
-No hay una mejora lista para reemplazar el modelo publicado. Hay un candidato acotado y dos
-indicios que merecen su propia firma:
+No hay una mejora lista para reemplazar el modelo publicado. Hay un candidato débil y un
+indicio que merece su propia firma:
 
 1. **Calibrar M0 con 104 pares en vez de 52 (capa R2).** En la validación de OpenDengue (2019 y
    2021-2024) es la única capa de calibración que pasa el criterio fijado. Su efecto se
@@ -27,21 +28,27 @@ indicios que merecen su propia firma:
    | 4 | 0,88 → 0,91 | 0,55 → 0,54 | 56,6 → 54,9 |
    | 8 | 0,88 → 0,91 | 0,57 → 0,56 | 78,8 → 80,9 |
 
-   En la serie del tablero no corrige el problema que motivó la pregunta: la cobertura del
-   95 % de C en 2026 pasa de 0,79 a 0,76 a 4 semanas y de 0,79 a 0,72 a 8. Sirve para el
-   tramo de OpenDengue, no para C.
+   Es un candidato débil. La cobertura del 95 % pasa la banda fijada (0,90 a 0,99) pero sigue
+   por debajo del nominal, el WIS a 8 semanas empeora, y el resultado sale de una sola pasada
+   sobre los mismos cinco años con tres capas candidatas. En la serie del tablero, que es lo que
+   se sirve desde 2025, no corrige el problema que motivó la pregunta: la cobertura del 95 % de
+   C en 2026 pasa de 0,79 a 0,76 a 4 semanas y de 0,79 a 0,72 a 8. No se recomienda para C.
 2. **El peso 0,5 de M0 en C es alto a 1 y 2 semanas.** En 2025-2026 la tendencia amortiguada
    sola tiene WIS 4,7 a 1 semana, contra 6,0 de C y 5,7 de la persistencia suavizada. El peso
    elegido por desempeño reciente (C1) mejora C a 1 y 2 semanas y la empeora a 4 y 8; no pasa
-   su criterio. Un peso fijo por horizonte es una hipótesis para otra firma, con semanas
-   posteriores a ella, porque 2025-2026 ya sirvieron para elegir C.
-3. **Quitar el ONI no empeora nada medible.** Ver la sección siguiente.
+   su criterio. Un peso fijo por horizonte es una hipótesis contaminada: 2025-2026 ya sirvieron
+   para elegir C. Solo vale con un protocolo firmado antes y semanas objetivo posteriores que no
+   se crucen con la prueba prospectiva en curso (desde 2026-S38 hasta 2027-S05).
+
+Aparte, quitar el ONI de M0 sería una simplificación sin costo medible, no una mejora: en la
+validación la variante sin ONI no empeora en ningún horizonte decisivo, pero con cinco
+temporadas y un umbral de ±0,03 la prueba tiene poca potencia para detectar efectos pequeños.
 
 ## Qué se descartó y por qué
 
 | Línea | Resultado | Cifra decisiva |
 |---|---|---|
-| Ablación de clima (I2), ONI (I1), clima y ONI (I3), año (I4) | Sin efecto medible con el umbral fijado (±0,03 de skill contra M0 a 4 y 8 semanas, en 4 de 5 años) | Skill contra M0 a h = 4 y h = 8: I1 +0,02 y +0,03; I2 −0,02 y −0,04; I3 −0,01 y −0,05; I4 −0,02 y −0,04. Ninguno con 4 de 5 años en el mismo sentido en los dos horizontes |
+| Ablación de clima (I2), ONI (I1), clima y ONI (I3), año (I4) | Sin efecto medible con el umbral fijado, lo que no equivale a sin efecto: con cinco temporadas la prueba solo detecta efectos grandes (±0,03 de skill contra M0 a 4 y 8 semanas, en 4 de 5 años) | Skill contra M0 a h = 4 y h = 8: I1 +0,02 y +0,03; I2 −0,02 y −0,04; I3 −0,01 y −0,05; I4 −0,02 y −0,04. Ninguno con 4 de 5 años en el mismo sentido en los dos horizontes |
 | Ceros de vacaciones repartidos como insumo (I5) | No pasa la validación | WIS 57,3 contra 56,6 de M0 a h = 4; 3 de 5 años ganados |
 | CQR-r asimétrica (R1) | No pasa: estrecha los rangos | Cobertura del 95 %: 0,77 a h = 4 |
 | Conformal adaptativo (R3) | No pasa: cuesta 8 % a 13 % de WIS | WIS 63,7 contra 56,6 a h = 4 |
@@ -69,7 +76,7 @@ CRPS de un ejercicio estatal) y contextos distintos del de este proyecto.
 | "Ante un brote sin precedente en la serie, la predicción puede quedarse corta" | Sin un año de magnitud comparable en la historia, M0 queda detrás de la persistencia en 2019 (skill −0,80 a h = 4 y −0,28 a h = 8) y en 2022 (−1,02 y −0,33). En el pico, su mediana vale el 12 % (2019) y el 41 % (2022) de lo observado. Con la historia completa, 57 % y 91 %. En 2024, que sí tiene precedente, el recorte no cambia el resultado (+0,01 y +0,28) | Confirmada, con dos años de soporte en vez de uno |
 | El modelo usa clima y ONI | Cierto; su aporte no es medible con el umbral fijado. El clima ayuda en 2022 (sin clima, skill −0,47 contra −0,15 a h = 4) y estorba en 2024 (+0,26 contra +0,03) | Se puede decir que se usan; no que mejoran la predicción |
 | La ventaja a 5-8 semanas se midió en 2019-2024 | Reproducida sin diferencia: skill medio contra la persistencia limpia +0,12 a +0,18, 4 de 5 años | Confirmada |
-| Los rangos tienen la probabilidad nominal (glosario) | Validación: 0,55 al 50 % y 0,88 al 95 % a 4 semanas. Tablero 2026: 0,79 al 95 %. Ninguna de las cinco capas probadas lleva 2026 a 0,85 | Sigue por debajo del nominal; limitación medida |
+| Los rangos tienen la probabilidad nominal (glosario) | Validación: 0,55 al 50 % y 0,88 al 95 % a 4 semanas. Tablero 2026: 0,79 al 95 %. Ninguna de las cinco capas probadas lleva 2026 a 0,85. 37 de los 40 fallos de 2026 caen en dos escalones de la serie (2026-S1 a S4 y S19 a S23); fuera de ellos la cobertura del 95 % es 1,00 a 1 a 4 semanas | Sigue por debajo del nominal; los fallos de 2026 son de posición ante saltos bruscos, no de ancho |
 | A 1-3 semanas M0 rinde como la persistencia limpia | Reproducido: skill agrupado −0,01, +0,06 y +0,05 | Confirmada |
 
 ## Reproducción y límites del entorno
@@ -89,31 +96,64 @@ CRPS de un ejercicio estatal) y contextos distintos del de este proyecto.
   de 2025-2026 y este entorno no alcanza al servidor de NOAA para cargarlo. Las comparaciones
   entre variantes dentro de ese tramo usan los mismos datos; las cifras absolutas de 2025-2026
   no son las del artefacto servido.
+- Qué depende de ese tramo: la propuesta de peso por horizonte en C y todos los veredictos de la
+  serie del tablero. La propuesta de quitar el ONI no: se apoya en la validación 2019 y
+  2021-2024, reproducida sin diferencia. Lo que sí pierde valor es la ablación del ONI en el
+  tablero, porque allí el ONI es una constante arrastrada desde diciembre de 2024.
 - No se usó ninguna semana objetivo desde 2026-S38. El script de la prueba prospectiva
   congelada (`experimento_nowcast_tendencia.py`) no se modificó. No se tocaron la API, el
   frontend, los artefactos de `backend/api/datos/` ni el esquema.
 - Las pruebas del repositorio pasan: 382 aprobadas y 18 saltadas.
 
+## Dónde fallan los rangos en 2026
+
+En 2026 hay 231 predicciones de C con objetivo hasta S37 y 40 caen fuera del rango del 95 %. 37
+de ellas están en dos tramos de semanas objetivo, y todas las de cada tramo salen por el mismo
+lado:
+
+| tramo | lo observado | lo que pasó | lado de los fallos |
+|---|---|---|---|
+| 2026-S1 a S4 | 39 casos en 2025-S52 y 214 en 2026-S1 (×5,5 en una semana) | La predicción seguía la bajada de diciembre: a 4 semanas, mediana 55 y rango del 95 % de 6 a 110 para S1 | Por arriba: la predicción quedó corta |
+| 2026-S19 a S23 | 98 casos en S18 y 56 en S19 (−43 % en una semana) | La predicción esperaba la subida de mayo: a 4 semanas, medianas de 106 a 129 para S20 a S22, observados 53 a 55 | Por abajo: la predicción quedó larga |
+
+Fuera de esos tramos la cobertura del 95 % de 2026 es 1,00 a 1 a 4 semanas y entre 0,91 y 0,95 a
+5 a 8. Los fallos son de posición ante saltos bruscos, no de ancho, y por eso ninguna capa de
+calibración los corrige. En el cambio de año falla más la tendencia amortiguada; en S19-S22
+falla más M0.
+
+Que los dos escalones vengan de cómo se construye la serie del tablero, y no de la transmisión,
+es una hipótesis que no se puede comprobar con una sola tanda de capturas. Un promedio de 6 o 7
+semanas hacia atrás no multiplica por 5,5 de una semana a la siguiente salvo que su ventana se
+reinicie al cambiar de año o que la tabla de origen se reescriba.
+
+Riesgo para la prueba prospectiva en curso: su conjunto incluye el cambio de año. Si el escalón
+se repite en 2027-S1, las semanas 2027-S1 a S3 pueden quedar fuera del rango, y el criterio
+admite 3 de 20 semanas fuera. No se cambia nada: el criterio y el script congelado quedan como
+están, y el protocolo ya reporta como sensibilidad las cifras sin las semanas 50 a 3.
+
 ## Decisiones para la persona dueña del proyecto
 
-1. Si se firma un experimento para N_CAL = 104 en la base de M0 (tramo de OpenDengue), con
-   semanas no vistas. La validación de esta rama lo apoya; no hay forma de confirmarlo con
-   OpenDengue, que termina en 2024.
-2. Si se retira el ONI de M0. No empeora nada medible y simplifica la carga de datos, pero
-   cambiar el modelo publicado requiere su propia firma.
+1. Si se carga el ONI de 2025-2026 en la semilla y se repite la fase B de los experimentos. Va
+   primero: el peso por horizonte y los veredictos del tablero dependen de ese tramo.
+2. Si se retira el ONI de M0 como simplificación. No empeora nada medible en la validación,
+   pero cambiar el modelo publicado requiere su propia firma.
 3. Si se firma un experimento de peso por horizonte en C (por ejemplo, menos peso de M0 a 1 y
-   2 semanas), evaluado solo con semanas posteriores a la firma.
-4. Si la Biblioteca incorpora la cifra de saturación ante brotes sin precedente (12 % y 41 %
+   2 semanas), con semanas objetivo posteriores a la firma que no se crucen con la prueba
+   prospectiva en curso.
+4. Si se intenta comprobar el origen de los escalones del tablero, por ejemplo con capturas
+   sucesivas de las primeras semanas de 2027 o consultando a MINSAL cómo calcula la serie.
+5. Si la Biblioteca incorpora la cifra de saturación ante brotes sin precedente (12 % y 41 %
    de lo observado en el pico) junto a la salvedad que ya tiene.
-5. Si se carga el ONI de 2025-2026 en la semilla, para que el tramo del tablero sea
-   reproducible desde un clon limpio.
+
+N_CAL = 104 queda descartado para C: no mejora la cobertura del tablero.
 
 ## Pendiente, en el orden en que lo haría
 
 1. Repetir la fase B de los experimentos con ONI de 2025-2026 cargado, para cerrar la
-   diferencia con el artefacto servido.
-2. Una evaluación de la cobertura de 2026 centrada en la posición de la mediana en el cambio
-   de año (semanas 1 a 3) y en las semanas 19 a 22, que es donde fallan los rangos; ninguna
-   capa de ancho lo corrige.
-3. Una comparación con modelos externos, si se encuentran predicciones públicas para El
-   Salvador sobre el mismo objetivo, horizonte y periodo. No se hizo ninguna aquí.
+   diferencia con el artefacto servido. Los scripts guardan caché por tarea en
+   `backend/ingestion/data/interim/nowcast/cache/`, sin control de cambios en los datos: hay que
+   borrar ahí las tareas del tablero (`*_tablero_*` y `rangos_B_*`) antes de repetir.
+2. Si se firma el peso por horizonte, escribir su protocolo y esperar semanas objetivo
+   posteriores al corte de la prueba prospectiva.
+3. Una comparación con modelos externos, cuando haya predicciones públicas para El Salvador
+   sobre el mismo objetivo, horizonte y periodo. No se hizo ninguna aquí.
