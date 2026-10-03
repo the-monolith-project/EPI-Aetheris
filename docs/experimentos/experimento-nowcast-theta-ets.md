@@ -239,7 +239,7 @@ de muestra).
 
 ETS por horizonte, razón contra C. H1: 0,977; 0,974; 0,974; 0,978; 0,964; 0,964; 0,971; 0,978. H2:
 1,000; 0,991; 0,998; 1,002; 1,002; 0,992; 0,998; 0,997. En H1 la cobertura del 95 % es 1,000 para
-las dos, de modo que no distingue. En H2 la cobertura del 50 % de C' queda entre 0,35 y 0,55 por
+las dos, de modo que no distingue. En H2 la cobertura del 50 % de C' queda entre 0,37 y 0,53 por
 horizonte, como la de C.
 
 Diebold-Mariano de C' contra C, con Holm entre 48 comparaciones (ETS, Theta y el promedio de bases,
