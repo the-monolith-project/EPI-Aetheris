@@ -37,6 +37,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
+from epiweeks import Week
 
 from experimento_nowcast_corto_plazo import (
     ANIOS_PRUEBA,
@@ -82,18 +83,24 @@ NOTA_ALCANCE = (
 
 
 def _extender_serie_futuro(serie: Serie, n: int) -> tuple[Serie, int]:
-    """Anexa n semanas futuras con calendario real (fecha, doy, anio) y conteo
-    NaN. Solo alimentan la estacionalidad determinista de la semana objetivo en
-    `features_en`; nunca entran como pares de entrenamiento (su fecha es
-    posterior al corte). Devuelve (serie_extendida, T_real)."""
+    """Anexa n semanas futuras con calendario real (fecha, doy, anio y semana
+    MMWR) y conteo NaN. Solo alimentan la estacionalidad determinista y el anio
+    de la semana objetivo en `features_en`; nunca entran como pares de
+    entrenamiento (su fecha es posterior al corte). Devuelve
+    (serie_extendida, T_real)."""
     t_real = serie.T
     ult = serie.fecha[-1]
     fechas_fut = [ult + timedelta(days=7 * k) for k in range(1, n + 1)]
 
+    # Semana epidemiologica MMWR (OPS/CDC), la misma que `semanas_epidemiologicas`
+    # y que usa el entrenamiento: la semana empieza en domingo, asi que `isocalendar`
+    # (ISO, lunes) da una semana menos y, en el cruce de anio, el anio calendario de
+    # la fecha no es el del calendario epidemiologico (2024-12-29 es 2025-S1). El
+    # anio de la semana objetivo es un feature de `features_en`.
+    semanas_fut = [Week.fromdate(f, system="cdc") for f in fechas_fut]
     fecha = np.concatenate([serie.fecha, np.array(fechas_fut, dtype=object)])
-    anio = np.concatenate([serie.anio, np.array([f.year for f in fechas_fut], dtype=int)])
-    semana = np.concatenate([serie.semana, np.array(
-        [min(int(f.isocalendar()[1]), 53) for f in fechas_fut], dtype=int)])
+    anio = np.concatenate([serie.anio, np.array([w.year for w in semanas_fut], dtype=int)])
+    semana = np.concatenate([serie.semana, np.array([w.week for w in semanas_fut], dtype=int)])
     doy = np.concatenate([serie.doy, np.array(
         [f.timetuple().tm_yday for f in fechas_fut], dtype=int)])
     nan_fut = np.full(n, np.nan)
