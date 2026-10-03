@@ -125,3 +125,165 @@ La regla queda fijada aquí para que la etiqueta no dependa de lo que se vea.
 - Salida: `docs/agentes/mejora-predictor/resultados-nuevos/clima_por_anio.json`. Los resultados y su
   lectura se añaden a este documento en una sección posterior, sin modificar lo de arriba; un cambio
   al protocolo después de ver resultados se anota como enmienda con fecha y motivo.
+
+## Resultados (2026-10-03)
+
+Una sola corrida del script del commit `e3410f3`, sin cambios posteriores al protocolo. Salida en
+`docs/agentes/mejora-predictor/resultados-nuevos/clima_por_anio.json`. Cada año tiene 48 o 49 pares
+(433 en total). El asterisco marca un intervalo del 95 % que no contiene el cero. El archivo incluye
+además las series semanales de cada año (casos de 4 semanas, clima y anomalías), como entrada para
+dibujar; no es un análisis.
+
+### A3. Correlación entre la anomalía climática y la anomalía del crecimiento a 4 semanas
+
+| año | pares | temp. media | temp. máx. | temp. mín. | lluvia (mm) | lluvia (horas) | humedad | pto. de rocío | ONI |
+|---|---|---|---|---|---|---|---|---|---|
+| 2014 | 49 | +0,61 | +0,53 | +0,67* | −0,29 | −0,37 | −0,34 | +0,08 | −0,54 |
+| 2015 | 48 | +0,10 | +0,18 | −0,17 | −0,26 | −0,30 | −0,22 | −0,22 | −0,10 |
+| 2016 | 48 | +0,10 | +0,25 | +0,00 | −0,18 | −0,27 | −0,12 | −0,04 | −0,34 |
+| 2017 | 48 | +0,07 | +0,06 | +0,03 | −0,17 | −0,05 | +0,04 | +0,14 | −0,45* |
+| 2018 | 48 | −0,09 | −0,04 | −0,06 | −0,02 | −0,11 | −0,05 | −0,06 | +0,28 |
+| 2019 | 48 | −0,07 | −0,09 | −0,00 | −0,12 | −0,11 | +0,12 | +0,16 | +0,09 |
+| 2021 | 48 | +0,24 | +0,29 | +0,08 | −0,41 | −0,37 | −0,27 | −0,16 | −0,66* |
+| 2022 | 48 | +0,64* | +0,59* | +0,69* | −0,34 | −0,57* | −0,75* | −0,04 | +0,26 |
+| 2023 | 48 | −0,03 | −0,12 | +0,14 | +0,14 | +0,37 | +0,22 | +0,26 | +0,29 |
+| agrupado | 433 | +0,18* | +0,19* | +0,14* | −0,17* | −0,20* | −0,17* | −0,04 | −0,04 |
+
+### A5. Consistencia entre años
+
+| variable | años con r > 0 | años con r < 0 | años con intervalo sin el cero | rango de r | r agrupado [intervalo 95 %] | etiqueta |
+|---|---|---|---|---|---|---|
+| temp. media | 6 | 3 | 1 | −0,09 a +0,64 | +0,18 [+0,06; +0,36] | variable según el año |
+| temp. máx. | 6 | 3 | 1 | −0,12 a +0,59 | +0,19 [+0,07; +0,36] | variable según el año |
+| temp. mín. | 6 | 3 | 2 | −0,17 a +0,69 | +0,14 [+0,02; +0,35] | variable según el año |
+| lluvia (mm) | 1 | 8 | 0 | −0,41 a +0,14 | −0,17 [−0,34; −0,06] | consistente |
+| lluvia (horas) | 1 | 8 | 1 | −0,57 a +0,37 | −0,20 [−0,37; −0,09] | consistente |
+| humedad | 3 | 6 | 1 | −0,75 a +0,22 | −0,17 [−0,33; −0,04] | variable según el año |
+| pto. de rocío | 4 | 5 | 0 | −0,22 a +0,26 | −0,04 [−0,19; +0,15] | variable según el año |
+| ONI | 4 | 5 | 2 | −0,66 a +0,29 | −0,04 [−0,13; +0,22] | variable según el año |
+
+Con la regla fijada de antemano, dos variables son consistentes: la lluvia semanal y las horas de
+lluvia, ambas con signo negativo en 8 de 9 años y con intervalo agrupado que excluye el cero. Las demás
+variables se etiquetan variable según el año.
+
+### A2. Parte estacional y desfase entre ciclos
+
+| serie | R² de 3 armónicos | desfase con mayor correlación (semanas) | correlación en ese desfase |
+|---|---|---|---|
+| casos (z) | 0,16 | | |
+| temp. media | 0,53 | 15 | 0,81 |
+| temp. máx. | 0,59 | 16 | 0,65 |
+| temp. mín. | 0,67 | 8 | 0,88 |
+| lluvia (mm) | 0,53 | 2 | 0,89 |
+| lluvia (horas) | 0,64 | 2 | 0,87 |
+| humedad | 0,79 | 0 | 0,92 |
+| pto. de rocío | 0,82 | 2 | 0,94 |
+
+El desfase compara la climatología de cada variable con la de z desplazada hacia adelante entre 0 y 16
+semanas. Para la temperatura máxima el máximo está en el borde del rango (16). z es un promedio de 4
+semanas y arrastra por construcción un rezago de unas 1,5 semanas respecto de los casos semanales.
+
+### A4. Perfil de cada año
+
+| año | casos | semana del pico | valor del pico (promedio de 4 semanas) | ONI medio | anomalía de lluvia (mm por semana) | anomalía de temp. media (°C) |
+|---|---|---|---|---|---|---|
+| 2014 | 53.460 | 36 | 2827 | +0,22 | −2,7 | −0,16 |
+| 2015 | 50.169 | 36 | 2204 | +1,48 | −3,9 | +0,56 |
+| 2016 | 8.789 | 1 | 418 | +0,50 | −5,1 | +0,17 |
+| 2017 | 4.297 | 25 | 138 | −0,06 | +3,6 | −0,37 |
+| 2018 | 8.448 | 39 | 343 | +0,12 | −0,7 | −0,10 |
+| 2019 | 27.470 | 35 | 1443 | +0,65 | −0,9 | +0,32 |
+| 2021 | 5.752 | 26 | 157 | −0,65 | +0,2 | −0,22 |
+| 2022 | 16.542 | 24 | 606 | −0,78 | +11,8 | −0,69 |
+| 2023 | 5.788 | 31 | 204 | +0,80 | −2,3 | +0,50 |
+
+Correlación de rangos de Spearman entre los casos totales y la anomalía media anual, con n = 9:
+temp. media +0,33; temp. máx. +0,33; temp. mín. +0,15; lluvia (mm) −0,50; lluvia (horas) −0,67; humedad −0,52; pto. de rocío −0,02; ONI +0,40. Es un dato descriptivo con nueve puntos. La semana del pico de 2016 (la 1) es
+probablemente la cola de la epidemia de 2015 y no un máximo del propio año.
+
+### A1. Aporte al pronóstico por año (lectura de `insumos.json`)
+
+Positivo significa que quitar el rasgo empeora el skill del predictor, es decir que el rasgo ayuda.
+
+| horizonte | rasgo | 2019 | 2021 | 2022 | 2023 | 2024 | años a favor |
+|---|---|---|---|---|---|---|---|
+| h = 4 | clima | −0,040 | +0,075 | +0,314 | −0,029 | −0,227 | 2 de 5 |
+| h = 4 | ONI | −0,027 | +0,021 | +0,004 | −0,018 | −0,012 | 2 de 5 |
+| h = 4 | año del objetivo | +0,013 | +0,071 | +0,032 | +0,007 | −0,034 | 4 de 5 |
+| h = 8 | clima | −0,022 | +0,085 | +0,229 | −0,002 | −0,074 | 2 de 5 |
+| h = 8 | ONI | −0,010 | −0,040 | −0,061 | −0,012 | −0,033 | 0 de 5 |
+| h = 8 | año del objetivo | +0,020 | −0,033 | +0,092 | +0,039 | +0,005 | 4 de 5 |
+
+## Qué se concluye
+
+- La asociación lineal más estable de la serie es negativa con la lluvia: una lluvia mayor que la
+  normal en las 4 semanas previas acompaña un crecimiento menor en las 4 siguientes. El tamaño es
+  pequeño: la correlación agrupada es de −0,17 (lluvia en mm) y −0,20 (horas de lluvia), alrededor
+  del 3 al 4 % de la varianza de la anomalía del crecimiento. Ningún año por separado tiene el
+  intervalo de la lluvia en mm fuera del cero, y solo 2022 lo tiene en las horas de lluvia, en el
+  límite del cero. Las dos
+  variables miden lo mismo con dos unidades y cuentan como un solo hallazgo.
+- El signo es el contrario al que suele esperarse de la lluvia. La base no mide almacenamiento de
+  agua, control vectorial, serotipos ni inmunidad, y este análisis no distingue entre explicaciones.
+- La temperatura tiene una correlación agrupada positiva de 0,14 a 0,19 que viene de dos años: 2014
+  (0,5 a 0,7) y 2022 (0,6 a 0,7). En los otros siete años la correlación está entre −0,17 y +0,29. La
+  regla la etiqueta variable según el año.
+- 2022 es el único año en que varias variables climáticas tienen el intervalo fuera del cero a la vez
+  (temperatura media, máxima y mínima, humedad y horas de lluvia). Es también el año con la mayor
+  anomalía de lluvia de la serie (+11,8 mm por semana, ONI de −0,78) y aquel en que el clima más ayudó al
+  predictor (A1: +0,31 a h = 4).
+- El ONI cambia de signo según el año (4 positivos y 5 negativos) y su aporte al pronóstico es de
+  0,03 o menos en valor absoluto en todos los años a h = 4.
+- A2: entre el 53 y el 82 % de la varianza de cada variable climática es ciclo anual; en los casos
+  (z) es el 16 %. La mayor parte de la variación de los casos queda entre años y dentro del año fuera
+  del ciclo medio. El ciclo medio de los casos
+  coincide con el de la lluvia, la humedad y el punto de rocío (correlación de 0,87 a 0,94 con un
+  desfase de 0 a 2 semanas); el de la temperatura lo precede de 8 a 16 semanas.
+- En A1 el clima ayudó al predictor en 2021 y 2022 y no en 2019, 2023 ni 2024. No hay una ganancia
+  sostenida, igual que en el veredicto del experimento de insumos.
+
+## Observación posterior, no prevista en el protocolo
+
+Para los cuatro años que están en A1 y en A3 (2019, 2021, 2022 y 2023), el promedio del valor
+absoluto de la correlación de las 7 variables climáticas (0,09; 0,26; 0,52; 0,18) ordena los años
+igual que el aporte del clima a h = 4 (−0,040; +0,075; +0,314; −0,029). Con cuatro años, una
+coincidencia exacta del orden ocurre una vez de cada 24 por azar. Se registra como descripción de la
+serie. No se usa como prueba ni se pone en el sitio como resultado.
+
+Sensibilidad posterior de la correlación agrupada al quitar años, calculada después de ver A3:
+
+| variable | todos los años | sin 2022 | sin 2014 | sin 2014 ni 2022 |
+|---|---|---|---|---|
+| temp. media | +0,18 | +0,11 | +0,14 | +0,05 |
+| temp. máx. | +0,19 | +0,13 | +0,16 | +0,08 |
+| temp. mín. | +0,14 | +0,06 | +0,08 | −0,02 |
+| lluvia (mm) | −0,17 | −0,13 | −0,17 | −0,12 |
+| lluvia (horas) | −0,20 | −0,13 | −0,20 | −0,11 |
+| humedad | −0,17 | −0,11 | −0,16 | −0,09 |
+
+La correlación positiva de la temperatura desaparece sin 2014 y 2022. La de la lluvia baja a −0,12 y
+−0,11 sin ellos y conserva el signo.
+
+## Qué habilita
+
+- Material para el sitio, con cifras solo de este archivo y de `insumos.json`: el aporte del clima al
+  pronóstico por año (A1), la matriz año por variable de A3 con los intervalos, el ciclo medio de los
+  casos junto al de la lluvia (A2) y el perfil de los años (A4). El texto dice qué asociación es
+  consistente y cuáles varían según el año, con los tamaños de arriba, y nombra como no medidos los
+  mecanismos posibles.
+- Una variante de M0 con el clima expresado como anomalía respecto de la estación necesitaría su
+  propio protocolo. Quien lo escriba ya vio A3, de modo que A3 no cuenta como evidencia independiente
+  a su favor, y la ventana prospectiva firmada para K1 a K4 no se modifica.
+- Comparar El Salvador con otros países requiere cargar casos y clima de esos países, que esta base
+  no tiene. Este análisis no permite decir que El Salvador difiera de otros lugares ni lo contrario.
+
+## Límites añadidos tras ver los resultados
+
+- El intervalo agrupado remuestrea bloques dentro de cada uno de los 9 años observados. Describe la
+  incertidumbre de esos años y no la de un año nuevo. Que 8 de 9 años compartan el signo es la
+  evidencia de que otros años lo comparten, y con 9 años es limitada.
+- Son 8 variables y 2 salieron consistentes, sin ajuste por comparaciones múltiples. La regla se fijó
+  antes de ver los datos; la lluvia en mm y en horas no son independientes entre sí.
+- Las primeras semanas de 2014 usan ventanas parciales porque la serie empieza en 2014-S1.
+- Para evaluar un año, la climatología excluye ese año. Al evaluar los demás años entra 2022, que
+  tiene una anomalía de lluvia muy alta, y eso sube algo la referencia y baja sus anomalías.
