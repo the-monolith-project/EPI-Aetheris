@@ -33,7 +33,7 @@ script. No se añaden pruebas después de ver los resultados.
 
 - Serie de sospechosos del tablero: `casos_epidemiologicos` con la fuente `minsal_tablero`,
   `clasificacion = 'sospechoso'`, 2025-S1 a 2026-S37 (89 semanas; 2025-S53 no está publicada).
-  El script la lee de Postgres y, si no hay base, de `db/seed/seed_tablero_minsal.sql`.
+  El script la lee de Postgres, cargado con `db/seed/seed_tablero_minsal.sql`.
 - OpenDengue nacional, 2014 a 2024, `casos_epidemiologicos` con la fuente `opendengue_v1_3`.
 - Umbrales del corredor endémico de 2025 y 2026, extraídos de las capturas HAR del tablero
   (`tablero-10` y `tablero-04`), guardados en el JSON de resultados para que el análisis se
@@ -120,3 +120,7 @@ python analisis_nowcast_forma_serie.py
 Escribe `docs/agentes/mejora-predictor/resultados-nuevos/forma_serie_tablero.json`. Usa solo
 datos hasta 2026-S37. No toca el script congelado de la prueba prospectiva, la API, el
 frontend ni los artefactos de `backend/api/datos/`.
+
+## Enmiendas
+
+1. 2026-10-03, antes de la primera corrida: el script exige Postgres para la serie del tablero y para OpenDengue; no hay lectura alternativa desde la semilla (se simplificó la sección Datos).
