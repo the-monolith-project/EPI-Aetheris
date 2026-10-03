@@ -109,6 +109,23 @@ vigente (φ = 0,8, pendiente de 3 semanas) en al menos 0,005 de puntaje promedio
 menos 3 de los 5 años. Es la misma regla con que se examinó T. Si una familia no la pasa, el
 resultado de esa familia es que no supera a T en la historia y no se confirma nada.
 
+## Extensión E1, añadida después de correr A y antes de B
+
+La parte A ya se corrió con la rejilla de arriba. Solo se miró la validación (historia hasta 2023),
+no H1 ni H2. El mejor ETS, (α, β, φ) = (0,8; 1,0; 0,8), tiene la amortiguación mínima de la rejilla
+y la β máxima posible; el mejor Theta, (α, L) = (1,0; 6), tiene la ventana mínima. Un óptimo en el
+borde pide extender la rejilla hacia ese lado, como se hizo con la ventana de T en la Fase 1. Se
+fija ahora, antes de calcular nada de la extensión y antes de mirar H1 y H2:
+
+- ETS: φ en {0,5; 0,6; 0,7}, con las mismas α y β. Son 60 configuraciones más.
+- Theta: L en {3, 4, 5}, con las mismas α. Son 15 configuraciones más.
+- Se puntúan en la validación igual que las anteriores. La mejor de la extensión, de cada familia,
+  sustituye a la mejor original solo si cumple las dos: supera a la mejor original en al menos
+  0,005 de puntaje promedio y en al menos 3 de los 5 años, y cumple por sí sola la regla de cambio
+  frente a T vigente. Si no, B y C usan la configuración original.
+- B y C no se corren hasta tener la elección final de las dos familias. La extensión se rotula
+  como añadida después de ver A.
+
 ## B. Confirmación fuera de la selección
 
 Solo para las familias que pasen A. Dos conjuntos que no sirvieron para elegir la configuración:
@@ -165,6 +182,6 @@ corrección de Holm se hace sobre todas las comparaciones.
 - Script `backend/ingestion/experimento_nowcast_theta_ets.py`, con pruebas en
   `backend/ingestion/tests/test_theta_ets.py`. Reutiliza `historia`, `Reglas`, `cargar_b` y las
   funciones de métrica de `experimento_nowcast_tendencia_seleccion.py`.
-- Modos `--control`, `--parte-a`, `--parte-b` y `--parte-c`. Salida en
+- Modos `--control`, `--parte-a`, `--extension-e1`, `--parte-b` y `--parte-c`. Salida en
   `docs/agentes/mejora-predictor/resultados-nuevos/theta_ets.json`.
 - El script se escribe y se commitea, con sus pruebas, antes de correr cualquier parte.
