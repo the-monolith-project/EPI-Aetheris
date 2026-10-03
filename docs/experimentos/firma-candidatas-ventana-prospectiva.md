@@ -1,8 +1,8 @@
 # Firma de candidatas para la ventana prospectiva (Fase 4) (2026-10-03)
 
 > Protocolo propuesto el 2026-10-03, en la rama `feat/mejora-tablero-firma-candidatas` (sale de
-> `feat/mejora-tablero-cambio-anio`). Queda firmado cuando Eduardo lo aprueba y se anota aquí el
-> commit del script. Hasta entonces se puede enmendar. No toca la prueba prospectiva congelada
+> `feat/mejora-tablero-cambio-anio`). Firmado el 2026-10-03 al aprobarlo Eduardo y anotar el commit
+> del script (sección Firma). No toca la prueba prospectiva congelada
 > (`experimento-nowcast-tendencia.md`, script `40b6ebb78fe670222966a225438155b83ada876d`), la web,
 > el backend ni los artefactos de `backend/api/datos/`.
 
@@ -119,4 +119,11 @@ limitar candidatas.
 
 ## Firma
 
-Commit del script: se anota aquí al aprobar.
+Aprobado por Eduardo el 2026-10-03, sin enmiendas. Las tres candidatas (K1, K2 y K3) y el criterio
+de arriba quedan firmados.
+
+Commit del script: `069eaf9566050e1d001dbeefab52d868cb478c21`. Los commits posteriores de la rama
+solo tocan las pruebas y este documento.
+
+Desde esta firma el protocolo no se enmienda. Una candidata nueva se firma en otro documento y,
+para entrar en esta ventana, antes de cargar una captura con 2026-S38 o posterior.
