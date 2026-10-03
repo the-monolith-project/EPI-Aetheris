@@ -190,3 +190,57 @@ def test_origen_ok_pide_rezagos_y_objetivo_finitos():
     s.casos[54] = 10.0
     s.z[47] = np.nan
     assert not cd.origen_ok(s, 50, 4)  # rezago sin dato
+
+
+# --- evaluacion de punta a punta con una salida congelada sintetica -------------------------
+
+
+def _salida_congelada(serie: Serie, commit: str) -> dict:
+    rng = np.random.default_rng(11)
+    detalle = {}
+    for h in range(1, 9):
+        filas = []
+        for o in range(600, 620):
+            m, t = _q(200.0 + rng.uniform(0, 50), 0.4), _q(100.0 + rng.uniform(0, 20), 0.2)
+            filas.append({"origen": str(serie.fecha[o]), "objetivo": str(serie.fecha[o + h]), "anio": int(serie.anio[o + h]),
+                          "semana": int(serie.semana[o + h]), "y": float(serie.casos[o + h]), "wis_ref_suavizada": 12.0,
+                          "q_M0": m.tolist(), "q_T": t.tolist(), "q_C": cd.mezcla(m, t, 0.5).tolist()})
+        detalle[str(h)] = {"h": h, "filas": filas}
+    return {"commit_script": commit, "semanas_prueba": [str(serie.fecha[k]) for k in range(608, 628)],
+            "confirmado": True, "detalle": detalle}
+
+
+@pytest.fixture
+def entorno(tmp_path, monkeypatch):
+    serie = _serie_sintetica()
+    monkeypatch.setattr(cd.ten, "SALIDA_PRUEBA", tmp_path / "tendencia_prueba.json")
+    monkeypatch.setattr(cd, "SALIDA_PRUEBA", tmp_path / "candidatas_prueba.json")
+    monkeypatch.setattr(cd, "_script_sin_cambios", lambda: "a" * 40)
+    return serie, tmp_path
+
+
+def test_evaluar_se_niega_sin_la_evaluacion_congelada(entorno):
+    serie, _ = entorno
+    with pytest.raises(SystemExit, match="Falta la evaluacion congelada"):
+        cd.evaluar(serie)
+
+
+def test_evaluar_se_niega_si_la_congelada_declara_otro_commit(entorno):
+    import json as _json
+    serie, tmp = entorno
+    (tmp / "tendencia_prueba.json").write_text(_json.dumps(_salida_congelada(serie, "b" * 40)), encoding="utf-8")
+    with pytest.raises(SystemExit, match="declara el commit"):
+        cd.evaluar(serie)
+
+
+def test_evaluar_escribe_la_salida_una_sola_vez(entorno):
+    import json as _json
+    serie, tmp = entorno
+    (tmp / "tendencia_prueba.json").write_text(_json.dumps(_salida_congelada(serie, cd.FIRMADO_COMMIT)), encoding="utf-8")
+    cd.evaluar(serie)
+    out = _json.loads((tmp / "candidatas_prueba.json").read_text(encoding="utf-8"))
+    assert set(out) >= {"resultado", "decision", "c_por_tramos", "sin_cambio_de_anio", "dm_holm", "confirmadas"}
+    assert out["commit_script"] == "a" * 40 and out["commit_evaluacion_congelada"] == cd.FIRMADO_COMMIT
+    assert set(out["decision"]) == {"K1", "K2", "K3"}
+    with pytest.raises(SystemExit, match="ya se corrio"):
+        cd.evaluar(serie)
