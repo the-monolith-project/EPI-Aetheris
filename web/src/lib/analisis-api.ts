@@ -6,6 +6,8 @@ import type { AlertaPublica } from './vista-alertas';
 import type {
   AnioAnalisisDengue,
   CasoNacionalSemanal,
+  ClimaDengueAnio,
+  ClimaDengueMultipais,
   DatasetAnaliticoDengue,
   EventoRespiratorio,
   FiltrosAnalisis,
@@ -30,6 +32,12 @@ let cacheIntegridad: Promise<IntegridadVigilancia> | null = null;
 let cacheNowcastDengue: Promise<NowcastDengue> | null = null;
 let cacheAlertasDengue: Promise<AlertaPublica[]> | null = null;
 let cacheNowcastRetro: Promise<NowcastDengueRetrospectivo> | null = null;
+let cacheClimaDengueAnio: Promise<
+  ClimaDengueAnio | RespuestaNoDisponible
+> | null = null;
+let cacheClimaDengueMultipais: Promise<
+  ClimaDengueMultipais | RespuestaNoDisponible
+> | null = null;
 const cacheProcedencia = new Map<string, Promise<ProcedenciaAnalitica>>();
 const cacheSerieIdoneidad = new Map<string, Promise<SerieTemporalIdoneidad>>();
 const cacheSeriePresion = new Map<string, Promise<SerieTemporalPresion>>();
@@ -432,6 +440,93 @@ export function obtenerNowcastRetrospectivo(): Promise<NowcastDengueRetrospectiv
     );
   }
   return cacheNowcastRetro;
+}
+
+function esObjeto(valor: unknown): valor is Record<string, unknown> {
+  return typeof valor === 'object' && valor !== null && !Array.isArray(valor);
+}
+
+/**
+ * Clima y dengue de El Salvador año por año (ADR 0023 del monorepo). Un 200
+ * con `disponible: false` pasa tal cual: es una brecha de cobertura esperada,
+ * no un error de red.
+ */
+export function obtenerClimaDengueAnio(): Promise<
+  ClimaDengueAnio | RespuestaNoDisponible
+> {
+  if (!cacheClimaDengueAnio) {
+    cacheClimaDengueAnio = registrarPeticion(
+      fetch(`${API_BASE}/api/clima-dengue/por-anio`)
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudo cargar el análisis de clima y dengue por año (${respuesta.status}).`,
+            );
+          }
+          const datos: unknown = await respuesta.json();
+          if (esNoDisponible(datos)) return datos;
+          if (
+            !esObjeto(datos) ||
+            !esObjeto(datos.A1) ||
+            !esObjeto(datos.A2) ||
+            !esObjeto(datos.A3) ||
+            !esObjeto(datos.A3.por_anio) ||
+            !esObjeto(datos.A3.agrupado) ||
+            !esObjeto(datos.A5)
+          ) {
+            throw new Error(
+              'El análisis de clima y dengue por año no tiene el contrato esperado.',
+            );
+          }
+          return datos as unknown as ClimaDengueAnio;
+        })
+        .catch((error) => {
+          cacheClimaDengueAnio = null;
+          throw error;
+        }),
+    );
+  }
+  return cacheClimaDengueAnio;
+}
+
+/** El Salvador frente a 18 países de las Américas (ADR 0023 del monorepo). */
+export function obtenerClimaDengueMultipais(): Promise<
+  ClimaDengueMultipais | RespuestaNoDisponible
+> {
+  if (!cacheClimaDengueMultipais) {
+    cacheClimaDengueMultipais = registrarPeticion(
+      fetch(`${API_BASE}/api/clima-dengue/multipais`)
+        .then(async (respuesta) => {
+          if (!respuesta.ok) {
+            throw new Error(
+              `No se pudo cargar la comparación entre países (${respuesta.status}).`,
+            );
+          }
+          const datos: unknown = await respuesta.json();
+          if (esNoDisponible(datos)) return datos;
+          if (
+            !esObjeto(datos) ||
+            !esObjeto(datos.P1) ||
+            !esObjeto(datos.P2) ||
+            !esObjeto(datos.P2.por_pais) ||
+            !esObjeto(datos.P3) ||
+            !esObjeto(datos.P4) ||
+            !esObjeto(datos.P5) ||
+            !esObjeto(datos.P6)
+          ) {
+            throw new Error(
+              'La comparación entre países no tiene el contrato esperado.',
+            );
+          }
+          return datos as unknown as ClimaDengueMultipais;
+        })
+        .catch((error) => {
+          cacheClimaDengueMultipais = null;
+          throw error;
+        }),
+    );
+  }
+  return cacheClimaDengueMultipais;
 }
 
 /**

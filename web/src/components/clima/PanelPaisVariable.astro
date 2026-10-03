@@ -1,0 +1,276 @@
+---
+import PanelWorkspace from '../analisis/PanelWorkspace.astro';
+import BotonExportarGrafico from '../BotonExportarGrafico.astro';
+// La misma asociación semanal entre clima y crecimiento de los casos, medida
+// en cada país (P3 de GET /api/clima-dengue/multipais): correlación agrupada
+// de los años evaluables de cada país, con intervalo del 95 % por bootstrap
+// de bloques.
+---
+
+<PanelWorkspace
+  tipo="traza"
+  idTitulo="clima-pais-variable-titulo"
+  titulo="La misma asociación en cada país"
+  descripcion="Correlación entre la anomalía del clima y la anomalía del crecimiento de los casos a 4 semanas, con los años evaluables de cada país. Azul indica correlación negativa y naranja positiva."
+  data-panel-clima="pais-variable"
+>
+  <div data-estado role="status" aria-busy="true">
+    <div class="skeleton h-72 w-full" aria-hidden="true"></div>
+  </div>
+
+  <div data-contenido hidden>
+    <div data-resumen class="space-y-2" aria-live="polite"></div>
+
+    <div class="mt-3 overflow-x-auto scroll-shadow-x" tabindex="0">
+      <div
+        data-grafico
+        class="min-w-[820px]"
+        style="height: 640px"
+        role="region"
+        aria-label="Matriz de correlaciones entre ocho variables climáticas y el crecimiento de los casos de dengue, para cada uno de los 18 países"
+      >
+      </div>
+    </div>
+
+    <div class="mt-3 flex flex-wrap items-center gap-3">
+      <span class="font-sans text-xs text-ink-muted">Correlación</span>
+      <span class="font-sans text-xs text-ink-muted">−0,8</span>
+      <span
+        data-rampa
+        class="h-3 w-40 rounded border border-border"
+        aria-hidden="true"></span>
+      <span class="font-sans text-xs text-ink-muted">+0,8</span>
+    </div>
+    <p
+      class="mt-2 max-w-[68ch] font-sans text-xs leading-relaxed text-ink-muted"
+    >
+      Borde grueso, negrita y asterisco: el intervalo del 95 % no incluye el
+      cero. Daga (†): además, el signo es el mismo en todos los años evaluables
+      salvo a lo sumo uno. Gris: sin estimación; Bermudas e Islas Vírgenes (EE.
+      UU.) no tienen años evaluables, y un país necesita al menos 5.
+    </p>
+
+    <BotonExportarGrafico
+      class="mt-3"
+      titulo="Clima y crecimiento de los casos de dengue en 18 países"
+      fuente="EPI-Aetheris · OpenDengue (OPS) y Open-Meteo, 2014 a 2023"
+    />
+
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver las correlaciones de los países en tabla
+      </summary>
+      <div data-tabla-matriz></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver todas las correlaciones por país, variable y año en tabla
+      </summary>
+      <div data-tabla-anios></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver El Salvador con las dos series en tabla
+      </summary>
+      <div data-tabla-referencia></div>
+      <p
+        class="mt-2 max-w-[68ch] font-sans text-xs leading-relaxed text-ink-muted"
+      >
+        La serie multipaís cuenta los ceros de las vacaciones como ceros y
+        asigna las semanas por fecha. La serie de la base de datos los trata
+        como faltantes. Cambia, por ejemplo, la etiqueta de la lluvia en mm.
+      </p>
+    </details>
+  </div>
+</PanelWorkspace>
+
+<script>
+  import { obtenerClimaDengueMultipais } from '../../lib/analisis-api';
+  import {
+    celdasPaisVariable,
+    etiquetaVariable,
+    filasPaisVariableAnio,
+    filasReferenciaElSalvador,
+    formatoIntervalo,
+    formatoR,
+    nombrePais,
+    ordenFilasPaises,
+    resumenPaisVariable,
+    VARIABLES_ASOCIACION,
+  } from '../../lib/clima-dengue';
+  import { opcionMatrizCorrelacion } from '../../lib/clima-dengue-opciones';
+  import type { CeldaCorrelacion } from '../../lib/clima-dengue-opciones';
+  import { RAMPA_ANOMALIA, gradienteCss } from '../../lib/colores';
+  import { montarGrafico } from '../../lib/echarts-montaje';
+  import { TablaAlternativa } from '../../lib/tabla-alternativa';
+  import type { ColumnaTabla } from '../../lib/tabla-alternativa';
+  import { activarAlEntrar, cargarPanel } from './cargar-panel';
+
+  function iniciar(panel: HTMLElement): void {
+    void cargarPanel(
+      panel,
+      obtenerClimaDengueMultipais,
+      async (datos, contenido) => {
+        const buscar = <T extends HTMLElement>(selector: string) =>
+          contenido.querySelector<T>(selector)!;
+        const { P3 } = datos;
+        const paises = ordenFilasPaises(Object.keys(P3));
+        const celdas = celdasPaisVariable(P3, paises);
+
+        buscar('[data-rampa]').style.background = gradienteCss(RAMPA_ANOMALIA);
+        buscar('[data-resumen]').replaceChildren(
+          ...resumenPaisVariable(celdas).map((frase) => {
+            const p = document.createElement('p');
+            p.className =
+              'max-w-[68ch] font-sans text-sm leading-relaxed text-ink';
+            p.textContent = frase;
+            return p;
+          }),
+        );
+
+        const celdasMatriz: CeldaCorrelacion[] = celdas.map((celda) => {
+          const lineas = [
+            `${nombrePais(celda.pais)} · ${etiquetaVariable(celda.variable, true)}`,
+          ];
+          if (celda.r === null || celda.ic95 === null) {
+            lineas.push('Sin estimación');
+          } else {
+            lineas.push(
+              `Correlación ${formatoR(celda.r, 3)}`,
+              `Intervalo del 95 %: ${formatoIntervalo(celda.ic95)}`,
+              `Años evaluables: ${celda.anios}; positivos ${celda.positivos}, negativos ${celda.negativos}`,
+              celda.consistente
+                ? 'Cumple la regla de consistencia'
+                : 'Varía según el año',
+            );
+          }
+          return {
+            fila: nombrePais(celda.pais),
+            columna: etiquetaVariable(celda.variable),
+            r: celda.r,
+            destacada: celda.excluyeCero,
+            consistente: celda.consistente,
+            texto: lineas.join('\n'),
+          };
+        });
+
+        await montarGrafico(
+          buscar<HTMLElement>('[data-grafico]'),
+          (t) =>
+            opcionMatrizCorrelacion(t, {
+              filas: paises.map(nombrePais),
+              columnas: VARIABLES_ASOCIACION.map((v) => etiquetaVariable(v)),
+              celdas: celdasMatriz,
+              izquierda: 150,
+            }),
+          'Matriz de correlaciones entre ocho variables climáticas y el crecimiento de los casos de dengue, para cada uno de los 18 países',
+        );
+
+        const tablaDe = (
+          selector: string,
+          caption: string,
+          columnas: ColumnaTabla[],
+          obtenerDatos: () => unknown[],
+          limiteFilas?: number,
+        ) => {
+          const contenedorTabla = buscar<HTMLElement>(selector);
+          new TablaAlternativa({
+            details: contenedorTabla.closest('details')!,
+            contenedorTabla,
+            caption,
+            columnas,
+            obtenerDatos,
+            limiteFilas,
+          });
+        };
+
+        tablaDe(
+          '[data-tabla-matriz]',
+          'Correlación agrupada entre el clima y el crecimiento de los casos, por país y variable',
+          [
+            { clave: 'pais', encabezado: 'País' },
+            ...VARIABLES_ASOCIACION.map((variable) => ({
+              clave: variable,
+              encabezado: etiquetaVariable(variable),
+              alineacion: 'derecha' as const,
+            })),
+          ],
+          () =>
+            paises.map((pais) => {
+              const fila: Record<string, string> = { pais: nombrePais(pais) };
+              for (const celda of celdas.filter((c) => c.pais === pais)) {
+                fila[celda.variable] =
+                  celda.r === null || celda.ic95 === null
+                    ? 'sin estimación'
+                    : `${formatoR(celda.r)} ${formatoIntervalo(celda.ic95)}${celda.consistente ? ' †' : celda.excluyeCero ? ' *' : ''}`;
+              }
+              return fila;
+            }),
+        );
+
+        tablaDe(
+          '[data-tabla-anios]',
+          'Correlación entre el clima y el crecimiento de los casos por país, variable y año',
+          [
+            { clave: 'pais', encabezado: 'País' },
+            { clave: 'variable', encabezado: 'Variable' },
+            { clave: 'anio', encabezado: 'Año' },
+            {
+              clave: 'r',
+              encabezado: 'Correlación',
+              alineacion: 'derecha',
+              formato: (v: number) => formatoR(v, 3),
+            },
+            {
+              clave: 'ic95',
+              encabezado: 'Intervalo del 95 %',
+              alineacion: 'derecha',
+            },
+            { clave: 'etiqueta', encabezado: 'Etiqueta' },
+          ],
+          () => filasPaisVariableAnio(P3),
+          3000,
+        );
+
+        const referencia = datos.referencia_el_salvador_base_de_datos;
+        const detallesReferencia = buscar('[data-tabla-referencia]').closest(
+          'details',
+        );
+        if (referencia) {
+          tablaDe(
+            '[data-tabla-referencia]',
+            'El Salvador: correlación agrupada con la serie multipaís y con la serie de la base de datos',
+            [
+              { clave: 'variable', encabezado: 'Variable' },
+              {
+                clave: 'multipais',
+                encabezado: 'Serie multipaís',
+                alineacion: 'derecha',
+              },
+              { clave: 'etiquetaMultipais', encabezado: 'Años (multipaís)' },
+              {
+                clave: 'base',
+                encabezado: 'Serie de la base de datos',
+                alineacion: 'derecha',
+              },
+              { clave: 'etiquetaBase', encabezado: 'Años (base de datos)' },
+            ],
+            () => filasReferenciaElSalvador(P3, referencia),
+          );
+        } else {
+          detallesReferencia?.remove();
+        }
+      },
+    );
+  }
+
+  document
+    .querySelectorAll<HTMLElement>('[data-panel-clima="pais-variable"]')
+    .forEach((panel) => activarAlEntrar(panel, () => iniciar(panel)));
+</script>

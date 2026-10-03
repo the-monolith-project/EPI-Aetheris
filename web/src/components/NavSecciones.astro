@@ -21,7 +21,7 @@ const { etiqueta, enlaces } = Astro.props;
     enlaces.map((enlace) => (
       <a
         href={enlace.href}
-        class="inline-flex min-h-[44px] items-center rounded-full border border-border bg-surface px-3 py-1.5 transition-colors hover:border-accent/50 hover:text-accent"
+        class="inline-flex min-h-[44px] items-center rounded-full border border-border bg-surface px-3 py-1.5 transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         {enlace.etiqueta}
       </a>

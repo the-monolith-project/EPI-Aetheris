@@ -1,0 +1,164 @@
+---
+import PanelWorkspace from '../analisis/PanelWorkspace.astro';
+import BotonExportarGrafico from '../BotonExportarGrafico.astro';
+// Aporte del clima al predictor de dengue, año por año (A1 de
+// GET /api/clima-dengue/por-anio). Es la lectura de la ablación del ADR 0020:
+// habilidad del predictor completo menos la del mismo predictor sin el grupo
+// de variables. Descripción de datos; no atribuye causa.
+---
+
+<PanelWorkspace
+  tipo="traza"
+  idTitulo="clima-aporte-titulo"
+  titulo="Aporte del clima al pronóstico, año por año"
+  descripcion="Cada barra es la diferencia entre la habilidad del predictor completo y la del mismo predictor sin ese grupo de variables. La habilidad es la reducción relativa del error frente a repetir el último valor observado. Una barra positiva indica que el grupo mejoró el pronóstico ese año."
+  data-panel-clima="aporte"
+>
+  <div data-estado role="status" aria-busy="true">
+    <div class="skeleton h-72 w-full" aria-hidden="true"></div>
+  </div>
+
+  <div data-contenido hidden>
+    <label class="flex flex-wrap items-center gap-2 font-sans text-sm text-ink">
+      Horizonte
+      <select
+        data-horizonte
+        class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+      </select>
+    </label>
+
+    <p
+      data-resumen
+      class="mt-3 max-w-[68ch] font-sans text-sm leading-relaxed text-ink"
+      aria-live="polite"
+    >
+    </p>
+
+    <div class="mt-3 overflow-x-auto scroll-shadow-x" tabindex="0">
+      <div
+        data-grafico
+        class="h-[340px] min-w-[460px]"
+        role="region"
+        aria-label="Barras con el aporte del clima, del índice ONI y de ambos al pronóstico de dengue, por año de prueba"
+      >
+      </div>
+    </div>
+
+    <BotonExportarGrafico
+      class="mt-3"
+      titulo="Aporte del clima al pronóstico de dengue, año por año"
+      fuente="EPI-Aetheris · ablación del predictor, OpenDengue y Open-Meteo"
+    />
+
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver los datos en tabla
+      </summary>
+      <div data-tabla></div>
+    </details>
+  </div>
+</PanelWorkspace>
+
+<script>
+  import { obtenerClimaDengueAnio } from '../../lib/analisis-api';
+  import {
+    filasAporte,
+    formatoNumero,
+    horizontesDisponibles,
+    resumenAporte,
+  } from '../../lib/clima-dengue';
+  import { opcionAporte } from '../../lib/clima-dengue-opciones';
+  import { montarGrafico } from '../../lib/echarts-montaje';
+  import type { GraficoMontado } from '../../lib/echarts-montaje';
+  import { TablaAlternativa } from '../../lib/tabla-alternativa';
+  import { activarAlEntrar, cargarPanel, llenarSelect } from './cargar-panel';
+
+  const HORIZONTE_INICIAL = 4;
+
+  function iniciar(panel: HTMLElement): void {
+    let grafico: GraficoMontado | null = null;
+
+    void cargarPanel(
+      panel,
+      obtenerClimaDengueAnio,
+      async (datos, contenido) => {
+        const select =
+          contenido.querySelector<HTMLSelectElement>('[data-horizonte]')!;
+        const resumen = contenido.querySelector<HTMLElement>('[data-resumen]')!;
+        const contenedor =
+          contenido.querySelector<HTMLElement>('[data-grafico]')!;
+        const details = contenido.querySelector<HTMLDetailsElement>('details')!;
+        const contenedorTabla =
+          contenido.querySelector<HTMLElement>('[data-tabla]')!;
+
+        const horizontes = horizontesDisponibles(datos.A1);
+        const inicial = horizontes.includes(HORIZONTE_INICIAL)
+          ? HORIZONTE_INICIAL
+          : horizontes[0];
+        llenarSelect(
+          select,
+          horizontes.map((h) => ({
+            valor: String(h),
+            texto: `${h} ${h === 1 ? 'semana' : 'semanas'}`,
+          })),
+          String(inicial),
+        );
+
+        const horizonteActual = () => Number(select.value);
+        const filas = () => filasAporte(datos.A1, horizonteActual());
+
+        const tabla = new TablaAlternativa({
+          details,
+          contenedorTabla,
+          caption:
+            'Aporte al pronóstico por año de prueba y grupo de variables',
+          columnas: [
+            { clave: 'anio', encabezado: 'Año de prueba' },
+            ...(
+              [
+                ['clima', 'Clima de superficie'],
+                ['oni', 'ONI'],
+                ['climaYOni', 'Clima y ONI'],
+                ['anioObjetivo', 'Año del objetivo'],
+              ] as const
+            ).map(([clave, encabezado]) => ({
+              clave,
+              encabezado,
+              alineacion: 'derecha' as const,
+              formato: (v: number) => formatoNumero(v, 3, true),
+            })),
+          ],
+          obtenerDatos: filas,
+        });
+
+        const pintarTexto = () => {
+          resumen.textContent = resumenAporte(filas(), horizonteActual());
+          tabla.marcarCaducada();
+        };
+        pintarTexto();
+
+        const construir = (t: Parameters<typeof opcionAporte>[0]) =>
+          opcionAporte(t, filas(), horizonteActual());
+        if (grafico) {
+          grafico.destruir();
+        }
+        grafico = await montarGrafico(
+          contenedor,
+          construir,
+          'Barras con el aporte del clima, del índice ONI y de ambos al pronóstico de dengue, por año de prueba',
+        );
+        select.addEventListener('change', () => {
+          pintarTexto();
+          grafico?.actualizar(construir);
+        });
+      },
+    );
+  }
+
+  document
+    .querySelectorAll<HTMLElement>('[data-panel-clima="aporte"]')
+    .forEach((panel) => activarAlEntrar(panel, () => iniciar(panel)));
+</script>

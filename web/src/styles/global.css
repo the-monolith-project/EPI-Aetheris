@@ -75,6 +75,17 @@
     outline-offset: 2px;
     box-shadow: 0 0 0 4px rgba(1, 30, 30, 0.55);
   }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
 }
 
 /* Altura de la cabecera pegajosa (Layout.astro). En teléfono son dos filas

@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import { DEPARTAMENTOS } from '../lib/departamentos';
 import Icono from '../components/Icono.astro';
-import { RUTA_PREDICCION } from '../lib/enlaces';
+import { RUTA_CLIMA, RUTA_PREDICCION } from '../lib/enlaces';
 
 // Índice de las herramientas descriptivas (ADR 0014). Existe para que la
 // puerta de entrada del sitio pueda ser el panorama sin que las dos vistas
@@ -25,6 +25,14 @@ const HERRAMIENTAS = [
     estado: 'Corto plazo',
     texto:
       'Conteo nacional de casos para las próximas 1 a 8 semanas, con intervalo de incertidumbre, contraste con lo observado y el archivo del clasificador piloto.',
+  },
+  {
+    href: RUTA_CLIMA,
+    titulo: 'Clima y dengue',
+    icono: 'cloud-rain',
+    estado: 'Investigación',
+    texto:
+      'Cuánto aportó el clima al pronóstico en cada año, qué relación tienen el clima y el crecimiento de los casos en El Salvador y cómo se compara El Salvador con otros 17 países de las Américas, con todas las cifras en tablas.',
   },
   {
     href: '/respiratorio',

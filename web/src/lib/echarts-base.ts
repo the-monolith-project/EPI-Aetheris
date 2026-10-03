@@ -6,7 +6,7 @@
 // Este módulo importa ECharts en estático, así que solo debe cargarse con
 // `await import('./echarts-base')` (o vía `cargarEcharts`). Un import de
 // valor desde un componente arrastraría ECharts al grafo inicial de /dengue.
-import { CustomChart, LineChart, ScatterChart } from 'echarts/charts';
+import { BarChart, CustomChart, LineChart, ScatterChart } from 'echarts/charts';
 import {
   AriaComponent,
   GridComponent,
@@ -19,6 +19,7 @@ import * as echarts from 'echarts/core';
 import { SVGRenderer } from 'echarts/renderers';
 
 echarts.use([
+  BarChart,
   CustomChart,
   LineChart,
   ScatterChart,

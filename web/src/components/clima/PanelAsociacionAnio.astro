@@ -1,0 +1,343 @@
+---
+import PanelWorkspace from '../analisis/PanelWorkspace.astro';
+import BotonExportarGrafico from '../BotonExportarGrafico.astro';
+// Asociación entre el clima y el crecimiento de los casos, año por año
+// (A3, A4 y A5 de GET /api/clima-dengue/por-anio). Correlación de Pearson
+// entre la anomalía climática de las 4 semanas previas y la anomalía del
+// crecimiento a 4 semanas, con intervalo del 95 % por bootstrap de bloques.
+---
+
+<PanelWorkspace
+  tipo="traza"
+  idTitulo="clima-asociacion-titulo"
+  titulo="Clima y crecimiento de los casos, por año"
+  descripcion="Correlación entre la anomalía del clima (respecto de su ciclo habitual) y la anomalía del crecimiento de los casos a 4 semanas, en El Salvador. Cada fila es un año; la última reúne todos. Azul indica correlación negativa y naranja positiva."
+  data-panel-clima="asociacion"
+>
+  <div data-estado role="status" aria-busy="true">
+    <div class="skeleton h-72 w-full" aria-hidden="true"></div>
+  </div>
+
+  <div data-contenido hidden>
+    <p
+      data-resumen
+      class="max-w-[68ch] font-sans text-sm leading-relaxed text-ink"
+    >
+    </p>
+
+    <div class="mt-3 overflow-x-auto scroll-shadow-x" tabindex="0">
+      <div
+        data-grafico
+        class="min-w-[780px]"
+        style="height: 430px"
+        role="region"
+        aria-label="Matriz de correlaciones entre ocho variables climáticas y el crecimiento de los casos de dengue, por año"
+      >
+      </div>
+    </div>
+
+    <div class="mt-3 flex flex-wrap items-center gap-3">
+      <span class="font-sans text-xs text-ink-muted">Correlación</span>
+      <span class="font-sans text-xs text-ink-muted">−0,8</span>
+      <span
+        data-rampa
+        class="h-3 w-40 rounded border border-border"
+        aria-hidden="true"></span>
+      <span class="font-sans text-xs text-ink-muted">+0,8</span>
+    </div>
+    <p
+      class="mt-2 max-w-[68ch] font-sans text-xs leading-relaxed text-ink-muted"
+    >
+      Borde grueso, negrita y asterisco: el intervalo del 95 % no incluye el
+      cero. Daga (†) en la última fila: la variable mantiene el signo en al
+      menos 8 de los 9 años y el intervalo del conjunto excluye el cero, la
+      regla de consistencia fijada antes de calcular. Las variables de lluvia
+      miden lo mismo con dos unidades.
+    </p>
+
+    <BotonExportarGrafico
+      class="mt-3"
+      titulo="Clima y crecimiento de los casos de dengue, por año"
+      fuente="EPI-Aetheris · OpenDengue y Open-Meteo, 2014 a 2023"
+    />
+
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver las correlaciones con sus intervalos en tabla
+      </summary>
+      <div data-tabla-matriz></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver la consistencia entre años en tabla
+      </summary>
+      <div data-tabla-consistencia></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver el perfil de cada año en tabla
+      </summary>
+      <div data-tabla-perfil></div>
+    </details>
+    <details class="mt-3 rounded-xl border border-border bg-bg p-3">
+      <summary
+        class="cursor-pointer font-sans text-xs font-medium text-ink-muted hover:text-ink"
+      >
+        Ver el ciclo anual de El Salvador, variable por variable, en tabla
+      </summary>
+      <div data-tabla-ciclo></div>
+      <p
+        class="mt-2 max-w-[68ch] font-sans text-xs leading-relaxed text-ink-muted"
+      >
+        R² es la parte de la variación semanal que explican tres armónicos
+        anuales. El desfase es el desplazamiento, de 0 a 16 semanas, con que el
+        ciclo del clima y el de los casos se parecen más.
+      </p>
+    </details>
+  </div>
+</PanelWorkspace>
+
+<script>
+  import { obtenerClimaDengueAnio } from '../../lib/analisis-api';
+  import {
+    celdasAsociacionAnio,
+    ETIQUETA_TODOS_LOS_ANIOS,
+    etiquetaVariable,
+    filasCicloAnio,
+    filasConsistencia,
+    filasPerfilAnio,
+    filasTablaAsociacion,
+    formatoIntervalo,
+    formatoMiles,
+    formatoNumero,
+    formatoR,
+    resumenConsistencia,
+    VARIABLES_ASOCIACION,
+  } from '../../lib/clima-dengue';
+  import { opcionMatrizCorrelacion } from '../../lib/clima-dengue-opciones';
+  import type { CeldaCorrelacion } from '../../lib/clima-dengue-opciones';
+  import { RAMPA_ANOMALIA, gradienteCss } from '../../lib/colores';
+  import { montarGrafico } from '../../lib/echarts-montaje';
+  import { TablaAlternativa } from '../../lib/tabla-alternativa';
+  import type { ColumnaTabla } from '../../lib/tabla-alternativa';
+  import { activarAlEntrar, cargarPanel } from './cargar-panel';
+
+  function iniciar(panel: HTMLElement): void {
+    void cargarPanel(
+      panel,
+      obtenerClimaDengueAnio,
+      async (datos, contenido) => {
+        const { A2, A3, A4, A5 } = datos;
+        const anios = datos.parametros.anios.length;
+        const buscar = <T extends HTMLElement>(selector: string) =>
+          contenido.querySelector<T>(selector)!;
+
+        buscar('[data-resumen]').textContent = resumenConsistencia(
+          A3,
+          A5,
+          anios,
+        );
+        buscar('[data-rampa]').style.background = gradienteCss(RAMPA_ANOMALIA);
+
+        const { filas, celdas } = celdasAsociacionAnio(A3);
+        const columnas = VARIABLES_ASOCIACION.map((v) => etiquetaVariable(v));
+        const celdasMatriz: CeldaCorrelacion[] = celdas.map((celda) => {
+          const consistente =
+            celda.fila === ETIQUETA_TODOS_LOS_ANIOS &&
+            A5[celda.variable].consistente;
+          const c = A5[celda.variable];
+          const lineas = [
+            `${celda.fila} · ${etiquetaVariable(celda.variable, true)}`,
+            `Correlación ${formatoR(celda.r, 3)}`,
+            `Intervalo del 95 %: ${formatoIntervalo(celda.ic95)}`,
+          ];
+          if (celda.pares !== null)
+            lineas.push(`Pares semanales: ${celda.pares}`);
+          if (celda.fila === ETIQUETA_TODOS_LOS_ANIOS) {
+            lineas.push(
+              `Años positivos: ${c.anios_positivos}, negativos: ${c.anios_negativos}`,
+              consistente
+                ? 'Cumple la regla de consistencia'
+                : 'Varía según el año',
+            );
+          }
+          return {
+            fila: celda.fila,
+            columna: etiquetaVariable(celda.variable),
+            r: celda.r,
+            destacada: celda.excluyeCero,
+            consistente,
+            texto: lineas.join('\n'),
+          };
+        });
+
+        await montarGrafico(
+          buscar<HTMLElement>('[data-grafico]'),
+          (t) =>
+            opcionMatrizCorrelacion(t, {
+              filas,
+              columnas,
+              celdas: celdasMatriz,
+              izquierda: 110,
+            }),
+          'Matriz de correlaciones entre ocho variables climáticas y el crecimiento de los casos de dengue, por año',
+        );
+
+        const tablaDe = (
+          selectorContenedor: string,
+          caption: string,
+          columnas: ColumnaTabla[],
+          obtenerDatos: () => unknown[],
+        ) => {
+          const contenedorTabla = buscar<HTMLElement>(selectorContenedor);
+          new TablaAlternativa({
+            details: contenedorTabla.closest('details')!,
+            contenedorTabla,
+            caption,
+            columnas,
+            obtenerDatos,
+          });
+        };
+
+        tablaDe(
+          '[data-tabla-matriz]',
+          'Correlación entre la anomalía climática y la del crecimiento de los casos, con su intervalo del 95 %, por año',
+          [
+            { clave: 'fila', encabezado: 'Año' },
+            { clave: 'pares', encabezado: 'Pares', alineacion: 'derecha' },
+            ...VARIABLES_ASOCIACION.map((v) => ({
+              clave: v,
+              encabezado: etiquetaVariable(v),
+              alineacion: 'derecha' as const,
+            })),
+          ],
+          () => filasTablaAsociacion(A3),
+        );
+
+        tablaDe(
+          '[data-tabla-consistencia]',
+          'Consistencia entre años de cada variable',
+          [
+            { clave: 'variable', encabezado: 'Variable' },
+            {
+              clave: 'positivos',
+              encabezado: 'Años positivos',
+              alineacion: 'derecha',
+            },
+            {
+              clave: 'negativos',
+              encabezado: 'Años negativos',
+              alineacion: 'derecha',
+            },
+            {
+              clave: 'conIntervaloSinCero',
+              encabezado: 'Años con intervalo sin el cero',
+              alineacion: 'derecha',
+            },
+            { clave: 'rango', encabezado: 'Rango de r', alineacion: 'derecha' },
+            {
+              clave: 'agrupado',
+              encabezado: 'Conjunto',
+              alineacion: 'derecha',
+            },
+            { clave: 'etiqueta', encabezado: 'Etiqueta' },
+          ],
+          () => filasConsistencia(A5, A3),
+        );
+
+        const anomalia = (v: number) => formatoNumero(v, 2, true);
+        tablaDe(
+          '[data-tabla-perfil]',
+          'Perfil de cada año: casos, pico y anomalías medias',
+          [
+            { clave: 'anio', encabezado: 'Año' },
+            {
+              clave: 'casos',
+              encabezado: 'Casos del año',
+              alineacion: 'derecha',
+              formato: formatoMiles,
+            },
+            {
+              clave: 'semanaPico',
+              encabezado: 'Semana del pico',
+              alineacion: 'derecha',
+            },
+            {
+              clave: 'valorPico',
+              encabezado: 'Casos por semana en el pico',
+              alineacion: 'derecha',
+              formato: formatoMiles,
+            },
+            {
+              clave: 'oni',
+              encabezado: 'ONI medio',
+              alineacion: 'derecha',
+              formato: anomalia,
+            },
+            {
+              clave: 'lluvia',
+              encabezado: 'Anomalía de lluvia (mm)',
+              alineacion: 'derecha',
+              formato: anomalia,
+            },
+            {
+              clave: 'horasLluvia',
+              encabezado: 'Anomalía de horas de lluvia',
+              alineacion: 'derecha',
+              formato: anomalia,
+            },
+            {
+              clave: 'tempMedia',
+              encabezado: 'Anomalía de temp. media (°C)',
+              alineacion: 'derecha',
+              formato: anomalia,
+            },
+            {
+              clave: 'humedad',
+              encabezado: 'Anomalía de humedad (%)',
+              alineacion: 'derecha',
+              formato: anomalia,
+            },
+          ],
+          () => filasPerfilAnio(A4),
+        );
+
+        tablaDe(
+          '[data-tabla-ciclo]',
+          'Ciclo anual de cada variable climática y desfase de mayor correlación con el de los casos',
+          [
+            { clave: 'variable', encabezado: 'Variable' },
+            {
+              clave: 'r2',
+              encabezado: 'R² del ciclo anual',
+              alineacion: 'derecha',
+              formato: (v: number) => formatoNumero(v, 2),
+            },
+            {
+              clave: 'desfase',
+              encabezado: 'Desfase (semanas)',
+              alineacion: 'derecha',
+            },
+            {
+              clave: 'correlacion',
+              encabezado: 'Correlación en ese desfase',
+              alineacion: 'derecha',
+              formato: (v: number) => formatoR(v),
+            },
+          ],
+          () => filasCicloAnio(A2),
+        );
+      },
+    );
+  }
+
+  document
+    .querySelectorAll<HTMLElement>('[data-panel-clima="asociacion"]')
+    .forEach((panel) => activarAlEntrar(panel, () => iniciar(panel)));
+</script>
