@@ -619,6 +619,60 @@ def nowcast_dengue_retrospectivo(request: Request, response: Response):
     return {"disponible": True, "aviso": AVISO_HONESTIDAD_NOWCAST_DENGUE, **datos}
 
 
+# Analisis descriptivo de clima y dengue (ADR 0023). Dos artefactos
+# precomputados y versionados, servidos tal cual: no recalculan nada por
+# request y no alimentan el pronostico de /api/nowcast-dengue.
+CLIMA_DENGUE_POR_ANIO_PATH = Path(__file__).parent / "datos" / "clima_dengue_por_anio.json"
+CLIMA_DENGUE_MULTIPAIS_PATH = Path(__file__).parent / "datos" / "clima_dengue_multipais.json"
+
+AVISO_HONESTIDAD_CLIMA_DENGUE = (
+    "Descripción de datos de 2014 a 2024: correlaciones entre anomalías y "
+    "diferencias de desempeño del predictor por año, sin atribución de causa. "
+    "No alimenta el pronóstico publicado."
+)
+
+
+def _servir_clima_dengue(response: Response, ruta: Path, motivo: str) -> dict:
+    """Contrato de los artefactos versionados: sin el archivo responde 200 con
+    disponible=false (mismo patron que /api/nowcast-dengue)."""
+    if not ruta.exists():
+        _cache_control(response, CACHE_TTL_COMPUTO)
+        return {"disponible": False, "motivo": motivo, "aviso": AVISO_HONESTIDAD_CLIMA_DENGUE}
+    datos = json.loads(ruta.read_text(encoding="utf-8"))
+    _cache_control(response, CACHE_TTL_HISTORICO)
+    return {"disponible": True, "aviso": AVISO_HONESTIDAD_CLIMA_DENGUE, **datos}
+
+
+@app.get("/api/clima-dengue/por-anio")
+@limiter.limit(RATE_LIMIT_HEAVY)
+def clima_dengue_por_anio(request: Request, response: Response):
+    """Clima y dengue de El Salvador año por año (2014-2019 y 2021-2023):
+    aporte del clima al pronóstico (A1), ciclo medio y desfase (A2), correlación
+    entre la anomalía climática y el crecimiento a 4 semanas por año y agrupada
+    (A3), perfil de cada año (A4), consistencia entre años (A5) y las series
+    semanales usadas."""
+    return _servir_clima_dengue(
+        response,
+        CLIMA_DENGUE_POR_ANIO_PATH,
+        "El análisis de clima y dengue por año no está generado en este despliegue.",
+    )
+
+
+@app.get("/api/clima-dengue/multipais")
+@limiter.limit(RATE_LIMIT_HEAVY)
+def clima_dengue_multipais(request: Request, response: Response):
+    """El Salvador frente a 18 países de las Américas (OpenDengue/OPS, 2014-2024):
+    perfil de cada país (P1), señal regional y posición de El Salvador (P2),
+    asociación clima-crecimiento por país (P3), ciclo medio (P4), corridas
+    anteriores del clasificador (P5) y posiciones (P6). Va aparte del anterior
+    porque pesa ~320 KB."""
+    return _servir_clima_dengue(
+        response,
+        CLIMA_DENGUE_MULTIPAIS_PATH,
+        "El análisis de El Salvador frente a otros países no está generado en este despliegue.",
+    )
+
+
 AVISO_HONESTIDAD_CASOS_DEPARTAMENTALES = (
     "Casos probables y confirmados desacumulados de boletines MINSAL "
     "(2018-2023, con huecos entre boletines). El color representa volumen "
