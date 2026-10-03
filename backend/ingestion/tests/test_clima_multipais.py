@@ -232,6 +232,16 @@ def test_centroamerica_usa_solo_los_paises_presentes():
     assert sorted(r) == ["EL SALVADOR", "GUATEMALA", "HONDURAS"]
 
 
+def test_sensibilidad_sin_paises_recalcula_la_senal():
+    t = _matriz_totales(np.random.default_rng(6))
+    paises = ["EL SALVADOR", "P1", "P2", "P3", "P4", "P5"]
+    r = mp.sensibilidad_sin_paises(t, paises, ["P5"])
+    assert r["excluidos"] == ["P5"] and "P5" not in r["r_con_senal"] and len(r["r_con_senal"]) == 5
+    directo = mp.senal_regional(t[:5])
+    assert r["r_con_senal"]["EL SALVADOR"] == pytest.approx(directo["r_con_senal"][0], abs=1e-4)
+    assert r["posicion"]["EL SALVADOR"] in range(1, 6)
+
+
 def test_posiciones_de_menor_a_mayor_ignoran_none_y_nan():
     pos = mp.posiciones_de_menor_a_mayor({"a": 0.5, "b": None, "c": -0.2, "d": float("nan")})
     assert pos == {"c": 1, "a": 2}
@@ -413,5 +423,7 @@ def test_calcular_de_punta_a_punta_con_datos_sinteticos(tmp_path):
     assert sorted(r["P1"]) == sorted(paises)
     assert r["P2"]["posicion_r_con_senal"]["EL SALVADOR"] in (1, 2, 3, 4)
     assert r["P3"]["EL SALVADOR"]["estimacion"]
+    assert sorted(r["P2"]["centroamerica_9_anios"]) == ["EL SALVADOR", "GUATEMALA", "HONDURAS", "NICARAGUA"]
+    assert "excluidos" in r["P2"]["sin_baja_incidencia"]
     assert len(r["P4"]["GUATEMALA"]["variables"]["temp_media"]["climatologia"]) == 52
     json.dumps(base.limpio(r), allow_nan=False)

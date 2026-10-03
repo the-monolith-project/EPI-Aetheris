@@ -365,6 +365,19 @@ def centroamerica(totales: np.ndarray, paises: list[str]) -> dict:
     return salida
 
 
+def sensibilidad_sin_paises(totales: np.ndarray, paises: list[str], excluir: list[str]) -> dict:
+    """Senal regional recalculada sin los paises `excluir`."""
+    idx = [i for i, p in enumerate(paises) if p not in excluir]
+    nombres = [paises[i] for i in idx]
+    s = senal_regional(totales[idx])
+    r = {p: round(float(s["r_con_senal"][k]), 4) for k, p in enumerate(nombres)}
+    return {
+        "excluidos": sorted(excluir), "r_con_senal": r, "posicion": posiciones_de_menor_a_mayor(r),
+        "correlacion_media_pares": round(s["correlacion_media_pares"], 4),
+        "primer_componente": round(s["primer_componente"], 4),
+    }
+
+
 def posiciones_de_menor_a_mayor(valores: dict[str, float | None]) -> dict[str, int]:
     validos = {k: v for k, v in valores.items() if v is not None and np.isfinite(v)}
     orden = sorted(validos, key=lambda k: validos[k])
@@ -400,6 +413,7 @@ def p2(totales: np.ndarray, paises: list[str], oni_anual: dict[int, float]) -> d
         "posicion_r_con_senal_9_anios": posiciones_de_menor_a_mayor({p: por_pais[p]["r_con_senal_9_anios"] for p in paises}),
         "estabilidad_el_salvador": estabilidad(totales, paises),
         "centroamerica": centroamerica(totales, paises),
+        "centroamerica_9_anios": centroamerica(totales[:, cols9], paises),
     }
 
 
@@ -582,6 +596,8 @@ def calcular(casos: dict, paises: list[str], diario: dict, oni: tuple, carpeta_c
         p3[nombre] = asociaciones_pais(obj, i, remuestreos)
         p4[nombre] = ciclo_medio(obj, z)
     resultado = {"P1": p1, "P2": p2(totales, paises, oni_anual), "P3": p3, "P4": p4, "P5": corridas_anteriores(carpeta_corridas)}
+    baja = [p for p in paises if p1[p]["baja_incidencia"]]
+    resultado["P2"]["sin_baja_incidencia"] = sensibilidad_sin_paises(totales, paises, baja)
     resultado["P6"] = posicion_el_salvador(resultado)
     if a3 is not None:
         resultado["referencia_el_salvador_base_de_datos"] = {
