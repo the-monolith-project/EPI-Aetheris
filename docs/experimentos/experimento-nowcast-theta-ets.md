@@ -8,6 +8,13 @@
 > (`firma-candidatas-ventana-prospectiva.md`). Ninguna decisión de este documento usa una semana
 > objetivo posterior a 2026-S37 y no se carga ninguna captura nueva.
 
+## Enmienda del mismo día, antes del script y del barrido
+
+Al escribir las pruebas se vio que el par cuyo origen es la primera semana de la serie no es un
+pronóstico de ETS: la pendiente inicial es 0 por construcción. Ese par no entra en los errores de
+ETS, que es lo que deja los mismos pares que T con pendiente de una semana y hace alcanzable el
+control de abajo. Es un detalle de implementación; no se había calculado ninguna métrica.
+
 ## Pregunta
 
 C promedia M0 con T, la tendencia amortiguada que mide su pendiente con las últimas 3 semanas de
