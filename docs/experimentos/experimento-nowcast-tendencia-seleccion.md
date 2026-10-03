@@ -190,4 +190,137 @@ cualquier candidata de esta extensión:
 
 ## Resultados
 
-Pendientes. Se añaden después de correr el script, en este mismo documento.
+Script: `backend/ingestion/experimento_nowcast_tendencia_seleccion.py`, modos `--tendencia`,
+`--m0-corte` y `--extension-v1`. Salidas en `docs/agentes/mejora-predictor/resultados-nuevos/`:
+`seleccion_tendencia.json`, `m0_corte_2023.json` y `seleccion_tendencia_v1.json`. Todo con
+semanas objetivo hasta 2026-S37.
+
+### Controles
+
+Pasan los de la enmienda: la historia de k = 7 es idéntica a la del experimento firmado, la
+diferencia máxima de T contra `rangos.json` es 0,0004999 y la de C 0,0026 en 1.063 filas, y el
+WIS de la referencia difiere en menos de 0,0005 del guardado. Sin recorte y con la cadencia
+estándar, M0 reproduce `q_R0` en un origen de cada uno de los 16 pares probados (el ajuste
+coincide con la fase de reajuste en uno de los dos). La comprobación de ausencia de fuga del
+proyecto pasa, con su control negativo.
+
+### A. Elegir la tendencia con la historia hasta 2023
+
+Puntaje de validación (skill medio contra la persistencia suavizada, 2018 a 2023 sin 2020, ocho
+horizontes). Vigente (0,8; 3): +0,2258.
+
+| φ \ v | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|
+| 0,5 | +0,152 | +0,141 | +0,124 | +0,109 | +0,093 |
+| 0,6 | +0,189 | +0,175 | +0,153 | +0,132 | +0,112 |
+| 0,7 | +0,225 | +0,207 | +0,178 | +0,151 | +0,124 |
+| 0,8 | +0,248 | +0,226 | +0,188 | +0,153 | +0,119 |
+| 0,9 | +0,232 | +0,208 | +0,161 | +0,118 | +0,076 |
+| 1,0 | +0,108 | +0,091 | +0,038 | −0,011 | −0,059 |
+
+La elección común y las de los tres tramos (h 1 a 2, 3 a 4 y 5 a 8) dan la misma configuración,
+(0,8; 2): ganancia de +0,022 sobre la vigente y mejor en 4 de los 5 años (2018: 0,282 contra
+0,244; 2019: 0,340 contra 0,305; 2021: 0,193 contra 0,152; 2022: 0,386 contra 0,366; en 2023
+pierde, 0,039 contra 0,063). La amortiguación φ = 0,8 es la mejor de su columna para v de 2 a 5; con v = 6 gana φ = 0,7.
+No hay ganancia por horizonte: elegir por tramo no cambia nada.
+
+La extensión E1 probó v = 1: el mejor es (0,8; 1) con +0,215, por debajo de (0,8; 2) con
++0,248 (ganancia −0,033, supera en 2 de 5 años). No sustituye. El óptimo de v es interior, en 2,
+y el de φ también.
+
+Confirmación de (0,8; 2) contra la vigente fuera de la selección, razón de WIS por horizonte:
+
+| h | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | media |
+|---|---|---|---|---|---|---|---|---|---|
+| H1 (2024) | 0,913 | 0,963 | 0,984 | 0,990 | 0,970 | 0,976 | 0,976 | 0,981 | 0,969 |
+| H2 (2025 a 2026-S37) | 0,984 | 1,001 | 1,005 | 1,010 | 1,005 | 0,991 | 0,998 | 0,992 | 0,998 |
+
+- H1: mejor en los ocho horizontes. Solo h = 1 tiene Diebold-Mariano con p = 0,01; son 16
+  pruebas por candidata, y con corrección por comparaciones múltiples ese p no se sostiene.
+- H2: mejor en 4 horizontes de 8 y peor en los otros 4, con diferencias de 1 % o menos,
+  salvo h = 1 (−1,6 %). Ningún p de Diebold-Mariano baja de 0,6. El skill agrupado es
+  prácticamente igual (+0,183 contra +0,169 a 1 semana, +0,063 contra +0,056 a 8).
+- Cobertura al 95 % agrupada: H1 0,959 contra 0,962; H2 0,867 contra 0,869.
+- C con T' en lugar de T: razón media de WIS 0,979 en H1 y 0,995 en H2.
+
+Por la regla firmada, (0,8; 2) es candidata (cumple a, b y c) en la elección común y en los
+tramos h 1 a 2 y h 5 a 8; el tramo h 3 a 4 no lo es, porque en H2 su razón de WIS es 1,007. Las
+tres coinciden en la misma configuración, así que en la práctica hay una sola candidata. Lectura
+honesta: la regla se cumple por H1, donde la ganancia es de 3 %, y en la serie del tablero (H2)
+T' y T vigente son indistinguibles. La mejora de la validación (+0,022 de skill) no se
+trasladó al tablero.
+
+### B. Sensibilidad al k del suavizado
+
+T vigente con la historia suavizada con distintos k. La razón de WIS es el promedio sobre los
+horizontes del WIS con ese k dividido por el de k = 7; skill y cobertura promedian los ocho
+horizontes. El skill de H1 y H2 es contra la referencia oficial (k = 7).
+
+| k | H1 razón | H1 cob. 95 | H2 razón | H2 cob. 50 | H2 cob. 95 | H2 skill |
+|---|---|---|---|---|---|---|
+| 1 | 71,3 | 0,94 | 15,8 | 0,70 | 0,995 | −13,3 |
+| 3 | 1,295 | 0,98 | 1,023 | 0,60 | 0,946 | +0,097 |
+| 5 | 1,074 | 0,96 | 0,999 | 0,52 | 0,915 | +0,118 |
+| 6 | 1,026 | 0,97 | 0,999 | 0,48 | 0,896 | +0,118 |
+| 7 | 1,000 | 0,96 | 1,000 | 0,46 | 0,869 | +0,117 |
+| 8 | 0,993 | 0,95 | 1,002 | 0,45 | 0,847 | +0,115 |
+| 9 | 0,992 | 0,95 | 1,006 | 0,43 | 0,835 | +0,113 |
+| 12 | 0,991 | 0,93 | 1,020 | 0,38 | 0,799 | +0,100 |
+
+- Suavizar la historia no es opcional para T. Con k = 1 (historia cruda) la mediana de 2025 y
+  2026 es la misma, porque sus rezagos ya vienen del tablero, pero los errores que aprende T con
+  la historia cruda son enormes y el WIS se multiplica por 16 (cobertura 0,995 por intervalos
+  desmesurados). Con k = 3 ya es 2 % peor en H2 y 30 % peor en H1.
+- Entre k = 5 y 9 el WIS en H2 se mueve menos de 1 %. Lectura firmada: k = 6, 7 y 8 difieren
+  menos de 3 % en H2 (cumple), de modo que no conocer el k exacto no importa para el WIS de T.
+  K = 7 se queda.
+- Lo que sí cambia con k es el ancho: la cobertura al 95 % en H2 va de 0,915 (k = 5) a 0,835
+  (k = 9), y la del 50 % de 0,52 a 0,43. Con K = 7 el 50 % queda en 0,46, bajo lo nominal. Es
+  una observación dentro de muestra sobre el ancho, no una razón para cambiar K: en H1 los k
+  chicos empeoran el WIS (k = 5: +7 %), y el ancho se trata en la Fase 3.
+- En la validación el skill sube con k (0,14 con k = 5, 0,34 con k = 12) porque una serie más
+  lisa es más fácil de extrapolar y el objetivo cambia con k; no es comparable entre filas.
+
+### C. M0 entrenado solo hasta 2023 (H2, dentro de muestra)
+
+| h | WIS de M0 | WIS con corte | razón | cob. 95 de M0 | cob. 95 con corte | razón de C |
+|---|---|---|---|---|---|---|
+| 1 | 10,12 | 10,27 | 1,014 | 0,81 | 0,99 | 1,070 |
+| 2 | 16,37 | 16,36 | 1,000 | 0,75 | 0,96 | 1,021 |
+| 3 | 22,14 | 21,14 | 0,955 | 0,72 | 0,95 | 0,990 |
+| 4 | 25,60 | 25,52 | 0,997 | 0,73 | 0,93 | 1,020 |
+| 5 | 28,13 | 29,77 | 1,058 | 0,69 | 0,91 | 1,039 |
+| 6 | 29,00 | 30,09 | 1,038 | 0,69 | 0,89 | 1,022 |
+| 7 | 30,61 | 34,08 | 1,113 | 0,73 | 0,86 | 1,063 |
+| 8 | 31,46 | 35,28 | 1,121 | 0,69 | 0,86 | 1,057 |
+
+El corte gana en 3 de 8 horizontes y la razón media de WIS es 1,037 (C: 1,035): no es ventaja,
+y empeora justo a 5 a 8 semanas, que es donde M0 aporta. M0 se queda como está. El corte sí
+ensancha los intervalos (cobertura al 95 % de 0,69 a 0,81 a 0,86 a 0,99), y la
+calibración pasa a los 104 pares más recientes de 2022 y 2023, que son conteos crudos. Una
+explicación posible es que esos datos tienen más dispersión relativa que los suavizados y la
+calibración lo traslada al ancho; no se midió. De confirmarse, el ancho depende de la forma de
+los datos con que se calibra, otra pista para la Fase 3. Como el corte cambia el ajuste y la calibración a la
+vez, este resultado no separa cuál de las dos pierde el punto central.
+
+### Qué se decide
+
+- T vigente (0,8; 3; K = 7), C y M0 no cambian en el sitio ni en la prueba prospectiva
+  congelada.
+- (0,8; 2) queda como variante registrada para la ventana prospectiva de la Fase 4. Cumple la
+  regla firmada, pero la evidencia en el tablero es nula; si hay que limitar candidatas por
+  comparaciones múltiples, es la primera en salir.
+- K = 7 se mantiene. La incertidumbre sobre el filtro de MINSAL no afecta el WIS de T en el
+  rango de 5 a 9.
+- El entrenamiento de M0 no se recorta.
+- Lo que sale de la Fase 1 es que T y M0 están en una meseta: afinar sus parámetros, el k del
+  suavizado o la ventana de entrenamiento no da ganancia comprobable en el tablero. Si hay mejora
+  posible, estará en la estructura (Fase 2), en los saltos de fin de año (Fase 3) y en el ancho
+  de los intervalos, que depende del k y de la ventana de calibración.
+
+### Grados de libertad usados
+
+30 configuraciones y 6 más de la extensión en la selección; 8 valores de k; una variante de
+M0; 16 pruebas de Diebold-Mariano por candidata. La selección no usó H1 ni H2. Se miraron para
+(0,8; 2), para el barrido de k con T vigente y para M0 con corte, y cada comparación se hizo una
+vez.
