@@ -20,10 +20,20 @@ interface Props {
   descripcion: string;
   /** Documento con acordeones al que esta ficha complementa. */
   documentacion: { href: string; etiqueta: string };
+  /** Fichas vecinas en el orden del registro, para pasar de una a otra. */
+  anterior?: { href: string; titulo: string };
+  siguiente?: { href: string; titulo: string };
 }
 
-const { titulo, subtitulo, etiquetas, descripcion, documentacion } =
-  Astro.props;
+const {
+  titulo,
+  subtitulo,
+  etiquetas,
+  descripcion,
+  documentacion,
+  anterior,
+  siguiente,
+} = Astro.props;
 ---
 
 <Layout title={`EPI-Aetheris — ${titulo}`} descripcion={descripcion}>
@@ -67,6 +77,23 @@ const { titulo, subtitulo, etiquetas, descripcion, documentacion } =
           </p>
           <a href={documentacion.href}>{documentacion.etiqueta}</a>
         </aside>
+
+        {
+          (anterior || siguiente) && (
+            <nav class="ficha-vecinas" aria-label="Otras fichas">
+              {anterior && (
+                <a href={anterior.href} rel="prev">
+                  <span aria-hidden="true">←</span> {anterior.titulo}
+                </a>
+              )}
+              {siguiente && (
+                <a href={siguiente.href} rel="next" class="ficha-siguiente">
+                  {siguiente.titulo} <span aria-hidden="true">→</span>
+                </a>
+              )}
+            </nav>
+          )
+        }
       </div>
     </article>
   </main>
@@ -269,6 +296,12 @@ const { titulo, subtitulo, etiquetas, descripcion, documentacion } =
     line-height: 1.7;
     color: var(--color-ink);
   }
+  .paso-texto a {
+    font-weight: 600;
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
   .paso-texto p + p {
     margin-top: 0.75rem;
   }
@@ -304,6 +337,127 @@ const { titulo, subtitulo, etiquetas, descripcion, documentacion } =
     color: var(--color-accent);
     text-decoration: underline;
     text-underline-offset: 3px;
+  }
+
+  .ficha-vecinas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    justify-content: space-between;
+    margin-top: 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+  }
+  .ficha-vecinas a {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+    min-height: 44px;
+    font-weight: 600;
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .ficha-vecinas .ficha-siguiente {
+    margin-left: auto;
+  }
+
+  /* Piezas comunes de los pasos: tarjetas, notas, fórmulas, cuentas y
+     el bloque del color. */
+  .ficha-rejilla {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  }
+  .ficha-tarjeta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-bg);
+    font-family: var(--font-sans);
+  }
+  .ficha-tarjeta strong {
+    font-size: 0.95rem;
+    color: var(--color-ink);
+  }
+  .ficha-tarjeta span {
+    font-size: 0.8rem;
+    color: var(--color-ink-muted);
+  }
+  .ficha-nota {
+    margin-bottom: 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    color: var(--color-ink-muted);
+  }
+  .ficha-resumen,
+  .ficha-resultado {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--color-ink);
+  }
+  .ficha-formula {
+    margin-top: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--color-ink-muted);
+    overflow-wrap: anywhere;
+  }
+  .ficha-formula-grande {
+    font-size: clamp(0.95rem, 2.4vw, 1.25rem);
+    color: var(--color-ink);
+  }
+  .ficha-cuenta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 0.9rem;
+    align-items: center;
+    margin-top: 1rem;
+    font-family: var(--font-mono);
+  }
+  .ficha-cuenta span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .ficha-cuenta b {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .ficha-cuenta small {
+    font-size: 0.7rem;
+    color: var(--color-ink-muted);
+  }
+  .ficha-cuenta-iv,
+  .ficha-cuenta-resultado {
+    padding: 0.4rem 0.9rem;
+    border: 2px solid var(--color-termino);
+    border-radius: 0.75rem;
+  }
+  .ficha-color {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem 2rem;
+    align-items: center;
+  }
+  .ficha-color-mapa {
+    flex: 0 1 18rem;
+    min-width: 12rem;
+  }
+  .ficha-muestra {
+    display: inline-block;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-right: 0.4rem;
+    vertical-align: -0.2em;
+    border: 1px solid var(--color-ink-muted);
+    border-radius: 0.25rem;
   }
 
   /* Curvas (src/lib/curvas-iv.ts). */
@@ -351,10 +505,288 @@ const { titulo, subtitulo, etiquetas, descripcion, documentacion } =
     stroke-width: 2.5;
   }
 
+  .ficha-grafico {
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-bg);
+  }
+  .ficha-cifras {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    gap: 0.5rem;
+    margin: 0.9rem 0 0;
+    font-family: var(--font-sans);
+  }
+  .ficha-cifras div {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.6rem;
+  }
+  .ficha-cifras dt {
+    font-size: 0.75rem;
+    color: var(--color-ink-muted);
+  }
+  .ficha-cifras dd {
+    margin: 0.15rem 0 0;
+    font-family: var(--font-mono);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .ficha-escala-sigma {
+    position: relative;
+    max-width: 26rem;
+    height: 10px;
+    margin: 1.4rem 0 1.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: 9999px;
+  }
+  .ficha-escala-marca {
+    position: absolute;
+    top: -5px;
+    width: 4px;
+    height: 18px;
+    margin-left: -2px;
+    border-radius: 2px;
+    background: var(--color-ink);
+  }
+  .ficha-escala-etiquetas {
+    position: absolute;
+    top: 14px;
+    right: 0;
+    left: 0;
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-ink-muted);
+  }
+
+  /* Tira de años (src/lib/tira-anios.ts) y gráficos de M3 y M4. */
+  .tira-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .tira-guia {
+    stroke: var(--color-border);
+    stroke-width: 1;
+  }
+  .tira-texto {
+    fill: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 9px;
+  }
+  .tira-texto-descrito {
+    fill: var(--color-ink);
+    font-weight: 700;
+  }
+  .tira-barra {
+    fill: var(--color-termino);
+    opacity: 0.55;
+  }
+  .tira-barra-descrita {
+    fill: var(--color-ink);
+    opacity: 1;
+  }
+  .tira-hueco {
+    fill: none;
+    stroke: var(--color-ink-muted);
+    stroke-width: 1;
+    stroke-dasharray: 2 2;
+  }
+  .tira-atenuado {
+    opacity: 0.35;
+  }
+  .tira-banda {
+    fill: var(--color-termino);
+    opacity: 0.12;
+  }
+  .tira-separador {
+    stroke: var(--color-ink-muted);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+  }
+  .tira-linea {
+    stroke-width: 1.5;
+  }
+  .tira-linea-mediana {
+    stroke: var(--color-ink);
+    stroke-width: 2;
+  }
+  .tira-linea-corte {
+    stroke: var(--color-ink);
+    stroke-dasharray: 5 3;
+  }
+  .tira-linea-cuantil {
+    stroke: var(--color-ink-muted);
+    stroke-dasharray: 2 3;
+  }
+  .tira-texto-linea {
+    fill: var(--color-ink);
+  }
+
+  .recta-eje {
+    stroke: var(--color-ink-muted);
+    stroke-width: 1.2;
+  }
+  .recta-punto {
+    fill: var(--color-termino);
+    opacity: 0.75;
+  }
+  .recta-corte {
+    stroke: var(--color-ink);
+    stroke-width: 1.2;
+    stroke-dasharray: 5 3;
+  }
+  .recta-observado {
+    stroke: var(--color-ink);
+    stroke-width: 2.5;
+  }
+  .recta-texto {
+    fill: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+  .recta-texto-observado {
+    fill: var(--color-ink);
+    font-weight: 700;
+  }
+  .canal-fondo {
+    fill: var(--color-surface);
+    stroke: var(--color-border);
+  }
+  .canal-linea {
+    fill: none;
+    stroke: var(--color-ink);
+    stroke-width: 2;
+    stroke-linejoin: round;
+  }
+  .canal-punto {
+    fill: var(--color-ink);
+  }
+  .ficha-nota-separada {
+    margin-top: 1.25rem;
+  }
+  .ficha-color-texto {
+    flex: 1 1 20rem;
+    min-width: 0;
+  }
+  .ficha-leyenda-fila {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    margin-top: 0.6rem;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    color: var(--color-ink-muted);
+  }
+
+  .ficha-anio {
+    display: grid;
+    grid-template-columns: repeat(26, minmax(0, 1fr));
+    gap: 3px;
+    max-width: 34rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ficha-anio-semana,
+  .ficha-anio-muestra {
+    display: block;
+    height: 1.1rem;
+    border-radius: 2px;
+  }
+  .ficha-anio-muestra {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+  .ficha-anio .completa,
+  .ficha-anio-muestra.completa {
+    background: var(--color-termino);
+  }
+  .ficha-anio .parcial,
+  .ficha-anio-muestra.parcial {
+    background: color-mix(
+      in srgb,
+      var(--color-termino) 40%,
+      var(--color-surface)
+    );
+  }
+  .ficha-anio .hueco,
+  .ficha-anio-muestra.hueco {
+    border: 1px dashed var(--color-ink-muted);
+    background: transparent;
+  }
+  .ficha-tabla {
+    width: 100%;
+    max-width: 36rem;
+    border-collapse: collapse;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    color: var(--color-ink);
+  }
+  .ficha-tabla th,
+  .ficha-tabla td {
+    padding: 0.4rem 0.6rem 0.4rem 0;
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+  }
+  .ficha-tabla td {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .ficha-tabla thead th {
+    font-size: 0.75rem;
+    color: var(--color-ink-muted);
+  }
+  .ficha-tabla-corta {
+    max-width: 22rem;
+    margin-top: 1rem;
+  }
+  .ficha-tabla caption.ficha-nota {
+    margin-bottom: 0.3rem;
+    text-align: left;
+  }
+  .linea-eje {
+    stroke: var(--color-ink-muted);
+    stroke-width: 1.2;
+  }
+  .linea-anio {
+    stroke: var(--color-ink-muted);
+  }
+  .linea-tramo {
+    stroke: var(--color-termino);
+    stroke-width: 4;
+  }
+  .linea-ultima {
+    fill: var(--color-surface);
+    stroke: var(--color-ink);
+    stroke-width: 2.5;
+  }
+  .linea-guia {
+    stroke: var(--color-ink-muted);
+    stroke-dasharray: 2 2;
+  }
+  .linea-hoy {
+    fill: var(--color-ink);
+  }
+  .linea-distancia,
+  .linea-texto-hoy {
+    fill: var(--color-ink);
+    font-weight: 700;
+  }
+
   @media print {
     .ficha[data-anima] .paso {
       opacity: 1;
       transform: none;
+      transition: none;
+    }
+    .ficha-etiquetas li {
+      border-color: var(--color-border);
+      color: var(--color-ink);
     }
     .ficha-cabecera {
       color: var(--color-ink);

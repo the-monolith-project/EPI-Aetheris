@@ -7,11 +7,12 @@ import {
   resolverTexto,
 } from '../../src/lib/preferencias.ts';
 
-test('tema: solo light y dark se respetan; el resto es sistema', () => {
+test('tema: sin elección o con un valor desconocido, claro', () => {
   assert.equal(resolverTema('light'), 'light');
   assert.equal(resolverTema('dark'), 'dark');
-  assert.equal(resolverTema(null), 'sistema');
-  assert.equal(resolverTema('auto'), 'sistema');
+  assert.equal(resolverTema('sistema'), 'sistema');
+  assert.equal(resolverTema(null), 'light');
+  assert.equal(resolverTema('auto'), 'light');
 });
 
 test('animaciones: on/off guardados; sin elección, sistema', () => {

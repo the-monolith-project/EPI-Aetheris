@@ -1,0 +1,406 @@
+---
+/**
+ * Contenido de la ficha enriquecida de M4 (integridad de la vigilancia). Seis
+ * pasos: para qué sirve, los tres hechos por separado (completitud, cuadre y
+ * antigüedad), el color del mapa y el laboratorio. Los valores del ejemplo
+ * son ilustrativos y las cifras salen de src/lib/integridad.ts, el mismo
+ * cálculo que la API.
+ */
+import CuadriculaDepartamentos from '../components/CuadriculaDepartamentos.astro';
+import LaboratorioIntegridad from '../components/LaboratorioIntegridad.astro';
+import MapaDepartamentoFicha from '../components/MapaDepartamentoFicha.astro';
+import PasoFicha from '../components/PasoFicha.astro';
+import Termino from '../components/Termino.astro';
+import { colorIntegridad } from '../lib/colores';
+import { DEPARTAMENTOS, obtenerDepartamento } from '../lib/departamentos';
+import { RUTA_SENSIBILIDAD } from '../lib/enlaces';
+import {
+  EJEMPLO_ANTIGUEDAD,
+  EJEMPLO_BOLETIN,
+  EJEMPLO_FALTANTES,
+  ETIQUETAS_ESTADO,
+  N_DEPARTAMENTOS,
+  SEMANAS_NOMINALES,
+  antiguedadSerie,
+  completitudAnual,
+  completitudSemana,
+  cuadreBoletin,
+  estadoIntegridad,
+  semanaEpidemiologica,
+  type Boletin,
+  type EstadoIntegridad,
+} from '../lib/integridad';
+import { svgLineaTiempo } from '../lib/linea-tiempo';
+
+const catalogo = DEPARTAMENTOS.map((d) => [d.codigo, d.nombre] as const);
+const presentes = DEPARTAMENTOS.map((d) => d.codigo).filter(
+  (c) => !(EJEMPLO_FALTANTES as readonly string[]).includes(c),
+);
+const semana = completitudSemana(catalogo, presentes);
+const faltan = EJEMPLO_FALTANTES.map(
+  (c) => obtenerDepartamento(c)?.nombre ?? c,
+);
+const porcentaje = Math.round(semana.ratio * 100);
+
+// Un año de ejemplo: cuatro semanas sin fila en la fuente (huecos) y cuatro
+// con departamentos de menos.
+const huecos = [13, 32, 51, 52];
+const parciales: Record<number, number> = { 5: 12, 18: 13, 27: 11, 40: 9 };
+const semanasN: Record<number, number> = {};
+for (let s = 1; s <= SEMANAS_NOMINALES; s += 1) {
+  if (!huecos.includes(s)) semanasN[s] = parciales[s] ?? N_DEPARTAMENTOS;
+}
+const anual = completitudAnual(semanasN);
+
+// Cuadre: el boletín del ejemplo y casos como los del archivo de referencia.
+const cuadre = cuadreBoletin(EJEMPLO_BOLETIN);
+const variantes: { titulo: string; boletin: Boletin | null }[] = [
+  {
+    titulo: 'Cuadra',
+    boletin: {
+      ...EJEMPLO_BOLETIN,
+      suma_departamental_probable: 410,
+      validacion_cuadra: true,
+    },
+  },
+  { titulo: 'No cuadra', boletin: EJEMPLO_BOLETIN },
+  {
+    titulo: 'Falta la tabla departamental',
+    boletin: {
+      suma_departamental_probable: null,
+      total_nacional_publicado_probable: 55,
+      suma_departamental_confirmado: null,
+      total_nacional_publicado_confirmado: null,
+      validacion_cuadra: null,
+      estado: 'sin_texto_extraible',
+      nombre_archivo: null,
+    },
+  },
+  { titulo: 'Sin boletín', boletin: null },
+];
+const vacio = (n: number | null) => (n === null ? 'vacío' : String(n));
+const conSigno = (n: number | null) =>
+  n === null ? 'vacía' : n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0';
+const lecturaCuadre = (c: boolean | null) =>
+  c === null ? 'sin dato' : c ? 'cuadra' : 'no cuadra';
+
+// Antigüedad.
+const antiguedad = antiguedadSerie(
+  EJEMPLO_ANTIGUEDAD.ultima,
+  EJEMPLO_ANTIGUEDAD.hoy,
+);
+const hoyEpi = semanaEpidemiologica(EJEMPLO_ANTIGUEDAD.hoy);
+const linea = svgLineaTiempo({
+  ultima: EJEMPLO_ANTIGUEDAD.ultima,
+  hoy: EJEMPLO_ANTIGUEDAD.hoy,
+});
+const fechasCalendario = [
+  '2023-01-01',
+  '2023-12-31',
+  '2025-12-28',
+  '2026-01-03',
+  '2026-01-04',
+];
+const formatoFecha = (f: string) => {
+  const [a, m, d] = f.split('-');
+  return `${Number(d)}/${Number(m)}/${a}`;
+};
+
+// Color: un departamento con fila en un boletín que no cuadra.
+const estadoEjemplo = estadoIntegridad(true, cuadre.cuadra);
+const ESTADOS: EstadoIntegridad[] = ['sin_dato', 'presente', 'no_cuadra'];
+---
+
+<PasoFicha id="para-que" numero={1} titulo="Para qué sirve">
+  <p>
+    M1 a M3 calculan sobre datos que pueden faltar, no cuadrar o estar
+    atrasados. La <Termino clave="integridad"
+      >integridad de la vigilancia</Termino
+    > muestra esos tres hechos, cada uno con su número. No los combina en un índice:
+    un departamento completo con un boletín atrasado y uno al día con huecos no se
+    resumen en la misma cifra.
+  </p>
+  <p>
+    Una idea recorre toda la ficha: un departamento sin fila esa semana es un <Termino
+      clave="hueco">hueco</Termino
+    > de la fuente. No equivale a cero casos ni a un departamento sin dengue.
+  </p>
+  <div slot="visual" class="ficha-rejilla">
+    <div class="ficha-tarjeta">
+      <strong>Completitud geográfica</strong>
+      <span>De cuántos departamentos hay fila</span>
+    </div>
+    <div class="ficha-tarjeta">
+      <strong>Cuadre del boletín</strong>
+      <span>Suma de departamentos frente al total publicado</span>
+    </div>
+    <div class="ficha-tarjeta">
+      <strong>Antigüedad</strong>
+      <span>Semanas desde el último dato de cada serie</span>
+    </div>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="completitud" numero={2} titulo="Completitud geográfica">
+  <p>
+    Para una semana se cuenta de cuántos de los {N_DEPARTAMENTOS} departamentos hay
+    fila en la fuente, con probable y confirmado por separado.
+  </p>
+  <p>
+    El resumen de un año compara las semanas con los {N_DEPARTAMENTOS} departamentos
+    contra las {SEMANAS_NOMINALES} nominales, y cuenta cuántas semanas aparecen en
+    la fuente. Una semana que no aparece es un hueco: no se cuenta como 0 de {
+      N_DEPARTAMENTOS
+    }.
+  </p>
+  <div slot="visual">
+    <p class="ficha-nota">
+      Ejemplo: una semana en la que faltan {faltan.join(', ')}.
+    </p>
+    <CuadriculaDepartamentos
+      presentes={presentes}
+      etiqueta={`Departamentos con fila en la semana de ejemplo: ${semana.n} de ${semana.esperado}. Faltan ${faltan.join(', ')}.`}
+    />
+    <p class="ficha-resultado">
+      <strong>{semana.n} de {semana.esperado}</strong> departamentos con fila ({
+        porcentaje
+      } %).
+    </p>
+    <p class="ficha-nota ficha-nota-separada">
+      Un año de ejemplo, semana por semana.
+    </p>
+    <div
+      class="ficha-anio"
+      role="img"
+      aria-label={`Año de ejemplo: ${anual.semanas_completas} semanas con los 14 departamentos, ${anual.semanas_con_dato - anual.semanas_completas} con alguno de menos y ${SEMANAS_NOMINALES - anual.semanas_con_dato} sin fila en la fuente (semanas ${huecos.join(', ')}).`}
+    >
+      {
+        Array.from({ length: SEMANAS_NOMINALES }, (_, i) => {
+          const s = i + 1;
+          const n = semanasN[s];
+          const clase =
+            n === undefined
+              ? 'hueco'
+              : n === N_DEPARTAMENTOS
+                ? 'completa'
+                : 'parcial';
+          return <span class={`ficha-anio-semana ${clase}`} />;
+        })
+      }
+    </div>
+    <ul class="mapa-ficha-estados ficha-leyenda-fila" aria-hidden="true">
+      <li><span class="ficha-anio-muestra completa"></span>14 de 14</li>
+      <li><span class="ficha-anio-muestra parcial"></span>menos de 14</li>
+      <li><span class="ficha-anio-muestra hueco"></span>hueco de la fuente</li>
+    </ul>
+    <dl class="ficha-cifras">
+      <div>
+        <dt>Semanas completas</dt><dd>
+          {anual.semanas_completas} de {SEMANAS_NOMINALES}
+        </dd>
+      </div>
+      <div>
+        <dt>Semanas con dato</dt><dd>
+          {anual.semanas_con_dato} de {SEMANAS_NOMINALES}
+        </dd>
+      </div>
+    </dl>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="cuadre" numero={3} titulo="Cuadre del boletín">
+  <p>
+    Cada boletín publica un total nacional y trae una tabla por departamento. La
+    suma de los departamentos debería dar ese total. M4 muestra si cuadra y la
+    diferencia, suma departamental menos total publicado, para probable y
+    confirmado.
+  </p>
+  <p>
+    No vuelve a sumar los {N_DEPARTAMENTOS} departamentos: expone lo que quedó guardado
+    al procesar el boletín. Si no hay boletín o falta uno de los dos lados, la diferencia
+    queda vacía; no se muestra 0 ni «no cuadra».
+  </p>
+  <div slot="visual">
+    <p class="ficha-nota">Boletín de ejemplo.</p>
+    <table class="ficha-tabla">
+      <caption class="sr-only">Cuadre del boletín de ejemplo</caption>
+      <thead>
+        <tr>
+          <th scope="col">Serie</th>
+          <th scope="col">Suma departamental</th>
+          <th scope="col">Total publicado</th>
+          <th scope="col">Diferencia</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          (['probable', 'confirmado'] as const).map((s) => (
+            <tr>
+              <th scope="row">
+                {s === 'probable' ? 'Probable' : 'Confirmado'}
+              </th>
+              <td>{vacio(cuadre[s].suma_departamental)}</td>
+              <td>{vacio(cuadre[s].total_nacional_publicado)}</td>
+              <td>
+                <strong>{conSigno(cuadre[s].discrepancia)}</strong>
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+    <p class="ficha-resultado">
+      En probable faltan {Math.abs(cuadre.probable.discrepancia ?? 0)} casos en la
+      tabla departamental: el boletín {lecturaCuadre(cuadre.cuadra)}.
+    </p>
+    <p class="ficha-nota ficha-nota-separada">
+      Cuatro situaciones, en la serie probable.
+    </p>
+    <table class="ficha-tabla">
+      <caption class="sr-only">Situaciones del cuadre del boletín</caption>
+      <thead>
+        <tr>
+          <th scope="col">Caso</th>
+          <th scope="col">Suma</th>
+          <th scope="col">Publicado</th>
+          <th scope="col">Diferencia</th>
+          <th scope="col">Lectura</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          variantes.map((v) => {
+            const c = cuadreBoletin(v.boletin);
+            return (
+              <tr>
+                <th scope="row">{v.titulo}</th>
+                <td>{vacio(c.probable.suma_departamental)}</td>
+                <td>{vacio(c.probable.total_nacional_publicado)}</td>
+                <td>{conSigno(c.probable.discrepancia)}</td>
+                <td>{lecturaCuadre(c.cuadra)}</td>
+              </tr>
+            );
+          })
+        }
+      </tbody>
+    </table>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="antiguedad" numero={4} titulo="Antigüedad">
+  <p>
+    Para cada serie (dengue de MINSAL por departamento, dengue nacional de
+    OpenDengue y del tablero de MINSAL, clima, IRA, neumonías y virus
+    respiratorios) se cuentan las semanas epidemiológicas desde la última semana
+    con dato.
+  </p>
+  <p>
+    La cuenta usa el calendario epidemiológico: las semanas van de domingo a
+    sábado y la semana 1 es la primera que tiene al menos cuatro días del año.
+    Por eso algunos años tienen 53 semanas y los primeros días de enero pueden
+    ser del año anterior.
+  </p>
+  <p>
+    Esta métrica no mide el retraso entre un caso y su publicación en el
+    boletín, porque esa fecha no está en la base. Sí explica por qué la serie
+    departamental de dengue termina en 2023.
+  </p>
+  <div slot="visual">
+    <p class="ficha-nota">
+      Ejemplo: una serie cuya última semana fue la {
+        EJEMPLO_ANTIGUEDAD.ultima[1]
+      }
+      de {EJEMPLO_ANTIGUEDAD.ultima[0]}, vista el {
+        formatoFecha(EJEMPLO_ANTIGUEDAD.hoy)
+      }.
+    </p>
+    <div
+      class="ficha-grafico"
+      role="img"
+      aria-label={`Línea de tiempo: la última semana con dato es la ${EJEMPLO_ANTIGUEDAD.ultima[1]} de ${EJEMPLO_ANTIGUEDAD.ultima[0]} y la fecha de ejemplo cae en la semana ${hoyEpi.semana} de ${hoyEpi.anio}: ${antiguedad.semanas} semanas de distancia.`}
+      set:html={linea}
+    />
+    <p class="ficha-resultado">
+      Antigüedad: <strong>{antiguedad.semanas} semanas</strong>.
+    </p>
+    <table class="ficha-tabla ficha-tabla-corta">
+      <caption class="ficha-nota">Fechas en los bordes del año</caption>
+      <thead>
+        <tr>
+          <th scope="col">Fecha</th>
+          <th scope="col">Semana epidemiológica</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          fechasCalendario.map((f) => {
+            const se = semanaEpidemiologica(f);
+            return (
+              <tr>
+                <th scope="row">{formatoFecha(f)}</th>
+                <td>
+                  SE{se.semana} de {se.anio}
+                </td>
+              </tr>
+            );
+          })
+        }
+      </tbody>
+    </table>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="color" numero={5} titulo="Del dato al color">
+  <p>
+    La capa «Integridad de la vigilancia» del mapa pinta cada departamento en
+    uno de tres estados: sin dato esa semana, dato presente, o dato presente en
+    un boletín que no cuadra. La leyenda y la nota al pasar el cursor nombran el
+    estado con texto, sin depender del color.
+  </p>
+  <div slot="visual" class="ficha-color">
+    <div class="ficha-color-mapa">
+      <MapaDepartamentoFicha
+        codigo="SV-SS"
+        relleno={colorIntegridad(estadoEjemplo)}
+        etiqueta={`Mapa de El Salvador con San Salvador en el estado «${ETIQUETAS_ESTADO[estadoEjemplo]}»`}
+      >
+        <ul class="mapa-ficha-estados">
+          {
+            ESTADOS.map((e) => (
+              <li>
+                <span style={`background:${colorIntegridad(e)}`} />
+                {ETIQUETAS_ESTADO[e]}
+              </li>
+            ))
+          }
+        </ul>
+      </MapaDepartamentoFicha>
+    </div>
+    <p class="ficha-resultado">
+      <span
+        class="ficha-muestra"
+        style={`background:${colorIntegridad(estadoEjemplo)}`}
+        aria-hidden="true"></span>
+      San Salvador tiene fila y el boletín del ejemplo no cuadra: {
+        ETIQUETAS_ESTADO[estadoEjemplo]
+      }.
+    </p>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="laboratorio" numero={6} titulo="Pruébalo">
+  <p>
+    Marca qué departamentos tienen fila, escribe la suma departamental y el
+    total publicado, y mira cómo cambian la completitud, la diferencia y el
+    estado del departamento elegido. Es una simulación; al lado aparece la
+    antigüedad actual de cada serie, consultada a la API.
+  </p>
+  <p>
+    M4 describe la calidad del dato disponible: no mide transmisión ni riesgo.
+    Sus límites están en el <a href={RUTA_SENSIBILIDAD}>aviso de sensibilidad</a
+    >.
+  </p>
+  <div slot="visual">
+    <LaboratorioIntegridad />
+  </div>
+</PasoFicha>

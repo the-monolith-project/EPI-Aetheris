@@ -6,7 +6,7 @@ import BarraActividad from '../BarraActividad.astro';
 
 <div
   id="toolbar-analisis-contenedor"
-  class="sticky top-[6.5rem] z-30 mt-5 sm:top-24"
+  class="sticky top-[calc(var(--alto-header)+0.5rem)] z-30 mt-5"
 >
   <section
     id="toolbar-analisis"
@@ -165,7 +165,7 @@ import BarraActividad from '../BarraActividad.astro';
           aria-controls="toolbar-analisis-controles toolbar-analisis-detalle"
           aria-label="Contraer controles del análisis"
           title="Contraer controles"
-          class="ml-auto flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-border bg-bg text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          class="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-border bg-bg text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <svg
             id="toolbar-analisis-contraer-icono"
@@ -390,6 +390,17 @@ import BarraActividad from '../BarraActividad.astro';
               <span>SE53</span>
             </div>
           </div>
+          <!-- Sin actividad, la barra se contrae sola; esto lo evita -->
+          <label
+            class="flex min-h-[44px] shrink-0 cursor-pointer items-center gap-1.5 self-start rounded-lg border border-border bg-bg px-2.5 py-1.5 font-sans text-xs font-semibold text-ink lg:self-center"
+          >
+            <input
+              id="toolbar-analisis-fija"
+              type="checkbox"
+              class="h-4 w-4 accent-[var(--color-accent)]"
+            />
+            Mantener visible
+          </label>
         </div>
       </div>
     </div>
@@ -1046,10 +1057,72 @@ import BarraActividad from '../BarraActividad.astro';
     );
   });
 
+  // Contracción automática: tras ESPERA_AUTOCONTRAER_MS sin que nadie toque la
+  // barra se contrae sola, salvo con "Mantener visible" marcado (se recuerda
+  // en este navegador). No contrae mientras suena el reproductor ni con el
+  // popover de filtros abierto: sería quitarle la barra a quien la está usando.
+  const ESPERA_AUTOCONTRAER_MS = 5000;
+  const CLAVE_TOOLBAR_FIJA = 'epi:toolbar-fija';
+  const casillaFija = document.getElementById(
+    'toolbar-analisis-fija',
+  ) as HTMLInputElement | null;
+  const seccionToolbar = document.getElementById('toolbar-analisis');
+  let temporizadorAutocontraer: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    if (casillaFija) {
+      casillaFija.checked = localStorage.getItem(CLAVE_TOOLBAR_FIJA) === '1';
+    }
+  } catch {
+    // Sin almacenamiento la casilla vale solo para esta visita.
+  }
+
+  function toolbarExpandida(): boolean {
+    return botonContraer?.getAttribute('aria-expanded') === 'true';
+  }
+
+  function reiniciarAutocontraer(): void {
+    if (temporizadorAutocontraer) clearTimeout(temporizadorAutocontraer);
+    temporizadorAutocontraer = null;
+    if (!toolbarExpandida() || casillaFija?.checked) return;
+    temporizadorAutocontraer = setTimeout(() => {
+      if (reproduciendo || popoverFiltros?.hidden === false) {
+        reiniciarAutocontraer();
+        return;
+      }
+      // El foco dentro de lo que se oculta se perdería: pasa al botón.
+      const foco = document.activeElement;
+      const enOculto =
+        foco instanceof HTMLElement &&
+        foco !== botonContraer &&
+        seccionToolbar?.contains(foco);
+      fijarToolbarExpandida(false);
+      if (enOculto) botonContraer?.focus();
+    }, ESPERA_AUTOCONTRAER_MS);
+  }
+
+  for (const tipo of ['pointermove', 'pointerdown', 'keydown', 'focusin']) {
+    seccionToolbar?.addEventListener(tipo, reiniciarAutocontraer, {
+      passive: true,
+    });
+  }
+  casillaFija?.addEventListener('change', () => {
+    try {
+      if (casillaFija.checked) localStorage.setItem(CLAVE_TOOLBAR_FIJA, '1');
+      else localStorage.removeItem(CLAVE_TOOLBAR_FIJA);
+    } catch {
+      // Sin almacenamiento no se recuerda.
+    }
+    reiniciarAutocontraer();
+  });
+  // Al expandir a mano empieza de nuevo la cuenta atrás.
+  botonContraer?.addEventListener('click', reiniciarAutocontraer);
+
   // En pantallas estrechas (< sm), arrancar con el toolbar contraído para no tapar la pantalla
   if (typeof window !== 'undefined' && window.innerWidth < 640) {
     fijarToolbarExpandida(false);
   }
+  reiniciarAutocontraer();
 
   function cambiarZoom(direccion: -1 | 1): void {
     const niveles = [100, 150, 200] as const;

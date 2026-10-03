@@ -1,0 +1,189 @@
+---
+/**
+ * Laboratorio de la ficha de anomalía climática (M2): la persona elige un
+ * departamento, el Iv del año descrito y el de ocho años de referencia, y ve
+ * al instante la mediana, la desviación, σ, la tira de barras y el color.
+ * «Calcular paso a paso» recorre el método en orden. Es una simulación con
+ * valores elegidos; la última anomalía que mide el sistema se consulta a la
+ * API y se muestra al lado. El comportamiento está en
+ * src/lib/laboratorio-anomalia-cliente.ts.
+ */
+import { DEPARTAMENTOS } from '../lib/departamentos';
+import {
+  ANIOS_LABORATORIO,
+  PRESETS_ANOMALIA,
+  calcularSigma,
+  resumirPool,
+} from '../lib/anomalia';
+import { colorAnomalia, gradienteCss, RAMPA_ANOMALIA } from '../lib/colores';
+import { formatearNumero } from '../lib/idoneidad';
+import { tiraAnomalia } from '../lib/laboratorio-anomalia';
+import MapaDepartamentoFicha from './MapaDepartamentoFicha.astro';
+import '../styles/laboratorio.css';
+
+const CODIGO_INICIAL = 'SV-SS';
+const inicial = PRESETS_ANOMALIA[0];
+const pool = inicial.referencias.filter((v): v is number => v !== null);
+const r = resumirPool(pool);
+const sigma = calcularSigma(inicial.valor, r.mediana, r.desviacion);
+const tira = tiraAnomalia(inicial.valor, inicial.referencias, r);
+const texto = (n: number | null, d = 2) =>
+  n === null ? 'sin dato' : formatearNumero(n, d);
+---
+
+<div class="lab" data-laboratorio-anomalia data-codigo-inicial={CODIGO_INICIAL}>
+  <noscript>
+    <p class="lab-aviso">
+      El laboratorio necesita JavaScript. Los pasos anteriores explican el mismo
+      cálculo con un ejemplo.
+    </p>
+  </noscript>
+
+  <div class="lab-rejilla">
+    <fieldset class="lab-controles" data-lab-controles>
+      <legend class="lab-leyenda">Semana 20 en un departamento</legend>
+
+      <label class="lab-campo">
+        <span>Departamento</span>
+        <select data-lab-depto>
+          {
+            DEPARTAMENTOS.map((dep) => (
+              <option
+                value={dep.codigo}
+                selected={dep.codigo === CODIGO_INICIAL}
+              >
+                {dep.nombre}
+              </option>
+            ))
+          }
+        </select>
+      </label>
+
+      <div class="lab-deslizador">
+        <div class="lab-deslizador-cabecera">
+          <label for="lab-m2-valor">Iv del año descrito (2026)</label>
+          <output for="lab-m2-valor" data-lab-salida-valor>
+            {formatearNumero(inicial.valor, 2)}
+          </output>
+        </div>
+        <input
+          id="lab-m2-valor"
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={inicial.valor}
+          data-lab-valor
+          aria-valuetext={formatearNumero(inicial.valor, 2)}
+        />
+      </div>
+
+      <fieldset class="lab-anios">
+        <legend>Iv de la misma semana en otros años</legend>
+        {
+          ANIOS_LABORATORIO.map((anio, i) => (
+            <label class="lab-anio">
+              <span>{anio}</span>
+              <input
+                type="number"
+                inputmode="decimal"
+                min="0"
+                max="1"
+                step="0.01"
+                value={inicial.referencias[i] ?? ''}
+                data-lab-referencia={i}
+              />
+            </label>
+          ))
+        }
+      </fieldset>
+
+      <div class="lab-presets" role="group" aria-label="Condiciones de partida">
+        <span class="lab-presets-titulo">Probar con</span>
+        {
+          PRESETS_ANOMALIA.map((p) => (
+            <button type="button" data-lab-preset={p.clave}>
+              {p.etiqueta}
+            </button>
+          ))
+        }
+      </div>
+
+      <button type="button" class="lab-calcular" data-lab-calcular>
+        Calcular paso a paso
+      </button>
+      <p class="lab-aviso">
+        Simulación con los valores que elijas. Los de partida son un ejemplo, no
+        una medición.
+      </p>
+    </fieldset>
+
+    <div class="lab-salida">
+      <figure class="lab-caja" data-lab-etapa="conjunto">
+        <figcaption class="lab-caja-titulo">
+          Conjunto de referencia y año descrito
+        </figcaption>
+        <div
+          class="lab-tira"
+          data-lab-tira
+          role="img"
+          aria-label={tira.etiqueta}
+          set:html={tira.svg}
+        />
+      </figure>
+
+      <dl class="lab-cifras">
+        <div class="lab-caja" data-lab-etapa="mediana">
+          <dt>Mediana</dt>
+          <dd data-lab-mediana>{texto(r.mediana)}</dd>
+        </div>
+        <div class="lab-caja" data-lab-etapa="desviacion">
+          <dt>Desviación</dt>
+          <dd data-lab-desviacion>{texto(r.desviacion, 3)}</dd>
+        </div>
+        <div class="lab-caja" data-lab-etapa="sigma">
+          <dt>σ = (Iv − mediana) / desviación</dt>
+          <dd data-lab-sigma>{texto(sigma)}</dd>
+        </div>
+      </dl>
+
+      <div class="lab-caja lab-resultado-mapa" data-lab-etapa="color">
+        <MapaDepartamentoFicha
+          codigo={CODIGO_INICIAL}
+          relleno={colorAnomalia(sigma)}
+          etiqueta="Mapa de El Salvador con San Salvador pintado según la anomalía de la simulación"
+          id="lab-m2-mapa"
+        >
+          <span
+            class="mapa-ficha-rampa"
+            style={`background:${gradienteCss(RAMPA_ANOMALIA)}`}></span>
+          <span class="mapa-ficha-escala"
+            ><span>−3</span><span>σ</span><span>+3</span></span
+          >
+        </MapaDepartamentoFicha>
+        <div class="lab-lecturas">
+          <p class="lab-lectura">
+            <span class="lab-lectura-etiqueta">σ de la simulación</span>
+            <span class="lab-lectura-cifra" data-lab-cifra>{texto(sigma)}</span>
+          </p>
+          <p class="lab-frase" data-lab-frase></p>
+          <div class="lab-real" data-lab-real>
+            <p class="lab-cargando">
+              Consultando la serie de Iv del departamento…
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="sr-only" role="status" aria-live="polite" data-lab-estado></p>
+</div>
+
+<script>
+  import { iniciarLaboratorioAnomalia } from '../lib/laboratorio-anomalia-cliente';
+
+  document
+    .querySelectorAll<HTMLElement>('[data-laboratorio-anomalia]')
+    .forEach(iniciarLaboratorioAnomalia);
+</script>

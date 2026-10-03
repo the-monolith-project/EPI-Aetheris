@@ -20,6 +20,7 @@
   --color-deep-ink-muted: var(--color-deep-ink-muted);
   --color-live: var(--color-live);
   --color-live-ink: var(--color-live-ink);
+  --color-estimacion: var(--color-estimacion);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-display: var(--font-display);
@@ -73,6 +74,19 @@
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
     box-shadow: 0 0 0 4px rgba(1, 30, 30, 0.55);
+  }
+}
+
+/* Altura de la cabecera pegajosa (Layout.astro). En teléfono son dos filas
+   (logo + controles, navegación); desde sm una sola. La leen la barra
+   pegajosa del análisis y los scroll-margin de las anclas, para que nada
+   quede escondido detrás del header al saltar a una sección. */
+:root {
+  --alto-header: 6.5rem;
+}
+@media (min-width: 40rem) {
+  :root {
+    --alto-header: 5.5rem;
   }
 }
 
@@ -929,12 +943,35 @@ html[data-animaciones='off'] ::after {
 /* Mapa en tema oscuro: se oscurecen los tiles con un filtro en lugar de sumar
    un proveedor de tiles distinto. Los controles y marcadores no se tocan. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .leaflet-tile-pane {
+  :root[data-theme='system'] .leaflet-tile-pane {
     filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
   }
 }
 :root[data-theme='dark'] .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+}
+
+/* Pista de zoom con rueda (src/lib/mapa-scroll.ts): sale al hacer scroll sobre
+   un mapa y se va sola. */
+.mapa-pista-scroll {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 0.45);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.mapa-pista-scroll.visible {
+  opacity: 1;
 }
 
 /* Términos del glosario dentro del texto (src/lib/terminos.ts). El color solo

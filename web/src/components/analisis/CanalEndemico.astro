@@ -2,6 +2,7 @@
 import AyudaTermino from '../AyudaTermino.astro';
 import BotonExportarGrafico from '../BotonExportarGrafico.astro';
 import PanelWorkspace from './PanelWorkspace.astro';
+import { rutaFicha } from '../../fichas/registro';
 
 interface Props {
   /** Departamento fijo (código SV-XX). Si viene, ignora el store de filtros. */
@@ -21,6 +22,14 @@ const { departamento, anio } = Astro.props;
   data-departamento-fijo={departamento}
   data-anio-fijo={anio}
 >
+  <p class="mt-3 font-sans text-xs text-ink-muted">
+    <a
+      href={rutaFicha('m3-presion-epidemiologica')}
+      class="font-semibold text-accent underline underline-offset-2"
+      >Cómo se calculan los cortes del canal</a
+    >, paso a paso y con un laboratorio.
+  </p>
+
   <div
     data-canal-vacio
     class="mt-4 flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg/50 p-8 text-center"

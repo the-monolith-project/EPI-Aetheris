@@ -23,6 +23,7 @@ import {
   formatearNumero,
 } from '../lib/idoneidad';
 import MapaDepartamentoIv from './MapaDepartamentoIv.astro';
+import '../styles/laboratorio.css';
 
 const CODIGO_INICIAL = 'SV-SS';
 const d = desgloseIv(EJEMPLO_IV);
@@ -189,132 +190,6 @@ const factores = { ft: d.fT, fr: d.fR, fh: d.fH };
 </script>
 
 <style is:global>
-  .lab {
-    border: 1px solid var(--color-border);
-    border-radius: 0.875rem;
-    background: var(--color-bg);
-    padding: 1rem;
-  }
-  .lab-rejilla {
-    display: grid;
-    gap: 1.25rem;
-  }
-  @media (min-width: 64rem) {
-    .lab-rejilla {
-      grid-template-columns: 17rem minmax(0, 1fr);
-      align-items: start;
-    }
-    .lab-controles {
-      position: sticky;
-      top: 5.5rem;
-    }
-  }
-  .lab-controles {
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  .lab-leyenda {
-    padding: 0;
-    font-family: var(--font-display);
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: var(--color-ink);
-  }
-  .lab-campo,
-  .lab-deslizador {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    font-family: var(--font-sans);
-    font-size: 0.85rem;
-    color: var(--color-ink);
-  }
-  .lab-campo select {
-    min-height: 44px;
-    padding: 0.4rem 0.6rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
-    background: var(--color-surface);
-    color: var(--color-ink);
-    font: inherit;
-  }
-  .lab-deslizador-cabecera {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.5rem;
-  }
-  .lab-deslizador output {
-    font-family: var(--font-mono);
-    font-weight: 600;
-    color: var(--color-termino);
-  }
-  .lab-deslizador input[type='range'] {
-    width: 100%;
-    min-height: 44px;
-    accent-color: var(--color-termino);
-  }
-  .lab-presets {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    align-items: center;
-  }
-  .lab-presets-titulo {
-    flex-basis: 100%;
-    font-family: var(--font-sans);
-    font-size: 0.8rem;
-    color: var(--color-ink-muted);
-  }
-  .lab-presets button {
-    min-height: 44px;
-    padding: 0.3rem 0.7rem;
-    border: 1px solid var(--color-border);
-    border-radius: 9999px;
-    background: var(--color-surface);
-    font-family: var(--font-sans);
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--color-ink);
-    cursor: pointer;
-  }
-  .lab-presets button:hover {
-    border-color: var(--color-termino);
-    color: var(--color-termino);
-  }
-  .lab-calcular {
-    min-height: 48px;
-    padding: 0.6rem 1rem;
-    border: 0;
-    border-radius: 0.6rem;
-    background: var(--color-termino);
-    font-family: var(--font-sans);
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--color-surface);
-    cursor: pointer;
-  }
-  .lab-calcular:disabled {
-    opacity: 0.6;
-    cursor: progress;
-  }
-  .lab-aviso {
-    font-family: var(--font-sans);
-    font-size: 0.78rem;
-    line-height: 1.5;
-    color: var(--color-ink-muted);
-  }
-  .lab-salida {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
   .lab-paneles {
     display: grid;
     gap: 0.75rem;
@@ -351,17 +226,6 @@ const factores = { ft: d.fT, fr: d.fR, fh: d.fH };
     font-size: 0.85rem;
     color: var(--color-termino);
   }
-  .lab-combina,
-  .lab-resultado {
-    padding: 0.9rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.7rem;
-    background: var(--color-surface);
-    transition:
-      opacity 0.35s,
-      box-shadow 0.35s,
-      border-color 0.35s;
-  }
   .lab-formula {
     display: flex;
     flex-wrap: wrap;
@@ -392,76 +256,6 @@ const factores = { ft: d.fT, fr: d.fR, fh: d.fH };
     .lab-resultado {
       grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
     }
-  }
-  .lab-lecturas {
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-    font-family: var(--font-sans);
-  }
-  .lab-lectura {
-    display: grid;
-    gap: 0.25rem;
-  }
-  .lab-lectura-etiqueta {
-    font-size: 0.8rem;
-    color: var(--color-ink-muted);
-  }
-  .lab-lectura-cifra {
-    font-family: var(--font-display);
-    font-size: 2.25rem;
-    font-weight: 600;
-    line-height: 1;
-    color: var(--color-ink);
-  }
-  .lab-barra {
-    display: block;
-    height: 10px;
-    border-radius: 9999px;
-    background: var(--color-border);
-    overflow: hidden;
-  }
-  .lab-barra-relleno {
-    display: block;
-    height: 100%;
-    border-radius: 9999px;
-    transition:
-      width 0.5s ease,
-      background-color 0.5s ease;
-  }
-  .lab-real {
-    padding: 0.7rem 0.8rem;
-    border: 1px dashed var(--color-border);
-    border-radius: 0.6rem;
-    font-size: 0.85rem;
-    line-height: 1.55;
-    color: var(--color-ink);
-  }
-  .lab-real small {
-    display: block;
-    margin-top: 0.3rem;
-    font-size: 0.75rem;
-    color: var(--color-ink-muted);
-  }
-  .lab-cargando {
-    color: var(--color-ink-muted);
-    animation: lab-pulso 1.2s ease-in-out infinite;
-  }
-  @keyframes lab-pulso {
-    50% {
-      opacity: 0.45;
-    }
-  }
-
-  /* Recorrido paso a paso: lo que aún no se alcanzó queda atenuado y el paso
-     en curso se destaca. */
-  .lab-espera {
-    opacity: 0.3;
-  }
-  .lab-activo {
-    border-color: var(--color-termino);
-    box-shadow: 0 0 0 3px
-      color-mix(in srgb, var(--color-termino) 28%, transparent);
   }
   .lab-termino.lab-activo {
     background: color-mix(in srgb, var(--color-termino) 20%, transparent);

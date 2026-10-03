@@ -251,35 +251,6 @@ const maxLluvia = Math.max(...lluviaDias);
 </PasoFicha>
 
 <style is:global>
-  .ficha-rejilla {
-    display: grid;
-    gap: 0.75rem;
-    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  }
-  .ficha-tarjeta {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.9rem 1rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
-    background: var(--color-bg);
-    font-family: var(--font-sans);
-  }
-  .ficha-tarjeta strong {
-    font-size: 0.95rem;
-    color: var(--color-ink);
-  }
-  .ficha-tarjeta span {
-    font-size: 0.8rem;
-    color: var(--color-ink-muted);
-  }
-  .ficha-nota {
-    margin-bottom: 0.75rem;
-    font-family: var(--font-sans);
-    font-size: 0.8rem;
-    color: var(--color-ink-muted);
-  }
   .ficha-semana-rejilla,
   .ficha-curvas {
     display: grid;
@@ -342,70 +313,5 @@ const maxLluvia = Math.max(...lluviaDias);
     border-radius: 3px 3px 0 0;
     background: var(--color-termino);
     opacity: 0.8;
-  }
-  .ficha-resumen,
-  .ficha-resultado {
-    margin-top: 0.75rem;
-    font-size: 0.85rem;
-    line-height: 1.5;
-    color: var(--color-ink);
-  }
-  .ficha-formula {
-    margin-top: 0.5rem;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    line-height: 1.5;
-    color: var(--color-ink-muted);
-    overflow-wrap: anywhere;
-  }
-  .ficha-formula-grande {
-    font-size: clamp(0.95rem, 2.4vw, 1.25rem);
-    color: var(--color-ink);
-  }
-  .ficha-cuenta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem 0.9rem;
-    align-items: center;
-    margin-top: 1rem;
-    font-family: var(--font-mono);
-  }
-  .ficha-cuenta span {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  .ficha-cuenta b {
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: var(--color-ink);
-  }
-  .ficha-cuenta small {
-    font-size: 0.7rem;
-    color: var(--color-ink-muted);
-  }
-  .ficha-cuenta-iv {
-    padding: 0.4rem 0.9rem;
-    border: 2px solid var(--color-termino);
-    border-radius: 0.75rem;
-  }
-  .ficha-color {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.25rem 2rem;
-    align-items: center;
-  }
-  .ficha-color-mapa {
-    flex: 0 1 18rem;
-    min-width: 12rem;
-  }
-  .ficha-muestra {
-    display: inline-block;
-    width: 1.1rem;
-    height: 1.1rem;
-    margin-right: 0.4rem;
-    vertical-align: -0.2em;
-    border: 1px solid var(--color-ink-muted);
-    border-radius: 0.25rem;
   }
 </style>

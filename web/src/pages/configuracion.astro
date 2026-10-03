@@ -21,13 +21,13 @@ interface Opcion {
 }
 
 const TEMAS: Opcion[] = [
+  { valor: 'light', etiqueta: 'Claro', detalle: 'Tema por defecto.' },
+  { valor: 'dark', etiqueta: 'Oscuro', detalle: 'Fondo oscuro siempre.' },
   {
     valor: 'sistema',
     etiqueta: 'Sistema',
     detalle: 'Sigue el ajuste del dispositivo.',
   },
-  { valor: 'light', etiqueta: 'Claro', detalle: 'Fondo claro siempre.' },
-  { valor: 'dark', etiqueta: 'Oscuro', detalle: 'Fondo oscuro siempre.' },
 ];
 
 const TEXTOS: Opcion[] = [
@@ -358,7 +358,8 @@ const GRUPOS: { grupo: GrupoAtajo; titulo: string }[] = [
         </h2>
         <p class="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
           Borra el tema, el tamaño de texto, las animaciones, el departamento
-          recordado y los atajos. Todo vuelve a los valores del sistema.
+          recordado y los atajos. El tema vuelve a claro y el resto, a los
+          valores del sistema.
         </p>
         <button
           type="button"
@@ -684,7 +685,7 @@ const GRUPOS: { grupo: GrupoAtajo; titulo: string }[] = [
       const ok = borrarPreferencias();
       anunciar(
         ok
-          ? 'Preferencias borradas. Todo sigue al sistema.'
+          ? 'Preferencias borradas. El tema vuelve a claro.'
           : SIN_ALMACENAMIENTO,
       );
     });

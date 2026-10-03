@@ -1,0 +1,195 @@
+---
+/**
+ * Laboratorio de la ficha de presión epidemiológica (M3): la persona elige un
+ * departamento y una serie, mueve los casos de la semana y prueba con
+ * distintas historias; se recalculan al instante el percentil, los cortes, la
+ * categoría y el color. «Calcular paso a paso» recorre el método en orden. Es
+ * una simulación; la última presión que calcula el sistema se consulta a la
+ * API y se muestra al lado. El comportamiento está en
+ * src/lib/laboratorio-presion-cliente.ts.
+ */
+import { colorCategoriaPresion } from '../lib/colores';
+import { DEPARTAMENTOS } from '../lib/departamentos';
+import { formatearNumero } from '../lib/idoneidad';
+import {
+  MAXIMO_CASOS,
+  calcularLaboratorio,
+  rectaPresion,
+  tiraPresion,
+} from '../lib/laboratorio-presion';
+import { EJEMPLO_PRESION, PRESETS_PRESION } from '../lib/presion';
+import MapaDepartamentoFicha from './MapaDepartamentoFicha.astro';
+import '../styles/laboratorio.css';
+
+const CODIGO_INICIAL = 'SV-SS';
+const ventanas = EJEMPLO_PRESION.ventanas.map((v) => ({
+  anio: v.anio,
+  casos: [...v.casos] as (number | null)[],
+}));
+const c = calcularLaboratorio(ventanas, EJEMPLO_PRESION.observado);
+const tira = tiraPresion(ventanas, c);
+const r = c.resultado;
+const f1 = (n: number | null) =>
+  n === null ? 'sin dato' : formatearNumero(n, 1);
+---
+
+<div class="lab" data-laboratorio-presion data-codigo-inicial={CODIGO_INICIAL}>
+  <noscript>
+    <p class="lab-aviso">
+      El laboratorio necesita JavaScript. Los pasos anteriores explican el mismo
+      cálculo con un ejemplo.
+    </p>
+  </noscript>
+
+  <div class="lab-rejilla">
+    <fieldset class="lab-controles" data-lab-controles>
+      <legend class="lab-leyenda">Semana 30 de 2022</legend>
+
+      <label class="lab-campo">
+        <span>Departamento</span>
+        <select data-lab-depto>
+          {
+            DEPARTAMENTOS.map((dep) => (
+              <option
+                value={dep.codigo}
+                selected={dep.codigo === CODIGO_INICIAL}
+              >
+                {dep.nombre}
+              </option>
+            ))
+          }
+        </select>
+      </label>
+
+      <label class="lab-campo">
+        <span>Serie</span>
+        <select data-lab-serie>
+          <option value="probable" selected>Probable</option>
+          <option value="confirmado">Confirmado</option>
+        </select>
+      </label>
+
+      <div class="lab-deslizador">
+        <div class="lab-deslizador-cabecera">
+          <label for="lab-m3-casos">Casos observados en la semana</label>
+          <output for="lab-m3-casos" data-lab-salida-casos>
+            {EJEMPLO_PRESION.observado}
+          </output>
+        </div>
+        <input
+          id="lab-m3-casos"
+          type="range"
+          min="0"
+          max={MAXIMO_CASOS}
+          step="1"
+          value={EJEMPLO_PRESION.observado}
+          data-lab-casos
+          aria-valuetext={`${EJEMPLO_PRESION.observado} casos`}
+        />
+      </div>
+
+      <div class="lab-presets" role="group" aria-label="Historias de partida">
+        <span class="lab-presets-titulo">Probar con</span>
+        {
+          PRESETS_PRESION.map((p) => (
+            <button type="button" data-lab-preset={p.clave}>
+              {p.etiqueta}
+            </button>
+          ))
+        }
+      </div>
+
+      <button type="button" class="lab-calcular" data-lab-calcular>
+        Calcular paso a paso
+      </button>
+      <p class="lab-aviso">
+        Simulación con valores de ejemplo, no una medición. La historia de los
+        otros años cambia con los presets.
+      </p>
+    </fieldset>
+
+    <div class="lab-salida">
+      <figure class="lab-caja" data-lab-etapa="pool">
+        <figcaption class="lab-caja-titulo">
+          Ventana de ±1 semana en los años de referencia
+        </figcaption>
+        <div
+          class="lab-tira"
+          data-lab-tira
+          role="img"
+          aria-label={tira.etiqueta}
+          set:html={tira.svg}
+        />
+      </figure>
+
+      <figure class="lab-caja" data-lab-etapa="ordenar">
+        <figcaption class="lab-caja-titulo">
+          El conjunto ordenado y la cifra observada
+        </figcaption>
+        <div
+          class="lab-tira"
+          data-lab-recta
+          role="img"
+          aria-label={`Conjunto ordenado: ${[...c.pool].sort((a, b) => a - b).join(', ')}.`}
+          set:html={rectaPresion(c)}
+        />
+      </figure>
+
+      <dl class="lab-cifras">
+        <div class="lab-caja" data-lab-etapa="percentil">
+          <dt>Percentil</dt>
+          <dd data-lab-percentil>{f1(r.percentil)}</dd>
+        </div>
+        <div class="lab-caja" data-lab-etapa="cortes">
+          <dt>Cortes P50 y P75</dt>
+          <dd data-lab-cortes>{f1(r.p50_baseline)} y {f1(r.p75_baseline)}</dd>
+        </div>
+        <div class="lab-caja">
+          <dt>Categoría</dt>
+          <dd data-lab-categoria>{r.categoria ?? 'sin dato'}</dd>
+        </div>
+      </dl>
+
+      <div class="lab-caja lab-resultado-mapa" data-lab-etapa="color">
+        <MapaDepartamentoFicha
+          codigo={CODIGO_INICIAL}
+          relleno={colorCategoriaPresion(r.categoria)}
+          etiqueta={`Mapa de El Salvador con San Salvador pintado en la categoría ${r.categoria ?? 'sin dato'}`}
+        >
+          <ul class="mapa-ficha-estados">
+            {
+              (['baja', 'media', 'alta'] as const).map((cat) => (
+                <li>
+                  <span style={`background:${colorCategoriaPresion(cat)}`} />
+                  {cat}
+                </li>
+              ))
+            }
+          </ul>
+        </MapaDepartamentoFicha>
+        <div class="lab-lecturas">
+          <p class="lab-lectura">
+            <span class="lab-lectura-etiqueta">Percentil de la simulación</span>
+            <span class="lab-lectura-cifra" data-lab-cifra
+              >{f1(r.percentil)}</span
+            >
+          </p>
+          <p class="lab-frase" data-lab-frase></p>
+          <div class="lab-real" data-lab-real>
+            <p class="lab-cargando">Consultando la presión del departamento…</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="sr-only" role="status" aria-live="polite" data-lab-estado></p>
+</div>
+
+<script>
+  import { iniciarLaboratorioPresion } from '../lib/laboratorio-presion-cliente';
+
+  document
+    .querySelectorAll<HTMLElement>('[data-laboratorio-presion]')
+    .forEach(iniciarLaboratorioPresion);
+</script>

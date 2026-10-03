@@ -1,0 +1,196 @@
+---
+/**
+ * Laboratorio de la ficha de integridad de la vigilancia (M4): la persona
+ * marca qué departamentos tienen fila, escribe la suma departamental y el
+ * total publicado del boletín y ve al instante la completitud, la diferencia,
+ * el estado del departamento elegido y su color. «Calcular paso a paso»
+ * recorre el método en orden. Es una simulación; la antigüedad actual de cada
+ * serie se consulta a la API. El comportamiento está en
+ * src/lib/laboratorio-integridad-cliente.ts.
+ */
+import { colorIntegridad } from '../lib/colores';
+import { DEPARTAMENTOS } from '../lib/departamentos';
+import {
+  ETIQUETAS_ESTADO,
+  PRESETS_INTEGRIDAD,
+  type EstadoIntegridad,
+} from '../lib/integridad';
+import CuadriculaDepartamentos from './CuadriculaDepartamentos.astro';
+import MapaDepartamentoFicha from './MapaDepartamentoFicha.astro';
+import '../styles/laboratorio.css';
+
+const CODIGO_INICIAL = 'SV-SS';
+const inicial = PRESETS_INTEGRIDAD[0];
+const presentes = DEPARTAMENTOS.map((d) => d.codigo).filter(
+  (c) => !inicial.faltantes.includes(c),
+);
+const ESTADOS: EstadoIntegridad[] = ['sin_dato', 'presente', 'no_cuadra'];
+---
+
+<div
+  class="lab"
+  data-laboratorio-integridad
+  data-codigo-inicial={CODIGO_INICIAL}
+>
+  <noscript>
+    <p class="lab-aviso">
+      El laboratorio necesita JavaScript. Los pasos anteriores explican los
+      mismos hechos con un ejemplo.
+    </p>
+  </noscript>
+
+  <div class="lab-rejilla">
+    <fieldset class="lab-controles" data-lab-controles>
+      <legend class="lab-leyenda">Una semana de vigilancia</legend>
+
+      <label class="lab-campo">
+        <span>Departamento</span>
+        <select data-lab-depto>
+          {
+            DEPARTAMENTOS.map((dep) => (
+              <option
+                value={dep.codigo}
+                selected={dep.codigo === CODIGO_INICIAL}
+              >
+                {dep.nombre}
+              </option>
+            ))
+          }
+        </select>
+      </label>
+
+      <div class="lab-par">
+        <label class="lab-numero">
+          <span>Semana</span>
+          <input
+            type="number"
+            min="1"
+            max="53"
+            step="1"
+            value="30"
+            data-lab-semana
+          />
+        </label>
+        <label class="lab-campo">
+          <span>Serie</span>
+          <select data-lab-serie>
+            <option value="probable" selected>Probable</option>
+            <option value="confirmado">Confirmado</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="lab-par">
+        <label class="lab-numero">
+          <span>Suma departamental</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={inicial.suma ?? ''}
+            data-lab-suma
+          />
+        </label>
+        <label class="lab-numero">
+          <span>Total publicado</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={inicial.publicado ?? ''}
+            data-lab-publicado
+          />
+        </label>
+      </div>
+      <p class="lab-aviso">
+        Un campo vacío es un lado que falta en el boletín.
+      </p>
+
+      <div class="lab-presets" role="group" aria-label="Semanas de partida">
+        <span class="lab-presets-titulo">Probar con</span>
+        {
+          PRESETS_INTEGRIDAD.map((p) => (
+            <button type="button" data-lab-preset={p.clave}>
+              {p.etiqueta}
+            </button>
+          ))
+        }
+      </div>
+
+      <button type="button" class="lab-calcular" data-lab-calcular>
+        Calcular paso a paso
+      </button>
+      <p class="lab-aviso">
+        Simulación con los valores que elijas. Los de partida son un ejemplo, no
+        un boletín publicado.
+      </p>
+    </fieldset>
+
+    <div class="lab-salida">
+      <div class="lab-caja" data-lab-etapa="cuadricula">
+        <CuadriculaDepartamentos
+          presentes={presentes}
+          interactiva
+          etiqueta="Departamentos con fila esta semana"
+        />
+        <p class="lab-frase lab-frase-separada" data-lab-completitud>
+          14 de 14 departamentos con fila.
+        </p>
+      </div>
+
+      <dl class="lab-cifras">
+        <div class="lab-caja" data-lab-etapa="cuadre">
+          <dt>Diferencia (suma − publicado)</dt>
+          <dd data-lab-diferencia>0</dd>
+        </div>
+        <div class="lab-caja" data-lab-etapa="estado">
+          <dt>Estado del departamento</dt>
+          <dd class="lab-cifra-texto" data-lab-estado-depto>
+            {ETIQUETAS_ESTADO.presente}
+          </dd>
+        </div>
+        <div class="lab-caja">
+          <dt>Completitud</dt>
+          <dd data-lab-n>14 de 14</dd>
+        </div>
+      </dl>
+
+      <div class="lab-caja lab-resultado-mapa" data-lab-etapa="color">
+        <MapaDepartamentoFicha
+          codigo={CODIGO_INICIAL}
+          relleno={colorIntegridad('presente')}
+          etiqueta="Mapa de El Salvador con San Salvador en el estado «dato presente»"
+        >
+          <ul class="mapa-ficha-estados">
+            {
+              ESTADOS.map((e) => (
+                <li>
+                  <span style={`background:${colorIntegridad(e)}`} />
+                  {ETIQUETAS_ESTADO[e]}
+                </li>
+              ))
+            }
+          </ul>
+        </MapaDepartamentoFicha>
+        <div class="lab-lecturas">
+          <p class="lab-frase" data-lab-frase></p>
+          <div class="lab-real" data-lab-real>
+            <p class="lab-cargando">
+              Consultando la integridad de la vigilancia…
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="sr-only" role="status" aria-live="polite" data-lab-estado></p>
+</div>
+
+<script>
+  import { iniciarLaboratorioIntegridad } from '../lib/laboratorio-integridad-cliente';
+
+  document
+    .querySelectorAll<HTMLElement>('[data-laboratorio-integridad]')
+    .forEach(iniciarLaboratorioIntegridad);
+</script>

@@ -75,6 +75,10 @@ test.describe('pie de página', () => {
   for (const esquema of ['light', 'dark'] as const) {
     test(`sin violaciones de axe en tema ${esquema}`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: esquema });
+      await page.addInitScript(
+        (tema) => window.localStorage.setItem('epi:tema', tema),
+        esquema,
+      );
       await page.goto('/legal');
       const resultado = await new AxeBuilder({ page })
         .include('footer')

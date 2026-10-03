@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Icono from '../components/Icono.astro';
+import { rutaFicha } from '../fichas/registro';
 
 const apiBase = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 ---
@@ -117,7 +118,12 @@ const apiBase = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
       </h2>
       <p class="mt-2 font-sans text-xs leading-relaxed text-ink-muted">
         Hasta qué semana epidemiológica llega cada serie que usa el sitio. Una
-        serie con rezago no está rota: la fuente publica con retraso.
+        serie con rezago no está rota: la fuente publica con retraso. Esta
+        antigüedad es una de las tres métricas de la <a
+          href={rutaFicha('m4-integridad-vigilancia')}
+          class="font-semibold text-accent underline underline-offset-2"
+          >integridad de la vigilancia</a
+        >.
       </p>
       <div
         data-frescura-contenido

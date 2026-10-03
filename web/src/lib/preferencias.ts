@@ -7,10 +7,11 @@
  * distintas partes de la página se mantengan de acuerdo.
  *
  * Claves y valores (los dos primeros ya existían; se conservan tal cual):
- *   epi:tema        'light' | 'dark'   (ausente = sigue al sistema)
+ *   epi:tema        'light' | 'dark' | 'sistema'   (ausente = claro)
  *   epi:animaciones 'on' | 'off'       (ausente = sigue al sistema)
  *   epi:texto       'grande'           (ausente = tamaño normal)
  *   epi:atajos      JSON, ver lib/atajos.ts
+ *   epi:toolbar-fija '1'               (ToolbarAnalisis.astro; ausente = se contrae sola)
  *
  * Los scripts en línea de Layout.astro repiten la resolución de tema,
  * animaciones y texto para fijar el atributo antes del primer pintado (no
@@ -36,6 +37,7 @@ export const CLAVES_PREFERENCIAS = [
   CLAVE_TEXTO,
   CLAVE_ATAJOS,
   'epi:departamento',
+  'epi:toolbar-fija',
 ] as const;
 
 export type Tema = 'sistema' | 'light' | 'dark';
@@ -44,7 +46,7 @@ export type Texto = 'normal' | 'grande';
 
 /** Preferencia de tema a partir de lo guardado. */
 export function resolverTema(guardado: string | null): Tema {
-  return guardado === 'light' || guardado === 'dark' ? guardado : 'sistema';
+  return guardado === 'dark' || guardado === 'sistema' ? guardado : 'light';
 }
 
 /** Preferencia de animaciones a partir de lo guardado. */
@@ -91,19 +93,25 @@ export function leerTema(): Tema {
 /** Tema que se ve ahora mismo, resuelto el "sistema". */
 export function temaEfectivo(): 'dark' | 'light' {
   const fijo = document.documentElement.getAttribute('data-theme');
-  if (fijo === 'dark' || fijo === 'light') return fijo;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light';
+  if (fijo === 'dark') return 'dark';
+  if (fijo === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
+  }
+  return 'light';
 }
 
 export function aplicarTema(tema: Tema): boolean {
-  if (tema === 'sistema') {
+  if (tema === 'light') {
     document.documentElement.removeAttribute('data-theme');
   } else {
-    document.documentElement.setAttribute('data-theme', tema);
+    document.documentElement.setAttribute(
+      'data-theme',
+      tema === 'sistema' ? 'system' : tema,
+    );
   }
-  const guardado = escribir(CLAVE_TEMA, tema === 'sistema' ? null : tema);
+  const guardado = escribir(CLAVE_TEMA, tema === 'light' ? null : tema);
   avisar();
   return guardado;
 }
@@ -175,7 +183,7 @@ export function guardarAtajos(config: ConfiguracionAtajos): boolean {
 
 // ---- Todo -----------------------------------------------------------------
 
-/** Borra todas las preferencias guardadas y vuelve a los valores del sistema. */
+/** Borra todas las preferencias guardadas: tema claro y el resto según el sistema. */
 export function borrarPreferencias(): boolean {
   let ok = true;
   for (const clave of CLAVES_PREFERENCIAS) ok = escribir(clave, null) && ok;

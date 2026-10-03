@@ -107,455 +107,50 @@
     obtenerNowcastDengue,
     obtenerNowcastRetrospectivo,
   } from '../../lib/analisis-api';
-  import type {
-    NowcastDengue,
-    NowcastDengueRetrospectivo,
-    OrigenRetro,
-    ValoresHorizonteRetro,
-  } from '../../lib/tipos-analisis';
+  import { montarGrafico } from '../../lib/echarts-montaje';
+  import type { GraficoMontado } from '../../lib/echarts-montaje';
+  import {
+    construirModelo,
+    dentroDe,
+    fecha,
+    fmtFecha,
+    fmtNum,
+    marcaTiempo,
+    textoNotaAnio,
+    textoResumenOrigen,
+  } from '../../lib/nowcast-datos';
+  import type { ModeloContraste, Origen } from '../../lib/nowcast-datos';
+  import { SERIE, opcionContraste } from '../../lib/nowcast-opciones';
+  import type { NombreSerie, Visibles } from '../../lib/nowcast-opciones';
+  import type { NowcastDengue } from '../../lib/tipos-analisis';
   import {
     esNoDisponible,
     motivoNoDisponible,
     renderErrorFuente,
+    renderEsqueletoTraza,
     renderSinDato,
   } from '../estado-async';
-  import {
-    bandaPath,
-    crearSvg,
-    ejeY,
-    el,
-    fecha,
-    fmtFecha,
-    fmtNum,
-    linea,
-    type Escalas,
-  } from './svg-nowcast';
-
-  const SEMANA_MS = 7 * 86_400_000;
-  const MARGEN_SEMANAS = 8; // contexto antes y después del año elegido
-
-  const NOMBRE_REFERENCIA: Record<string, string> = {
-    persistencia_rw: 'repetir el último valor',
-    persistencia_suavizada: 'repetir el último valor',
-    persistencia_estacional:
-      'repetir el último valor ajustado a la época del año',
-    climatologia_estacional: 'la misma semana de años anteriores',
-  };
-
-  interface Horizonte {
-    h: number;
-    fecha: string;
-    mediana: number;
-    b50: [number, number];
-    b95: [number, number];
-    observado: number | null;
-    /** la semana está en la serie pero la fuente no la publicó */
-    sinPublicar: boolean;
-    wisModelo: number | null;
-    wisReferencia: number | null;
-  }
-
-  interface Origen {
-    idx: number;
-    fecha: string;
-    anio: number;
-    semana: number;
-    casos: number | null;
-    /** null: sin predicción desde esta semana. */
-    horizontes: (Horizonte | null)[] | null;
-    motivo?: OrigenRetro['motivo'];
-    esAncla: boolean;
-  }
-
-  interface Modelo {
-    origenes: Origen[];
-    porAnio: Map<number, Origen[]>;
-    observado: { fecha: string; casos: number | null }[];
-    retro: NowcastDengueRetrospectivo;
-  }
-
-  function sumarSemanas(iso: string, n: number): string {
-    const d = new Date(fecha(iso).getTime() + n * SEMANA_MS);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${d.getFullYear()}-${mm}-${dd}`;
-  }
-
-  function construirModelo(
-    retro: NowcastDengueRetrospectivo,
-    principal: NowcastDengue,
-  ): Modelo | null {
-    if (!retro.observado?.length || !retro.origenes || !retro.horizontes) {
-      return null;
-    }
-    const observado = retro.observado.map(([f, c]) => ({ fecha: f, casos: c }));
-    const origenes: Origen[] = retro.origenes.map((o, idx) => ({
-      idx,
-      fecha: o.fecha,
-      anio: o.anio,
-      semana: o.semana,
-      casos: observado[idx].casos,
-      motivo: o.motivo,
-      esAncla: false,
-      horizontes: o.h
-        ? o.h.map((v: ValoresHorizonteRetro | null, k) => {
-            if (!v) return null;
-            const obs = observado[idx + k + 1];
-            return {
-              h: k + 1,
-              fecha: obs?.fecha ?? sumarSemanas(o.fecha, k + 1),
-              mediana: v[0],
-              b50: [v[1], v[2]],
-              b95: [v[3], v[4]],
-              observado: obs ? obs.casos : null,
-              sinPublicar: obs !== undefined && obs.casos === null,
-              wisModelo: v[5],
-              wisReferencia: v[6],
-            };
-          })
-        : null,
-    }));
-
-    // la última semana observada usa la estimación publicada
-    const ancla = principal.ancla;
-    if (ancla && principal.estimacion?.length) {
-      origenes.push({
-        idx: origenes.length,
-        fecha: ancla.fecha,
-        anio: ancla.anio,
-        semana: ancla.semana,
-        casos: ancla.casos,
-        esAncla: true,
-        horizontes: principal.estimacion.map((e) => ({
-          h: e.h,
-          fecha: e.fecha,
-          mediana: e.mediana,
-          b50: e.banda_50,
-          b95: e.banda_95,
-          observado: null,
-          sinPublicar: false,
-          wisModelo: null,
-          wisReferencia: null,
-        })),
-      });
-    }
-
-    const porAnio = new Map<number, Origen[]>();
-    for (const o of origenes) {
-      const arr = porAnio.get(o.anio) ?? [];
-      arr.push(o);
-      porAnio.set(o.anio, arr);
-    }
-    return { origenes, porAnio, observado, retro };
-  }
-
-  // --- gráfica ---------------------------------------------------------------
-
-  interface Grafica {
-    svg: SVGSVGElement;
-    /** índice del origen más cercano a una coordenada x del cliente */
-    origenEnX: (clientX: number) => number | null;
-  }
-
-  function dibujar(modelo: Modelo, origen: Origen): Grafica {
-    const ancho = 720;
-    const alto = 280;
-    const margen = { arriba: 22, abajo: 30, izq: 42, der: 12 };
-
-    const delAnio = modelo.porAnio.get(origen.anio) ?? [origen];
-    const iIni = Math.max(0, delAnio[0].idx - MARGEN_SEMANAS);
-    const iFin = Math.min(
-      modelo.observado.length - 1,
-      delAnio[delAnio.length - 1].idx + MARGEN_SEMANAS,
-    );
-    const obs = modelo.observado.slice(iIni, iFin + 1);
-    const t0 = fecha(obs[0].fecha).getTime();
-    const tEje = (iso: string) => (fecha(iso).getTime() - t0) / SEMANA_MS;
-
-    // escala fija para todo el año elegido: no salta al arrastrar
-    let maxV = Math.max(...obs.map((p) => p.casos ?? 0));
-    let tMax = tEje(obs[obs.length - 1].fecha);
-    for (const o of delAnio) {
-      for (const hz of o.horizontes ?? []) {
-        if (!hz) continue;
-        maxV = Math.max(maxV, hz.b95[1]);
-        tMax = Math.max(tMax, tEje(hz.fecha));
-      }
-    }
-    maxV *= 1.08;
-
-    const areaX = ancho - margen.izq - margen.der;
-    const areaY = alto - margen.arriba - margen.abajo;
-    const e: Escalas = {
-      ancho,
-      alto,
-      margen,
-      x: (t) => margen.izq + (t / (tMax || 1)) * areaX,
-      y: (v) => alto - margen.abajo - (v / (maxV || 1)) * areaY,
-    };
-
-    const svg = crearSvg(
-      ancho,
-      alto,
-      `Casos de dengue observados en ${origen.anio} y predicción de 1 a 8 semanas desde el ${fmtFecha.format(fecha(origen.fecha))}. Los valores están en la tabla siguiente.`,
-    );
-    svg.style.touchAction = 'pan-y';
-    svg.style.cursor = 'ew-resize';
-    ejeY(svg, e, maxV);
-
-    // etiquetas del eje X: inicio de cada año y semanas 13, 26 y 39
-    // origenes[i] y observado[i] son la misma semana
-    for (const [k, p] of obs.entries()) {
-      const d = fecha(p.fecha);
-      const semana = modelo.origenes[iIni + k]?.semana;
-      let texto: string | null = null;
-      if (semana === 1) texto = String(d.getFullYear());
-      else if (semana && [13, 26, 39].includes(semana)) texto = `S${semana}`;
-      if (!texto) continue;
-      const txt = el('text', {
-        x: e.x(tEje(p.fecha)),
-        y: alto - 8,
-        'text-anchor': 'middle',
-        'font-family': 'var(--font-sans)',
-        'font-size': 10,
-        fill: 'var(--color-ink-muted)',
-      });
-      txt.style.fontVariantNumeric = 'tabular-nums';
-      txt.textContent = texto;
-      svg.appendChild(txt);
-    }
-
-    // abanico desde la semana de partida (con predicción, la semana tiene dato)
-    const fan = (origen.horizontes ?? []).filter(
-      (h): h is Horizonte => h !== null,
-    );
-    const casosOrigen = origen.casos ?? 0;
-    if (fan.length) {
-      const desdeAncla = [
-        {
-          t: tEje(origen.fecha),
-          med: casosOrigen,
-          b50: [casosOrigen, casosOrigen],
-          b95: [casosOrigen, casosOrigen],
-        },
-        ...fan.map((h) => ({
-          t: tEje(h.fecha),
-          med: h.mediana,
-          b50: h.b50,
-          b95: h.b95,
-        })),
-      ];
-      svg.appendChild(
-        el('path', {
-          d: bandaPath(
-            e,
-            desdeAncla.map((p) => ({ t: p.t, lo: p.b95[0], hi: p.b95[1] })),
-          ),
-          fill: 'var(--color-accent)',
-          'fill-opacity': 0.12,
-          stroke: 'none',
-        }),
-      );
-      svg.appendChild(
-        el('path', {
-          d: bandaPath(
-            e,
-            desdeAncla.map((p) => ({ t: p.t, lo: p.b50[0], hi: p.b50[1] })),
-          ),
-          fill: 'var(--color-accent)',
-          'fill-opacity': 0.26,
-          stroke: 'none',
-        }),
-      );
-      svg.appendChild(
-        linea(
-          e,
-          desdeAncla.map((p) => ({ t: p.t, v: p.med })),
-          'var(--color-accent)',
-          1.8,
-          '3 3',
-        ),
-      );
-    }
-
-    // observado de todo el tramo
-    svg.appendChild(
-      linea(
-        e,
-        obs.map((p) => ({ t: tEje(p.fecha), v: p.casos })),
-        'var(--color-ink)',
-        1.6,
-      ),
-    );
-    // puntos observados en las semanas predichas
-    for (const h of fan) {
-      if (h.observado === null) continue;
-      svg.appendChild(
-        el('circle', {
-          cx: e.x(tEje(h.fecha)),
-          cy: e.y(h.observado),
-          r: 2.6,
-          fill: 'var(--color-ink)',
-          stroke: 'var(--color-bg)',
-          'stroke-width': 1,
-        }),
-      );
-    }
-
-    // semana de partida
-    const xO = e.x(tEje(origen.fecha));
-    svg.appendChild(
-      el('line', {
-        x1: xO,
-        x2: xO,
-        y1: margen.arriba,
-        y2: alto - margen.abajo,
-        stroke: 'var(--color-ink-muted)',
-        'stroke-width': 1,
-        'stroke-dasharray': '2 2',
-      }),
-    );
-    if (origen.casos !== null) {
-      svg.appendChild(
-        el('circle', {
-          cx: xO,
-          cy: e.y(origen.casos),
-          r: 3.2,
-          fill: 'var(--color-accent)',
-          stroke: 'var(--color-surface)',
-          'stroke-width': 1.5,
-        }),
-      );
-    }
-    // asa: indica que la línea se puede arrastrar
-    svg.appendChild(
-      el('rect', {
-        x: xO - 5,
-        y: margen.arriba - 14,
-        width: 10,
-        height: 12,
-        rx: 3,
-        fill: 'var(--color-accent)',
-      }),
-    );
-    const lbl = el('text', {
-      x: xO + (xO > ancho * 0.7 ? -9 : 9),
-      y: margen.arriba - 4,
-      'text-anchor': xO > ancho * 0.7 ? 'end' : 'start',
-      'font-family': 'var(--font-sans)',
-      'font-size': 10,
-      fill: 'var(--color-ink-muted)',
-    });
-    lbl.textContent = `S${origen.semana} · ${fmtFecha.format(fecha(origen.fecha))}`;
-    svg.appendChild(lbl);
-
-    // origenes seleccionables dentro del tramo, para arrastrar
-    const candidatos = modelo.origenes.slice(iIni, iFin + 1);
-    const origenEnX = (clientX: number) => {
-      const caja = svg.getBoundingClientRect();
-      if (!caja.width) return null;
-      const xSvg = ((clientX - caja.left) / caja.width) * ancho;
-      let mejor: number | null = null;
-      let dist = Infinity;
-      for (const o of candidatos) {
-        const d = Math.abs(e.x(tEje(o.fecha)) - xSvg);
-        if (d < dist) {
-          dist = d;
-          mejor = o.idx;
-        }
-      }
-      return mejor;
-    };
-
-    return { svg, origenEnX };
-  }
+  import { alCruzarAnchoMovil, crearLeyenda, esMovil } from './ui-nowcast';
 
   // --- texto y tabla -----------------------------------------------------------
 
-  function dentro(h: Horizonte): string {
-    if (h.observado === null)
-      return h.sinPublicar ? 'semana sin publicar' : 'sin dato todavía';
-    if (h.observado >= h.b50[0] && h.observado <= h.b50[1]) return 'rango 50 %';
-    if (h.observado >= h.b95[0] && h.observado <= h.b95[1]) return 'rango 95 %';
-    return 'fuera';
-  }
-
-  function enTablero(retro: NowcastDengueRetrospectivo, iso: string): boolean {
-    return Boolean(retro.tablero && iso >= retro.tablero.inicio.fecha);
-  }
-
-  function nombreReferencia(
-    retro: NowcastDengueRetrospectivo,
-    origen: Origen,
-  ): string {
-    if (retro.tablero && enTablero(retro, origen.fecha)) {
-      return (
-        NOMBRE_REFERENCIA[retro.tablero.referencia] ?? retro.tablero.referencia
-      );
-    }
-    const nombres = new Set(
-      Object.values(retro.referencia_por_horizonte ?? {}),
-    );
-    if (nombres.size === 1) {
-      const [n] = nombres;
-      return NOMBRE_REFERENCIA[n] ?? n;
-    }
-    return 'la referencia más fuerte en cada horizonte';
-  }
-
-  function resumenOrigen(modelo: Modelo, origen: Origen): HTMLElement {
+  function resumenOrigen(modelo: ModeloContraste, origen: Origen): HTMLElement {
     const p = document.createElement('p');
     p.className = 'font-sans text-sm leading-relaxed text-ink';
     p.setAttribute('aria-live', 'polite');
-    const casos =
-      origen.casos === null
-        ? 'sin dato publicado'
-        : `${fmtNum.format(origen.casos)} casos`;
-    const cabeza = `Semana ${origen.semana} de ${origen.anio} (${fmtFecha.format(fecha(origen.fecha))}, ${casos}).`;
-
-    if (!origen.horizontes && origen.motivo === 'hueco_en_serie') {
-      p.textContent = `${cabeza} Sin predicción desde esta semana: el modelo usa las ocho semanas anteriores y a esa ventana le falta una semana que la fuente no publicó.`;
-      return p;
-    }
-    if (!origen.horizontes) {
-      const primera = modelo.retro.primera_semana_con_prediccion;
-      p.textContent =
-        `${cabeza} Sin predicción desde esta semana: el modelo necesita unos tres años de datos para entrenarse.` +
-        (primera
-          ? ` La primera semana con predicción es la ${primera.semana} de ${primera.anio}.`
-          : '');
-      return p;
-    }
-    if (origen.esAncla) {
-      p.textContent = `${cabeza} Es la última semana publicada de la serie: todavía no hay valores observados para contrastar.`;
-      return p;
-    }
-
-    const conDato = origen.horizontes.filter(
-      (h): h is Horizonte => h !== null && h.observado !== null,
-    );
-    const en50 = conDato.filter((h) => dentro(h) === 'rango 50 %').length;
-    const en95 = conDato.filter((h) => dentro(h) !== 'fuera').length;
-    const pares = conDato.filter(
-      (h) => h.wisModelo !== null && h.wisReferencia !== null,
-    );
-    let error = '';
-    if (pares.length) {
-      const wm =
-        pares.reduce((s, h) => s + (h.wisModelo ?? 0), 0) / pares.length;
-      const wr =
-        pares.reduce((s, h) => s + (h.wisReferencia ?? 0), 0) / pares.length;
-      error = ` Error medio del modelo: ${fmtNum.format(wm)}, frente a ${fmtNum.format(wr)} de ${nombreReferencia(modelo.retro, origen)}.`;
-    }
-    p.textContent =
-      `${cabeza} De ${conDato.length} semanas observadas después, ` +
-      `${en50} quedaron dentro del rango del 50 % y ${en95} dentro del 95 %.${error}`;
+    p.textContent = textoResumenOrigen(modelo, origen);
     return p;
   }
 
   function tabla(origen: Origen): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'mt-3 overflow-x-auto scroll-shadow-x';
+    wrap.tabIndex = 0;
+    wrap.setAttribute('role', 'region');
+    wrap.setAttribute(
+      'aria-label',
+      `Predicción desde la semana ${origen.semana} de ${origen.anio} y casos observados`,
+    );
     const t = document.createElement('table');
     t.className =
       'w-full min-w-[34rem] font-sans text-xs tabular-nums text-ink';
@@ -585,7 +180,7 @@
         [`${fmtNum.format(h.b50[0])}–${fmtNum.format(h.b50[1])}`, 'text-right'],
         [`${fmtNum.format(h.b95[0])}–${fmtNum.format(h.b95[1])}`, 'text-right'],
         [h.observado === null ? '—' : fmtNum.format(h.observado), 'text-right'],
-        [dentro(h), 'text-left'],
+        [dentroDe(h), 'text-left'],
       ];
       celdas.forEach(([texto, alinear], i) => {
         const td = document.createElement(i === 0 ? 'th' : 'td');
@@ -601,48 +196,28 @@
     return wrap;
   }
 
-  function notaAnio(modelo: Modelo, anio: number): HTMLElement {
-    const retro = modelo.retro;
+  function notaAnio(modelo: ModeloContraste, anio: number): HTMLElement {
     const p = document.createElement('p');
     p.className = 'mt-3 font-sans text-xs leading-relaxed text-ink-muted';
-    const partes: string[] = [];
-
-    const tablero = retro.tablero?.anios.includes(anio)
-      ? retro.tablero
-      : undefined;
-    if (anio === retro.anio_excluido && retro.aviso_anio_excluido) {
-      partes.push(retro.aviso_anio_excluido);
-    } else if (tablero) {
-      const { inicio } = tablero.prueba;
-      partes.push(
-        `Desde ${tablero.inicio.anio} la serie es la del tablero de MINSAL y la predicción combina el modelo con una tendencia amortiguada. ` +
-          `${tablero.anios.join(' y ')} sirvieron para elegir ese método; la prueba con semanas nuevas empieza en la semana ${inicio.semana} de ${inicio.anio}.`,
-      );
-    } else if (retro.anios_prueba?.includes(anio)) {
-      partes.push(
-        `${anio} es una de las temporadas de la validación publicada.`,
-      );
-    }
-
-    const r4 = retro.resumen_por_anio?.[String(anio)]?.['4'];
-    const referencia = tablero
-      ? tablero.referencia
-      : (retro.referencia_por_horizonte?.['4'] ?? '');
-    if (r4 && r4.skill !== null) {
-      const pct = Math.round(Math.abs(r4.skill) * 100);
-      const comparacion = r4.skill >= 0 ? `${pct} % menos` : `${pct} % más`;
-      partes.push(
-        `A 4 semanas, en ${anio} el modelo tuvo ${comparacion} error que ${NOMBRE_REFERENCIA[referencia] ?? 'la referencia'}; ` +
-          `lo observado quedó dentro del rango del 50 % en el ${Math.round(r4.cobertura_50 * 100)} % de las semanas y dentro del 95 % en el ${Math.round(r4.cobertura_95 * 100)} %.`,
-      );
-    }
-    p.textContent = partes.join(' ');
+    p.textContent = textoNotaAnio(modelo, anio);
     return p;
   }
 
   // --- montaje -----------------------------------------------------------------
 
-  function montar(sec: HTMLElement, cont: HTMLElement, modelo: Modelo) {
+  const LEYENDA = [
+    { nombre: SERIE.publicado, muestra: 'continua' },
+    { nombre: SERIE.mediana, muestra: 'punteada' },
+    { nombre: SERIE.rango50, muestra: 'banda50' },
+    { nombre: SERIE.rango95, muestra: 'banda95' },
+    { nombre: SERIE.diferencia, muestra: 'segmento' },
+  ] as const;
+
+  function montar(
+    sec: HTMLElement,
+    cont: HTMLElement,
+    modelo: ModeloContraste,
+  ) {
     const selAnio = sec.querySelector<HTMLSelectElement>('[data-anio]')!;
     const rango = sec.querySelector<HTMLInputElement>('[data-semana]')!;
     const salida = sec.querySelector<HTMLElement>('[data-semana-valor]')!;
@@ -659,30 +234,54 @@
       }),
     );
 
+    const barraLeyenda = document.createElement('div');
+    barraLeyenda.className = 'flex flex-wrap items-center gap-2';
     const contGrafica = document.createElement('div');
     contGrafica.className =
-      'overflow-hidden rounded-xl border border-border bg-bg p-3 sm:p-4';
+      'mt-2 overflow-hidden rounded-xl border border-border bg-bg p-2 sm:p-3';
+    const lienzo = document.createElement('div');
+    lienzo.className = 'h-[300px] w-full min-w-0 select-none sm:h-[360px]';
+    lienzo.style.touchAction = 'pan-y';
+    renderEsqueletoTraza(lienzo);
+    contGrafica.appendChild(lienzo);
+    const pista = document.createElement('p');
+    pista.className =
+      'mt-2 font-sans text-[11px] leading-relaxed text-ink-muted';
+    const textoPista = () =>
+      esMovil(lienzo)
+        ? 'Cambia la semana de partida con el control deslizante o las flechas. Los segmentos unen la mediana de cada semana con el valor publicado.'
+        : 'Arrastra sobre la gráfica para mover la semana de partida. Los segmentos unen la mediana de cada semana con el valor publicado.';
     const contResumen = document.createElement('div');
     contResumen.className = 'mt-3';
-    const leyenda = document.createElement('p');
-    leyenda.className =
-      'mt-2 font-sans text-[11px] leading-relaxed text-ink-muted';
-    leyenda.textContent =
-      'Línea oscura: casos observados. Línea punteada y bandas: predicción (mediana, rangos del 50 % y del 95 %). Arrastra sobre la gráfica para mover la semana de partida.';
     const contTabla = document.createElement('div');
     const contNota = document.createElement('div');
     cont.replaceChildren(
+      barraLeyenda,
       contGrafica,
-      leyenda,
+      pista,
       contResumen,
       contTabla,
       contNota,
     );
+    pista.textContent = textoPista();
     cont.removeAttribute('aria-busy');
 
     let actual = modelo.origenes[modelo.origenes.length - 1];
-    let grafica: Grafica | null = null;
+    let grafico: GraficoMontado | null = null;
+    let anioGrafico: number | null = null;
     let anioDibujado: number | null = null;
+    const visibles: Visibles = {};
+
+    const construir = (t: Parameters<typeof opcionContraste>[0]) =>
+      opcionContraste(t, modelo, actual, { movil: esMovil(lienzo), visibles });
+
+    const dibujarGrafica = () => {
+      if (!grafico) return;
+      // el mismo año conserva la escala: la gráfica se transforma sin
+      // repetir la entrada; otro año la dibuja de nuevo
+      grafico.actualizar(construir, { suave: anioGrafico === actual.anio });
+      anioGrafico = actual.anio;
+    };
 
     const pintar = (idx: number) => {
       const o =
@@ -699,8 +298,7 @@
       btnAnt.disabled = o.idx === 0;
       btnSig.disabled = o.idx === modelo.origenes.length - 1;
 
-      grafica = dibujar(modelo, o);
-      contGrafica.replaceChildren(grafica.svg);
+      dibujarGrafica();
       contResumen.replaceChildren(resumenOrigen(modelo, o));
       contTabla.replaceChildren(
         o.horizontes ? tabla(o) : document.createElement('div'),
@@ -726,13 +324,37 @@
     btnAnt.addEventListener('click', () => pintar(actual.idx - 1));
     btnSig.addEventListener('click', () => pintar(actual.idx + 1));
 
-    // arrastrar sobre la gráfica
+    // arrastrar sobre la gráfica: la semana de partida salta a la más cercana
     let arrastrando = false;
+    const origenEnX = (clientX: number): number | null => {
+      if (!grafico) return null;
+      const caja = lienzo.getBoundingClientRect();
+      const valor = grafico.instancia.convertFromPixel({ xAxisIndex: 0 }, [
+        clientX - caja.left,
+        caja.height / 2,
+      ]);
+      const t = Array.isArray(valor) ? Number(valor[0]) : Number(valor);
+      if (!Number.isFinite(t)) return null;
+      const delAnio = modelo.porAnio.get(actual.anio) ?? [actual];
+      let mejor: number | null = null;
+      let dist = Infinity;
+      for (const o of delAnio) {
+        const d = Math.abs(marcaTiempo(o.fecha) - t);
+        if (d < dist) {
+          dist = d;
+          mejor = o.idx;
+        }
+      }
+      return mejor;
+    };
     const mover = (ev: PointerEvent) => {
-      const idx = grafica?.origenEnX(ev.clientX);
-      if (idx !== null && idx !== undefined && idx !== actual.idx) pintar(idx);
+      const idx = origenEnX(ev.clientX);
+      if (idx !== null && idx !== actual.idx) pintar(idx);
     };
     contGrafica.addEventListener('pointerdown', (ev) => {
+      // en pantalla estrecha la ventana se encuadra en la semana de partida:
+      // arrastrar movería la gráfica bajo el dedo, así que solo hay controles
+      if (esMovil(lienzo)) return;
       arrastrando = true;
       contGrafica.setPointerCapture(ev.pointerId);
       mover(ev);
@@ -749,6 +371,43 @@
     for (const control of [selAnio, rango, btnAnt, btnSig])
       control.disabled = false;
     pintar(actual.idx);
+
+    // la gráfica se monta aparte: los controles y el texto ya responden
+    const idxAlPedir = actual.idx;
+    void montarGrafico(
+      lienzo,
+      construir,
+      `Casos de dengue observados y predicción de 1 a 8 semanas desde una semana de partida elegida. Los valores de la semana elegida están en la tabla siguiente.`,
+    ).then((montado) => {
+      grafico = montado;
+      anioGrafico = actual.anio;
+      lienzo.style.cursor = esMovil(lienzo) ? '' : 'ew-resize';
+      if (!esMovil(lienzo))
+        montado.instancia.getZr().setCursorStyle('ew-resize');
+      alCruzarAnchoMovil(lienzo, () => {
+        pista.textContent = textoPista();
+        montado.actualizar(construir);
+      });
+      const leyenda = crearLeyenda(
+        [...LEYENDA],
+        visibles,
+        (nombre: NombreSerie, visible: boolean) => {
+          visibles[nombre] = visible;
+          montado.instancia.dispatchAction({
+            type: visible ? 'legendSelect' : 'legendUnSelect',
+            name: nombre,
+          });
+        },
+        (nombre) =>
+          montado.instancia.dispatchAction({
+            type: nombre ? 'highlight' : 'downplay',
+            seriesName: nombre ?? undefined,
+          }),
+      );
+      barraLeyenda.appendChild(leyenda.elemento);
+      // la semana pudo cambiar mientras cargaba ECharts
+      if (actual.idx !== idxAlPedir) montado.actualizar(construir);
+    });
   }
 
   async function iniciar(sec: HTMLElement) {

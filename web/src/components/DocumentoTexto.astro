@@ -505,7 +505,7 @@ const cuerpo = contenido.replace(
   /* El ancla de una sección cerrada abre el acordeón (ver el script), así que
      el encabezado ya no queda tapado por la cabecera fija. */
   .doc-texto h2[id] {
-    scroll-margin-top: 6rem;
+    scroll-margin-top: calc(var(--alto-header) + 0.5rem);
   }
   @media (prefers-reduced-motion: reduce) {
     .doc-texto .acordeon > summary::after {

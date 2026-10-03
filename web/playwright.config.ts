@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const URL_BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4321';
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
@@ -14,7 +16,19 @@ export default defineConfig({
   timeout: 45_000,
   expect: { timeout: 10_000 },
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4321',
+    baseURL: URL_BASE,
+    // La barra del análisis se contrae sola a los 5 s sin actividad
+    // (ToolbarAnalisis.astro); con eso los specs verían los controles
+    // desaparecer a mitad de test. Su propio spec arranca sin esta clave.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: new URL(URL_BASE).origin,
+          localStorage: [{ name: 'epi:toolbar-fija', value: '1' }],
+        },
+      ],
+    },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
