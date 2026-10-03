@@ -169,3 +169,100 @@ que originó la pregunta y no puede confirmarlo.
   `--parte-b`, `--parte-c`), commiteado con sus pruebas antes de correrlo.
 - Pruebas `backend/ingestion/tests/test_cambio_anio.py`.
 - Resultados en `docs/agentes/mejora-predictor/resultados-nuevos/cambio_anio.json`.
+
+## Resultados (2026-10-03)
+
+Script commiteado antes de correr (58946d3). Las 21 pruebas unitarias pasan. Controles: `q_T` y
+`q_C_R0` guardados se reproducen (diferencia máxima 0,0005 en T y 0,0026 en C, dentro de las
+tolerancias de la Fase 1). La historia tiene 99 pares de FA en 14 semanas objetivo (3 por año en
+2019, 2022, 2023 y 2024; 2 en 2021, porque una semana no tiene predicción), 256 pares de V en 32
+semanas y 1721 pares de R en 217 semanas.
+
+### Parte A: el salto frente a la historia
+
+D por cambio de año y percentil en la referencia nula (385 ventanas; p05, p50 y p95 de la
+referencia: −0,54, 0,08 y 0,73 en la serie cruda; −0,46, 0,10 y 0,62 en la historia de T):
+
+| cambio | D cruda | percentil | D historia de T | percentil |
+|---|---|---|---|---|
+| 2014 a 2015 | +0,101 | 0,52 | −1,047 | 0,00 |
+| 2015 a 2016 | −0,783 | 0,01 | −0,934 | 0,00 |
+| 2016 a 2017 | −0,097 | 0,31 | −0,586 | 0,01 |
+| 2017 a 2018 | −0,153 | 0,25 | −0,420 | 0,07 |
+| 2018 a 2019 | −0,223 | 0,20 | −0,569 | 0,01 |
+| 2019 a 2020 | −0,539 | 0,05 | −0,864 | 0,00 |
+| 2020 a 2021 | −0,220 | 0,20 | −0,632 | 0,00 |
+| 2021 a 2022 | +0,159 | 0,61 | +0,131 | 0,56 |
+| 2022 a 2023 | +0,076 | 0,49 | −0,695 | 0,00 |
+| 2023 a 2024 | −0,298 | 0,15 | −0,286 | 0,12 |
+| 2024 a 2025 | −0,360 | 0,12 | −0,360 | 0,09 |
+| 2025 a 2026 | +1,086 | 0,99 | +1,086 | 1,00 |
+
+De 2015 a 2025, la serie cruda tiene 3 cambios positivos y 8 negativos (mediana de percentiles
+0,20) y la historia de T, 1 positivo y 10 negativos (mediana 0,01). Lo que se repite es una baja
+al empezar el año, más marcada en la historia suavizada porque el promedio de 7 semanas arrastra
+el fondo de diciembre. El máximo de los 11 cambios anteriores es +0,159 (cruda) y +0,131 (historia
+de T); 2026 está en +1,086, con percentil 0,992 y 1,00. Se cumple el criterio fijado: 2026 queda
+fuera de lo visto en las dos series.
+
+### Parte B: cobertura por tramo en la historia
+
+Cobertura del 95 % de C (pares; semanas objetivo; fallos por arriba y por abajo):
+
+| horizontes | FA | V | R |
+|---|---|---|---|
+| h = 1 a 2 | 1,000 (27; 14; 0/0) | 0,984 (64; 32; 1/0) | 0,995 (434; 217; 2/0) |
+| h = 3 a 4 | 1,000 (24; 12; 0/0) | 1,000 (64; 32; 0/0) | 0,984 (433; 217; 7/0) |
+| h = 5 a 8 | 1,000 (48; 12; 0/0) | 0,969 (128; 32; 4/0) | 0,987 (854; 215; 11/0) |
+| todos | 1,000 (99; 14; 0/0) | 0,980 (256; 32; 5/0) | 0,988 (1721; 217; 20/0) |
+
+Con todos los horizontes: M0 cubre 0,970 en FA, 0,953 en V y 0,971 en R; T cubre 0,929, 0,934 y
+0,967. Solo T se separa algo en FA a h = 1 a 2 (0,815 en 27 pares, con 4 fallos por arriba y 1
+por abajo).
+
+Criterios para C:
+
+| tramo | cobertura 95 % | B1 (menor o igual que 0,85) | p de permutación (Holm) | B2 | fallos arriba / abajo | B3 |
+|---|---|---|---|---|---|---|
+| FA | 1,000 | no | 1,000 (1,000) | no | 0 / 0 | no |
+| V | 0,980 | no | 0,282 (0,564) | no | 5 / 0 | sí |
+
+Ningún tramo cumple las tres condiciones. En la historia, el rango del 95 % de C cubre las semanas
+del cambio de año y de vacaciones igual que el resto.
+
+Aparte de los criterios, las semanas de FA son más difíciles que las de R: el error absoluto medio
+de la mediana de C en `log1p` es 0,243 contra 0,152 (razón 1,60; por grupo de horizontes entre 1,48
+y 1,67), 0,210 en V (razón 1,38), y la cobertura del 50 % baja a 0,626 en FA, 0,668 en V y 0,763 en
+R. En M0 la razón de FA es 1,21 y en T 1,40. El rango del 95 % absorbe ese error mayor.
+
+### Parte C
+
+No se corre, como fija el protocolo. La historia no respalda una regla de ensanchamiento por
+calendario.
+
+### Qué se concluye
+
+1. El cambio de año no tiene en la historia un salto hacia arriba que aprender. La baja de los
+   primeros días del año es estacional, y C la cubre: 14 semanas objetivo de FA entre 2019 y 2024,
+   99 pares, ningún fallo.
+2. El salto de 2026 queda fuera de los 11 cambios anteriores (D de +1,09 contra un máximo de
+   +0,16; la semana 1 fue 3,6 veces el nivel de las semanas 47 a 50, contra 1,65 como máximo).
+   Una regla de ensanchamiento en las semanas 1 a 3 ajustada a ese episodio se ajustaría a un solo
+   caso y no tiene respaldo en el resto de la historia. No se firma como candidata.
+3. En 2026 el rango del 95 % de C en las semanas 1 a 3 sí falló (0,00 de cobertura de h = 2 a
+   h = 8 con 1 a 3 semanas por horizonte, en `analisis-cobertura-2026.md`). Lo que se mide aquí
+   es que antes de 2026 no fallaba, de modo que la falla de 2026 no se explica por un defecto
+   de calendario de C.
+4. Si el salto se repite en 2027-S1, la predicción puede volver a fallar en esas semanas. La prueba
+   prospectiva ya reporta como sensibilidad las cifras sin las semanas 50 a 3. Qué produce el
+   escalón queda abierto: reprocesos o revisiones del tablero, empalmes entre cortes o un cálculo
+   que se reinicia al cambiar de año. Se aclara con capturas semanales del tablero que conserven
+   todas las versiones y con la consulta a MINSAL.
+5. La caída de las semanas 19 a 23 (18 de los 40 fallos) no se trata aquí y tampoco tiene un
+   calendario que la explique.
+
+### Qué sigue
+
+Esta línea queda cerrada con resultado negativo. Documentar en la Biblioteca que el rango puede
+quedar corto en el cambio de año, y que lo mismo vale para saltos del tablero sin precedente, es
+una decisión aparte.
