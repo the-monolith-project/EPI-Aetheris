@@ -51,7 +51,7 @@ cambia:
 |---|---|---|---|
 | K1 | 0,904 | 0,959 | 0,907 contra 0,901 |
 | K2 | 0,981 | 0,884 | 0,932 contra 0,913 |
-| K3 | 0,979 | 0,995 | no se midió en la Fase 1; `--verificar` la reporta |
+| K3 | 0,979 | 0,995 | 0,910 contra 0,907 (medida con `--verificar`) |
 
 Lo que debilita esa evidencia: 2025 a 2026-S37 es dentro de muestra; K2 se eligió mirando esas
 semanas; la validación que respalda a K1 y K2 mide contra una serie suavizada mientras M0 se
@@ -110,8 +110,8 @@ limitar candidatas.
 - Script `backend/ingestion/experimento_nowcast_candidatas.py`, con pruebas en
   `backend/ingestion/tests/test_candidatas.py`.
 - `--verificar` calcula las tres candidatas con las semanas ya vistas (2024 a 2026-S37, de
-  `rangos.json`) y debe reproducir las razones de la tabla de evidencia previa. No mira ninguna
-  semana de prueba. Salida en `docs/agentes/mejora-predictor/resultados-nuevos/candidatas_verificacion.json`.
+  `rangos.json`) y debe reproducir las razones de la tabla de evidencia previa, con diferencia
+  menor que 0,001. Las reproduce (diferencia máxima 0,0004). No mira ninguna semana de prueba. Salida en `docs/agentes/mejora-predictor/resultados-nuevos/candidatas_verificacion.json`.
 - `--evaluar` es la evaluación firmada. Salida en
   `backend/ingestion/data/interim/nowcast/candidatas_prueba.json`.
 - Las fórmulas de las candidatas están dentro del script, que no depende de los scripts de los
