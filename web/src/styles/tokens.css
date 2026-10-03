@@ -45,6 +45,12 @@
   --color-live: #ff5a45;
   --color-live-ink: #2b0d08;
 
+  /* Estimaciones y predicciones: lo que el modelo calcula, frente a los
+     casos publicados (tinta). Un azul propio separa ambos sin depender solo
+     de línea punteada o continua. Contraste 6,3:1 sobre la superficie clara
+     y 7,9:1 el tono del tema oscuro sobre la suya. */
+  --color-estimacion: #1f5fb4;
+
   /* Anillo de foco de teclado -- lavanda fija en vez de currentColor, que
      dentro de bg-deep hereda --ink (#040316) y queda casi invisible sobre
      #011e1e. La lavanda contrasta >12:1 sobre #011e1e; sobre el fondo claro
@@ -78,11 +84,12 @@
   --font-display: var(--font-fraunces), Georgia, serif;
 }
 
-/* Tema oscuro: sigue al sistema salvo que la persona haya elegido uno
-   (data-theme en <html>, guardado en localStorage por el selector del
-   encabezado). */
+/* Tema por defecto: claro. El oscuro solo se activa si la persona lo elige
+   (data-theme="dark" en <html>, guardado en localStorage por el selector del
+   encabezado). Quien elige "Sistema" (data-theme="system") sigue el ajuste
+   del dispositivo. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root[data-theme='system'] {
     --color-bg: #0e1412;
     --color-surface: #161d1b;
     --color-ink: #eceff1;
@@ -90,6 +97,7 @@
     --color-border: #2a3531;
     --color-accent: #8fd6c9;
     --color-termino: #c3b5f7;
+    --color-estimacion: #7db3f5;
     --color-accent-ink: #04120f;
     --color-header: #0b2a26;
     --color-live-ink: #2b0d08;
@@ -110,6 +118,7 @@
   --color-border: #2a3531;
   --color-accent: #8fd6c9;
   --color-termino: #c3b5f7;
+  --color-estimacion: #7db3f5;
   --color-accent-ink: #04120f;
   --color-header: #0b2a26;
   --color-live-ink: #2b0d08;

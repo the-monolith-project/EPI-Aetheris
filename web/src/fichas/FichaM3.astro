@@ -1,0 +1,351 @@
+---
+/**
+ * Contenido de la ficha enriquecida de M3 (presión epidemiológica relativa).
+ * Siete pasos, de la fuente de los casos al laboratorio, con el canal
+ * endémico como último paso de lectura. Los valores del ejemplo son
+ * ilustrativos: sirven para seguir el cálculo, no son una semana medida. Las
+ * cifras salen de src/lib/presion.ts, el mismo cálculo que la API.
+ */
+import LaboratorioPresion from '../components/LaboratorioPresion.astro';
+import MapaDepartamentoFicha from '../components/MapaDepartamentoFicha.astro';
+import PasoFicha from '../components/PasoFicha.astro';
+import Termino from '../components/Termino.astro';
+import { colorCategoriaPresion, RAMPA_PRESION_CATEGORIA } from '../lib/colores';
+import { RUTA_SENSIBILIDAD } from '../lib/enlaces';
+import { svgCanalMini, svgRectaPercentil } from '../lib/graficos-presion';
+import { formatearNumero } from '../lib/idoneidad';
+import {
+  ANIOS_BASE_PRESION,
+  EJEMPLO_PRESION,
+  MINIMO_ANIOS,
+  NOTA_SIN_BASELINE,
+  PRESETS_PRESION,
+  calcularPresion,
+  construirPool,
+  rangoPercentil,
+  semanasEnVentana,
+  serieEjemplo,
+} from '../lib/presion';
+import { svgTiraAnios } from '../lib/tira-anios';
+
+const f1 = (n: number) => formatearNumero(n, 1);
+const e = EJEMPLO_PRESION;
+const serie = serieEjemplo(e.ventanas, e.anio, e.semana, e.observado);
+const res = calcularPresion(serie, e.anio, e.semana);
+const { pool } = construirPool(serie, e.anio, e.semana);
+// El ejemplo tiene cuatro años con dato: hay línea base.
+const pct = res.percentil as number;
+const p50 = res.p50_baseline as number;
+const p75 = res.p75_baseline as number;
+const categoria = res.categoria as 'baja' | 'media' | 'alta';
+const color = colorCategoriaPresion(categoria);
+const semanas = semanasEnVentana(e.semana);
+const maximo = Math.ceil((Math.max(...pool, e.observado) * 1.1) / 10) * 10;
+const formatoCasos = (n: number) => String(Math.round(n));
+
+const grupos = [
+  ...e.ventanas.map((v) => ({
+    etiqueta: String(v.anio),
+    valores: [...v.casos],
+  })),
+  { etiqueta: String(e.anio), valores: [e.observado], apartado: true },
+];
+const tiraVentana = svgTiraAnios({ grupos, maximo, formato: formatoCasos });
+const tiraCortes = svgTiraAnios({
+  grupos,
+  maximo,
+  formato: formatoCasos,
+  lineas: [
+    { valor: p50, etiqueta: `P50 ${f1(p50)}`, tipo: 'corte' },
+    { valor: p75, etiqueta: `P75 ${f1(p75)}`, tipo: 'corte' },
+  ],
+});
+const descripcionVentanas = e.ventanas
+  .map((v) => `${v.anio}: ${v.casos.join(', ')}`)
+  .join('; ');
+
+// Sin historia suficiente: el preset del laboratorio.
+const sinHistoria = PRESETS_PRESION.find((p) => p.clave === 'sin-historia')!;
+const serieCorta = serieEjemplo(
+  sinHistoria.ventanas,
+  e.anio,
+  e.semana,
+  sinHistoria.observado,
+);
+const resCorto = calcularPresion(serieCorta, e.anio, e.semana);
+const tiraCorta = svgTiraAnios({
+  grupos: [
+    ...sinHistoria.ventanas.map((v) => ({
+      etiqueta: String(v.anio),
+      valores: v.casos,
+      atenuado: v.casos.every((c) => c === null),
+    })),
+    {
+      etiqueta: String(e.anio),
+      valores: [sinHistoria.observado],
+      apartado: true,
+    },
+  ],
+  maximo,
+  formato: formatoCasos,
+});
+
+const recta = svgRectaPercentil({
+  valores: pool,
+  observado: e.observado,
+  etiquetaObservado: `${e.observado} casos → percentil ${f1(pct)}`,
+});
+const empate = [2, 2, 2, 5];
+const pctEmpate = rangoPercentil(empate, 2);
+const rectaEmpate = svgRectaPercentil({
+  valores: empate,
+  observado: 2,
+  etiquetaObservado: `2 casos → percentil ${f1(pctEmpate)}`,
+  alto: 110,
+});
+const ordenados = [...pool].sort((a, b) => a - b);
+
+// Canal endémico de ejemplo: dieciséis semanas, dos sin línea base.
+const canal = [
+  [20, 6, 11, 4],
+  [21, 7, 12, 6],
+  [22, 8, 14, 9],
+  [23, 9, 16, 13],
+  [24, 11, 19, 15],
+  [25, 13, 22, 21],
+  [26, null, null, 26],
+  [27, null, null, 30],
+  [28, 18, 30, 33],
+  [29, 19, 32, 35],
+  [30, 20, 33, 31],
+  [31, 20, 33, 27],
+  [32, 19, 31, 22],
+  [33, 17, 28, 18],
+  [34, 15, 25, null],
+  [35, 13, 22, 12],
+].map(([semana, a, b, o]) => ({
+  semana: semana as number,
+  p50: a,
+  p75: b,
+  observado: o,
+}));
+const svgCanal = svgCanalMini({
+  semanas: canal,
+  colores: RAMPA_PRESION_CATEGORIA as [string, string, string],
+});
+const etiquetaCategoria = { baja: 'baja', media: 'media', alta: 'alta' };
+---
+
+<PasoFicha id="fuente" numero={1} titulo="De dónde sale">
+  <p>
+    M3 usa los casos de dengue por departamento y semana de los boletines
+    epidemiológicos de MINSAL. Hay dos series: casos <Termino clave="probable"
+      >probables</Termino
+    > y casos <Termino clave="confirmado">confirmados</Termino>. Se calculan por
+    separado; nunca se usa el total ni se suman las dos.
+  </p>
+  <p>
+    La serie departamental llega hasta 2023: desde 2024 los boletines no se
+    pueden descargar de forma automática y el tablero de MINSAL no publica
+    dengue por departamento. La capa de <a
+      href="/biblioteca/03-funciones#m4-integridad-de-la-vigilancia"
+      >integridad de la vigilancia (M4)</a
+    > muestra hasta dónde llega cada fuente.
+  </p>
+  <div slot="visual" class="ficha-rejilla">
+    <div class="ficha-tarjeta">
+      <strong>Boletines de MINSAL</strong>
+      <span>Casos por departamento y semana, 2018 a 2023</span>
+    </div>
+    <div class="ficha-tarjeta">
+      <strong>Probable</strong>
+      <span>Una serie</span>
+    </div>
+    <div class="ficha-tarjeta">
+      <strong>Confirmado</strong>
+      <span>Otra serie, nunca sumada a la anterior</span>
+    </div>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="ventana" numero={2} titulo="Una ventana y otros años">
+  <p>
+    Los años de referencia son {ANIOS_BASE_PRESION.join(', ')}; 2020 no entra.
+    Para describir una semana se toman los casos de esa semana, la anterior y la
+    siguiente (una ventana de ±1 semana que no pasa de un año a otro) en los
+    otros años. El año que se describe queda fuera.
+  </p>
+  <div slot="visual">
+    <p class="ficha-nota">
+      Ejemplo con valores inventados: semana {e.semana} de {e.anio}, en un
+      departamento.
+    </p>
+    <div
+      class="ficha-grafico"
+      role="img"
+      aria-label={`Casos de las semanas ${semanas.join(', ')} en los años de referencia: ${descripcionVentanas}. Aparte, ${e.anio} con ${e.observado} casos en la semana ${e.semana}.`}
+      set:html={tiraVentana}
+    />
+    <p class="ficha-resultado">
+      {pool.length} valores en el conjunto, de {res.anios_baseline} años. {
+        e.anio
+      }, apartado a la derecha, no entra.
+    </p>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="sin-calculo" numero={3} titulo="Cuándo no se calcula">
+  <p>
+    Hace falta que al menos {MINIMO_ANIOS} de los años de referencia tengan alguna
+    observación en la ventana. Si no, el percentil queda vacío y el sistema lo dice
+    con una nota; no se interpola.
+  </p>
+  <p>
+    Una semana sin fila en la fuente es un <Termino clave="hueco">hueco</Termino
+    >: no se cuenta como cero casos ni entra al conjunto.
+  </p>
+  <div slot="visual">
+    <div
+      class="ficha-grafico"
+      role="img"
+      aria-label={`Ejemplo con huecos: solo ${resCorto.anios_baseline} años de referencia tienen alguna observación en la ventana.`}
+      set:html={tiraCorta}
+    />
+    <p class="ficha-resultado">
+      {resCorto.anios_baseline} años con dato de {MINIMO_ANIOS} necesarios. Nota del
+      sistema: «{NOTA_SIN_BASELINE}».
+    </p>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="percentil" numero={4} titulo="El percentil">
+  <p>
+    El <Termino clave="percentil-presion">percentil</Termino> dice dónde cae la cifra
+    observada dentro del conjunto, de 0 a 100. Se ordenan los valores y se busca la
+    posición de la cifra entre ellos, interpolando entre los vecinos (la operación
+    inversa del percentil con interpolación lineal).
+  </p>
+  <p>
+    Si la cifra coincide con varios valores iguales, toma el punto medio de ese
+    tramo. Por debajo del menor valor es 0 y por encima del mayor es 100.
+  </p>
+  <div slot="visual">
+    <div
+      class="ficha-grafico"
+      role="img"
+      aria-label={`Los ${pool.length} valores ordenados, ${ordenados.join(', ')}, y la marca de ${e.observado} casos en el percentil ${f1(pct)}.`}
+      set:html={recta}
+    />
+    <p class="ficha-resultado">
+      {e.observado} casos → percentil <strong>{f1(pct)}</strong>
+    </p>
+    <p class="ficha-nota ficha-nota-separada">
+      Un empate, con otro conjunto corto: 2, 2, 2 y 5.
+    </p>
+    <div
+      class="ficha-grafico"
+      role="img"
+      aria-label={`Conjunto 2, 2, 2 y 5 con una cifra de 2: ocupa las posiciones 1 a 3 y toma el punto medio, percentil ${f1(pctEmpate)}.`}
+      set:html={rectaEmpate}
+    />
+    <p class="ficha-resultado">
+      El 2 ocupa los tres primeros lugares; su punto medio da el percentil <strong
+        >{f1(pctEmpate)}</strong
+      >.
+    </p>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="cortes" numero={5} titulo="Cortes y lectura">
+  <p>
+    Del conjunto salen dos cortes, el P50 y el P75. Hasta el P50 la presión es
+    «baja»; entre el P50 y el P75, «media»; por encima del P75, «alta». Si la
+    cifra es igual a un corte, cae en la categoría de abajo.
+  </p>
+  <p>
+    El color de la categoría sale de la rampa de presión del mapa del tablero.
+  </p>
+  <div slot="visual" class="ficha-color">
+    <div class="ficha-color-texto">
+      <div
+        class="ficha-grafico"
+        role="img"
+        aria-label={`Las mismas barras con el P50 en ${f1(p50)} y el P75 en ${f1(p75)}.`}
+        set:html={tiraCortes}
+      />
+      <dl class="ficha-cifras">
+        <div><dt>P50</dt><dd>{f1(p50)}</dd></div>
+        <div><dt>P75</dt><dd>{f1(p75)}</dd></div>
+        <div><dt>Percentil</dt><dd>{f1(pct)}</dd></div>
+        <div><dt>Categoría</dt><dd>{etiquetaCategoria[categoria]}</dd></div>
+      </dl>
+    </div>
+    <div class="ficha-color-mapa">
+      <MapaDepartamentoFicha
+        codigo="SV-SS"
+        relleno={color}
+        etiqueta={`Mapa de El Salvador con San Salvador pintado en la categoría ${categoria}`}
+      >
+        <ul class="mapa-ficha-estados">
+          {
+            (['baja', 'media', 'alta'] as const).map((c) => (
+              <li>
+                <span style={`background:${colorCategoriaPresion(c)}`} />
+                {c}
+              </li>
+            ))
+          }
+        </ul>
+      </MapaDepartamentoFicha>
+    </div>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="canal" numero={6} titulo="El canal endémico">
+  <p>
+    El <Termino clave="canal-endemico">canal endémico</Termino> dibuja los mismos
+    cortes en todas las semanas del año: tres bandas (baja, media y alta) con los
+    casos observados encima. Las semanas sin línea base suficiente quedan en blanco.
+  </p>
+  <p>
+    El panel con los datos de cada departamento está en su <a
+      href="/departamento/SV-SS">ficha departamental</a
+    > y en el análisis de dengue.
+  </p>
+  <div slot="visual">
+    <p class="ficha-nota">Canal de ejemplo, semanas 20 a 35.</p>
+    <div
+      class="ficha-grafico"
+      role="img"
+      aria-label="Canal endémico de ejemplo de las semanas 20 a 35: los casos suben hasta la banda alta entre las semanas 25 y 29 y bajan después. Las semanas 26 y 27 no tienen línea base y la 34 no tiene observación."
+      set:html={svgCanal}
+    />
+    <ul class="mapa-ficha-estados ficha-leyenda-fila">
+      {
+        (['baja', 'media', 'alta'] as const).map((c) => (
+          <li>
+            <span style={`background:${colorCategoriaPresion(c)}`} />
+            {c}
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="laboratorio" numero={7} titulo="Pruébalo">
+  <p>
+    Elige un departamento y una serie, mueve los casos de la semana y prueba con
+    distintas historias. Es una simulación con los valores que pongas; al lado
+    aparece la última presión que calculó el sistema para ese departamento.
+  </p>
+  <p>
+    M3 compara lo ya ocurrido con los otros años del mismo departamento: no usa
+    el clima ni emite alertas. Sus límites están en el <a
+      href={RUTA_SENSIBILIDAD}>aviso de sensibilidad</a
+    >.
+  </p>
+  <div slot="visual">
+    <LaboratorioPresion />
+  </div>
+</PasoFicha>

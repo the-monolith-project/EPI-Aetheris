@@ -1,17 +1,29 @@
 ---
 import FichaEnriquecida from '../../../components/FichaEnriquecida.astro';
 import FichaM1 from '../../../fichas/FichaM1.astro';
-import { FICHAS } from '../../../fichas/registro';
+import FichaM2 from '../../../fichas/FichaM2.astro';
+import FichaM3 from '../../../fichas/FichaM3.astro';
+import FichaM4 from '../../../fichas/FichaM4.astro';
+import { FICHAS, rutaFicha } from '../../../fichas/registro';
 
 export function getStaticPaths() {
-  return FICHAS.map((ficha) => ({
+  const vecina = (i: number) =>
+    FICHAS[i]
+      ? { href: rutaFicha(FICHAS[i].slug), titulo: FICHAS[i].titulo }
+      : undefined;
+  return FICHAS.map((ficha, i) => ({
     params: { slug: ficha.slug },
-    props: ficha,
+    props: { ...ficha, anterior: vecina(i - 1), siguiente: vecina(i + 1) },
   }));
 }
 
 // Contenido de cada ficha por slug.
-const CONTENIDO = { 'm1-idoneidad-biofisica': FichaM1 } as const;
+const CONTENIDO = {
+  'm1-idoneidad-biofisica': FichaM1,
+  'm2-anomalia-climatica': FichaM2,
+  'm3-presion-epidemiologica': FichaM3,
+  'm4-integridad-vigilancia': FichaM4,
+} as const;
 
 const ficha = Astro.props;
 const Contenido = CONTENIDO[ficha.slug as keyof typeof CONTENIDO];
@@ -29,6 +41,8 @@ if (!Contenido) {
   etiquetas={ficha.etiquetas}
   descripcion={ficha.descripcion}
   documentacion={ficha.documentacion}
+  anterior={ficha.anterior}
+  siguiente={ficha.siguiente}
 >
   <Contenido />
 </FichaEnriquecida>

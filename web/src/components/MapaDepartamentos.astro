@@ -272,8 +272,14 @@ import { rutaFicha } from '../fichas/registro';
     type CapaAnalitica,
     type SerieEpidemiologica,
   } from '../lib/tipos-analisis';
-  import { RAMPA_IV } from '../lib/colores';
+  import {
+    RAMPA_ANOMALIA,
+    RAMPA_CONFIANZA,
+    RAMPA_IV,
+    RAMPA_PRESION_CATEGORIA,
+  } from '../lib/colores';
   import { rutaFicha } from '../fichas/registro';
+  import { protegerScrollMapa } from '../lib/mapa-scroll';
   import { renderErrorFuente } from './estado-async';
   import { escapeHtml } from '../utils/security';
 
@@ -311,6 +317,9 @@ import { rutaFicha } from '../fichas/registro';
   const API_BASE = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const SIN_DATO = '#e4e4e7';
   const RUTA_FICHA_M1 = rutaFicha('m1-idoneidad-biofisica');
+  const RUTA_FICHA_M2 = rutaFicha('m2-anomalia-climatica');
+  const RUTA_FICHA_M3 = rutaFicha('m3-presion-epidemiologica');
+  const RUTA_FICHA_M4 = rutaFicha('m4-integridad-vigilancia');
 
   // El shapeName del geojson (geoBoundaries) es inconsistente: 12 de los 14
   // departamentos traen el prefijo "Departamento de ..." pero La Libertad y
@@ -597,17 +606,6 @@ import { rutaFicha } from '../fichas/registro';
     },
   };
 
-  // Rampa diverging neutra (azul / gris / naranja) -- deliberadamente sin
-  // rojo ni ningún color asociado a alerta/urgencia. La anomalía es un
-  // valor continuo descriptivo, no un cruce de umbral.
-  const RAMPA_ANOMALIA = [
-    '#3a6ea5',
-    '#8fb8d9',
-    '#e5e5e5',
-    '#e8b86d',
-    '#b5651d',
-  ];
-
   const capaAnomalia: DefinicionCapa = {
     id: 'anomalia',
     etiqueta: 'Anomalía climática (continua)',
@@ -617,6 +615,7 @@ import { rutaFicha } from '../fichas/registro';
       'departamento y semana. Es condición biofísica (clima), no incidencia ni riesgo; ' +
       'los casos MINSAL y la presión epidemiológica no llegan más allá de 2023.',
     tituloLeyenda: 'Anomalía climática (σ respecto al promedio histórico)',
+    enlaceLeyenda: RUTA_FICHA_M2,
     rampa: RAMPA_ANOMALIA,
     sinDatoColor: SIN_DATO,
     async cargarValores() {
@@ -718,14 +717,6 @@ import { rutaFicha } from '../fichas/registro';
     media: 1,
     alta: 2,
   };
-  // Presión solo tiene 3 categorías posibles (baja/media/alta) -- los 3 tonos
-  // de teal anteriores eran demasiado parecidos entre sí y con pocos
-  // departamentos en "media"/"alta" el mapa se veía casi de un solo color.
-  // Mismo family de verde de la marca, pero mucho más separado en luminosidad
-  // y saturación para que la diferencia se note incluso con pocos casos en
-  // las categorías altas.
-  const RAMPA_PRESION = ['#e8f3ef', '#4fae95', '#0b3d33'];
-
   let detallesPresion = new Map<string, DatoPresion>();
 
   function definirCapaPresion(
@@ -739,7 +730,8 @@ import { rutaFicha } from '../fichas/registro';
         `Compara los casos ${serie} observados con la historia del mismo departamento y periodo. ` +
         'Un valor alto indica qué tan inusual es lo observado frente a la historia del propio departamento.',
       tituloLeyenda: `Presión relativa (${serie}, frente a P50/P75 de su referencia histórica)`,
-      rampa: RAMPA_PRESION,
+      enlaceLeyenda: RUTA_FICHA_M3,
+      rampa: RAMPA_PRESION_CATEGORIA,
       sinDatoColor: SIN_DATO,
       async cargarValores() {
         const datos = await obtenerDatosPresion();
@@ -810,7 +802,6 @@ import { rutaFicha } from '../fichas/registro';
   const ESTADO_SIN_DATO = 0;
   const ESTADO_PRESENTE = 1;
   const ESTADO_NO_CUADRA = 2;
-  const RAMPA_CONFIANZA = ['#d4d4d8', '#5b7c99', '#c4a35a'];
 
   const capaConfianza: DefinicionCapa = {
     id: 'confianza',
@@ -820,6 +811,7 @@ import { rutaFicha } from '../fichas/registro';
       'El color indica si ese departamento tiene fila esa semana, si falta el dato, o si el ' +
       'boletín no cuadra aritméticamente. No es un nivel de riesgo ni un índice de confianza opaco.',
     tituloLeyenda: 'Calidad del dato (semana seleccionada)',
+    enlaceLeyenda: RUTA_FICHA_M4,
     rampa: RAMPA_CONFIANZA,
     sinDatoColor: SIN_DATO,
     async cargarValores() {
@@ -1185,20 +1177,24 @@ import { rutaFicha } from '../fichas/registro';
     // hace que el mapa "rebote" en vez de dejar salir el pan; minZoom evita
     // alejar hasta ver la región entera.
     const LIMITES_SV = L.latLngBounds([12.95, -90.35], [14.65, -87.45]);
+    // Con departamentos como unidad no hay nada que ver más cerca de 10.
+    const MAX_ZOOM = 10;
     contenedorMapa.innerHTML = '';
     contenedorMapa.removeAttribute('aria-busy');
     const mapa = L.map(contenedorMapa, {
       minZoom: 8,
+      maxZoom: MAX_ZOOM,
       maxBounds: LIMITES_SV,
       maxBoundsViscosity: 1.0,
     }).setView([13.79, -88.9], 8);
+    protegerScrollMapa(contenedorMapa);
     new ResizeObserver(() => {
       mapa.invalidateSize({ animate: false, pan: false });
     }).observe(contenedorMapa);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution:
         '&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 12,
+      maxZoom: MAX_ZOOM,
     }).addTo(mapa);
 
     const respGeo = await fetch('/geo/slv-adm1.geojson');

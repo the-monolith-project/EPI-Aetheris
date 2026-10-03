@@ -98,9 +98,9 @@ const COLUMNAS: { id: string; titulo: string; enlaces: Enlace[] }[] = [
 ];
 ---
 
-<footer class="mt-16 bg-deep">
-  <div class="mx-auto max-w-[1600px] px-4 py-12 sm:px-8 sm:py-16 lg:px-12">
-    <div class="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+<footer class="mt-12 bg-deep sm:mt-16">
+  <div class="mx-auto max-w-[1600px] px-4 py-10 sm:px-8 sm:py-16 lg:px-12">
+    <div class="grid grid-cols-2 gap-x-6 gap-y-8 sm:gap-10 lg:grid-cols-4">
       {
         COLUMNAS.map((columna) => (
           <nav aria-labelledby={columna.id}>
@@ -145,7 +145,7 @@ const COLUMNAS: { id: string; titulo: string; enlaces: Enlace[] }[] = [
       }
     </div>
 
-    <div class="mt-12 border-t border-white/10 pt-6">
+    <div class="mt-10 border-t border-white/10 pt-6 sm:mt-12">
       <p
         class="max-w-4xl font-sans text-xs leading-relaxed text-deep-ink-muted"
       >

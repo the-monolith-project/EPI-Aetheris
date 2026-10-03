@@ -1,5 +1,6 @@
 // Tema de ECharts. Solo importa tipos: los componentes lo cargan de forma
 // estática sin arrastrar ECharts (ver echarts-base.ts).
+import { animacionesActivas } from './animaciones.ts';
 import type { OpcionEcharts } from './echarts-base';
 
 /** Tokens de tokens.css resueltos a valores concretos. */
@@ -11,7 +12,11 @@ export interface TokensGrafico {
   acento: string;
   secundario: string;
   seleccion: string;
+  /** Azul de las estimaciones y predicciones (--color-estimacion). */
+  estimacion: string;
   fuente: string;
+  /** Familia del texto corrido (tooltips, anotaciones); `fuente` es la mono. */
+  fuenteTexto: string;
 }
 
 /**
@@ -31,12 +36,10 @@ export function leerTokens(): TokensGrafico {
     acento: token('--color-accent', '#183e39'),
     secundario: token('--color-secondary', '#dddbff'),
     seleccion: token('--color-seleccion', '#183e39'),
+    estimacion: token('--color-estimacion', '#1f5fb4'),
     fuente: token('--font-mono', 'ui-monospace, monospace'),
+    fuenteTexto: token('--font-sans', 'system-ui, sans-serif'),
   };
-}
-
-export function reducirMovimiento(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /** Etiqueta de semana epidemiológica: 5 -> "SE05". */
@@ -57,7 +60,9 @@ export function crearOpcionBase(
   } = {},
 ): OpcionEcharts {
   return {
-    animation: !reducirMovimiento(),
+    // El interruptor «Animaciones» del pie manda sobre la preferencia del
+    // sistema (animacionesActivas ya la usa cuando no hay elección guardada).
+    animation: animacionesActivas(),
     animationDuration: 400,
     // Transición al cambiar la semana: corta y sin rebote (ver
     // GraficoMontado.actualizar con `suave`).

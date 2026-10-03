@@ -139,6 +139,7 @@ const endpoint =
     suscribirFiltrosRespiratorio,
   } from '../lib/respiratorio-state';
   import { esNoDisponible, motivoNoDisponible } from './estado-async';
+  import { protegerScrollMapa } from '../lib/mapa-scroll';
 
   function cargarCssLeaflet() {
     if (document.querySelector(`link[href="${leafletCssHref}"]`)) return;
@@ -345,20 +346,24 @@ const endpoint =
     // sin esto, un scroll de más con la rueda del mouse manda a ver
     // Guatemala u Honduras, que el proyecto todavía no cubre.
     const LIMITES_SV = L.latLngBounds([12.95, -90.35], [14.65, -87.45]);
+    // Con departamentos como unidad no hay nada que ver más cerca de 10.
+    const MAX_ZOOM = 10;
     contenedorMapa.innerHTML = '';
     contenedorMapa.removeAttribute('aria-busy');
     const mapa = L.map(contenedorMapa, {
       minZoom: 8,
+      maxZoom: MAX_ZOOM,
       maxBounds: LIMITES_SV,
       maxBoundsViscosity: 1.0,
     }).setView([13.79, -88.9], 8);
+    protegerScrollMapa(contenedorMapa);
     mapa.whenReady(() => {
       mapa.invalidateSize();
     });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution:
         '&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 12,
+      maxZoom: MAX_ZOOM,
     }).addTo(mapa);
 
     const respGeo = await fetch('/geo/slv-adm1.geojson');

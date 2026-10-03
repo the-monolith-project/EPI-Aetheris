@@ -11,6 +11,7 @@ import {
   AriaComponent,
   GridComponent,
   LegendComponent,
+  MarkAreaComponent,
   MarkLineComponent,
   TooltipComponent,
 } from 'echarts/components';
@@ -24,6 +25,7 @@ echarts.use([
   AriaComponent,
   GridComponent,
   LegendComponent,
+  MarkAreaComponent,
   MarkLineComponent,
   TooltipComponent,
   SVGRenderer,

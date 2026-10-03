@@ -1,0 +1,123 @@
+---
+/**
+ * El país en contorno con un solo departamento relleno, para las fichas de
+ * M2 a M4 (la de M1 usa MapaDepartamentoIv, con su escala de Iv). El color lo
+ * decide quien llama; la leyenda va en el slot. Los trazados se proyectan al
+ * construir la página (src/lib/geo-svg.ts) y el laboratorio solo cambia cuál
+ * está relleno, con qué color y la etiqueta.
+ */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { proyectarDepartamentos, type GeoDepartamentos } from '../lib/geo-svg';
+
+interface Props {
+  codigo: string;
+  /** Color del departamento; null lo deja sin relleno. */
+  relleno: string | null;
+  /** Texto equivalente del mapa (aria-label). */
+  etiqueta: string;
+  id?: string;
+}
+
+const { codigo, relleno, etiqueta, id } = Astro.props;
+
+const geo = JSON.parse(
+  readFileSync(join(process.cwd(), 'public/geo/slv-adm1.geojson'), 'utf8'),
+) as GeoDepartamentos;
+const mapa = proyectarDepartamentos(geo, 340);
+---
+
+<figure class="mapa-ficha" id={id} data-mapa-ficha>
+  <svg
+    viewBox={`0 0 ${mapa.ancho} ${mapa.alto}`}
+    role="img"
+    aria-label={etiqueta}
+    class="mapa-ficha-svg"
+    data-mapa-ficha-svg
+  >
+    {
+      mapa.departamentos.map((d) => (
+        <path
+          d={d.d}
+          data-codigo={d.codigo}
+          class:list={[
+            'mapa-ficha-depto',
+            { seleccionado: d.codigo === codigo },
+          ]}
+          style={
+            d.codigo === codigo && relleno !== null
+              ? `--relleno:${relleno}`
+              : undefined
+          }
+        />
+      ))
+    }
+  </svg>
+  <figcaption class="mapa-ficha-leyenda"><slot /></figcaption>
+</figure>
+
+<style is:global>
+  .mapa-ficha {
+    margin: 0;
+  }
+  .mapa-ficha-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .mapa-ficha-depto {
+    fill: var(--color-surface);
+    stroke: var(--color-ink-muted);
+    stroke-width: 0.8;
+    stroke-linejoin: round;
+    opacity: 0.55;
+    transition:
+      fill 0.7s ease,
+      opacity 0.3s;
+  }
+  .mapa-ficha-depto.seleccionado {
+    fill: var(--relleno, var(--color-border));
+    stroke: var(--color-ink);
+    stroke-width: 1.6;
+    opacity: 1;
+  }
+  .mapa-ficha-leyenda {
+    margin-top: 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    color: var(--color-ink-muted);
+  }
+  .mapa-ficha-rampa {
+    display: block;
+    height: 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 9999px;
+  }
+  .mapa-ficha-escala {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+  }
+  .mapa-ficha-estados {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mapa-ficha-estados li {
+    display: flex;
+    gap: 0.45rem;
+    align-items: center;
+  }
+  .mapa-ficha-estados span {
+    flex: none;
+    width: 0.85rem;
+    height: 0.85rem;
+    border: 1px solid var(--color-ink-muted);
+    border-radius: 0.2rem;
+  }
+</style>

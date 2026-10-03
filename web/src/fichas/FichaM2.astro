@@ -1,0 +1,249 @@
+---
+/**
+ * Contenido de la ficha enriquecida de M2 (anomalía climática continua). Seis
+ * pasos, de la entrada (el Iv de M1) al laboratorio. Los valores del ejemplo
+ * son ilustrativos: sirven para seguir el cálculo, no son una semana medida.
+ * Las cifras salen de src/lib/anomalia.ts, el mismo cálculo que la API.
+ */
+import LaboratorioAnomalia from '../components/LaboratorioAnomalia.astro';
+import MapaDepartamentoFicha from '../components/MapaDepartamentoFicha.astro';
+import PasoFicha from '../components/PasoFicha.astro';
+import Termino from '../components/Termino.astro';
+import { rutaFicha } from './registro';
+import {
+  EJEMPLO_ANOMALIA,
+  MINIMO_POOL,
+  SIGMA_ESCALA,
+  calcularBaselineSemana,
+  calcularSigma,
+  corpusAnios,
+} from '../lib/anomalia';
+import { colorAnomalia, gradienteCss, RAMPA_ANOMALIA } from '../lib/colores';
+import { RUTA_SENSIBILIDAD } from '../lib/enlaces';
+import { formatearNumero } from '../lib/idoneidad';
+import { svgTiraAnios } from '../lib/tira-anios';
+
+const f2 = (n: number) => formatearNumero(n, 2);
+const e = EJEMPLO_ANOMALIA;
+
+// El ejemplo en la forma de una serie año → semana → Iv.
+const serie: Record<number, Record<number, number>> = {};
+for (const ref of e.referencias) serie[ref.anio] = { [e.semana]: ref.iv };
+serie[e.anioDescrito] = { [e.semana]: e.valor };
+const b = calcularBaselineSemana(
+  serie,
+  e.anioDescrito,
+  e.semana,
+  corpusAnios(e.anioDescrito),
+);
+// El ejemplo tiene doce años: la línea base existe.
+const mediana = b.mediana as number;
+const desviacion = b.desviacion as number;
+const p25 = b.p25 as number;
+const p75 = b.p75 as number;
+const sigma = calcularSigma(e.valor, mediana, desviacion) as number;
+const color = colorAnomalia(sigma);
+
+const grupos = [
+  ...e.referencias.map((ref) => ({
+    etiqueta: String(ref.anio),
+    valores: [ref.iv],
+  })),
+  { etiqueta: String(e.anioDescrito), valores: [e.valor], apartado: true },
+];
+const tiraConjunto = svgTiraAnios({ grupos, maximo: 1 });
+const tiraResumen = svgTiraAnios({
+  grupos,
+  maximo: 1,
+  banda: { desde: mediana - desviacion, hasta: mediana + desviacion },
+  lineas: [
+    { valor: mediana, etiqueta: `mediana ${f2(mediana)}`, tipo: 'mediana' },
+    { valor: p25, etiqueta: `P25 ${f2(p25)}`, tipo: 'cuantil' },
+    { valor: p75, etiqueta: `P75 ${f2(p75)}`, tipo: 'cuantil' },
+  ],
+});
+const listaIv = e.referencias.map((ref) => f2(ref.iv)).join(', ');
+const posicion = ((sigma + SIGMA_ESCALA) / (2 * SIGMA_ESCALA)) * 100;
+const signo = (n: number) => (n > 0 ? `+${f2(n)}` : f2(n).replace('-', '−'));
+---
+
+<PasoFicha id="fuente" numero={1} titulo="De dónde sale">
+  <p>
+    La entrada de M2 es el <Termino clave="iv">Iv</Termino> de M1: un número de 0
+    a 1 por departamento y por semana, que resume qué tan favorable fue el clima para
+    el mosquito. Cómo se calcula está en la <a
+      href={rutaFicha('m1-idoneidad-biofisica')}>ficha de M1</a
+    >.
+  </p>
+  <p>
+    M2 lo compara con la historia del mismo departamento. La línea base va de
+    2014 al año en curso, así que cada año nuevo suma una semana más a cada
+    referencia y las cifras históricas cambian un poco.
+  </p>
+  <div slot="visual" class="ficha-rejilla">
+    <div class="ficha-tarjeta">
+      <strong>Iv de la semana</strong>
+      <span>M1 · un departamento</span>
+    </div>
+    <div class="ficha-tarjeta">
+      <strong>La misma semana en otros años</strong>
+      <span>De 2014 al año en curso</span>
+    </div>
+    <div class="ficha-tarjeta">
+      <strong>Anomalía en σ</strong>
+      <span>Desviaciones respecto de lo habitual</span>
+    </div>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="conjunto" numero={2} titulo="Una semana contra los mismos años">
+  <p>
+    Para describir la semana {e.semana} de {e.anioDescrito} se juntan los Iv de la
+    semana {e.semana} de los otros años. Es la misma semana exacta, sin las vecinas,
+    y el año que se describe queda fuera del conjunto: no se compara consigo mismo.
+  </p>
+  <p>
+    Si el conjunto tiene menos de {MINIMO_POOL} valores, M2 no calcula nada y la semana
+    queda sin anomalía.
+  </p>
+  <div slot="visual">
+    <p class="ficha-nota">
+      Ejemplo con valores inventados para seguir el cálculo.
+    </p>
+    <div
+      class="ficha-grafico"
+      role="img"
+      aria-label={`Iv de la semana ${e.semana} en ${e.referencias.length} años de referencia: ${listaIv}. Aparte, el año descrito, ${e.anioDescrito}, con ${f2(e.valor)}.`}
+      set:html={tiraConjunto}
+    />
+    <p class="ficha-resultado">
+      {b.pool.length} años en el conjunto. {e.anioDescrito}, apartado a la
+      derecha, no entra.
+    </p>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="habitual" numero={3} titulo="Lo habitual y su dispersión">
+  <p>
+    Del conjunto salen dos números. La <Termino clave="mediana">mediana</Termino
+    > dice qué es lo habitual en esa semana. La <Termino
+      clave="desviacion-estandar">desviación estándar</Termino
+    > muestral (que divide entre el número de años menos uno) dice cuánto suelen apartarse
+    los años de ese centro.
+  </p>
+  <p>
+    También se calculan los cuantiles P25 y P75, la banda que el tablero dibuja
+    detrás de la serie de Iv. La mitad de los años cae entre los dos.
+  </p>
+  <div slot="visual">
+    <div
+      class="ficha-grafico"
+      role="img"
+      aria-label={`Las mismas barras con la mediana en ${f2(mediana)}, una banda de una desviación de ${f2(mediana - desviacion)} a ${f2(mediana + desviacion)} y los cuantiles P25 en ${f2(p25)} y P75 en ${f2(p75)}.`}
+      set:html={tiraResumen}
+    />
+    <dl class="ficha-cifras">
+      <div><dt>Mediana</dt><dd>{f2(mediana)}</dd></div>
+      <div><dt>Desviación</dt><dd>{formatearNumero(desviacion, 3)}</dd></div>
+      <div><dt>P25</dt><dd>{f2(p25)}</dd></div>
+      <div><dt>P75</dt><dd>{f2(p75)}</dd></div>
+    </dl>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="formula" numero={4} titulo="La fórmula">
+  <p>
+    La <Termino clave="anomalia">anomalía</Termino> es la distancia entre el Iv de
+    la semana y la mediana, medida en desviaciones. Si la desviación es prácticamente
+    cero (todos los años iguales), la división no tiene sentido y la semana queda
+    sin dato.
+  </p>
+  <p>
+    Se lee así: 0 es una semana típica; +1, una desviación por encima de lo
+    habitual; −1, una por debajo. Es una serie continua, sin umbral ni alerta.
+  </p>
+  <div slot="visual" class="ficha-combina">
+    <p class="ficha-formula ficha-formula-grande">
+      σ = (Iv − mediana) / desviación
+    </p>
+    <p
+      class="ficha-cuenta"
+      aria-label={`σ igual a ${f2(e.valor)} menos ${f2(mediana)}, dividido entre ${formatearNumero(desviacion, 3)}, que da ${signo(sigma)}`}
+    >
+      <span aria-hidden="true">(</span>
+      <span><b>{f2(e.valor)}</b><small>Iv {e.anioDescrito}</small></span>
+      <span aria-hidden="true">−</span>
+      <span><b>{f2(mediana)}</b><small>mediana</small></span>
+      <span aria-hidden="true">) /</span>
+      <span
+        ><b>{formatearNumero(desviacion, 3)}</b><small>desviación</small></span
+      >
+      <span aria-hidden="true">=</span>
+      <span class="ficha-cuenta-resultado"
+        ><b>{signo(sigma)}</b><small>σ</small></span
+      >
+    </p>
+    <div
+      class="ficha-escala-sigma"
+      style={`background:${gradienteCss(RAMPA_ANOMALIA)}`}
+      aria-hidden="true"
+    >
+      <span class="ficha-escala-marca" style={`left:${posicion}%`}></span>
+      <span class="ficha-escala-etiquetas">
+        <span>−3</span><span>−1</span><span>0</span><span>+1</span><span
+          >+3</span
+        >
+      </span>
+    </div>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="color" numero={5} titulo="Del número al color">
+  <p>
+    La anomalía se pinta con la rampa divergente de la capa de anomalía del
+    mapa: azul por debajo de lo habitual, gris cerca de cero y naranja por
+    encima. No hay rojo, porque no marca un peligro. En esta ficha la escala va
+    fija de −3 a 3 desviaciones.
+  </p>
+  <div slot="visual" class="ficha-color">
+    <div class="ficha-color-mapa">
+      <MapaDepartamentoFicha
+        codigo="SV-SS"
+        relleno={color}
+        etiqueta={`Mapa de El Salvador con San Salvador pintado según una anomalía de ${signo(sigma)} σ`}
+      >
+        <span
+          class="mapa-ficha-rampa"
+          style={`background:${gradienteCss(RAMPA_ANOMALIA)}`}></span>
+        <span class="mapa-ficha-escala"
+          ><span>−3</span><span>σ</span><span>+3</span></span
+        >
+      </MapaDepartamentoFicha>
+    </div>
+    <p class="ficha-resultado">
+      <span
+        class="ficha-muestra"
+        style={`background:${color}`}
+        aria-hidden="true"></span>
+      σ {signo(sigma)} → este color en San Salvador.
+    </p>
+  </div>
+</PasoFicha>
+
+<PasoFicha id="laboratorio" numero={6} titulo="Pruébalo">
+  <p>
+    Elige un departamento, mueve el Iv del año descrito y el de los años de
+    referencia. Un campo vacío es un año sin dato. Es una simulación con los
+    valores que pongas; al lado aparece la última anomalía que midió el sistema
+    en ese departamento.
+  </p>
+  <p>
+    M2 describe el clima de una semana frente a su historia: no emite alertas ni
+    anticipa temporadas. Sus límites están en el <a href={RUTA_SENSIBILIDAD}
+      >aviso de sensibilidad</a
+    >.
+  </p>
+  <div slot="visual">
+    <LaboratorioAnomalia />
+  </div>
+</PasoFicha>

@@ -14,12 +14,32 @@ const PAGINAS = [
 ];
 
 test.describe('tema oscuro', () => {
-  test('sigue al sistema y cambia el fondo', async ({ page }) => {
+  test('por defecto es claro aunque el sistema sea oscuro', async ({
+    page,
+  }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto('/');
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/);
+    await expect(page.locator('body')).toHaveCSS(
+      'background-color',
+      'rgb(240, 240, 240)',
+    );
+  });
+
+  test('elegir "Sistema" sigue el ajuste del dispositivo', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.addInitScript(() =>
+      window.localStorage.setItem('epi:tema', 'sistema'),
+    );
     await page.goto('/');
     await expect(page.locator('body')).toHaveCSS(
       'background-color',
       'rgb(14, 20, 18)',
+    );
+    await page.emulateMedia({ colorScheme: 'light' });
+    await expect(page.locator('body')).toHaveCSS(
+      'background-color',
+      'rgb(240, 240, 240)',
     );
   });
 
@@ -36,10 +56,13 @@ test.describe('tema oscuro', () => {
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await boton.click();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/);
+    await expect(boton).toHaveAttribute('aria-pressed', 'false');
   });
 
-  test('una elección clara manda sobre un sistema oscuro', async ({ page }) => {
+  test('una elección clara guardada manda sobre un sistema oscuro', async ({
+    page,
+  }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.addInitScript(() =>
       window.localStorage.setItem('epi:tema', 'light'),
@@ -72,6 +95,9 @@ test.describe('tema oscuro', () => {
     }) => {
       // Sin movimiento: axe medía el contraste a mitad de la animación de entrada.
       await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+      await page.addInitScript(() =>
+        window.localStorage.setItem('epi:tema', 'dark'),
+      );
       await page.goto(ruta);
       await page.waitForLoadState('load');
       // Los cargadores atenuados de una recarga no son el estado final: con
@@ -95,6 +121,9 @@ test.describe('tema oscuro', () => {
     page,
   }) => {
     await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+    await page.addInitScript(() =>
+      window.localStorage.setItem('epi:tema', 'dark'),
+    );
     await page.goto('/dengue');
     await page.waitForLoadState('load');
     await expect(page.locator('#toolbar-analisis')).toBeVisible();

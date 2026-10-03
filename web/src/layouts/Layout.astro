@@ -110,13 +110,17 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
     <title>{title}</title>
     <script is:inline>
       // Tema elegido antes del primer pintado, para no parpadear en claro.
+      // Misma resolución que resolverTema en lib/preferencias.ts: sin
+      // elección guardada, claro.
       try {
         const tema = localStorage.getItem('epi:tema');
         if (tema === 'dark' || tema === 'light') {
           document.documentElement.setAttribute('data-theme', tema);
+        } else if (tema === 'sistema') {
+          document.documentElement.setAttribute('data-theme', 'system');
         }
       } catch {
-        // Sin almacenamiento manda el tema del sistema.
+        // Sin almacenamiento queda el tema claro.
       }
     </script>
     <script is:inline>
@@ -178,25 +182,69 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
     <header
       class="sticky top-0 z-40 bg-header shadow-[0_1px_0_rgba(255,255,255,0.06)]"
     >
+      {
+        /* Cabecera compacta en teléfono: el logo y los controles comparten la
+        primera fila y la navegación va debajo, desplazable en horizontal.
+        Antes eran tres filas (180 px, un cuarto de la pantalla, y fija). Su
+        altura la publica --alto-header (global.css) para que la barra pegajosa
+        del análisis y los scroll-margin de las anclas no queden tapados. */
+      }
       <div
-        class="mx-auto flex max-w-[1600px] flex-col items-stretch gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-8 sm:py-5 lg:px-12"
+        class="mx-auto flex max-w-[1600px] flex-col gap-1 px-4 pb-1.5 pt-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-8 sm:py-5 lg:px-12"
       >
-        <a
-          href="/"
-          class="group flex items-center"
-          aria-label="EPI-Aetheris, inicio"
-        >
-          <img
-            src="/logo/logo-dark-bg.svg"
-            alt="EPI-Aetheris"
-            class="h-11 w-auto shrink-0 transition-opacity duration-200 group-hover:opacity-80 sm:h-12"
-            width="1066"
-            height="424"
-          />
-        </a>
+        <div class="flex items-center justify-between sm:contents">
+          <a
+            href="/"
+            class="group flex min-h-[44px] items-center sm:order-1"
+            aria-label="EPI-Aetheris, inicio"
+          >
+            <img
+              src="/logo/logo-dark-bg.svg"
+              alt="EPI-Aetheris"
+              class="h-8 w-auto shrink-0 transition-opacity duration-200 group-hover:opacity-80 sm:h-12"
+              width="1066"
+              height="424"
+            />
+          </a>
+          <div class="flex shrink-0 items-center gap-1 sm:order-3">
+            <button
+              type="button"
+              data-selector-tema
+              aria-pressed="false"
+              class="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-2 rounded-full px-2 font-sans text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white sm:px-3"
+            >
+              <span class="icono-tema icono-tema-oscuro sm:hidden">
+                <Icono nombre="moon" class="h-5 w-5" />
+              </span>
+              <span class="icono-tema icono-tema-claro sm:hidden">
+                <Icono nombre="sun" class="h-5 w-5" />
+              </span>
+              <span data-selector-tema-texto class="sr-only sm:not-sr-only"
+                >Tema oscuro</span
+              >
+            </button>
+            <a
+              href="/configuracion"
+              aria-current={ruta.startsWith('/configuracion')
+                ? 'page'
+                : undefined}
+              aria-label="Configuración"
+              title="Configuración (atajos de teclado y preferencias)"
+              class:list={[
+                'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full transition-colors',
+                ruta.startsWith('/configuracion')
+                  ? 'bg-white/15 text-white'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white',
+              ]}
+            >
+              <Icono nombre="settings" class="h-5 w-5" />
+            </a>
+          </div>
+        </div>
 
         <nav
-          class="-mx-4 flex flex-nowrap items-center gap-1 overflow-x-auto px-4 font-sans text-sm sm:mx-0 sm:justify-start sm:overflow-visible sm:px-0"
+          data-nav-principal
+          class="nav-principal -mx-4 flex flex-nowrap items-center gap-1 overflow-x-auto px-4 font-sans text-sm sm:order-2 sm:mx-0 sm:justify-start sm:overflow-visible sm:px-0"
           aria-label="Navegación principal"
         >
           {
@@ -223,32 +271,6 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
             })
           }
         </nav>
-        <div class="flex shrink-0 items-center gap-1 self-start sm:self-auto">
-          <button
-            type="button"
-            data-selector-tema
-            aria-pressed="false"
-            class="flex min-h-[44px] shrink-0 items-center gap-2 rounded-full px-3 font-sans text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            <span data-selector-tema-texto>Tema oscuro</span>
-          </button>
-          <a
-            href="/configuracion"
-            aria-current={ruta.startsWith('/configuracion')
-              ? 'page'
-              : undefined}
-            aria-label="Configuración"
-            title="Configuración (atajos de teclado y preferencias)"
-            class:list={[
-              'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full transition-colors',
-              ruta.startsWith('/configuracion')
-                ? 'bg-white/15 text-white'
-                : 'text-white/70 hover:bg-white/10 hover:text-white',
-            ]}
-          >
-            <Icono nombre="settings" class="h-5 w-5" />
-          </a>
-        </div>
       </div>
     </header>
 
@@ -259,7 +281,7 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
 
     <script>
       // Selector de tema: alterna entre claro y oscuro y recuerda la elección
-      // (lib/preferencias.ts). Sin elección guardada manda el sistema. Se
+      // (lib/preferencias.ts). Sin elección guardada, claro. Se
       // repinta también cuando el tema cambia desde otro control: el atajo de
       // teclado o la página /configuracion.
       import {
@@ -290,7 +312,67 @@ const NAV: { href: string; etiqueta: string; rutas?: string[] }[] = [
         .addEventListener('change', pintarSelectorTema);
       window.addEventListener(EVENTO_PREFERENCIAS, pintarSelectorTema);
       pintarSelectorTema();
+
+      // En teléfono la navegación se desplaza en horizontal y la entrada
+      // activa puede quedar fuera de vista (Sugerencias, por ejemplo). Se
+      // centra sin tocar el scroll vertical de la página.
+      const navPrincipal = document.querySelector<HTMLElement>(
+        '[data-nav-principal]',
+      );
+      const entradaActiva = navPrincipal?.querySelector<HTMLElement>(
+        '[aria-current="page"]',
+      );
+      if (navPrincipal && entradaActiva) {
+        const sobra = navPrincipal.scrollWidth - navPrincipal.clientWidth;
+        if (sobra > 0) {
+          navPrincipal.scrollLeft =
+            entradaActiva.offsetLeft -
+            (navPrincipal.clientWidth - entradaActiva.offsetWidth) / 2;
+        }
+      }
     </script>
+
+    <style>
+      /* Icono del selector de tema en teléfono: luna cuando ofrece el tema
+         oscuro, sol cuando ofrece volver al claro. En sm+ se ve el texto. */
+      .icono-tema {
+        display: inline-flex;
+      }
+      [data-selector-tema][aria-pressed='true'] .icono-tema-oscuro,
+      [data-selector-tema][aria-pressed='false'] .icono-tema-claro {
+        display: none;
+      }
+      @media (min-width: 40rem) {
+        .icono-tema {
+          display: none;
+        }
+      }
+      /* La navegación desplazable no muestra barra: en el header oscuro la
+         barra de 10 px del sitio parecería un elemento más. El borde derecho
+         se desvanece mientras quede contenido por descubrir. */
+      .nav-principal {
+        scrollbar-width: none;
+        scroll-snap-type: x proximity;
+      }
+      .nav-principal::-webkit-scrollbar {
+        display: none;
+      }
+      .nav-principal > a {
+        scroll-snap-align: start;
+      }
+      @media (max-width: 39.99rem) {
+        .nav-principal {
+          mask-image: linear-gradient(
+            to right,
+            transparent,
+            #000 1rem,
+            #000 calc(100% - 2.5rem),
+            transparent
+          );
+          scroll-padding-inline: 1rem;
+        }
+      }
+    </style>
 
     <script>
       import { iniciarTerminos } from '../lib/terminos-cliente';

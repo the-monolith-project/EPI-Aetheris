@@ -26,9 +26,11 @@ test.describe('configuración', () => {
   test('el tema elegido se aplica, se guarda y sincroniza la cabecera', async ({
     page,
   }) => {
-    await page.emulateMedia({ colorScheme: 'light' });
+    await page.emulateMedia({ colorScheme: 'dark' });
     await page.goto('/configuracion');
-    await expect(radio(page, 'tema', 'sistema')).toBeChecked();
+    // Sin elección guardada el tema es claro, aunque el sistema sea oscuro.
+    await expect(radio(page, 'tema', 'light')).toBeChecked();
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/);
 
     await opcion(page, 'tema', 'dark').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -40,8 +42,15 @@ test.describe('configuración', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expect(radio(page, 'tema', 'dark')).toBeChecked();
 
-    // "Sistema" borra la elección y vuelve al ajuste del dispositivo.
+    // "Sistema" sigue el ajuste del dispositivo (aquí, oscuro).
     await opcion(page, 'tema', 'sistema').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'system');
+    expect(await page.evaluate(() => localStorage.getItem('epi:tema'))).toBe(
+      'sistema',
+    );
+
+    // "Claro" es el valor por defecto: borra la elección guardada.
+    await opcion(page, 'tema', 'light').click();
     await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/);
     expect(
       await page.evaluate(() => localStorage.getItem('epi:tema')),
@@ -200,7 +209,9 @@ test.describe('configuración', () => {
     ).toHaveAttribute('aria-checked', 'false');
   });
 
-  test('borrar todas las preferencias vuelve al sistema', async ({ page }) => {
+  test('borrar todas las preferencias vuelve al tema claro', async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       localStorage.setItem('epi:tema', 'dark');
       localStorage.setItem('epi:texto', 'grande');
@@ -232,6 +243,10 @@ test.describe('configuración', () => {
         colorScheme: esquema,
         reducedMotion: 'reduce',
       });
+      await page.addInitScript(
+        (tema) => window.localStorage.setItem('epi:tema', tema),
+        esquema,
+      );
       await page.goto('/configuracion');
       const resultado = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa'])

@@ -1,0 +1,121 @@
+---
+/**
+ * Los 14 departamentos en una cuadrícula, cada celda con su nombre y si tiene
+ * fila esa semana (ficha de M4). El estado se dice con texto además del
+ * color. Con `interactiva`, cada celda es una casilla que el laboratorio lee.
+ */
+import { DEPARTAMENTOS } from '../lib/departamentos';
+
+interface Props {
+  presentes: readonly string[];
+  interactiva?: boolean;
+  etiqueta: string;
+}
+
+const { presentes, interactiva = false, etiqueta } = Astro.props;
+const conFila = new Set(presentes);
+---
+
+{
+  interactiva ? (
+    <fieldset class="cuadricula" data-cuadricula>
+      <legend class="cuadricula-leyenda">{etiqueta}</legend>
+      <div class="cuadricula-celdas">
+        {DEPARTAMENTOS.map((d) => (
+          <label class="cuadricula-celda" data-codigo={d.codigo}>
+            <input
+              type="checkbox"
+              value={d.codigo}
+              checked={conFila.has(d.codigo)}
+              data-cuadricula-casilla
+            />
+            <span>{d.nombre}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  ) : (
+    <ul class="cuadricula-celdas" aria-label={etiqueta}>
+      {DEPARTAMENTOS.map((d) => {
+        const presente = conFila.has(d.codigo);
+        return (
+          <li
+            class:list={['cuadricula-celda', { ausente: !presente }]}
+            data-codigo={d.codigo}
+          >
+            <span class="cuadricula-nombre">{d.nombre}</span>
+            <span class="cuadricula-estado">
+              {presente ? 'con fila' : 'sin fila'}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  )
+}
+
+<style is:global>
+  .cuadricula {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .cuadricula-leyenda {
+    margin-bottom: 0.4rem;
+    padding: 0;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    color: var(--color-ink);
+  }
+  .cuadricula-celdas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .cuadricula-celda {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-height: 44px;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid var(--color-termino);
+    border-radius: 0.5rem;
+    background: color-mix(
+      in srgb,
+      var(--color-termino) 12%,
+      var(--color-surface)
+    );
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    color: var(--color-ink);
+  }
+  .cuadricula-celda.ausente,
+  label.cuadricula-celda:has(input:not(:checked)) {
+    border-style: dashed;
+    border-color: var(--color-ink-muted);
+    background: var(--color-surface);
+  }
+  label.cuadricula-celda {
+    flex-direction: row;
+    gap: 0.45rem;
+    align-items: center;
+    cursor: pointer;
+  }
+  label.cuadricula-celda input {
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: var(--color-termino);
+  }
+  .cuadricula-nombre {
+    font-weight: 600;
+  }
+  .cuadricula-estado {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-ink-muted);
+  }
+</style>
