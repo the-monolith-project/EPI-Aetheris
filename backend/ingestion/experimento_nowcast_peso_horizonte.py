@@ -12,6 +12,8 @@ M0 por tramo de horizonte en la mezcla C
                    2025 a 2026-S37 (H2, dentro de muestra).
   --extension-e1   centro y ancho por separado, solo para los tramos que el protocolo
                    senala.
+  --exploratorio-e1  la misma variante para los tramos que fallaron solo la cobertura en
+                   H2 (posterior a la confirmacion; no es la extension firmada).
 
 Todo sale de cuantiles de M0 guardados en rangos.json: no reentrena nada. Ninguna
 decision usa semanas objetivo desde 2026-S38 (prueba prospectiva congelada).
@@ -273,30 +275,62 @@ def confirmacion(reglas: sel.Reglas, b: dict, guardado: dict) -> dict:
     return out
 
 
+def _correr_e1(reglas: sel.Reglas, val: dict, b: dict, g: str, w: float) -> dict:
+    """Centro con el peso w y ancho con 0,5 en el tramo g: validacion y, si pasa la regla de
+    cambio, confirmacion en H1 y H2."""
+    hs = tuple(GRUPOS[g])
+    res = puntajes(val, hs, {f"{W_VIGENTE}": politica_peso(W_VIGENTE), f"centro{w}": politica_e1(w)})
+    dec = decidir(res, f"{W_VIGENTE}")
+    pasa = dec["mejor_admisible"] != f"{W_VIGENTE}" and dec["regla_admisible"]["pasa"]
+    print(f"\nE1, tramo {g}: centro con w = {w}, ancho con 0,5: puntaje {res[f'centro{w}']['puntaje']:+.4f} "
+          f"(0,5: {res[f'{W_VIGENTE}']['puntaje']:+.4f}), cobertura {res[f'centro{w}']['cob95']:.3f}, "
+          f"regla de cambio: {'SI' if pasa else 'no'}")
+    item: dict = {"w_centro": w, "validacion": res, "decision": dec, "candidata": False}
+    if pasa:
+        conf = confirmar(reglas, b, hs, lambda h, m, t, w=w: mezcla_centro_ancho(m, t, w, W_VIGENTE))
+        imprimir(f"Confirmación E1, tramo {g}", conf)
+        item["confirmacion"] = conf
+        item["candidata"] = bool(conf["b_wis"] and conf["c_cobertura"])
+    return item
+
+
 def extension_e1(reglas: sel.Reglas, serie: Serie, b: dict, guardado: dict) -> dict:
     tramos = [g for g in GRUPOS if guardado["validacion"][g]["decision"]["e1_aplica"]]
     if not tramos:
         print("ningún tramo cumple la condición de la extensión E1: no se corre")
         return {"corrida": False}
     val = datos_validacion(serie, reglas)
-    out: dict = {"corrida": True, "tramos": {}}
-    for g in tramos:
-        hs = tuple(GRUPOS[g])
-        w = float(guardado["validacion"][g]["decision"]["mejor_sin_restriccion"])
-        res = puntajes(val, hs, {f"{W_VIGENTE}": politica_peso(W_VIGENTE), f"centro{w}": politica_e1(w)})
-        dec = decidir(res, f"{W_VIGENTE}")
-        print(f"\nE1, tramo {g}: centro con w = {w}, ancho con 0,5: puntaje {res[f'centro{w}']['puntaje']:+.4f} "
-              f"(0,5: {res[f'{W_VIGENTE}']['puntaje']:+.4f}), cobertura {res[f'centro{w}']['cob95']:.3f}, "
-              f"regla de cambio: {'SI' if dec['regla_admisible']['pasa'] and dec['mejor_admisible'] != f'{W_VIGENTE}' else 'no'}")
-        item: dict = {"w_centro": w, "validacion": res, "decision": dec}
-        if dec["mejor_admisible"] != f"{W_VIGENTE}" and dec["regla_admisible"]["pasa"]:
-            conf = confirmar(reglas, b, hs, lambda h, m, t, w=w: mezcla_centro_ancho(m, t, w, W_VIGENTE))
-            imprimir(f"Confirmación E1, tramo {g}", conf)
-            item["confirmacion"] = conf
-            item["candidata"] = bool(conf["b_wis"] and conf["c_cobertura"])
-        else:
-            item["candidata"] = False
-        out["tramos"][g] = item
+    return {"corrida": True, "tramos": {
+        g: _correr_e1(reglas, val, b, g, float(guardado["validacion"][g]["decision"]["mejor_sin_restriccion"]))
+        for g in tramos}}
+
+
+def exploratorio_e1(reglas: sel.Reglas, serie: Serie, b: dict, guardado: dict) -> dict:
+    """Exploratorio, despues de ver la confirmacion: la misma variante E1 para los tramos que
+    ganaron en WIS en H1 y H2 y fallaron solo la cobertura en H2. La condicion de la extension
+    firmada miraba la validacion, y ahi el peso era admisible; por eso esto no es la extension."""
+    cands = guardado["confirmacion"]["candidatas"]
+    tramos = [g for g, c in cands.items() if c.get("b_wis") and c.get("c_cobertura") is False]
+    if not tramos:
+        print("ningún tramo falló solo por cobertura en H2")
+        return {"corrida": False}
+    val = datos_validacion(serie, reglas)
+    items = {g: _correr_e1(reglas, val, b, g, float(cands[g]["peso"])) for g in tramos}
+    out: dict = {"corrida": True, "rotulo": "exploratorio, posterior a la confirmacion", "tramos": items}
+    # C_h completo: tramos con E1 candidata con centro y ancho separados, tramos candidatos con
+    # la mezcla simple y el resto en 0,5
+    e1 = {g for g, it in items.items() if it["candidata"]}
+    simples = {g: float(c["peso"]) for g, c in cands.items() if c.get("candidata")}
+
+    def politica(h: int, m: np.ndarray, t: np.ndarray) -> np.ndarray:
+        g = next(k for k, hs in GRUPOS.items() if h in hs)
+        if g in e1:
+            return mezcla_centro_ancho(m, t, float(cands[g]["peso"]), W_VIGENTE)
+        return mezcla(m, t, simples.get(g, W_VIGENTE))
+
+    out["C_h_completo"] = confirmar(reglas, b, HORIZONTES, politica)
+    out["tramos_e1"], out["tramos_mezcla_simple"] = sorted(e1), simples
+    imprimir(f"C_h completo exploratorio (E1 en {sorted(e1)}, mezcla simple {simples})", out["C_h_completo"])
     return out
 
 
@@ -346,7 +380,7 @@ def _guardar(clave: str, valor: dict) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     modo = ap.add_mutually_exclusive_group(required=True)
-    for nombre in ("control", "validacion", "confirmacion", "extension-e1"):
+    for nombre in ("control", "validacion", "confirmacion", "extension-e1", "exploratorio-e1"):
         modo.add_argument(f"--{nombre}", action="store_true")
     args = ap.parse_args()
     conn = get_connection()
@@ -370,6 +404,8 @@ def main() -> None:
     guardado = json.loads(SALIDA.read_text(encoding="utf-8"))
     if args.confirmacion:
         _guardar("confirmacion", confirmacion(reglas, b, guardado))
+    elif args.exploratorio_e1:
+        _guardar("exploratorio_e1", exploratorio_e1(reglas, serie, b, guardado))
     else:
         _guardar("extension_e1", extension_e1(reglas, serie, b, guardado))
 

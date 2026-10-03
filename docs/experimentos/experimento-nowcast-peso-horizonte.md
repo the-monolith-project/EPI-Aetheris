@@ -109,3 +109,74 @@ dentro de muestra no demuestra mejora; solo la ventana prospectiva puede hacerlo
   `--confirmacion` y `--extension-e1`.
 - `docs/agentes/mejora-predictor/resultados-nuevos/peso_m0_por_horizonte.json`.
 - Sección de resultados en este documento.
+
+## Resultados (2026-10-03)
+
+Script commiteado antes de correr (c7bd85e). Controles: `q_T` y `q_C_R0` guardados se reproducen en H1
+y H2 (diferencias máximas 0,0005 en T y 0,0026 en C, dentro de las tolerancias de la Fase 1); w = 1
+devuelve M0 y w = 0 devuelve T con diferencia menor que 1e-11; la variante de centro y ancho con
+pesos iguales reproduce la mezcla simple. Las 9 pruebas unitarias pasan. Pares origen-horizonte de
+la validación: 416 (2019), 380 (2021), 416 (2022) y 416 (2023).
+
+### Validación: 2019, 2021, 2022 y 2023, objetivo en la historia suavizada
+
+Puntaje (skill medio contra la persistencia suavizada) y, entre paréntesis, cobertura al 95 %:
+
+| peso de M0 | h = 1 a 2 | h = 3 a 4 | h = 5 a 8 |
+|---|---|---|---|
+| 0 (T sola) | +0,297 (0,969) | +0,267 (0,971) | +0,149 (0,953) |
+| 0,25 | +0,160 (0,998) | +0,299 (0,990) | +0,226 (0,973) |
+| 0,5 (vigente) | −0,237 (0,993) | +0,209 (0,983) | +0,235 (0,981) |
+| 0,75 | −0,727 (0,983) | +0,020 (0,978) | +0,186 (0,975) |
+| 1 (M0 sola) | −1,266 (0,978) | −0,238 (0,958) | +0,075 (0,953) |
+
+Regla de cambio: en h = 1 a 2 gana w = 0 (ganancia de +0,534 sobre 0,5, en los 4 años); en h = 3 a 4
+gana w = 0,25 (+0,090, en los 4 años); en h = 5 a 8 el mejor es 0,5 y el tramo se queda. Los tres
+pesos mejores eran admisibles por cobertura, de modo que la extensión E1 firmada no se corre. La
+magnitud de las ganancias en h = 1 a 2 refleja el sesgo declarado (M0 crudo frente a un objetivo
+suavizado): con 0,5 el skill es negativo, lo que no ocurre en el tablero. Por eso decide lo que sigue.
+
+### Confirmación en 2024 (H1) y en 2025 a 2026-S37 (H2, dentro de muestra)
+
+Razón de WIS del candidato contra C con peso 0,5 (promedio de los horizontes del tramo, por
+horizonte entre paréntesis) y cobertura al 95 % agrupada:
+
+| tramo | H1 razón | H2 razón | cobertura H1 | cobertura H2 | (b) | (c) | candidata |
+|---|---|---|---|---|---|---|---|
+| h = 1 a 2, w = 0 | 0,749 (0,664; 0,834) | 0,862 (0,800; 0,925) | 0,942 contra 1,000 | 0,857 contra 0,913 | sí | no (baja 0,056) | no |
+| h = 3 a 4, w = 0,25 | 0,904 (0,913; 0,894) | 0,959 (0,943; 0,975) | 0,981 contra 1,000 | 0,907 contra 0,901 | sí | sí | sí |
+
+Diebold-Mariano (candidato menos vigente, solo informativo): en h = 1 a 2 con w = 0, p de 0,00 y 0,07
+en H1 y de 0,00 y 0,23 en H2; en h = 3 a 4 con w = 0,25, p de 0,05 y 0,07 en H1 y de 0,11 y 0,57 en H2.
+
+### Decisión por la regla firmada
+
+Hay un tramo candidato para la Fase 4: h = 3 a 4 con peso 0,25 de M0 en lugar de 0,5. La mejora en
+H2, dentro de muestra, es de 2,5 % a 5,7 % de WIS. Los demás tramos quedan como están. El tramo
+h = 1 a 2 con T sola gana mucho en WIS y en las dos ventanas, pero pierde cobertura en H2 (T sola
+produce intervalos angostos), y la regla firmada exige no bajar más de 0,03.
+
+### Exploratorio (después de ver la confirmación; no es la extensión firmada)
+
+La condición firmada de la extensión E1 se miraba en la validación, y allí w = 0 era admisible, así que
+no se corrió. La falla apareció en H2. Con la misma variante (centro de T, ancho de la mezcla simple)
+aplicada igualmente a h = 1 a 2, rotulada como posterior:
+
+- Validación: puntaje +0,016 contra −0,237 de C, cobertura 1,000.
+- H1: razón 0,981 (h = 1: 0,930; h = 2: 1,031), cobertura 1,000 contra 1,000.
+- H2: razón 0,884 (h = 1: 0,833; h = 2: 0,936), cobertura 0,932 contra 0,913. Cumple (b) y (c).
+- C_h completo con esa variante en h = 1 a 2, w = 0,25 en h = 3 a 4 y 0,5 en h = 5 a 8: razón media
+  de WIS de 0,971 en H1 y de 0,961 en H2, con cobertura 0,995 y 0,913 (C vigente 1,000 y 0,907). En H2
+  el WIS pasa de 5,91 a 4,92 en h = 1, de 11,21 a 10,49 en h = 2, de 15,92 a 15,02 en h = 3 y de 19,09
+  a 18,62 en h = 4; de h = 5 a 8 no cambia.
+
+La ganancia con evidencia más sólida está en h = 1 (p menor que 0,01 en las dos ventanas); en h = 2 a 4
+las diferencias son pequeñas y su incertidumbre grande.
+
+### Qué sigue
+
+C_h queda como candidato para la Fase 4: h = 3 a 4 con 0,25 (cumple la regla firmada) y h = 1 a 2 con
+centro de T y ancho de la mezcla (variante exploratoria, elegida después de ver H2 y por eso más
+débil). Ninguna de las dos demuestra mejora: H2 es dentro de muestra y fue la pista que originó el
+experimento. Se firmarían como predicción paralela, con objetivos posteriores a la firma, para
+compararlas con C en la ventana nueva. No se cambia la web ni el backend.
