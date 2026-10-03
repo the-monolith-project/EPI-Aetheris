@@ -124,3 +124,88 @@ frontend ni los artefactos de `backend/api/datos/`.
 ## Enmiendas
 
 1. 2026-10-03, antes de la primera corrida: el script exige Postgres para la serie del tablero y para OpenDengue; no hay lectura alternativa desde la semilla (se simplificó la sección Datos).
+
+## Resultados (2026-10-03)
+
+Script `backend/ingestion/analisis_nowcast_forma_serie.py`, resultados en
+`docs/agentes/mejora-predictor/resultados-nuevos/forma_serie_tablero.json`. Corrió una vez, con
+los criterios de arriba, sin cambios entre el plan y la corrida.
+
+### A. Promedio móvil causal de k semanas
+
+Cada celda dice si existen conteos crudos no negativos que reproduzcan la serie dentro del
+redondeo (F), y si además la semana más extrema de la solución cabe en lo visto en OpenDengue
+crudo (P). La referencia R_k va de 1,3 (k = 2) a 1,9 (k = 12).
+
+| Variante | Resultado |
+|---|---|
+| W1, ventana expansiva al inicio del año | 2026: infeasible para todo k de 2 a 12. 2025: plausible solo para k = 2, 3, 4 y 6; infeasible para k = 5 y para k de 7 a 12 |
+| W2, ventana completa con semanas previas libres, cada año por separado | Plausible para k de 2 a 7 en 2025 y en 2026, con la solución a menos de 1,3 veces el máximo publicado. Para k de 8 a 12 las dos series ya no cumplen a la vez: 2025 no es factible o no es plausible en la mayoría de ellos |
+| W3, serie continua 2025-S1 a 2026-S37 (2025-S53 desconocida) | Factible y plausible solo para k = 2 y 3. Infeasible para todo k de 4 a 12, que incluye el 6 y el 7 del ADR 0021 |
+
+Lectura: cada año por separado es compatible con un promedio de 2 a 7 semanas si se le permite
+un pasado libre, pero la serie continua no lo es para k de 4 en adelante. Lo que no cuadra es el
+cambio de año: de 39 en 2025-S52 a 214 en 2026-S1, un salto que una ventana de 4 o más semanas
+sobre conteos no negativos no puede producir. Con k = 2 o 3 sí cabe, porque la semana 53 de
+2025, que el tablero no publica, absorbe el atraso. Por tanto el tablero no es un único promedio
+móvil de 6 o 7 semanas aplicado de forma continua. Esto no dice qué es. W1 y W2 son solo
+algunas de las formas posibles de empezar un año.
+
+### B. Promedio exponencial
+
+En 2025 es plausible para α de 0,20 en adelante; en 2026 es infeasible para α menor que 0,45.
+Una caída semanal del 43 % (98 a 56 en 2026-S19) exige α de al menos 0,43, es decir, un filtro
+que reacciona casi en una semana y no uno que promedie 6 o 7. Un promedio exponencial tampoco
+describe la serie.
+
+### C. Perfil de saltos
+
+Cambios semanales mayores que 0,30 en escala logarítmica:
+
+| Serie | Semanas con cambio > 0,30 | Máximo |
+|---|---|---|
+| Tablero 2025 (51 cambios) | 0 | 0,23 |
+| Tablero 2026 (36 cambios) | 3: S2 a S3 (0,32), S18 a S19 (0,56), S25 a S26 (0,34) | 0,56 |
+| OpenDengue 2024 | 0 | 0,17 |
+| OpenDengue 2014-2023 crudo (37 semanas por año) | mediana 8, máximo 13 | |
+| ... con promedio causal de k = 3 / 5 / 6 / 7 | máximo 6 / 2 / 2 / 1 | |
+
+Con k de 6 o 7, que son los valores del ADR 0021, ningún año de OpenDengue filtrado de 2014 a
+2023 llega a 3 cambios mayores que 0,30 en 37 semanas, y el tablero de 2026 tiene 3. Con k = 3 o
+4 sí aparecen hasta 6 y 4. Se cumple el criterio fijado para concluir que esos saltos no los
+explica un promedio de 6 o 7 semanas sobre conteos crudos, con la salvedad de que la evidencia es
+mínima (3 contra un máximo de 2 en diez años). 2025 es más liso que cualquier filtrado de
+OpenDengue con k de 5 a 8 y que 2024, y 2026 es más movido: las dos series no parecen salir
+del mismo régimen.
+
+### D. Umbrales del corredor
+
+Ninguna combinación reproduce los umbrales: el mejor error logarítmico medio es 0,139 en 2025
+(OpenDengue 2014-2022 sin 2020, con promedio de 2 o 3 semanas) y 0,568 en 2026, contra el 0,03
+exigido. Es inconcluso, como dice el plan: el corredor de MINSAL usa otros años u otro método, y
+con los de 2026 la distancia es grande.
+
+### Qué se concluye
+
+1. El filtro exacto no es identificable con lo capturado. Descartados como descripción continua
+   y completa: el promedio móvil causal de 4 o más semanas y el promedio exponencial con α menor
+   que 0,45.
+2. El cambio de año y algunos saltos de 2026 no vienen de un promedio de 6 o 7 semanas sobre
+   conteos crudos. Las hipótesis que quedan, sin probar: reprocesos o revisiones de semanas ya
+   publicadas, empalmes entre cortes del año, o un cálculo que se reinicia al cambiar de año.
+3. Para la Fase 1 rige el segundo caso de "Qué habilita cada resultado": suavizar la historia
+   con promedio causal de k = 6 y k = 7 y su sensibilidad es una aproximación al aspecto liso de
+   2025, no una réplica del proceso. Los saltos de 2026 deben tratarse aparte.
+4. 2025 y 2026 se comportan distinto. Elegir y evaluar modelos con 2025 favorece a los que
+   asumen una serie lisa.
+5. La forma de resolverlo es empírica. Capturar el tablero cada semana y conservar todas las
+   capturas permite ver si las semanas ya publicadas cambian, que es la prueba directa de la
+   hipótesis de revisiones. La otra vía es preguntar a MINSAL cómo se calcula la serie.
+
+### Límites
+
+- A y B usan un solo criterio de plausibilidad, tomado de OpenDengue crudo. Es amplio: W2 deja
+  libres las semanas previas y por eso admite casi cualquier k pequeño.
+- Se probaron promedios móviles causales y exponenciales. No se probaron filtros con pesos no
+  uniformes, medianas móviles ni procesos que combinen reportes de fechas distintas.
+- La mirada previa del plan ya mostraba parte de estos resultados (la recursión sin tolerancia).
