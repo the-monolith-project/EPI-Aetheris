@@ -11,8 +11,10 @@ ALCANCE_HISTORIA y sin 2020). M0 sale de rangos.json: no se reentrena nada.
   --control   controles previos: ETS(1, 1, 0,8) reproduce T con pendiente de una semana y
               T vigente reproduce lo guardado en rangos.json.
   --parte-a   elegir la configuracion de cada familia con la historia hasta 2023.
+  --extension-e1  extension de la rejilla hacia el borde donde cayo el optimo de A (anadida
+              despues de correr A y antes de B, ver el protocolo).
   --parte-b   confirmacion en 2024 (H1) y en 2025 a 2026-S37 (H2, dentro de muestra) de las
-              configuraciones elegidas, puestas en lugar de T dentro de C.
+              configuraciones finales, puestas en lugar de T dentro de C.
   --parte-c   promedio de las bases T, ETS y Theta (exploratorio) y Holm de todas las
               comparaciones de Diebold-Mariano.
 
@@ -48,6 +50,8 @@ K_BASE = sel.K_BASE
 PESO_M0 = ten.PESO_M0
 REJILLA_ETS = [(a, be, ph) for a in (0.4, 0.6, 0.8, 1.0) for be in (0.2, 0.4, 0.6, 0.8, 1.0) for ph in (0.8, 0.9, 0.95)]
 REJILLA_THETA = [(a, ele) for a in (0.3, 0.5, 0.7, 0.9, 1.0) for ele in (6, 8, 12, 16, 26)]
+REJILLA_ETS_E1 = [(a, be, ph) for a in (0.4, 0.6, 0.8, 1.0) for be in (0.2, 0.4, 0.6, 0.8, 1.0) for ph in (0.5, 0.6, 0.7)]
+REJILLA_THETA_E1 = [(a, ele) for a in (0.3, 0.5, 0.7, 0.9, 1.0) for ele in (3, 4, 5)]
 MIN_ERRORES = 30
 COBERTURA_95_TOLERANCIA = 0.03
 TOL_ETS_T1 = 1e-9
@@ -249,6 +253,55 @@ def parte_a(serie: Serie) -> dict:
     return salida
 
 
+# --- extension E1: rejilla extendida hacia el borde -------------------------------------------
+
+
+def decidir_extension(sk_ext: dict, sk_orig: dict, sk_t: dict) -> dict:
+    """La mejor configuracion de la extension sustituye a la mejor original solo si supera a esta
+    en MEJORA_MINIMA de puntaje y en ANIOS_MEJOR_MIN anios, y cumple por si sola la regla de
+    cambio frente a T."""
+    puntajes = {cfg: sel.promedio(x, HORIZONTES) for cfg, x in sk_ext.items()}
+    mejor = max(puntajes, key=puntajes.get)
+    frente_a_t = elegir_familia({mejor: sk_ext[mejor]}, sk_t)
+    anio_o, anio_e = sel.por_anio(sk_orig, HORIZONTES), sel.por_anio(sk_ext[mejor], HORIZONTES)
+    ganancia = puntajes[mejor] - sel.promedio(sk_orig, HORIZONTES)
+    anios = int(sum(anio_e[a] > anio_o[a] for a in sel.ANIOS_VALIDACION))
+    return {"mejor_extension": list(mejor), "puntaje_extension": puntajes[mejor], "ganancia_sobre_la_original": float(ganancia),
+            "anios_sobre_la_original": anios, "frente_a_T": frente_a_t,
+            "configuraciones_de_la_extension_que_superan_a_la_original": int(sum(p > sel.promedio(sk_orig, HORIZONTES) for p in puntajes.values())),
+            "sustituye": bool(frente_a_t["pasa_regla_de_cambio"] and ganancia >= sel.MEJORA_MINIMA and anios >= sel.ANIOS_MEJOR_MIN)}
+
+
+def extension_e1(serie: Serie, a: dict) -> dict:
+    s7, reglas_t, rm = _contexto(serie)
+    orig = sel.origenes_validacion(serie)
+    w_ref = referencia_validacion(reglas_t, orig, s7)
+    sk_t = skills_base(fn_t(reglas_t), orig, s7, w_ref)
+    out: dict = {"familias": {}, "final": {}}
+    for fam, rejilla in (("ets", REJILLA_ETS_E1), ("theta", REJILLA_THETA_E1)):
+        e = a["familias"][fam]["eleccion"]
+        cfg_o = tuple(e["mejor"])
+        sk_o = skills_base(fn_ets_theta(rm, fam, cfg_o), orig, s7, w_ref)
+        sk = {cfg: skills_base(fn_ets_theta(rm, fam, cfg), orig, s7, w_ref) for cfg in rejilla}
+        d = decidir_extension(sk, sk_o, sk_t)
+        puntajes = {cfg: sel.promedio(x, HORIZONTES) for cfg, x in sk.items()}
+        top = sorted(puntajes, key=puntajes.get, reverse=True)[:5]
+        print(f"\n{fam}: original {cfg_o} puntaje {e['puntaje_mejor']:+.4f} (T {e['puntaje_T']:+.4f}); extension {len(rejilla)} configuraciones")
+        for cfg in top:
+            print(f"   {cfg}: {puntajes[cfg]:+.4f}")
+        print(f"   mejor de la extension {tuple(d['mejor_extension'])}: gana {d['ganancia_sobre_la_original']:+.4f} a la original en "
+              f"{d['anios_sobre_la_original']} de 5 anios; frente a T: ganancia {d['frente_a_T']['ganancia']:+.4f}, "
+              f"{d['frente_a_T']['anios_en_que_supera']} anios, regla {'SI' if d['frente_a_T']['pasa_regla_de_cambio'] else 'no'} "
+              f"-> {'SUSTITUYE' if d['sustituye'] else 'se queda la original'}")
+        final = (d["frente_a_T"] | {"mejor": d["mejor_extension"]}) if d["sustituye"] else e
+        out["familias"][fam] = {"puntajes": {"|".join(map(str, c)): p for c, p in puntajes.items()}, **d}
+        out["final"][fam] = {"cfg": list(final["mejor"]), "origen": "extension" if d["sustituye"] else "rejilla original",
+                             "pasa_regla_de_cambio": bool(final["pasa_regla_de_cambio"])}
+        print(f"   configuracion final de {fam}: {tuple(out['final'][fam]['cfg'])} ({out['final'][fam]['origen']}), "
+              f"regla de cambio {'SI' if out['final'][fam]['pasa_regla_de_cambio'] else 'no'}")
+    return out
+
+
 # --- parte B y C: confirmacion fuera de la seleccion ----------------------------------------
 
 
@@ -315,16 +368,16 @@ def _contexto(serie: Serie):
     return s7, reglas_t, rm
 
 
-def parte_b(serie: Serie, b: dict, a: dict) -> dict:
+def parte_b(serie: Serie, b: dict, final: dict) -> dict:
     _, reglas_t, rm = _contexto(serie)
     out = {}
     for fam in FAMILIAS:
-        e = a["familias"][fam]["eleccion"]
-        cfg = tuple(e["mejor"])
+        e = final[fam]
+        cfg = tuple(e["cfg"])
         conf = confirmar_c(fn_ets_theta(rm, fam, cfg), fn_t(reglas_t), b)
         el = elegible(e["pasa_regla_de_cambio"], conf)
-        imprimir_confirmacion(f"{fam} {cfg} en lugar de T dentro de C" + ("" if e["pasa_regla_de_cambio"] else " (no pasa A: descripcion)"), conf, el)
-        out[fam] = {"cfg": list(cfg), "confirmacion": conf, "elegibilidad": el}
+        imprimir_confirmacion(f"{fam} {cfg} ({e['origen']}) en lugar de T dentro de C" + ("" if e["pasa_regla_de_cambio"] else " (no pasa la regla de cambio: descripcion)"), conf, el)
+        out[fam] = {"cfg": list(cfg), "origen": e["origen"], "confirmacion": conf, "elegibilidad": el}
     return out
 
 
@@ -346,9 +399,9 @@ def holm_dm(b_res: dict, c_res: dict) -> dict:
     return {"p_crudo": ps, "p_holm": out}
 
 
-def parte_c(serie: Serie, b: dict, a: dict, b_res: dict) -> dict:
+def parte_c(serie: Serie, b: dict, final: dict, b_res: dict) -> dict:
     _, reglas_t, rm = _contexto(serie)
-    fns = [fn_t(reglas_t)] + [fn_ets_theta(rm, fam, tuple(a["familias"][fam]["eleccion"]["mejor"])) for fam in FAMILIAS]
+    fns = [fn_t(reglas_t)] + [fn_ets_theta(rm, fam, tuple(final[fam]["cfg"])) for fam in FAMILIAS]
     conf = confirmar_c(fn_promedio(fns), fn_t(reglas_t), b)
     el = elegible(None, conf)
     imprimir_confirmacion("Promedio de T, ETS y Theta (exploratorio) en lugar de T dentro de C", conf, el)
@@ -402,16 +455,18 @@ def _guardar(clave: str, valor) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     modo = ap.add_mutually_exclusive_group(required=True)
-    for m in ("control", "parte-a", "parte-b", "parte-c"):
+    for m in ("control", "parte-a", "extension-e1", "parte-b", "parte-c"):
         modo.add_argument(f"--{m}", action="store_true")
     args = ap.parse_args()
     previo = _leer()
     if not args.control and not previo.get("control", {}).get("pasa"):
         raise SystemExit("Falta el control (--control) o no pasa: no se barre nada.")
-    if args.parte_b and "parte_a" not in previo:
+    if args.extension_e1 and "parte_a" not in previo:
         raise SystemExit("Falta la parte A (--parte-a).")
-    if args.parte_c and not ("parte_a" in previo and "parte_b" in previo):
-        raise SystemExit("Faltan las partes A y B.")
+    if args.parte_b and "extension_e1" not in previo:
+        raise SystemExit("Falta la extension E1 (--extension-e1): B usa la configuracion final.")
+    if args.parte_c and "parte_b" not in previo:
+        raise SystemExit("Falta la parte B.")
     conn = get_connection()
     try:
         serie = tab.cargar_serie_mixta(conn)
@@ -429,10 +484,12 @@ def main() -> None:
             raise SystemExit("Los controles no pasan: revisar antes de seguir.")
     elif args.parte_a:
         _guardar("parte_a", parte_a(serie))
+    elif args.extension_e1:
+        _guardar("extension_e1", extension_e1(serie, previo["parte_a"]))
     elif args.parte_b:
-        _guardar("parte_b", parte_b(serie, b, previo["parte_a"]))
+        _guardar("parte_b", parte_b(serie, b, previo["extension_e1"]["final"]))
     else:
-        _guardar("parte_c", parte_c(serie, b, previo["parte_a"], previo["parte_b"]))
+        _guardar("parte_c", parte_c(serie, b, previo["extension_e1"]["final"], previo["parte_b"]))
 
 
 if __name__ == "__main__":

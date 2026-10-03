@@ -293,6 +293,39 @@ def test_regla_de_cambio_no_pasa_si_la_familia_es_peor_que_t():
     assert e["mejor"] == [2] and e["ganancia"] < 0 and not e["pasa_regla_de_cambio"] and e["configuraciones_que_superan_a_T"] == 0
 
 
+# --- extension E1 -------------------------------------------------------------------------------------
+
+
+def test_rejillas_de_la_extension():
+    assert len(te.REJILLA_ETS_E1) == 60 and len(te.REJILLA_THETA_E1) == 15
+    assert not set(te.REJILLA_ETS_E1) & set(te.REJILLA_ETS) and not set(te.REJILLA_THETA_E1) & set(te.REJILLA_THETA)
+    assert {c[2] for c in te.REJILLA_ETS_E1} == {0.5, 0.6, 0.7} and {c[1] for c in te.REJILLA_THETA_E1} == {3, 4, 5}
+
+
+def test_la_extension_sustituye_con_margen_sobre_la_original_y_regla_frente_a_t():
+    orig = _sk({2018: 0.12, 2019: 0.12, 2021: 0.12, 2022: 0.12, 2023: 0.12})  # +0,02 sobre T
+    ext = {(9,): _sk({2018: 0.14, 2019: 0.14, 2021: 0.14, 2022: 0.14, 2023: 0.10})}  # +0,02 sobre la original en 4 anios
+    d = te.decidir_extension(ext, orig, T_BASE)
+    assert d["sustituye"] and d["anios_sobre_la_original"] == 4 and d["mejor_extension"] == [9]
+
+
+def test_la_extension_no_sustituye_sin_margen_o_sin_anios():
+    orig = _sk({a: 0.12 for a in sel.ANIOS_VALIDACION})
+    poco = {(9,): _sk({a: 0.123 for a in sel.ANIOS_VALIDACION})}  # +0,003: menos que el margen
+    assert not te.decidir_extension(poco, orig, T_BASE)["sustituye"]
+    pocos_anios = {(9,): _sk({2018: 0.30, 2019: 0.30, 2021: 0.10, 2022: 0.10, 2023: 0.10})}  # +0,04 pero 2 anios
+    d = te.decidir_extension(pocos_anios, orig, T_BASE)
+    assert not d["sustituye"] and d["anios_sobre_la_original"] == 2
+
+
+def test_la_extension_exige_la_regla_de_cambio_frente_a_t_aunque_supere_a_la_original():
+    orig = _sk({a: 0.05 for a in sel.ANIOS_VALIDACION})  # peor que T
+    ext = {(9,): _sk({a: 0.08 for a in sel.ANIOS_VALIDACION})}  # mejor que la original, peor que T
+    d = te.decidir_extension(ext, orig, T_BASE)
+    assert d["ganancia_sobre_la_original"] > 0.005 and d["anios_sobre_la_original"] == 5
+    assert not d["frente_a_T"]["pasa_regla_de_cambio"] and not d["sustituye"]
+
+
 # --- confirmacion y elegibilidad ------------------------------------------------------------------
 
 
