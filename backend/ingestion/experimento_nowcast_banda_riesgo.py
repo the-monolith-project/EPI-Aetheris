@@ -12,6 +12,9 @@ un limite alto del 97,5 % cuyo factor depende del regimen de crecimiento
                    ensanchamiento.
   --parte-b        capa elegida con tabla fija ajustada en A, aplicada a C en el
                    tablero (2025 a 2026-S37, dentro de muestra).
+  --diagnostico    cifras exploratorias sobre la parte A (no decide): distribucion de
+                   los scores, cota de un factor optimo visto dentro de muestra y
+                   excedencias por tamano de la mediana.
 
 Todo sale de cuantiles guardados en rangos.json: no reentrena nada. Ninguna
 decision usa semanas objetivo desde 2026-S38 (prueba prospectiva congelada).
@@ -477,6 +480,51 @@ def controles(serie: Serie, etiq: np.ndarray) -> dict:
     return out
 
 
+def diagnostico(serie: Serie, etiq: np.ndarray) -> dict:
+    """Exploratorio, despues de ver la parte A. No es un candidato ni decide nada."""
+    b = cargar_bloque(serie, etiq, "A", "q_R0")
+    prep = preparar(b)
+    ev = prep["evaluable"]
+    n = len(b["y"])
+    ref = limites(b["q"], np.ones(n))
+    out: dict = {}
+    s = b["s"]
+    out["scores_cuantiles_50_90_975_99_max"] = [float(v) for v in np.quantile(s, [0.5, 0.9, 0.975, 0.99, 1.0])]
+    f1, _ = calcular_factores(b, prep, "L1")
+    out["factor_l1_por_h"] = {int(h): {"p10": float(np.quantile(f1[ev & (b["h"] == h)], 0.1)),
+                                       "mediana": float(np.median(f1[ev & (b["h"] == h)])),
+                                       "max": float(f1[ev & (b["h"] == h)].max())} for h in (1, 4, 8)}
+    # cota: factor al nivel dado de los scores de TODAS las filas evaluables (no causal)
+    cota = {}
+    for nivel in (0.975, 0.95, 0.90):
+        for nombre, por_regimen in (("global_por_h", False), ("por_h_y_regimen", True)):
+            f = np.ones(n)
+            for h in HORIZONTES:
+                for r in (0, 1, 2) if por_regimen else (None,):
+                    msk = b["h"] == h if r is None else (b["h"] == h) & (b["lab"] == r)
+                    f[msk] = max(1.0, float(np.quantile(s[ev & msk], nivel)))
+            m = metricas(b, ev, limites(b["q"], f), ref)
+            cota[f"{nombre}_nivel_{nivel}"] = {k: m[k] for k in ("cob_total", "razon_pinball", "ensanch_media_filas",
+                                                                  "anios_ok", "horizontes_mejores")}
+            cota[f"{nombre}_nivel_{nivel}"]["cob_tercio_alto"] = m["cob_por_regimen"][ALTO]["cob"]
+    out["cota_dentro_de_muestra"] = cota
+    # excedencias de L0 por tercio del tamano de la mediana
+    y, med, lim = b["y"][ev], b["q"][ev, I_MED], ref["l975"][ev]
+    perd = pinball(y, lim, NIVEL)
+    cortes = np.quantile(med, [1 / 3, 2 / 3])
+    tam = {}
+    for nombre, msk in (("baja", med <= cortes[0]), ("media", (med > cortes[0]) & (med <= cortes[1])), ("alta", med > cortes[1])):
+        exc = msk & (y > lim)
+        tam[nombre] = {"n": int(msk.sum()), "excedencias": int(exc.sum()), "tasa": float(exc.sum() / msk.sum()),
+                       "parte_pinball": float(perd[msk].sum() / perd.sum()),
+                       "y_sobre_mediana_en_excedencias": float(np.median(y[exc] / med[exc]))}
+    out["excedencias_por_tamano_mediana"] = {"cortes_casos": [float(c) for c in cortes], **tam}
+    for k, v in cota.items():
+        print(f"  cota {k:34s} cob {v['cob_total']:.3f} (alto {v['cob_tercio_alto']:.3f}) razón pinball {v['razon_pinball']:.3f} ensanch {v['ensanch_media_filas']:.2f}")
+    print("  excedencias por tamaño:", {k: (v["excedencias"], round(v["tasa"], 3), round(v["parte_pinball"], 2)) for k, v in tam.items()})
+    return out
+
+
 # --- ejecucion -------------------------------------------------------------------------
 
 
@@ -500,7 +548,7 @@ def _a_json(o):
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     modo = ap.add_mutually_exclusive_group(required=True)
-    for nombre in ("control", "parte-a", "extension-e1", "parte-b"):
+    for nombre in ("control", "parte-a", "extension-e1", "parte-b", "diagnostico"):
         modo.add_argument(f"--{nombre}", action="store_true")
     args = ap.parse_args()
     conn = get_connection()
@@ -517,6 +565,10 @@ def main() -> None:
         return
     if not ctrl["ok"]:
         raise SystemExit("los controles fallan: el experimento se detiene (protocolo)")
+
+    if args.diagnostico:
+        _guardar("exploratorio", diagnostico(serie, etiq))
+        return
 
     if args.parte_a or args.extension_e1:
         bA = cargar_bloque(serie, etiq, "A", "q_R0")

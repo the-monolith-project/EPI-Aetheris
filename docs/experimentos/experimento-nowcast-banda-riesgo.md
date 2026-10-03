@@ -189,3 +189,81 @@ su texto de lectura, y queda para después de ver los resultados.
   `--parte-b`.
 - `docs/agentes/mejora-predictor/resultados-nuevos/banda_riesgo.json`.
 - Sección de resultados en este documento.
+
+## Resultados (2026-10-03)
+
+Script commiteado antes de correr (1df00f2). Controles: la cobertura del 50 % y del 95 % recalculada
+con las filas guardadas coincide con `rangos.json` en los 16 bloques (diferencia máxima 0,0005, los
+mismos n); L2 con todas las filas en un régimen reproduce L1 sin diferencia; las etiquetas de
+régimen no cambian al truncar la serie. Las 16 pruebas unitarias pasan. Etiquetas de régimen en la
+serie: 210 semanas en el tercio bajo, 230 en el medio, 168 en el alto, 56 sin etiqueta.
+
+### Parte A: M0 en OpenDengue, objetivos 2019, 2021 a 2024
+
+1688 filas evaluables (8 horizontes; 204 orígenes con los 8). Cobertura unilateral al 97,5 %
+(excedencias sobre n entre paréntesis):
+
+| capa | total | tercio bajo | tercio medio | tercio alto | razón de pinball | horizontes mejores | años con razón ≤ 1 | ensanchamiento |
+|---|---|---|---|---|---|---|---|---|
+| L0 | 0,943 | 0,996 (2/536) | 0,907 (65/696) | 0,936 (29/456) | 1,000 | | | 1,00 |
+| L1 | 0,985 | 1,000 (0/536) | 0,977 (16/696) | 0,978 (10/456) | 4,514 | 0 de 8 | 0 de 5 | 6,37 |
+| L2 | 0,970 | 0,998 (1/536) | 0,944 (39/696) | 0,978 (10/456) | 4,595 | 0 de 8 | 0 de 5 | 6,25 |
+
+L1 opera siempre con su factor propio; L2 lo hace en el 59 % de las filas y en el resto cae al de L1.
+La razón de pinball de L1 por año de objetivo es 5,32; 12,47; 2,09; 3,74 y 3,08 (2019, 2021, 2022,
+2023, 2024) y la de L2 5,32; 12,45; 2,15; 3,30 y 3,96. En el nivel 0,99, L0 cubre 0,966, L1 0,995 y L2
+0,986, con razones de pinball de 5,15 y 5,29. La cobertura de L0 por horizonte va de 0,968 (h = 1)
+a 0,925 (h = 4) y 0,931 (h = 8).
+
+Diebold-Mariano sobre la diferencia de pinball sumada en los 8 horizontes (204 orígenes; positiva
+significa que la primera capa pierde más):
+
+| comparación | diferencia media | p | p con Holm |
+|---|---|---|---|
+| L1 contra L0 | +285,2 | 0,0037 | 0,0083 |
+| L2 contra L0 | +292,3 | 0,0028 | 0,0083 |
+| L2 contra L1 | +7,2 | 0,49 | 0,49 |
+
+Régimen contra global: la razón de pinball de L2 sobre L1 es 1,018; con las etiquetas barajadas el
+percentil 10 es 1,046 y la mediana 1,073, y el 1,5 % de los 200 barajados la iguala o la mejora.
+El régimen real aporta algo frente a etiquetas al azar, pero no basta para que L2 supere a L1.
+
+Cobertura del intervalo central del 95 % guardado, por régimen: 0,965 (536) en el tercio bajo, 0,865
+(696) en el medio y 0,917 (456) en el alto.
+
+### Decisión
+
+Ni L1 ni L2 pasan. Las dos cumplen la cobertura total y la del tercio alto, y fallan el pinball (0 de
+8 horizontes mejores), los años (0 de 5) y el ensanchamiento (más de 6). No hay capa elegida, así que
+la parte B no corre. La extensión E1 tampoco: su condición exige que el único criterio incumplido
+sea el ensanchamiento, y aquí fallan además el pinball y los años. El límite alto sigue siendo el
+cuantil 0,975 publicado y no se añade una banda de riesgo calculada con estos factores.
+
+Queda como limitación a documentar: en OpenDengue 2019 a 2024 el cuantil 0,975 de M0 queda por
+debajo del valor observado en el 5,7 % de las semanas (nominal 2,5 %): 0,4 % de las semanas en el
+tercio bajo de crecimiento, 9,3 % en el medio y 6,4 % en el alto. La exploración previa señalaba
+el tercio alto como el más débil; con el crecimiento suavizado, los cortes causales y la cobertura
+unilateral, el más débil es el medio.
+
+### Exploratorio (después de ver la parte A; no decide)
+
+Las cifras salen de `--diagnostico` y están en `banda_riesgo.json`, clave `exploratorio`.
+
+- Los factores de L1 son el máximo de los scores pasados, que es lo que fija la convención con menos
+  de 119 pares. Su mediana en las filas evaluables es 2,58 a h = 1, 2,32 a h = 4 y 1,94 a h = 8. El
+  cuantil 0,975 de todos los scores es 1,54 y el máximo 4,61 (origen 2019-07-28, h = 1, 2.178 casos
+  observados contra una mediana de 582).
+- Cota con un factor óptimo visto dentro de muestra (no causal, no es un candidato): el factor al nivel
+  0,975 de los scores de todas las filas evaluables, por horizonte, da cobertura 0,972, razón de
+  pinball 1,541 y ensanchamiento 1,71; por horizonte y régimen, 0,976, 2,451 y 2,52. Al nivel 0,95 las
+  razones son 1,089 y 1,194, y al nivel 0,90 el factor es 1 (L0). Ningún estimador de este tipo puede
+  pasar el criterio de pinball, ni siquiera conociendo el factor.
+- Las excedencias de L0 no se concentran en semanas de pocos casos: tasa de 5,3 %, 6,8 % y 5,0 % en
+  los tercios bajo, medio y alto de la mediana (cortes en 118 y 165 casos).
+
+### Qué sigue
+
+La parte A se vio completa, de modo que una variante nueva (otro score, otra escala del factor) ya no
+tendría A como validación limpia; necesitaría su propio protocolo y se juzgaría con el tablero y con la
+ventana prospectiva de la Fase 4. Con lo medido, corregir el límite alto del 97,5 % cuesta más pinball
+del que ahorra en excedencias, de modo que la limitación de arriba se documenta tal como está.
