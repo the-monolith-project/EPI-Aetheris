@@ -146,7 +146,7 @@ tablero vuelve a ser exacto: se espera diferencia 0. Las cifras del tramo del ta
 ejecución del 2026-10-02 quedan en el historial de git; los resultados de esta sección las
 reemplazan.
 
-## Resultados (ejecución 2026-10-02)
+## Resultados (ejecución 2026-10-02; tramo del tablero repetido el 2026-10-03)
 
 Corrida única de `experimento_nowcast_insumos.py` sobre la base de esta rama (Postgres 16
 local, semillas `seed_datos_reales.sql` y `seed_tablero_minsal.sql`). Salida completa en
@@ -160,10 +160,9 @@ precisión). Seis variantes, ninguna añadida después de ver resultados.
   se espera.
 - I0 reproduce las 2.044 predicciones de M0 de `mejora_validacion.json` (2019, 2021-2024,
   h = 1 a 8) con diferencia máxima 0,000.
-- En el tramo del tablero, I0 difiere de `mejora_confirmacion.json` desde el origen 2025-01-05
-  (647 predicciones comparadas; diferencia máxima por cuantil 161 casos en un cuantil extremo
-  a h = 7; diferencia relativa de la mediana: media entre 0,6 % y 1,4 % según el horizonte,
-  máxima 9,2 %). Es lo previsto en la enmienda: la semilla no trae ONI de 2025-2026.
+- En el tramo del tablero, la primera ejecución (2026-10-02, sin ONI de 2025-2026) difería de
+  `mejora_confirmacion.json` desde el origen 2025-01-05. En la repetición con el ONI cargado
+  (2026-10-03) I0 reproduce las 647 predicciones con diferencia 0.
 - Mutación de I3 a h = 4 (etiquetas permutadas): el WIS pasa de 57,4 a 144,6.
 
 ### Validación (2019, 2021-2024): efecto de cada insumo
@@ -244,14 +243,17 @@ como insumo no acerca la predicción al dato publicado, que sigue teniendo el ce
 
 ### Serie del tablero (2025-S1 a 2026-S37; se reporta, no decide)
 
+Cifras de la repetición del 2026-10-03, con el ONI de 2025-2026 cargado (ver enmienda). I0
+reproduce con diferencia 0 las 647 predicciones de `mejora_confirmacion.json`.
+
 M0 con cada insumo contra la persistencia suavizada (WIS; skill agrupado con 2025 y 2026
 entre paréntesis; cobertura 50 %; cobertura 95 %; fracción bajo la mediana; n = 80 u 81):
 
 | h | I0 | I1 | I2 | I3 | I4 | I5 |
 |---|---|---|---|---|---|---|
-| 1 | 10,1; −0,77 (−0,94, −0,61); 0,46; 0,82; 0,68 | 10,1; −0,77 (−0,87, −0,66); 0,34; 0,80; 0,70 | 10,3; −0,81 (−0,99, −0,63); 0,38; 0,85; 0,68 | 10,1; −0,77 (−0,91, −0,63); 0,45; 0,85; 0,66 | 9,9; −0,74 (−0,90, −0,60); 0,42; 0,85; 0,68 | 9,3; −0,64 (−0,83, −0,46); 0,39; 0,81; 0,65 |
-| 4 | 25,4; −0,14 (−0,33, −0,00); 0,30; 0,73; 0,72 | 25,4; −0,14 (−0,33, −0,00); 0,28; 0,75; 0,73 | 24,6; −0,10 (−0,26, +0,01); 0,28; 0,79; 0,67 | 25,4; −0,14 (−0,30, −0,02); 0,28; 0,78; 0,65 | 25,1; −0,12 (−0,31, +0,01); 0,33; 0,74; 0,70 | 23,9; −0,07 (−0,18, +0,01); 0,31; 0,68; 0,70 |
-| 8 | 31,2; +0,08 (+0,11, +0,05); 0,22; 0,72; 0,67 | 31,4; +0,08 (+0,12, +0,03); 0,25; 0,75; 0,68 | 32,1; +0,06 (+0,09, +0,01); 0,16; 0,73; 0,68 | 32,6; +0,04 (+0,08, +0,00); 0,17; 0,77; 0,68 | 30,9; +0,09 (+0,11, +0,07); 0,26; 0,67; 0,65 | 29,6; +0,13 (+0,20, +0,06); 0,21; 0,77; 0,65 |
+| 1 | 10,1; −0,78 (−0,88, −0,68); 0,40; 0,81; 0,71 | 10,1; −0,77 (−0,87, −0,66); 0,34; 0,80; 0,70 | 10,2; −0,79 (−0,92, −0,67); 0,38; 0,84; 0,69 | 10,1; −0,77 (−0,91, −0,63); 0,45; 0,85; 0,66 | 10,0; −0,76 (−0,85, −0,68); 0,40; 0,85; 0,69 | 9,2; −0,62 (−0,81, −0,44); 0,41; 0,81; 0,64 |
+| 4 | 25,6; −0,14 (−0,33, −0,01); 0,32; 0,73; 0,73 | 25,4; −0,14 (−0,33, −0,00); 0,28; 0,75; 0,73 | 25,3; −0,13 (−0,27, −0,03); 0,27; 0,80; 0,68 | 25,4; −0,14 (−0,30, −0,02); 0,28; 0,78; 0,65 | 25,2; −0,13 (−0,32, +0,01); 0,35; 0,74; 0,72 | 24,0; −0,07 (−0,17, +0,00); 0,32; 0,67; 0,72 |
+| 8 | 31,5; +0,07 (+0,11, +0,04); 0,22; 0,69; 0,67 | 31,4; +0,08 (+0,12, +0,03); 0,25; 0,75; 0,68 | 32,2; +0,05 (+0,10, +0,01); 0,20; 0,73; 0,69 | 32,6; +0,04 (+0,08, +0,00); 0,17; 0,77; 0,68 | 31,9; +0,06 (+0,10, +0,02); 0,25; 0,68; 0,67 | 29,6; +0,13 (+0,20, +0,06); 0,25; 0,77; 0,67 |
 
 Con la serie del tablero M0 pierde contra la persistencia a 1 a 5 semanas con cualquier
 insumo; ninguna ablación cambia ese cuadro. Mezcla C (peso 0,5 con la tendencia amortiguada)
@@ -259,24 +261,25 @@ construida con cada variante, misma referencia:
 
 | h | I0 | I1 | I2 | I3 | I4 | I5 |
 |---|---|---|---|---|---|---|
-| 1 | 6,0; −0,05 (−0,10, −0,00); 0,55; 0,94; 0,64 | 5,9; −0,04 (−0,07, −0,00); 0,54; 0,95; 0,65 | 6,0; −0,06 (−0,10, −0,02); 0,55; 0,94; 0,57 | 5,9; −0,04 (−0,08, −0,01); 0,55; 0,94; 0,60 | 5,9; −0,04 (−0,08, +0,00); 0,55; 0,95; 0,65 | 5,7; +0,00 (−0,07, +0,08); 0,56; 0,94; 0,64 |
-| 2 | 11,2; +0,09 (+0,02, +0,14); 0,49; 0,90; 0,62 | 11,3; +0,08 (+0,01, +0,13); 0,47; 0,90; 0,62 | 11,3; +0,08 (+0,03, +0,12); 0,49; 0,90; 0,57 | 11,2; +0,09 (+0,05, +0,12); 0,53; 0,90; 0,58 | 11,2; +0,09 (+0,02, +0,14); 0,51; 0,90; 0,62 | 10,6; +0,14 (+0,11, +0,16); 0,53; 0,90; 0,59 |
-| 3 | 15,9; +0,12 (+0,08, +0,14); 0,43; 0,89; 0,59 | 15,9; +0,11 (+0,09, +0,13); 0,49; 0,89; 0,59 | 15,7; +0,12 (+0,12, +0,13); 0,46; 0,89; 0,56 | 15,9; +0,11 (+0,11, +0,11); 0,49; 0,89; 0,57 | 15,8; +0,12 (+0,08, +0,15); 0,48; 0,89; 0,60 | 15,4; +0,14 (+0,14, +0,15); 0,48; 0,86; 0,54 |
-| 4 | 19,3; +0,14 (+0,13, +0,14); 0,40; 0,91; 0,60 | 19,3; +0,14 (+0,13, +0,15); 0,43; 0,91; 0,58 | 19,1; +0,14 (+0,17, +0,13); 0,41; 0,89; 0,53 | 19,4; +0,13 (+0,15, +0,12); 0,44; 0,90; 0,57 | 19,1; +0,15 (+0,14, +0,15); 0,43; 0,88; 0,59 | 18,6; +0,17 (+0,19, +0,15); 0,41; 0,88; 0,57 |
-| 5 | 21,9; +0,15 (+0,15, +0,16); 0,42; 0,89; 0,59 | 22,1; +0,15 (+0,15, +0,15); 0,41; 0,90; 0,60 | 22,3; +0,14 (+0,16, +0,12); 0,43; 0,88; 0,56 | 22,4; +0,13 (+0,17, +0,11); 0,46; 0,86; 0,58 | 22,0; +0,15 (+0,15, +0,15); 0,40; 0,91; 0,59 | 20,9; +0,19 (+0,22, +0,17); 0,44; 0,86; 0,56 |
-| 6 | 24,2; +0,16 (+0,20, +0,13); 0,40; 0,91; 0,60 | 24,3; +0,16 (+0,20, +0,12); 0,40; 0,91; 0,60 | 24,7; +0,14 (+0,19, +0,10); 0,41; 0,90; 0,60 | 24,9; +0,14 (+0,19, +0,09); 0,43; 0,90; 0,60 | 24,0; +0,17 (+0,20, +0,14); 0,38; 0,90; 0,60 | 23,2; +0,19 (+0,25, +0,15); 0,43; 0,94; 0,57 |
-| 7 | 26,9; +0,15 (+0,22, +0,08); 0,40; 0,91; 0,57 | 26,6; +0,16 (+0,23, +0,10); 0,40; 0,91; 0,57 | 27,3; +0,14 (+0,22, +0,06); 0,40; 0,91; 0,58 | 27,5; +0,13 (+0,22, +0,05); 0,43; 0,91; 0,59 | 26,4; +0,17 (+0,24, +0,10); 0,40; 0,91; 0,56 | 25,9; +0,18 (+0,26, +0,11); 0,38; 0,91; 0,56 |
-| 8 | 28,6; +0,16 (+0,23, +0,09); 0,35; 0,89; 0,56 | 28,8; +0,15 (+0,23, +0,08); 0,37; 0,89; 0,56 | 28,8; +0,15 (+0,24, +0,07); 0,41; 0,94; 0,62 | 29,0; +0,15 (+0,23, +0,06); 0,40; 0,93; 0,62 | 28,3; +0,17 (+0,24, +0,10); 0,33; 0,91; 0,56 | 27,7; +0,19 (+0,27, +0,10); 0,40; 0,94; 0,57 |
+| 1 | 5,9; −0,04 (−0,07, −0,01); 0,55; 0,94; 0,62 | 5,9; −0,04 (−0,07, −0,00); 0,54; 0,95; 0,65 | 6,0; −0,05 (−0,07, −0,02); 0,54; 0,94; 0,59 | 5,9; −0,04 (−0,08, −0,01); 0,55; 0,94; 0,60 | 5,9; −0,04 (−0,06, −0,01); 0,59; 0,95; 0,62 | 5,6; +0,01 (−0,07, +0,08); 0,59; 0,95; 0,65 |
+| 2 | 11,2; +0,09 (+0,03, +0,13); 0,53; 0,89; 0,63 | 11,3; +0,08 (+0,01, +0,13); 0,47; 0,90; 0,62 | 11,3; +0,08 (+0,04, +0,11); 0,56; 0,91; 0,60 | 11,2; +0,09 (+0,05, +0,12); 0,53; 0,90; 0,58 | 11,2; +0,09 (+0,03, +0,14); 0,52; 0,89; 0,63 | 10,7; +0,13 (+0,11, +0,14); 0,51; 0,90; 0,60 |
+| 3 | 15,9; +0,11 (+0,08, +0,14); 0,46; 0,89; 0,59 | 15,9; +0,12 (+0,09, +0,13); 0,49; 0,89; 0,59 | 15,8; +0,12 (+0,12, +0,12); 0,47; 0,89; 0,57 | 15,9; +0,11 (+0,11, +0,11); 0,49; 0,89; 0,57 | 15,8; +0,12 (+0,08, +0,14); 0,51; 0,89; 0,60 | 15,3; +0,15 (+0,14, +0,15); 0,48; 0,86; 0,56 |
+| 4 | 19,1; +0,15 (+0,13, +0,16); 0,41; 0,91; 0,60 | 19,3; +0,14 (+0,13, +0,15); 0,43; 0,91; 0,58 | 19,2; +0,14 (+0,17, +0,12); 0,40; 0,90; 0,57 | 19,4; +0,13 (+0,15, +0,12); 0,44; 0,90; 0,57 | 18,9; +0,15 (+0,14, +0,17); 0,42; 0,89; 0,59 | 18,5; +0,17 (+0,19, +0,16); 0,42; 0,90; 0,57 |
+| 5 | 21,7; +0,16 (+0,15, +0,17); 0,42; 0,90; 0,59 | 22,1; +0,15 (+0,15, +0,15); 0,41; 0,90; 0,60 | 21,9; +0,15 (+0,17, +0,14); 0,46; 0,86; 0,58 | 22,4; +0,13 (+0,17, +0,11); 0,46; 0,86; 0,58 | 21,9; +0,15 (+0,15, +0,16); 0,41; 0,91; 0,59 | 20,9; +0,19 (+0,22, +0,17); 0,43; 0,86; 0,56 |
+| 6 | 23,9; +0,17 (+0,20, +0,14); 0,40; 0,91; 0,60 | 24,3; +0,16 (+0,20, +0,12); 0,40; 0,91; 0,60 | 24,5; +0,15 (+0,19, +0,11); 0,42; 0,90; 0,60 | 24,9; +0,14 (+0,19, +0,09); 0,43; 0,90; 0,60 | 24,0; +0,17 (+0,20, +0,14); 0,41; 0,89; 0,60 | 23,4; +0,19 (+0,25, +0,14); 0,43; 0,94; 0,57 |
+| 7 | 26,4; +0,17 (+0,22, +0,11); 0,40; 0,91; 0,57 | 26,6; +0,16 (+0,23, +0,10); 0,40; 0,91; 0,57 | 27,0; +0,15 (+0,23, +0,08); 0,40; 0,91; 0,58 | 27,5; +0,13 (+0,22, +0,05); 0,43; 0,91; 0,59 | 25,9; +0,18 (+0,24, +0,13); 0,40; 0,91; 0,56 | 25,7; +0,19 (+0,26, +0,13); 0,40; 0,91; 0,56 |
+| 8 | 28,6; +0,16 (+0,23, +0,09); 0,35; 0,90; 0,56 | 28,8; +0,15 (+0,23, +0,08); 0,37; 0,89; 0,56 | 28,5; +0,16 (+0,24, +0,08); 0,41; 0,94; 0,62 | 29,0; +0,15 (+0,23, +0,06); 0,40; 0,93; 0,62 | 28,2; +0,17 (+0,23, +0,11); 0,33; 0,91; 0,57 | 27,6; +0,19 (+0,27, +0,11); 0,40; 0,94; 0,57 |
 
-WIS de la persistencia suavizada por horizonte: 5,7; 12,3; 17,9; 22,4; 25,9; 28,8; 31,7;
-34,0. Skill de C con cada variante contra C con I0: entre −0,03 y +0,02 para I1 a I4 en todos
-los horizontes; I5 entre +0,03 y +0,05 en los ocho. En este tramo C con I5 cumpliría las tres
-condiciones del tablero a h = 4 y h = 8, pero no decide porque I5 no pasó la validación, y
-2025-2026 sirvieron para elegir C.
+WIS de la persistencia suavizada por horizonte: 5,7; 12,3; 17,9; 22,4; 25,9; 28,8; 31,7; 34,0.
+Skill de C con cada variante contra C con I0: entre −0,04 y +0,02 para I1 a I4 en
+todos los horizontes; I5 entre +0,02 y +0,05 en los ocho. En este tramo C con I5
+cumpliría las tres condiciones del tablero a h = 4 y h = 8, pero no decide porque I5 no pasó la
+validación, y 2025-2026 sirvieron para elegir C.
 
-Estas cifras de 2025-2026 se calcularon sin ONI de 2025-2026 en la base (enmienda) y no
-coinciden exactamente con el artefacto servido (`nowcast_dengue.json`: skill 0,134 a h = 4 con
-cobertura 0,39 y 0,91; aquí C con I0 da 0,14, 0,40 y 0,91).
+C con I0 a h = 4 da WIS 19,1 contra 22,4 (skill agrupado 0,15, cobertura 0,41 al
+50 % y 0,91 al 95 %). El bloque `desempeno` de `nowcast_dengue.json` (19,6 contra 22,8; 0,39 y
+0,91) usa 77 semanas objetivo desde 2025-01-26; aquí son 81 desde 2025-S1. Las predicciones
+son las mismas.
 
 ### Veredicto
 
@@ -295,5 +298,5 @@ cobertura 0,39 y 0,91; aquí C con I0 da 0,14, 0,40 y 0,91).
 - La ablación quita variables sin reajustar hiperparámetros; un modelo sin clima podría
   beneficiarse de otra configuración, pero eso sería un barrido sobre los años de validación
   que el protocolo excluye.
-- El ONI entra con arrastre mensual y, en 2025-2026, con el valor de diciembre de 2024 en toda
-  la ventana; la ablación mide ese insumo tal como M0 lo usa, no el valor del ENSO en general.
+- El ONI entra con arrastre mensual (desde 2026-S31, con el valor de julio de 2026, el último
+  publicado); la ablación mide ese insumo tal como M0 lo usa, no el valor del ENSO en general.

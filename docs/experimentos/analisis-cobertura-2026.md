@@ -53,7 +53,7 @@ la nueva salida de `experimento_nowcast_rangos.py`, que reproduce exactamente la
 publicadas. La primera versión de los resultados queda en el historial de git; la sección de
 resultados se reemplaza.
 
-## Resultados (2026-10-03)
+## Resultados (2026-10-03, con el ONI de 2025-2026 cargado)
 
 Salida de `analisis_nowcast_cobertura_2026.py` en
 `docs/agentes/mejora-predictor/resultados-nuevos/cobertura_2026.json`. En 2026 hay 231
@@ -67,13 +67,13 @@ rango: la predicción quedó corta.
 | h | 2026, todas | S1-S3 | S19-S22 | resto de 2026 | 2025, todas |
 |---|---|---|---|---|---|
 | 1 | 0,96 (28) 0/1 | sin predicción | 0,75 (4) 0/1 | 1,00 (24) | 0,92 (52) 1/3 |
-| 2 | 0,90 (29) 1/2 | 0,00 (1) 1/0 | 0,50 (4) 0/2 | 1,00 (24) | 0,90 (52) 1/4 |
+| 2 | 0,86 (29) 1/3 | 0,00 (1) 1/0 | 0,25 (4) 0/3 | 1,00 (24) | 0,90 (52) 1/4 |
 | 3 | 0,83 (29) 2/3 | 0,00 (2) 2/0 | 0,25 (4) 0/3 | 1,00 (23) | 0,92 (52) 2/2 |
 | 4 | 0,79 (29) 3/3 | 0,00 (3) 3/0 | 0,25 (4) 0/3 | 1,00 (22) | 0,98 (52) 0/1 |
-| 5 | 0,72 (29) 4/4 | 0,00 (3) 3/0 | 0,25 (4) 0/3 | 0,91 (22) 1/1 | 0,98 (52) 0/1 |
+| 5 | 0,76 (29) 4/3 | 0,00 (3) 3/0 | 0,50 (4) 0/2 | 0,91 (22) 1/1 | 0,98 (52) 0/1 |
 | 6 | 0,79 (29) 4/2 | 0,00 (3) 3/0 | 0,75 (4) 0/1 | 0,91 (22) 1/1 | 0,98 (52) 0/1 |
 | 7 | 0,83 (29) 4/1 | 0,00 (3) 3/0 | 0,75 (4) 0/1 | 0,95 (22) 1/0 | 0,96 (52) 0/2 |
-| 8 | 0,79 (29) 4/2 | 0,00 (3) 3/0 | 0,50 (4) 0/2 | 0,95 (22) 1/0 | 0,94 (52) 0/3 |
+| 8 | 0,79 (29) 4/2 | 0,00 (3) 3/0 | 0,50 (4) 0/2 | 0,95 (22) 1/0 | 0,96 (52) 0/2 |
 
 Los 40 fallos por semana objetivo (horizonte y lado):
 
@@ -83,9 +83,9 @@ Los 40 fallos por semana objetivo (horizonte y lado):
 | S2 | h3 a h8, arriba |
 | S3 | h4 a h8, arriba |
 | S4 | h5, arriba |
-| S19 | h1, h2, h3, h5, h7, h8, abajo |
+| S19 | h1, h2, h3, h7, h8, abajo |
 | S20 | h2, h3, h4, h8, abajo |
-| S21 | h3, h4, h5, abajo |
+| S21 | h2, h3, h4, h5, abajo |
 | S22 | h4, h5, h6, abajo |
 | S23 | h5, h6, abajo |
 | S27, S28, S29 | h6, h7 y h8 respectivamente, arriba |
@@ -107,20 +107,20 @@ Serie observada del tablero (sospechosos de dengue, `db/seed/seed_tablero_minsal
 
 Son dos escalones de una semana a la otra: ×5,5 al cambiar de año y −43 % entre S18 y S19. En el
 resto del año la serie cambia pocas unidades por semana. A 4 semanas, para 2026-S1 la predicción
-fue una mediana de 55 con rango del 95 % de 6 a 110, y lo observado fue 214; para S20 a S22 la
-mediana fue de 106 a 129, con el rango empezando en 72 a 80, y lo observado fue 53 a 55.
+fue una mediana de 55 con rango del 95 % de 5 a 110, y lo observado fue 214; para S20 a S22 la
+mediana fue de 108 a 131, con el rango empezando en 72 a 79, y lo observado fue 53 a 55.
 
 Error medio de la mediana en `log1p` (positivo = predijo de más), a h = 4 y h = 8:
 
 | tramo | C | M0 | T |
 |---|---|---|---|
-| S1-S3, h = 4 | −1,22 | −0,92 | −1,52 |
+| S1-S3, h = 4 | −1,22 | −0,93 | −1,52 |
 | S1-S3, h = 8 | −1,04 | −0,71 | −1,37 |
-| S19-S22, h = 4 | +0,67 | +0,84 | +0,50 |
+| S19-S22, h = 4 | +0,69 | +0,89 | +0,50 |
 | S19-S22, h = 8 | +0,70 | +0,90 | +0,51 |
-| resto de 2026, h = 4 | −0,14 | −0,06 | −0,22 |
-| resto de 2026, h = 8 | −0,32 | −0,10 | −0,53 |
-| 2025, h = 4 | +0,09 | +0,16 | +0,03 |
+| resto de 2026, h = 4 | −0,13 | −0,04 | −0,22 |
+| resto de 2026, h = 8 | −0,31 | −0,10 | −0,53 |
+| 2025, h = 4 | +0,10 | +0,17 | +0,03 |
 | 2025, h = 8 | +0,16 | +0,22 | +0,10 |
 
 Lectura:
@@ -151,8 +151,9 @@ se tocan, y el protocolo ya reporta como sensibilidad las cifras sin las semanas
 
 ### Limitaciones
 
-- Las predicciones salen de la corrida sin ONI de 2025-2026 en la base; difieren levemente del
-  artefacto servido.
+- Las predicciones son las de la repetición con el ONI de 2025-2026 cargado, idénticas a las
+  publicadas. La primera versión de este análisis (sin ese ONI) queda en el historial de git;
+  sus conclusiones no cambian.
 - En 2026 hay 4 semanas en S19-S22 y 1 a 3 en S1-S3 por horizonte: las cifras por tramo son
   descriptivas, no estimaciones con precisión.
 - Las semanas 2026-S4 a S11 no tienen predicción a 4 semanas por el hueco de 2025-S53.
