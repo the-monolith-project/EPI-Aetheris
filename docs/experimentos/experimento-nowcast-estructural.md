@@ -65,9 +65,8 @@ Tres variantes del pasado (las k − 1 semanas de 2023 anteriores a 2024-S1):
   año son casos que las vacaciones dejaron sin notificar y que pasan a la semana siguiente.
 - L: todo libre y no negativo.
 
-Se reporta, por k y variante, si es factible y, si lo es, el ancho de identificación de la suma
-de los conteos crudos de las k últimas semanas de 2024 (mínimo y máximo por programa lineal, relativos al
-valor de 2024-S52). Si L es factible y P' no, el crudo de 2023 no es el insumo de la serie de 2024
+Se reporta, por k y variante, si es factible y, si lo es, el error de identificación e_id de E0b
+(definido abajo) con origen en 2024-S52, para los k desde 4. Si L es factible y P' no, el crudo de 2023 no es el insumo de la serie de 2024
 (otra fuente o otro corte). No hay regla de parada: describe el insumo y no decide nada.
 
 ### E0b. Ancho de identificación en el régimen que importa (compuerta)
@@ -131,3 +130,11 @@ tendencia (ganancia media de skill mayor o igual que 0,005 y al menos 3 de 5 añ
 - Salida: `docs/agentes/mejora-predictor/resultados-nuevos/estructural_identificacion.json`.
 - Se corre una sola vez con estos criterios. Los resultados y las conclusiones se agregan al final de
   este documento.
+
+## Enmiendas
+
+1. 2026-10-03, antes de escribir el script: en E0a la cantidad reportada era la suma de los
+   conteos crudos de las k últimas semanas, que queda fijada por el promedio publicado (k veces el
+   valor, con la tolerancia) y no informa nada. Se reemplaza por e_id de E0b, que mide la suma de
+   las semanas más antiguas de la ventana. E0b no cambia. En E0b, e_id se calcula solo para los k
+   desde 4, porque con h = 4 y ventana menor que 4 las semanas que salen incluyen semanas futuras.
