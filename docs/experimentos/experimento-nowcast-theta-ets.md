@@ -185,3 +185,100 @@ corrección de Holm se hace sobre todas las comparaciones.
 - Modos `--control`, `--parte-a`, `--extension-e1`, `--parte-b` y `--parte-c`. Salida en
   `docs/agentes/mejora-predictor/resultados-nuevos/theta_ets.json`.
 - El script se escribe y se commitea, con sus pruebas, antes de correr cualquier parte.
+
+## Resultados (2026-10-03)
+
+Orden de los commits: protocolo 2dfb040, enmienda a29654b, script y pruebas d3a8afe, extensión E1
+ecf1355 (protocolo) y 9c9681e (código); cada paso se commiteó antes de correrlo. Las 52 pruebas
+unitarias pasan.
+
+### Controles
+
+T vigente reproduce `q_T` y `q_C_R0` guardados (diferencia máxima 0,0005 en T y 0,0026 en C, dentro
+de las tolerancias de la Fase 1) y el WIS de la referencia (0,0005). ETS con α = 1, β = 1 y
+φ = 0,8 reproduce T con pendiente de una semana con diferencia máxima 0 en 2940 pares origen-horizonte,
+y el puntaje de validación de T calculado con este script coincide con el de la selección de
+T con diferencia 0.
+
+### A. Elegir con la historia hasta 2023
+
+Validación de 2080 pares origen-horizonte. Puntaje de T vigente: +0,2258.
+
+| familia | configuraciones | superan a T | mejor | puntaje | ganancia sobre T | años en que supera | regla de cambio |
+|---|---|---|---|---|---|---|---|
+| ETS | 60 | 13 | α 0,8; β 1,0; φ 0,8 | +0,2568 | +0,0309 | 4 de 5 | sí |
+| Theta | 25 | 0 | α 1,0; L 6 | +0,1398 | −0,0860 | 0 de 5 | no |
+
+Puntaje por año del mejor ETS contra T: 2018 0,295 contra 0,244; 2019 0,353 contra 0,305; 2021
+0,221 contra 0,152; 2022 0,394 contra 0,366; 2023 0,022 contra 0,063 (el único año en que pierde).
+Las cinco mejores ETS tienen β de 0,8 o 1,0 y φ de 0,8 o 0,9. El mejor Theta es el de menor
+ventana y α = 1.
+
+### Extensión E1 (añadida después de A)
+
+ETS con φ de 0,5 a 0,7: la mejor, (0,8; 1,0; 0,7), puntúa +0,2267, 0,030 menos que la original y
+gana en 1 de 5 años; no sustituye. El óptimo de φ queda interior, en 0,8. Theta con L de 3 a 5: la
+mejor, (1,0; 3), puntúa +0,2275 y gana a la original de Theta en los 5 años, pero frente a T suma
++0,0017 en 3 años y no cumple la regla de cambio; no sustituye. Con L = 3 y α = 1 Theta usa una
+pendiente de dos semanas con deriva de h/2 sin amortiguar, que se parece a T con pendiente de dos
+semanas y suma amortiguada (0,5 a 4 contra 0,8 a 3,3 para h de 1 a 8), así que iguala a T y no la supera.
+
+Configuraciones finales: ETS (0,8; 1,0; 0,8), de la rejilla original, y Theta (1,0; 6), que no pasa
+la regla y se evalúa solo como descripción.
+
+### B. Confirmación fuera de la selección
+
+Razón de WIS de C' (M0 con la base) contra C, promedio de los 8 horizontes; entre paréntesis, por
+grupo h1-2, h3-4 y h5-8. H1 son 52 pares por horizonte (2024); H2, 80 o 81 (2025 a 2026-S37, dentro
+de muestra).
+
+| base | H1 | H2 | base contra T, H1 y H2 | cobertura del 95 % en H2, C' contra C | elegible |
+|---|---|---|---|---|---|
+| ETS (0,8; 1,0; 0,8) | 0,973 (0,975; 0,976; 0,969) | 0,998 (0,996; 1,000; 0,997) | 0,966 y 1,003 | 0,907 contra 0,907 | sí |
+| Theta (1,0; 6) | 1,041 (1,048; 1,041; 1,038) | 1,033 (1,070; 1,034; 1,014) | 1,054 y 1,023 | 0,912 contra 0,907 | no (no pasa A y la razón supera 1) |
+
+ETS por horizonte, razón contra C. H1: 0,977; 0,974; 0,974; 0,978; 0,964; 0,964; 0,971; 0,978. H2:
+1,000; 0,991; 0,998; 1,002; 1,002; 0,992; 0,998; 0,997. En H1 la cobertura del 95 % es 1,000 para
+las dos, de modo que no distingue. En H2 la cobertura del 50 % de C' queda entre 0,35 y 0,55 por
+horizonte, como la de C.
+
+Diebold-Mariano de C' contra C, con Holm entre 48 comparaciones (ETS, Theta y el promedio de bases,
+en H1 y H2, por horizonte):
+
+- ETS: p crudo entre 0,014 y 0,18 en H1 (menores en h1, h5 y h6) y entre 0,61 y 0,98 en H2; con
+  Holm ninguna baja de 0,57.
+- Theta: es peor que C. En h = 1 el p crudo es 0,0003 en H1 y 0,00007 en H2 (Holm 0,015 y 0,003);
+  en h = 2 de H2 el p crudo es 0,002 (Holm 0,095).
+
+### C. Promedio de T, ETS y Theta (exploratorio)
+
+Razón contra C: 0,999 en H1 y 1,005 en H2 (por horizonte entre 0,996 y 1,023); base contra T 0,982 y
+0,990; cobertura del 95 % en H2 0,913 contra 0,907. No es elegible. El promedio con Theta pierde la
+ganancia que traía ETS.
+
+## Conclusiones
+
+- Theta no sirve para esta serie. Ninguna de sus 25 configuraciones supera a T en la validación, la
+  extensión a ventanas más cortas solo la acerca a T, y puesta dentro de C es peor que C en H1 y en
+  H2, de forma apreciable en h = 1 y 2 (hasta 8 % de WIS).
+- ETS (0,8; 1,0; 0,8) cumple la regla firmada, es decir, es elegible: gana a T en la validación
+  (+0,031 de skill, 4 de 5 años) y la razón contra C es menor que 1 en los 8 horizontes de 2024
+  (0,973). En el tablero esa ganancia desaparece: 0,998 en 2025 a 2026-S37, indistinguible de C. En
+  2024 la ventaja es consistente entre horizontes pero ninguna prueba de Diebold-Mariano resiste
+  Holm.
+- Una explicación posible, no probada, es que ETS gana suavizando el ruido de series que aún lo
+  tienen (la historia hasta 2023 promediada a 7 semanas y OpenDengue 2024) y que el tablero ya
+  viene suavizado por MINSAL, de modo que el filtro de ETS aporta poco. La ventana prospectiva es
+  del tablero, por lo que se parece a H2 y no a H1.
+- La elegibilidad solo habilita a firmar una predicción paralela; no cambia el sitio. El criterio de
+  confirmación de la firma (razón media menor o igual que 0,99) no se cumpliría con una razón como
+  la de H2, de modo que la probabilidad previa de que ETS se confirme es baja.
+- Limitaciones: la rejilla es gruesa (60 y 25 configuraciones); la elección usa cinco años; H2 es
+  dentro de muestra para T y para C; la historia se promedió a 7 semanas por una aproximación que
+  MINSAL no ha confirmado.
+
+## Qué se hace con esto
+
+Se prepara, sin firmarla, la propuesta de una candidata paralela a C con ETS (0,8; 1,0; 0,8)
+como base (`firma-candidata-ets-ventana-prospectiva.md`). Theta y el promedio de bases se descartan.
+La decisión de firmar es de Eduardo.
