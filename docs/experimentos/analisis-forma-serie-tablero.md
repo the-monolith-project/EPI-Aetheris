@@ -140,7 +140,7 @@ crudo (P). La referencia R_k va de 1,3 (k = 2) a 1,9 (k = 12).
 | Variante | Resultado |
 |---|---|
 | W1, ventana expansiva al inicio del año | 2026: infeasible para todo k de 2 a 12. 2025: plausible solo para k = 2, 3, 4 y 6; infeasible para k = 5 y para k de 7 a 12 |
-| W2, ventana completa con semanas previas libres, cada año por separado | Plausible para k de 2 a 7 en 2025 y en 2026, con la solución a menos de 1,3 veces el máximo publicado. Para k de 8 a 12 las dos series ya no cumplen a la vez: 2025 no es factible o no es plausible en la mayoría de ellos |
+| W2, ventana completa con semanas previas libres, cada año por separado | Plausible para k de 2 a 7 en 2025 y en 2026, con la solución a menos de 1,3 veces el máximo publicado. Para k de 8 a 12 solo cumple 2025 con k = 12 y 2026 con k = 11, nunca las dos a la vez |
 | W3, serie continua 2025-S1 a 2026-S37 (2025-S53 desconocida) | Factible y plausible solo para k = 2 y 3. Infeasible para todo k de 4 a 12, que incluye el 6 y el 7 del ADR 0021 |
 
 Lectura: cada año por separado es compatible con un promedio de 2 a 7 semanas si se le permite
@@ -174,9 +174,8 @@ Con k de 6 o 7, que son los valores del ADR 0021, ningún año de OpenDengue fil
 2023 llega a 3 cambios mayores que 0,30 en 37 semanas, y el tablero de 2026 tiene 3. Con k = 3 o
 4 sí aparecen hasta 6 y 4. Se cumple el criterio fijado para concluir que esos saltos no los
 explica un promedio de 6 o 7 semanas sobre conteos crudos, con la salvedad de que la evidencia es
-mínima (3 contra un máximo de 2 en diez años). 2025 es más liso que cualquier filtrado de
-OpenDengue con k de 5 a 8 y que 2024, y 2026 es más movido: las dos series no parecen salir
-del mismo régimen.
+mínima (3 contra un máximo de 2 en diez años). 2025 no tiene ningún cambio mayor que 0,30,
+igual que OpenDengue 2024, y 2026 tiene 3: las dos series se comportan distinto.
 
 ### D. Umbrales del corredor
 
