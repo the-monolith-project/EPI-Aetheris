@@ -95,10 +95,20 @@ AVISO_HONESTIDAD_RIESGO_NACIONAL = (
     "estos datos no alimentan ningún clasificador."
 )
 
+# La documentación interactiva (/docs, /redoc) y el esquema (/openapi.json)
+# se apagan en producción con API_DOCS_ENABLED=false (ADR 0024): exponen toda
+# la superficie de la API y Swagger UI carga scripts de un CDN, lo que obliga
+# a una CSP más abierta de la necesaria. Por defecto siguen activos para el
+# desarrollo local y los tests.
+API_DOCS_ENABLED = os.getenv("API_DOCS_ENABLED", "true").lower() != "false"
+
 app = FastAPI(
     title="EPI-Aetheris API",
     description="API para ingesta, análisis y consulta de datos epidemiológicos descriptivos",
-    version="0.1.0"
+    version="0.1.0",
+    docs_url="/docs" if API_DOCS_ENABLED else None,
+    redoc_url="/redoc" if API_DOCS_ENABLED else None,
+    openapi_url="/openapi.json" if API_DOCS_ENABLED else None,
 )
 
 # --- Rate limiting (issue #61) -------------------------------------------------
@@ -349,8 +359,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Permissions-Policy"] = (
             "geolocation=(), camera=(), microphone=(), payment=()"
         )
-        # Allow inline styles/scripts and jsdelivr to ensure FastAPI Swagger UI works.
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com"
+        if API_DOCS_ENABLED:
+            # Allow inline styles/scripts and jsdelivr to ensure FastAPI Swagger UI works.
+            response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com"
+        else:
+            # Sin Swagger UI la API solo sirve JSON y XML: no hay nada que
+            # cargar ni que enmarcar.
+            response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)

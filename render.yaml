@@ -75,6 +75,9 @@ services:
       # epi-aetheris.dev como su URL directa de onrender.com.
       - key: CORS_ALLOWED_ORIGINS
         value: https://epi-aetheris-web.onrender.com,https://epi-aetheris.dev,https://www.epi-aetheris.dev,https://aetheris-nitor.onrender.com
+      # /docs, /redoc y /openapi.json apagados en producción (ADR 0024).
+      - key: API_DOCS_ENABLED
+        value: "false"
       # Escritura de alertas (ADR 0015). Render lo pide en el panel; no
       # se versiona un valor. Sin él, POST/PATCH responden 503.
       - key: ALERTAS_TOKEN
