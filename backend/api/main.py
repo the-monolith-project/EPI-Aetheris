@@ -149,6 +149,12 @@ RATE_LIMIT_HEAVY = os.getenv("RATE_LIMIT_HEAVY", "30/minute")
 # El valor se lee en import para que los tests puedan bajarlo via
 # monkeypatch + importlib.reload (un literal en el decorador lo romperia).
 RATE_LIMIT_WRITE = os.getenv("RATE_LIMIT_WRITE", "10/minute")
+# Ingreso, segundo factor y recuperación de cuentas (ADR 0024): por IP, además
+# del límite por cuenta que lleva la tabla intentos_ingreso.
+RATE_LIMIT_AUTH = os.getenv("RATE_LIMIT_AUTH", "10/minute")
+# Las rutas de cuentas (ADR 0024) no se montan mientras esta variable no sea
+# "true": el despliegue actual no tiene las claves ni el correo que necesitan.
+CUENTAS_HABILITADAS = os.getenv("CUENTAS_HABILITADAS", "false").lower() == "true"
 
 limiter = Limiter(
     key_func=_client_ip,
@@ -180,8 +186,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "HEAD", "OPTIONS"],
     # Lista explicita: el formulario de /alertas/nueva manda Authorization
     # (Bearer) y Content-Type (JSON). Un comodín aqui no es necesario y
-    # oculta que cabeceras reales acepta el preflight.
-    allow_headers=["Authorization", "Content-Type"],
+    # oculta que cabeceras reales acepta el preflight. Con cuentas activas se
+    # suma X-CSRF-Token y se aceptan credenciales (la cookie de sesión), solo
+    # para los orígenes de la lista, que nunca puede contener "*".
+    allow_headers=["Authorization", "Content-Type"] + (["X-CSRF-Token"] if CUENTAS_HABILITADAS else []),
+    allow_credentials=CUENTAS_HABILITADAS,
 )
 
 # Las respuestas grandes de esta API son series históricas completas en JSON
@@ -1582,3 +1591,27 @@ def alertas_parchear(
     except Exception as exc:
         _alertas_http_error(exc)
     return actualizada
+
+
+# --- Cuentas de usuario (ADR 0024) -----------------------------------------------
+# Se monta al final, con todos los helpers ya definidos. Con la variable apagada
+# la API es idéntica a la anterior: ninguna ruta nueva y CORS sin credenciales.
+if CUENTAS_HABILITADAS:
+    from functools import lru_cache
+
+    from .cuentas import correo as _correo_cuentas
+    from .cuentas import rutas as _rutas_cuentas
+    from .cuentas.config import cargar_config as _cargar_config_cuentas
+
+    app.include_router(
+        _rutas_cuentas.crear_router(
+            limiter=limiter,
+            abrir_conexion=_conexion,
+            limite_auth=RATE_LIMIT_AUTH,
+            # lru_cache no guarda las excepciones: sin claves configuradas las
+            # rutas responden 503 en vez de impedir que arranque la API.
+            config_fn=lru_cache(maxsize=1)(_cargar_config_cuentas),
+            remitente=_correo_cuentas.RemitenteSmtp(),
+            ip_fn=_client_ip,
+        )
+    )

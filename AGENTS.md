@@ -126,11 +126,15 @@ Antes de introducir una dependencia:
 
 No instales una dependencia únicamente porque simplifica unas pocas líneas de código.
 
+Excepción acotada (ADR 0024): el correo transaccional de las cuentas usa un servicio externo con subdominio de envío propio y plan gratuito. El funcionamiento central del sitio no depende de él: leer alertas, noticias y reportes no requiere correo.
+
 ### Privacidad
 
 No introduzcas datos personales.
 
 El sistema trabaja con información pública y agregada y debe conservar esa característica.
+
+Excepción acotada (ADR 0024): las cuentas de quienes publican guardan nombre, correo, institución y, si la persona lo elige, cargo. Quienes leen el sitio no tienen cuenta ni se registra nada de ellos.
 
 ### Reproducibilidad
 
@@ -289,6 +293,7 @@ Cuando una tarea toque autenticación, middleware, CORS, cabeceras HTTP, secreto
 * utiliza `.env.example` únicamente como referencia de variables;
 * nunca copies credenciales reales a código, documentación, tests o commits.
 * `POST`/`PATCH /api/alertas` llevan umbral propio `RATE_LIMIT_WRITE` (default `10/minute`); `SecurityHeadersMiddleware` incluye `Referrer-Policy` y `Permissions-Policy`; CORS `allow_headers` es lista explícita (`Authorization`, `Content-Type`), no `*`. No reordenes los middleware.
+* Excepción acotada (ADR 0024): con `CUENTAS_HABILITADAS=true`, CORS admite credenciales solo para el origen canónico y `allow_headers` suma `X-CSRF-Token`. La CSP propia para las rutas privadas y el orden de los middleware de sesión y CSRF se documentan al activar las cuentas.
 
 ---
 
@@ -425,6 +430,7 @@ En este repositorio `docs/` contiene sólo lo esencial:
 docs/
 ├── adr/                    # decisiones arquitectónicas formales
 ├── biblioteca/             # documentos públicos de /biblioteca (colección de Astro; no mover)
+├── seguridad/              # procedimiento de respuesta a incidentes (excepción del ADR 0024)
 └── despliegue-render.md    # procedimiento de despliegue (referenciado por render.yaml)
 ```
 
@@ -435,7 +441,7 @@ Cuando surja conocimiento nuevo:
 * historial de cambios → los mensajes de commit (no hay CHANGELOG);
 * protocolos y resultados de experimentos, notas de sesión, planes → no se versionan.
 
-No crees carpetas de documentación nuevas fuera de `docs/adr/` y `docs/biblioteca/`.
+No crees carpetas de documentación nuevas fuera de `docs/adr/`, `docs/biblioteca/` y `docs/seguridad/`. Esta última, por el ADR 0024, contiene solo el procedimiento de respuesta a incidentes.
 
 ---
 

@@ -1,8 +1,8 @@
 # 0024 - Cuentas de usuario y publicación con identidad
 
-**Estado:** Propuesto (2026-10-04)
+**Estado:** Aceptado (2026-10-04)
 
-> Reemplaza a ADR 0015 en dos puntos: el secreto compartido como autorización de escritura y el descarte de una tabla de usuarios. Pasa a Aceptado antes de la primera migración de cuentas (ADR 0009). Relacionados: ADR 0013, ADR 0017, ADR 0022.
+> Reemplaza a ADR 0015 en dos puntos: el secreto compartido como autorización de escritura y el descarte de una tabla de usuarios. Aceptado antes de la primera migración de cuentas (ADR 0009). Aceptarlo no activa las cuentas: el código sigue apagado con `CUENTAS_HABILITADAS=false` hasta cumplir lo de la sección Cumplimiento. Relacionados: ADR 0013, ADR 0017, ADR 0022.
 
 ## Contexto
 
@@ -16,7 +16,7 @@ Se evaluaron tres caminos: un proveedor gestionado, un proveedor autoalojado (Ke
 
 **A. Cuentas propias en el backend.** Alta solo por invitación de un administrador, sin registro público. Tres roles: publicador, revisor y administrador. Los permisos viven en código, en una única tabla de política, y una prueba recorre todas las rutas y comprueba la matriz rol por acción.
 
-**B. Dominio.** La API se sirve en `api.epi-aetheris.dev` y el sitio canónico es `epi-aetheris.dev`; los dominios `onrender.com` redirigen con 301. Un dominio hermano permite cookies de sesión `__Host-` con `HttpOnly` y `SameSite=Strict`. La protección contra CSRF comprueba `Origin` y una cabecera derivada de la sesión.
+**B. Dominio.** La API se sirve en `api.epi-aetheris.dev` y el sitio canónico es `epi-aetheris.dev`. Los sitios estáticos de Render no admiten un 301 por dominio, así que las direcciones `onrender.com` del sitio redirigen desde el navegador al dominio canónico, conservando ruta, consulta y ancla, y cada página declara su `canonical`. Los orígenes `onrender.com` salen de la lista de CORS cuando se activen las cuentas. Un dominio hermano permite cookies de sesión `__Host-` con `HttpOnly` y `SameSite=Strict`. La protección contra CSRF comprueba `Origin` y una cabecera derivada de la sesión.
 
 **C. Credenciales.** Contraseña con Argon2id y una pimienta versionada. Segundo factor obligatorio, con TOTP o llave de acceso, y llaves de acceso obligatorias para administradores. Sesiones opacas en el servidor, revocables.
 
@@ -36,7 +36,7 @@ Se evaluaron tres caminos: un proveedor gestionado, un proveedor autoalojado (Ke
 
 ## Excepciones a AGENTS.md
 
-Esta decisión contradice cuatro reglas y se registran como excepciones acotadas. Al pasar el ADR a Aceptado se actualizan esas secciones.
+Esta decisión contradice cuatro reglas y se registran como excepciones acotadas. AGENTS.md las recoge en las secciones 5, 12 y 16.
 
 1. **Privacidad (sección 5).** Se guardan datos personales mínimos: nombre, correo, institución y, si la persona lo elige, cargo. Los lectores no tienen cuenta ni se registra nada de ellos.
 2. **Costos y dependencias (sección 5).** El correo transaccional es un servicio externo. Se elige uno con plan gratuito suficiente para el volumen esperado, y el funcionamiento central del sitio no depende de él: leer alertas, noticias y reportes no requiere correo.
