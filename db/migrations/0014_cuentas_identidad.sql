@@ -115,6 +115,9 @@ CREATE TABLE factores_autenticacion (
     webauthn_respaldo_elegible BOOLEAN,
     webauthn_respaldo_actual  BOOLEAN,
     creado_en                 TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Un factor recién creado no vale hasta que la persona demuestra que lo
+    -- tiene con un primer código.
+    confirmado_en             TIMESTAMPTZ,
     ultimo_uso_en             TIMESTAMPTZ,
     revocado_en               TIMESTAMPTZ,
     CONSTRAINT factores_totp_completo
@@ -128,7 +131,7 @@ CREATE TABLE factores_autenticacion (
 );
 
 CREATE INDEX factores_autenticacion_usuario ON factores_autenticacion (usuario_id)
-    WHERE revocado_en IS NULL;
+    WHERE revocado_en IS NULL AND confirmado_en IS NOT NULL;
 
 CREATE TABLE codigos_recuperacion (
     id         BIGSERIAL PRIMARY KEY,
