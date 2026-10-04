@@ -8,9 +8,9 @@ persona son `ErrorCuentas` con un mensaje apto para la interfaz.
 
 from __future__ import annotations
 
-import hashlib
-import secrets
 from dataclasses import dataclass
+
+import psycopg2.errors
 
 from . import auditoria, contrasenas, intentos, recuperacion, sesiones, tokens, totp
 from .config import ROLES, ConfigCuentas
@@ -494,6 +494,27 @@ def promover_alta(conn, config: ConfigCuentas, sesion: Sesion) -> str:
     return _promover(conn, config, sesion, "totp")
 
 
+def revocar_factor(conn, config: ConfigCuentas, sesion: Sesion, factor_id: str) -> None:
+    """Quita un factor propio. Siempre queda al menos uno, y un administrador
+    conserva al menos una llave de acceso."""
+    _exigir_nivel(sesion, "completo")
+    factores = factores_confirmados(conn, sesion.usuario_id)
+    objetivo = next((f for f in factores if f[0] == factor_id), None)
+    if objetivo is None:
+        raise ErrorCuentas("factor_inexistente", "No existe ese factor.", 404)
+    restantes = [f for f in factores if f[0] != factor_id]
+    if not restantes:
+        raise ErrorCuentas("ultimo_factor", "Debes conservar al menos un segundo factor.", 409)
+    if sesion.es_administrador and not any(t == "webauthn" for _, t, _ in restantes):
+        raise ErrorCuentas("ultima_llave", "Un administrador debe conservar al menos una llave de acceso.", 409)
+    with conn.cursor() as cur:
+        cur.execute("UPDATE factores_autenticacion SET revocado_en = now() WHERE id = %s", (factor_id,))
+    auditoria.registrar(
+        conn, categoria="seguridad", accion="factor_revocado", actor_id=sesion.usuario_id, sesion_id=sesion.id,
+        detalle={"tipo": objetivo[1]},
+    )
+
+
 # --- Restablecer contraseña ------------------------------------------------------------
 
 def solicitar_restablecimiento(conn, config: ConfigCuentas, correo: str, ip: str | None) -> CorreoPendiente | None:
@@ -674,14 +695,19 @@ def restablecer_factores(
 def crear_institucion(conn, actor: Sesion | None, *, nombre: str, tipo: str, dominios: list[str], sitio_web: str | None) -> int:
     dominios = sorted({d.strip().lower() for d in dominios if d.strip()})
     with conn.cursor() as cur:
+        # Punto de guardado: un nombre repetido no debe deshacer el resto de la transacción.
+        cur.execute("SAVEPOINT nueva_institucion")
         try:
             cur.execute(
                 "INSERT INTO instituciones (nombre, tipo, dominios_correo, sitio_web) VALUES (%s, %s, %s, %s) RETURNING id",
                 (nombre.strip(), tipo, dominios, sitio_web),
             )
-        except Exception as exc:
-            conn.rollback()
-            raise ErrorCuentas("institucion_invalida", "No se pudo crear la institución (nombre repetido o tipo inválido).") from exc
+        except psycopg2.errors.UniqueViolation as exc:
+            cur.execute("ROLLBACK TO SAVEPOINT nueva_institucion")
+            raise ErrorCuentas("institucion_repetida", "Ya existe una institución con ese nombre.", 409) from exc
+        except psycopg2.errors.CheckViolation as exc:
+            cur.execute("ROLLBACK TO SAVEPOINT nueva_institucion")
+            raise ErrorCuentas("institucion_invalida", "El tipo de institución no es válido.") from exc
         iid = cur.fetchone()[0]
     auditoria.registrar(
         conn, categoria="administracion", accion="institucion_creada",

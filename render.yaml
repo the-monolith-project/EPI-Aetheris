@@ -82,6 +82,29 @@ services:
       # se versiona un valor. Sin él, POST/PATCH responden 503.
       - key: ALERTAS_TOKEN
         sync: false
+      # Cuentas de usuario (ADR 0024). Apagadas hasta que existan las claves,
+      # el dominio de la API y el correo. Los valores los pone una persona en
+      # el panel de Render; ninguno se versiona.
+      - key: CUENTAS_HABILITADAS
+        value: "false"
+      - key: AUTH_ORIGEN_CANONICO
+        value: https://epi-aetheris.dev
+      - key: AUTH_RP_ID
+        value: epi-aetheris.dev
+      - key: AUTH_PEPPERS
+        sync: false
+      - key: AUTH_CLAVES_CIFRADO
+        sync: false
+      - key: CORREO_REMITENTE
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USUARIO
+        sync: false
+      - key: SMTP_CLAVE
+        sync: false
 
   - type: web
     name: epi-aetheris-web
