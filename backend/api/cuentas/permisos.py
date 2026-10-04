@@ -40,8 +40,17 @@ REQUIEREN_REAUTENTICACION = frozenset(
     }
 )
 
-# Acciones que un administrador solo puede hacer con llave de acceso.
-REQUIEREN_LLAVE = frozenset({"admin.cambiar_roles", "admin.restablecer_factores", "admin.suspender"})
+# Acciones que un administrador solo puede hacer con llave de acceso. Invitar
+# entra aquí porque una invitación puede crear otro administrador: sin esto,
+# una sesión con solo contraseña y TOTP ampliaría el grupo que exige llave.
+REQUIEREN_LLAVE = frozenset(
+    {
+        "admin.invitar",
+        "admin.cambiar_roles",
+        "admin.restablecer_factores",
+        "admin.suspender",
+    }
+)
 
 
 def permitido(roles: set[str] | frozenset[str], accion: str) -> bool:

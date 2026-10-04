@@ -173,6 +173,15 @@ def test_accion_que_exige_reautenticacion(conn, config, crear_usuario, web):
     assert r.status_code in (401, 403)
 
 
+def test_administrador_sin_llave_no_invita(conn, config, crear_usuario, web):
+    # Una invitación puede crear otro administrador: con solo contraseña y TOTP
+    # la sesión no puede ampliar el grupo que exige llave de acceso.
+    _, h = _admin_con_cookie(conn, config, crear_usuario, web, metodos=("clave", "totp"))
+    r = web.post("/api/admin/invitaciones", headers=h, json={
+        "correo": "otra.admin@ejemplo.org", "roles": ["administrador"], "nota_verificacion": "Verificada por llamada"})
+    assert r.status_code == 403 and r.json()["detail"]["codigo"] == "requiere_llave"
+
+
 def test_administrador_sin_llave_no_cambia_roles(conn, config, crear_usuario, web):
     _, h = _admin_con_cookie(conn, config, crear_usuario, web, metodos=("clave", "totp"))
     otro = crear_usuario(roles=("publicador",))
