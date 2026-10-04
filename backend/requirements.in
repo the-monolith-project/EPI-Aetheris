@@ -22,3 +22,11 @@ requests==2.33.0
 scikit-learn==1.5.1
 joblib==1.4.2
 pytest==9.1.1
+
+# Cuentas de usuario (ADR 0024)
+argon2-cffi==25.1.0
+pyotp==2.10.0
+webauthn==3.0.1
+cryptography==50.0.2
+segno==1.6.6
+email-validator==2.3.0
