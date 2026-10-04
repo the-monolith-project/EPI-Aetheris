@@ -1,0 +1,5 @@
+# Falsos positivos de gitleaks en pruebas de cuentas (huella: commit:archivo:regla:línea).
+# SHA-1 público de la palabra "password", usado en la prueba del servicio de claves filtradas.
+9c40e3d3d7de1c501d44a537e9c89b5c396b33bb:backend/api/tests/cuentas/test_contrasenas.py:generic-api-key:68
+# Llamada de prueba con un token de invitación generado en la propia prueba, sin valor literal.
+bbc2f679af8cb067dea87526fb8e88d09510fcb5:backend/api/tests/cuentas/test_llaves.py:generic-api-key:18
