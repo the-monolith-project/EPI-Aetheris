@@ -116,6 +116,19 @@ services:
     branch: main
     buildCommand: pnpm install --frozen-lockfile && pnpm build
     staticPublishPath: ./dist
+    # Sin CSP ni frame-ancestors a propósito: el sitio tiene scripts en línea y
+    # un código para incrustar gráficas en otras páginas; ambos se revisan
+    # aparte antes de endurecerlos.
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()
     envVars:
       # Se embebe en el bundle del cliente en build-time (variable PUBLIC_*
       # de Astro) -- por eso va como valor fijo, no como fromService: Astro

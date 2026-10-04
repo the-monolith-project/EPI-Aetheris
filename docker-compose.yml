@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Debe definirse POSTGRES_PASSWORD en el archivo .env (ver .env.example)}
       POSTGRES_DB: ${POSTGRES_DB:?Debe definirse POSTGRES_DB en el archivo .env (ver .env.example)}
     ports:
-      - "5432:5432"
+      # Solo en el equipo local: la base y la API no se exponen a la red.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/migrations:/docker-entrypoint-initdb.d
@@ -28,7 +29,7 @@ services:
     container_name: aetheris_backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       # Un solo origen permitido obligaba a que CUALQUIER dev server se
       # atara al 4321, que es el puerto del contenedor `web`. Eso hacia
