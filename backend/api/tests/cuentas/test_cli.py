@@ -3,6 +3,15 @@ import pytest
 
 from api.cuentas import cli, servicio
 
+from .conftest_http import ConexionCompartida
+
+@pytest.fixture
+def conn(conn):
+    """La CLI confirma su transacción; aquí el commit no hace nada y el fixture
+    base deshace todo al terminar."""
+    return ConexionCompartida(conn)
+
+
 @pytest.fixture
 def entorno(monkeypatch, config):
     import base64
