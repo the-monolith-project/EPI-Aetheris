@@ -18,6 +18,9 @@ databases:
     plan: basic-256mb
     region: oregon
     postgresMajorVersion: "15"
+    # Lista vacía: solo se llega a la base por la red interna de Render. Con
+    # cuentas en la base (ADR 0024) no se deja abierta a internet.
+    ipAllowList: []
 
 services:
   - type: web
