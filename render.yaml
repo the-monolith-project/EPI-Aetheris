@@ -18,6 +18,9 @@ databases:
     plan: basic-256mb
     region: oregon
     postgresMajorVersion: "15"
+    # Lista vacía: solo se llega a la base por la red interna de Render. Con
+    # cuentas en la base (ADR 0024) no se deja abierta a internet.
+    ipAllowList: []
 
 services:
   - type: web
@@ -75,9 +78,35 @@ services:
       # epi-aetheris.dev como su URL directa de onrender.com.
       - key: CORS_ALLOWED_ORIGINS
         value: https://epi-aetheris-web.onrender.com,https://epi-aetheris.dev,https://www.epi-aetheris.dev,https://aetheris-nitor.onrender.com
+      # /docs, /redoc y /openapi.json apagados en producción (ADR 0024).
+      - key: API_DOCS_ENABLED
+        value: "false"
       # Escritura de alertas (ADR 0015). Render lo pide en el panel; no
       # se versiona un valor. Sin él, POST/PATCH responden 503.
       - key: ALERTAS_TOKEN
+        sync: false
+      # Cuentas de usuario (ADR 0024). Apagadas hasta que existan las claves,
+      # el dominio de la API y el correo. Los valores los pone una persona en
+      # el panel de Render; ninguno se versiona.
+      - key: CUENTAS_HABILITADAS
+        value: "false"
+      - key: AUTH_ORIGEN_CANONICO
+        value: https://epi-aetheris.dev
+      - key: AUTH_RP_ID
+        value: epi-aetheris.dev
+      - key: AUTH_PEPPERS
+        sync: false
+      - key: AUTH_CLAVES_CIFRADO
+        sync: false
+      - key: CORREO_REMITENTE
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USUARIO
+        sync: false
+      - key: SMTP_CLAVE
         sync: false
 
   - type: web
@@ -87,6 +116,19 @@ services:
     branch: main
     buildCommand: pnpm install --frozen-lockfile && pnpm build
     staticPublishPath: ./dist
+    # Sin CSP ni frame-ancestors a propósito: el sitio tiene scripts en línea y
+    # un código para incrustar gráficas en otras páginas; ambos se revisan
+    # aparte antes de endurecerlos.
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()
     envVars:
       # Se embebe en el bundle del cliente en build-time (variable PUBLIC_*
       # de Astro) -- por eso va como valor fijo, no como fromService: Astro

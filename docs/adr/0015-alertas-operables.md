@@ -1,6 +1,6 @@
 # 0015 - Alertas operables: archivo, creación autenticada y etiquetas
 
-**Estado:** Aceptado (2026-09-07)
+**Estado:** Aceptado (2026-09-07). Reemplazado en parte por ADR 0024: el secreto compartido como autorización de escritura y el descarte de una tabla de usuarios.
 
 > Supercede las líneas de ADR 0013 que dejaban la autenticación, el
 > formulario de administración y la creación HTTP fuera de alcance.
