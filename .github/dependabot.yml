@@ -1,0 +1,32 @@
+# Actualizaciones de dependencias (ADR 0024, preparación E0).
+# web/ no entra: es una copia sincronizada de aetheris-nitor, que lleva su
+# propio Dependabot; un PR aquí se perdería con la siguiente sincronización.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencias]
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    labels: [dependencias]
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencias]
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      acciones:
+        patterns: ["*"]
