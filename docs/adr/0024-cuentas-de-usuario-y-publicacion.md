@@ -36,11 +36,12 @@ Se evaluaron tres caminos: un proveedor gestionado, un proveedor autoalojado (Ke
 
 ## Excepciones a AGENTS.md
 
-Esta decisión contradice tres reglas y se registran como excepciones acotadas. Al pasar el ADR a Aceptado se actualizan esas secciones.
+Esta decisión contradice cuatro reglas y se registran como excepciones acotadas. Al pasar el ADR a Aceptado se actualizan esas secciones.
 
 1. **Privacidad (sección 5).** Se guardan datos personales mínimos: nombre, correo, institución y, si la persona lo elige, cargo. Los lectores no tienen cuenta ni se registra nada de ellos.
 2. **Costos y dependencias (sección 5).** El correo transaccional es un servicio externo. Se elige uno con plan gratuito suficiente para el volumen esperado, y el funcionamiento central del sitio no depende de él: leer alertas, noticias y reportes no requiere correo.
 3. **Seguridad (sección 12).** CORS pasa a admitir credenciales para el origen canónico, `SecurityHeadersMiddleware` suma una CSP propia para las rutas privadas y aparece el orden de middleware de sesión y CSRF.
+4. **Documentación (sección 16).** Se crea `docs/seguridad/` con el procedimiento de respuesta a incidentes. Es un procedimiento operativo que no encaja en un ADR ni en la Biblioteca, y debe estar versionado y revisado como el código. La excepción cubre solo esa carpeta.
 
 ## Consecuencias
 
