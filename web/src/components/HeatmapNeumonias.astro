@@ -1,5 +1,6 @@
 ---
 import PanelWorkspace from './analisis/PanelWorkspace.astro';
+import SelectorSemanaEpi from './SelectorSemanaEpi.astro';
 import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
 // Heatmap departamento × semana de Neumonías. Una métrica: conteo notificado.
 // Celda sin dato = hueco, nunca cero.
@@ -26,7 +27,15 @@ import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
       </select>
     </label>
     <span class="flex flex-wrap items-center gap-2">
-      SE
+      <span class="text-xs font-medium text-ink-muted">Desde:</span>
+      <SelectorSemanaEpi
+        id="hm-neu-selector-desde"
+        semana={1}
+        compacto={true}
+        mostrarRangoFechas={false}
+        etiqueta="Semana epidemiológica inicial neumonías"
+        class="hm-selector-desde"
+      />
       <input
         id="hm-neu-desde"
         data-hm-desde
@@ -36,6 +45,16 @@ import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
         value="1"
         aria-label="Semana epidemiológica inicial"
         aria-valuetext="Semana 1"
+        class="w-20 sm:w-28 accent-accent"
+      />
+      <span class="text-xs font-medium text-ink-muted">Hasta:</span>
+      <SelectorSemanaEpi
+        id="hm-neu-selector-hasta"
+        semana={52}
+        compacto={true}
+        mostrarRangoFechas={false}
+        etiqueta="Semana epidemiológica final neumonías"
+        class="hm-selector-hasta"
       />
       <input
         id="hm-neu-hasta"
@@ -46,6 +65,7 @@ import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
         value="52"
         aria-label="Semana epidemiológica final"
         aria-valuetext="Semana 52"
+        class="w-20 sm:w-28 accent-accent"
       />
       <span data-hm-rango class="font-sans tabular-nums text-xs">SE1–SE52</span>
     </span>
@@ -147,6 +167,8 @@ import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
     const inpDesde = root.querySelector<HTMLInputElement>('[data-hm-desde]')!;
     const inpHasta = root.querySelector<HTMLInputElement>('[data-hm-hasta]')!;
     const txtRango = root.querySelector<HTMLElement>('[data-hm-rango]')!;
+    const selectorDesde = root.querySelector<HTMLElement>('.hm-selector-desde');
+    const selectorHasta = root.querySelector<HTMLElement>('.hm-selector-hasta');
     let desde = Number(inpDesde.value);
     let hasta = Number(inpHasta.value);
     if (desde > hasta) [desde, hasta] = [hasta, desde];
@@ -154,6 +176,17 @@ import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
     inpDesde.setAttribute('aria-valuetext', `Semana ${inpDesde.value}`);
     inpHasta.setAttribute('aria-valuetext', `Semana ${inpHasta.value}`);
     const anio = sel.value;
+    const anioNum = Number(anio);
+    selectorDesde?.dispatchEvent(
+      new CustomEvent('ajustar-semana', {
+        detail: { anio: anioNum, semana: desde },
+      }),
+    );
+    selectorHasta?.dispatchEvent(
+      new CustomEvent('ajustar-semana', {
+        detail: { anio: anioNum, semana: hasta },
+      }),
+    );
     grid.setAttribute('aria-busy', 'true');
     renderEsqueletoMatriz(grid, 7);
     try {
@@ -291,6 +324,8 @@ import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
     const selAnio = root.querySelector<HTMLSelectElement>('[data-hm-anio]')!;
     const inpDesde = root.querySelector<HTMLInputElement>('[data-hm-desde]')!;
     const inpHasta = root.querySelector<HTMLInputElement>('[data-hm-hasta]')!;
+    const selectorDesde = root.querySelector<HTMLElement>('.hm-selector-desde');
+    const selectorHasta = root.querySelector<HTMLElement>('.hm-selector-hasta');
 
     const sincronizar = (f: FiltrosRespiratorio) => {
       selAnio.value = anioParaMapa(f);
@@ -306,6 +341,17 @@ import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
         inpDesde.value = String(f.semanaDesde);
         inpHasta.value = String(f.semanaHasta);
       }
+      const anioNum = Number(selAnio.value);
+      selectorDesde?.dispatchEvent(
+        new CustomEvent('ajustar-semana', {
+          detail: { anio: anioNum, semana: f.semanaDesde },
+        }),
+      );
+      selectorHasta?.dispatchEvent(
+        new CustomEvent('ajustar-semana', {
+          detail: { anio: anioNum, semana: f.semanaHasta },
+        }),
+      );
     };
     sincronizar(obtenerFiltrosRespiratorio());
 
@@ -319,6 +365,18 @@ import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
     selAnio.addEventListener('change', alCambiar);
     inpDesde.addEventListener('input', alCambiar);
     inpHasta.addEventListener('input', alCambiar);
+    selectorDesde?.addEventListener('cambio-semana', ((
+      ev: CustomEvent<{ semana: number }>,
+    ) => {
+      inpDesde.value = String(ev.detail.semana);
+      alCambiar();
+    }) as EventListener);
+    selectorHasta?.addEventListener('cambio-semana', ((
+      ev: CustomEvent<{ semana: number }>,
+    ) => {
+      inpHasta.value = String(ev.detail.semana);
+      alCambiar();
+    }) as EventListener);
     suscribirFiltrosRespiratorio((f) => {
       sincronizar(f);
       void pintar();

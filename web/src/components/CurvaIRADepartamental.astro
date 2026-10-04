@@ -1,6 +1,8 @@
 ---
 import PanelWorkspace from './analisis/PanelWorkspace.astro';
 import CargadorCurva from './CargadorCurva.astro';
+import MenuExportar from './MenuExportar.astro';
+import SelectorSemanaEpi from './SelectorSemanaEpi.astro';
 import { ANIOS_RESPIRATORIO } from '../lib/respiratorio-state';
 interface Props {
   evento?: 'ira' | 'neumonias';
@@ -14,6 +16,7 @@ const evento = Astro.props.evento ?? 'ira';
 const departamentoFijo = Astro.props.departamento;
 const etiqueta = evento === 'neumonias' ? 'Neumonías' : 'IRA';
 const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
+const idPrefijo = `curva-${evento}${departamentoFijo ? `-${departamentoFijo}` : ''}`;
 ---
 
 <PanelWorkspace
@@ -59,8 +62,16 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
         <option value="">(ningún otro departamento)</option>
       </select>
     </label>
-    <label class="flex flex-wrap items-center gap-2"
-      >SE
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-xs font-medium text-ink-muted">Desde:</span>
+      <SelectorSemanaEpi
+        id={`${idPrefijo}-selector-desde`}
+        semana={1}
+        compacto={true}
+        mostrarRangoFechas={false}
+        etiqueta={`Semana epidemiológica inicial ${etiqueta}`}
+        class="curva-selector-desde"
+      />
       <input
         data-curva-desde
         type="range"
@@ -69,6 +80,16 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
         value="1"
         aria-label="Semana epidemiológica inicial"
         aria-valuetext="Semana epidemiológica 1"
+        class="w-20 sm:w-28 accent-accent"
+      />
+      <span class="text-xs font-medium text-ink-muted">Hasta:</span>
+      <SelectorSemanaEpi
+        id={`${idPrefijo}-selector-hasta`}
+        semana={52}
+        compacto={true}
+        mostrarRangoFechas={false}
+        etiqueta={`Semana epidemiológica final ${etiqueta}`}
+        class="curva-selector-hasta"
       />
       <input
         data-curva-hasta
@@ -78,20 +99,17 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
         value="52"
         aria-label="Semana epidemiológica final"
         aria-valuetext="Semana epidemiológica 52"
+        class="w-20 sm:w-28 accent-accent"
       />
       <span data-curva-rango class="font-sans tabular-nums text-xs"
         >SE1–SE52</span
       >
-    </label>
-    <button
-      type="button"
-      data-curva-export
-      aria-label={`Exportar datos de ${etiqueta} a CSV`}
-      disabled
-      class="rounded-lg border border-border bg-bg px-3 py-1.5 font-sans text-xs font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      Exportar CSV
-    </button>
+    </div>
+    <MenuExportar
+      csv={`curva-csv-${evento}`}
+      titulo={`Casos semanales de ${etiqueta} por departamento`}
+      fuente="Boletines epidemiológicos de MINSAL"
+    />
   </div>
 
   <div
@@ -114,6 +132,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     RespuestaIraDepartamental,
   } from '../lib/tipos-analisis';
   import { colorCualitativo } from '../lib/colores';
+  import { habilitarCsv, inhabilitarCsv } from '../lib/exportar-csv';
   import {
     actualizarFiltrosRespiratorio,
     obtenerFiltrosRespiratorio,
@@ -361,9 +380,15 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     const txtRango = seccion.querySelector(
       '[data-curva-rango]',
     ) as HTMLElement | null;
-    const btnExport = seccion.querySelector(
-      '[data-curva-export]',
-    ) as HTMLButtonElement | null;
+    const opcionCsv = seccion.querySelector<HTMLElement>(
+      '[data-menu-accion="csv"]',
+    );
+    const selectorDesde = seccion.querySelector<HTMLElement>(
+      '.curva-selector-desde',
+    );
+    const selectorHasta = seccion.querySelector<HTMLElement>(
+      '.curva-selector-hasta',
+    );
     if (
       !contenedor ||
       !selector ||
@@ -374,7 +399,6 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       !txtRango
     )
       return;
-    let ultimoCsv = '';
 
     let departamentos: DepartamentoIRA[];
     try {
@@ -411,6 +435,17 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
       txtRango.textContent = `SE${desde}–SE${hasta}`;
       inpDesde.setAttribute('aria-valuetext', `Semana epidemiológica ${desde}`);
       inpHasta.setAttribute('aria-valuetext', `Semana epidemiológica ${hasta}`);
+      const anioNum = selAnio.value === 'todos' ? 2024 : Number(selAnio.value);
+      selectorDesde?.dispatchEvent(
+        new CustomEvent('ajustar-semana', {
+          detail: { anio: anioNum, semana: desde },
+        }),
+      );
+      selectorHasta?.dispatchEvent(
+        new CustomEvent('ajustar-semana', {
+          detail: { anio: anioNum, semana: hasta },
+        }),
+      );
       return { desde, hasta };
     };
 
@@ -435,6 +470,17 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
         inpDesde.value = String(f.semanaDesde);
         inpHasta.value = String(f.semanaHasta);
       }
+      const anioNum = f.anio === 'todos' ? 2024 : f.anio;
+      selectorDesde?.dispatchEvent(
+        new CustomEvent('ajustar-semana', {
+          detail: { anio: anioNum, semana: f.semanaDesde },
+        }),
+      );
+      selectorHasta?.dispatchEvent(
+        new CustomEvent('ajustar-semana', {
+          detail: { anio: anioNum, semana: f.semanaHasta },
+        }),
+      );
     };
     sincronizarControles(
       fijo
@@ -486,8 +532,11 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
             }
           }
         }
-        ultimoCsv = lineas.join('\n');
-        if (btnExport) btnExport.disabled = false;
+        const contenido = lineas.join('\n');
+        habilitarCsv(opcionCsv, () => ({
+          nombre: 'serie-respiratoria.csv',
+          contenido,
+        }));
       } catch (err) {
         const noDisponible =
           err instanceof Error &&
@@ -501,8 +550,7 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
         } else {
           renderErrorFuente(contenedor, () => void refrescar());
         }
-        ultimoCsv = '';
-        if (btnExport) btnExport.disabled = true;
+        inhabilitarCsv(opcionCsv);
       } finally {
         contenedor.removeAttribute('aria-busy');
         contenedor.classList.remove('opacity-60');
@@ -526,21 +574,24 @@ const apiBase = evento === 'neumonias' ? '/api/neumonias' : '/api/ira';
     selCompare.addEventListener('change', alCambiar);
     inpDesde.addEventListener('input', alCambiar);
     inpHasta.addEventListener('input', alCambiar);
+    selectorDesde?.addEventListener('cambio-semana', ((
+      ev: CustomEvent<{ semana: number }>,
+    ) => {
+      inpDesde.value = String(ev.detail.semana);
+      alCambiar();
+    }) as EventListener);
+    selectorHasta?.addEventListener('cambio-semana', ((
+      ev: CustomEvent<{ semana: number }>,
+    ) => {
+      inpHasta.value = String(ev.detail.semana);
+      alCambiar();
+    }) as EventListener);
     if (!fijo) {
       suscribirFiltrosRespiratorio((f) => {
         sincronizarControles(f);
         void refrescar();
       }, false);
     }
-    btnExport?.addEventListener('click', () => {
-      if (!ultimoCsv) return;
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(
-        new Blob([ultimoCsv], { type: 'text/csv;charset=utf-8' }),
-      );
-      a.download = 'serie-respiratoria.csv';
-      a.click();
-    });
     void refrescar();
   }
 
